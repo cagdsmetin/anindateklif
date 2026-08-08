@@ -99,7 +99,7 @@ export default function CustomersScreen() {
                   testID={`quote-for-${c.id}`}
                   style={s.miniBtn}
                 >
-                  <Ionicons name="create-outline" size={16} color={theme.colors.accent} />
+                  <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => deleteCustomer(c.id)} testID={`delete-cust-${c.id}`} style={s.miniBtn}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
@@ -156,16 +156,16 @@ const s = StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.primarySoft,
     borderWidth: 1,
-    borderColor: theme.colors.accentBorder,
+    borderColor: theme.colors.primaryBorder,
     borderRadius: 12,
   },
-  badgeText: { fontSize: 10, fontWeight: '700', color: theme.colors.accent },
+  badgeText: { fontSize: 10, fontWeight: '700', color: theme.colors.primary },
   miniBtn: {
     width: 34,
     height: 34,
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.primarySoft,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',

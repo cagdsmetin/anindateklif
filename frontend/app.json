@@ -1,16 +1,19 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Anında Teklif",
+    "slug": "aninda-teklif",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
-    "userInterfaceStyle": "automatic",
+    "scheme": "anindateklif",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.appgenesis.p6b8pb"
+      "bundleIdentifier": "com.emergent.appgenesis.p6b8pb",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi"
+      }
     },
     "android": {
       "adaptiveIcon": {

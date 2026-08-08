@@ -1,24 +1,26 @@
 export const theme = {
   colors: {
-    // Navy & Gold Corporate Palette
-    navy: '#0B2545',        // Deep navy — kurumsal ağırlık
-    navyDark: '#06172E',    // Koyu vurgular
-    navySoft: '#EEF2F7',    // Açık lacivert-mavi ton (chip / arka planlar)
-    navyBorder: '#C3CFDF',
+    // Primary Palette — Professional SaaS
+    primary: '#2563EB',        // Vivid blue (from logo)
+    primaryDark: '#1D4ED8',
+    primarySoft: '#EFF6FF',
+    primaryBorder: '#BFDBFE',
 
-    gold: '#C9A227',        // Zengin altın — CTA / detaylar
-    goldDark: '#8F6E1A',
-    goldSoft: '#FBF3D7',    // Soft altın arka plan
-    goldBorder: '#E9D089',
+    navy: '#1E293B',           // Deep navy (secondary)
+    navyDark: '#0F172A',
 
-    // "accent" navy'ye map — mevcut kodun çoğu accent kullanıyor
-    accent: '#0B2545',
-    accentSoft: '#EEF2F7',
-    accentBorder: '#C3CFDF',
+    // Legacy aliases for existing code
+    accent: '#2563EB',
+    accentSoft: '#EFF6FF',
+    accentBorder: '#BFDBFE',
+    gold: '#F59E0B',           // Warm accent (optional highlights)
+    goldSoft: '#FEF3C7',
+    goldDark: '#B45309',
+    goldBorder: '#FCD34D',
 
-    red: '#B91C1C',
+    red: '#DC2626',
     redSoft: '#FEE2E2',
-    green: '#166534',
+    green: '#16A34A',
     greenSoft: '#DCFCE7',
     yellow: '#B45309',
     yellowSoft: '#FEF3C7',
@@ -26,13 +28,37 @@ export const theme = {
     text: '#0F172A',
     textMuted: '#64748B',
     textSoft: '#475569',
-    bg: '#F8FAFC',
+    bg: '#FFFFFF',              // Pure white background
     surface: '#FFFFFF',
+    surfaceSoft: '#F8FAFC',
     line: '#E2E8F0',
     lineDark: '#CBD5E1',
   },
-  radius: { sm: 6, md: 8, lg: 12, xl: 16 },
+  radius: { sm: 8, md: 10, lg: 14, xl: 20, pill: 999 },
   spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 28 },
+  shadow: {
+    sm: {
+      shadowColor: '#0F172A',
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    md: {
+      shadowColor: '#0F172A',
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    lg: {
+      shadowColor: '#2563EB',
+      shadowOpacity: 0.18,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 6,
+    },
+  },
 };
 
 export function statusColor(status: string) {
@@ -40,7 +66,7 @@ export function statusColor(status: string) {
     case 'Onaylandı':
       return { bg: theme.colors.greenSoft, border: '#86efac', text: '#166534' };
     case 'Görüldü':
-      return { bg: theme.colors.goldSoft, border: theme.colors.goldBorder, text: theme.colors.goldDark };
+      return { bg: theme.colors.yellowSoft, border: theme.colors.goldBorder, text: theme.colors.goldDark };
     case 'Reddedildi':
       return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b' };
     default:

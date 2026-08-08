@@ -1,15 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, CatalogItemT, CompanyT, CustomerT, QuoteT } from '@/src/lib/api';
 import { storage } from '@/src/utils/storage';
+import { useAuth } from './AuthContext';
 
-const ACTIVE_COMPANY_KEY = 'active_company_id_v1';
+const ACTIVE_COMPANY_KEY = 'active_company_id_v2';
 
 type Ctx = {
   loading: boolean;
   companies: CompanyT[];
   activeCompany: CompanyT | null;
   setActiveCompanyId: (id: string) => Promise<void>;
-  reloadCompanies: () => Promise<void>;
+  reloadCompanies: () => Promise<CompanyT[]>;
   createCompany: (data: Partial<CompanyT>) => Promise<CompanyT>;
   updateCompany: (id: string, data: Partial<CompanyT>) => Promise<void>;
   deleteCompany: (id: string) => Promise<void>;
@@ -33,7 +34,18 @@ type Ctx = {
 
 const AppContext = createContext<Ctx | null>(null);
 
+const DEFAULT_MOTORS = ['Mosel', 'Somfy', 'Becker'];
+const DEFAULT_LIGHTS = ['Günışığı', 'Beyaz LED', 'RGB LED', 'Yok'];
+const DEFAULT_SYSTEMS = [
+  'Pistonlu Bioklimatik Sistem',
+  'Sabit Bioklimatik',
+  'Kış Bahçesi (Sabit Cam Tavan)',
+  'Pergola Sistemi',
+  'Cam Balkon',
+];
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState<CompanyT[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
@@ -53,7 +65,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const reloadCompanies = useCallback(async () => {
-    const list = await api.listCompanies();
+    const list: CompanyT[] = await api.listCompanies();
     setCompanies(list);
     return list;
   }, []);
@@ -101,8 +113,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       website: data.website || '',
       vergiDairesi: data.vergiDairesi || '',
       vergiNo: data.vergiNo || '',
-      bankaBilgileri: data.bankaBilgileri || '',
+      ozelNotlar: data.ozelNotlar || '',
+      banklar: data.banklar || [],
       hazirlayanEmails: data.hazirlayanEmails || [],
+      motorlar: data.motorlar || DEFAULT_MOTORS,
+      aydinlatmalar: data.aydinlatmalar || DEFAULT_LIGHTS,
+      sistemTipleri: data.sistemTipleri || DEFAULT_SYSTEMS,
     });
     await reloadCompanies();
     return created;
@@ -110,7 +126,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateCompany = useCallback(async (id: string, data: Partial<CompanyT>) => {
     const existing = companies.find((c) => c.id === id);
-    const merged = { ...existing, ...data };
+    const merged: any = { ...existing, ...data };
     await api.updateCompany(id, {
       sirketAdi: merged.sirketAdi || '',
       logoBase64: merged.logoBase64 || '',
@@ -121,8 +137,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       website: merged.website || '',
       vergiDairesi: merged.vergiDairesi || '',
       vergiNo: merged.vergiNo || '',
-      bankaBilgileri: merged.bankaBilgileri || '',
+      ozelNotlar: merged.ozelNotlar || '',
+      banklar: merged.banklar || [],
       hazirlayanEmails: merged.hazirlayanEmails || [],
+      motorlar: merged.motorlar || [],
+      aydinlatmalar: merged.aydinlatmalar || [],
+      sistemTipleri: merged.sistemTipleri || [],
     });
     await reloadCompanies();
   }, [companies, reloadCompanies]);
@@ -153,7 +173,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateCatalogItem = useCallback(async (id: string, data: Partial<CatalogItemT>) => {
     if (!activeCompanyId) return;
     const existing = catalog.find((c) => c.id === id);
-    const merged = { ...existing, ...data };
+    const merged: any = { ...existing, ...data };
     await api.updateCatalogItem(id, {
       companyId: activeCompanyId,
       kategori: merged.kategori || 'Genel',
@@ -215,9 +235,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       notlar: quote.notlar || '',
       items: (quote.items || []).map((it) => ({
         id: it.id,
-        kategori: it.kategori || '',
+        mode: it.mode || 'general',
         urunAdi: it.urunAdi || '',
-        aciklama: it.aciklama || '',
+        sistemTipi: it.sistemTipi || '',
+        genislikMm: it.genislikMm ?? null,
+        uzunlukMm: it.uzunlukMm ?? null,
+        yukseklikMm: it.yukseklikMm ?? null,
+        motor: it.motor || '',
+        aydinlatma: it.aydinlatma || '',
+        kopukDolgu: !!it.kopukDolgu,
+        ralAna: it.ralAna || '',
+        ralPanel: it.ralPanel || '',
+        ekBilgi: it.ekBilgi || '',
+        customFields: it.customFields || [],
         adet: Number(it.adet) || 0,
         birim: it.birim || 'Adet',
         birimFiyat: Number(it.birimFiyat) || 0,
@@ -229,7 +259,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       : await api.createQuote(payload);
     await reloadQuotes();
     await reloadCustomers();
-    return saved;
+    return saved as QuoteT;
   }, [activeCompanyId, reloadQuotes, reloadCustomers]);
 
   const deleteQuote = useCallback(async (id: string) => {
@@ -242,51 +272,61 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reloadQuotes();
   }, [reloadQuotes]);
 
-  // Bootstrap
+  // Bootstrap when user changes
   useEffect(() => {
+    if (!user) {
+      setCompanies([]);
+      setActiveCompanyIdState(null);
+      setCatalog([]);
+      setCustomers([]);
+      setQuotes([]);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
     (async () => {
+      setLoading(true);
       try {
         const list: CompanyT[] = await api.listCompanies();
         let activeId = (await storage.getItem<string>(ACTIVE_COMPANY_KEY, '')) as string;
         if (list.length === 0) {
-          // Seed: create default demo company
-          const demo = await api.createCompany({
-            sirketAdi: 'SKYART GROUP GÖLGELENDİRME',
-            logoBase64: '',
-            adres: 'USKUMRUKÖY MAH. 1. SOK NO:125 ZEKERİYAKÖY / SARIYER / İSTANBUL',
-            telefon: '0 850 606 0 532',
-            telefon2: '',
-            email: 'info@skyart-group.com',
-            website: 'www.skyart-group.com',
-            vergiDairesi: '',
-            vergiNo: '',
-            bankaBilgileri: 'GARANTİ BANKASI\nTR12 3456 7890 1234 5678 90',
-            hazirlayanEmails: ['cagdas@skyart-group.com', 'mehmet@skyart-group.com', 'yasemin@skyart-group.com'],
+          // seed default empty company for the user
+          const created: CompanyT = await api.createCompany({
+            sirketAdi: user.name ? `${user.name} Firma` : 'Yeni Firma',
+            hazirlayanEmails: user.email ? [user.email] : [],
+            motorlar: DEFAULT_MOTORS,
+            aydinlatmalar: DEFAULT_LIGHTS,
+            sistemTipleri: DEFAULT_SYSTEMS,
+            banklar: [],
           });
-          list.push(demo);
-          activeId = demo.id;
-          await storage.setItem(ACTIVE_COMPANY_KEY, demo.id);
+          list.push(created);
+          activeId = created.id;
+          await storage.setItem(ACTIVE_COMPANY_KEY, created.id);
         } else if (!activeId || !list.find((c) => c.id === activeId)) {
           activeId = list[0].id;
           await storage.setItem(ACTIVE_COMPANY_KEY, activeId);
         }
-        setCompanies(list);
-        setActiveCompanyIdState(activeId);
+        if (!cancelled) {
+          setCompanies(list);
+          setActiveCompanyIdState(activeId);
+        }
       } catch (e) {
         console.warn('Bootstrap error', e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [user]);
 
   // Load data for active company
   useEffect(() => {
+    if (!user) return;
     if (!activeCompanyId) return;
     reloadCatalog();
     reloadCustomers();
     reloadQuotes();
-  }, [activeCompanyId, reloadCatalog, reloadCustomers, reloadQuotes]);
+  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadQuotes]);
 
   return (
     <AppContext.Provider

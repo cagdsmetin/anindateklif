@@ -192,7 +192,7 @@ export default function CatalogScreen() {
               </View>
               <View style={{ gap: 6 }}>
                 <TouchableOpacity onPress={() => openEdit(c)} testID={`edit-${c.id}`}>
-                  <Ionicons name="pencil" size={20} color={theme.colors.accent} />
+                  <Ionicons name="pencil" size={20} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => deleteCatalogItem(c.id)} testID={`delete-${c.id}`}>
                   <Ionicons name="trash" size={20} color={theme.colors.red} />
@@ -313,7 +313,7 @@ const s = StyleSheet.create({
   },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
   btnAcc: {
-    backgroundColor: theme.colors.accent,
+    backgroundColor: theme.colors.primary,
     paddingVertical: 11,
     borderRadius: 8,
     flexDirection: 'row',
@@ -323,7 +323,7 @@ const s = StyleSheet.create({
   },
   btnAccBig: {
     marginTop: 12,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: theme.colors.primary,
     paddingVertical: 14,
     borderRadius: 10,
     flexDirection: 'row',
@@ -357,7 +357,7 @@ const s = StyleSheet.create({
   },
   catBadge: {
     fontSize: 9.5,
-    color: theme.colors.accent,
+    color: theme.colors.primary,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -403,7 +403,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  chipA: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
+  chipA: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   chipT: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   chipTA: { color: '#fff' },
   hint: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8, lineHeight: 18 },

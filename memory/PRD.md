@@ -1,43 +1,59 @@
-# Anında Teklif — Product Requirements
+# Anında Teklif — SaaS PRD
 
-## Overview
-Türkçe, native React Native + Expo mobil uygulama. Çok firmalı fiyat teklifi hazırlama aracı. Kullanıcı kendi firmasını (logo, adres, banka, e-mail listesi) tanımlar, ürün kataloğunu yönetir, teklif oluşturur, HTML tabanlı PDF üretir ve WhatsApp'tan paylaşır.
+## Vision
+Profesyonel B2B teklif hazırlama SaaS uygulaması. Türkçe. Emergent Google Auth ile giriş, çoklu firma (multi-tenant), 3-mod dinamik kalem sistemi, SKYART PDF taslağıyla piksel uyumlu çıktı ve WhatsApp paylaşım.
 
-## Stack
-- Frontend: Expo Router (SDK 54), React Native 0.81, TypeScript, react-native-safe-area-context
-- Backend: FastAPI + MongoDB (motor)
-- PDF: expo-print (HTML → PDF)
-- Sharing: expo-sharing (WhatsApp dahil native share sheet)
-- Logo yükleme: expo-image-picker (base64 olarak Mongo'da saklanır)
-- Persist: MongoDB (companies, catalog, customers, quotes) + AsyncStorage (active company id)
+## Auth
+- Emergent Google Auth (POST /api/auth/session, GET /api/auth/me, POST /api/auth/logout)
+- Bearer token (session_token) → `expo-secure-store` (mobile) / `localStorage` (web)
+- Route guard: unauthenticated → `/login`; authenticated → `/(tabs)`
 
-## Screens (tabs)
-1. **Teklif** (`app/(tabs)/index.tsx`) — Yeni/mevcut teklif düzenle, katalogdan kalem ekle, KDV+iskonto+toplam hesaplama, PDF/WhatsApp paylaşım.
-2. **Katalog** (`app/(tabs)/catalog.tsx`) — Ürün/hizmet ekle/düzenle/sil, CSV toplu içe aktar.
-3. **Geçmiş** (`app/(tabs)/history.tsx`) — Teklif listesi, durum filtreleme (Beklemede/Görüldü/Onaylandı/Reddedildi), PDF/WhatsApp yeniden paylaş, düzenle.
-4. **Müşteri** (`app/(tabs)/customers.tsx`) — Otomatik toplanan müşteri geçmişi + istatistik.
-5. **Firma** (`app/(tabs)/company.tsx`) — Çoklu firma, logo/adres/telefon/banka bilgileri, hazırlayan e-mail listesi.
+## Multi-Tenancy
+Her koleksiyon dokümanında `userId` stamped. Her endpoint `Depends(get_current_user)` ile korunur ve queries userId ile filtrelenir. Cross-tenant read/write mümkün değil.
 
-Ayrıca `app/preview.tsx` — Tam PDF önizleme (HTML şablonuna birebir yakın layout).
+## Data Model
+- `Company`: sirketAdi, logoBase64, adres, telefon(1,2), email, website, vergiDairesi/No, ozelNotlar, banklar[{turu, hesapSahibi, iban}], hazirlayanEmails[], motorlar[], aydinlatmalar[], sistemTipleri[]
+- `CatalogItem`: kategori, urunAdi, aciklama, birim, birimFiyat, paraBirimi
+- `Customer`: firma, yetkili, telefon, email, adres (auto-upserted from quotes)
+- `Quote.items[]` → 3 modes:
+  - `technical`: sistemTipi + genislikMm + uzunlukMm + yukseklikMm + motor + aydinlatma + kopukDolgu + ralAna + ralPanel + ekBilgi
+  - `manual`: urunAdi + customFields[{key,value}][]
+  - `general`: urunAdi + aciklama
+  - Common: adet, birim, birimFiyat
 
-## Backend Endpoints (all prefixed `/api`)
-- `GET/POST /companies`, `GET/PUT/DELETE /companies/{id}`
-- `GET /catalog/{companyId}`, `POST /catalog`, `POST /catalog/bulk`, `PUT/DELETE /catalog/{id}`
-- `GET /customers/{companyId}`, `POST /customers`, `DELETE /customers/{id}`
-- `GET /quotes/{companyId}`, `POST/PUT /quotes[/{id}]`, `PATCH /quotes/{id}/status`, `DELETE /quotes/{id}`
+## Screens
+1. **Login** (`app/login.tsx`) — Google button, premium hero.
+2. **Teklif Editor** (`app/(tabs)/index.tsx`) — Modal sheet to pick item mode; live preview of "SİSTEM/HİZMET" cell.
+3. **Katalog** (`app/(tabs)/catalog.tsx`) — CRUD + CSV bulk.
+4. **Geçmiş** (`app/(tabs)/history.tsx`) — Status filter + PDF/WhatsApp re-share.
+5. **Müşteri** (`app/(tabs)/customers.tsx`) — Auto-populated from quotes.
+6. **Firma** (`app/(tabs)/company.tsx`) — Multi-company + logo + bank list + motor/light/system-type lists + default özel notlar.
+7. **PDF Önizleme** (`app/preview.tsx`) — Piksel uyumlu preview matching PDF.
 
-## Data Model highlights
-- `Company`: sirketAdi, logoBase64, adres, telefon(1,2), email, website, vergiDairesi/No, bankaBilgileri, hazirlayanEmails[]
-- `CatalogItem`: kategori, urunAdi, aciklama, birim, birimFiyat, paraBirimi (USD/EUR/TRY)
-- `Quote`: müşteri bilgileri + sipariş koşulları + items[] + iskonto + kdvOrani + durum + hesaplanmış toplamlar
+## PDF Template
+Layout matches SKYART Teklif_2026-260806.pdf:
+- Firma info (sol) + logo (sağ)
+- **TEKLİF FORMU** başlık, meta (Teklif No / Tarih / Geçerlilik)
+- 2 kutu: MÜŞTERİ + SİPARİŞ BİLGİLERİ (dark headers, key-value rows)
+- Kalem tablosu: **S.NO | SİSTEM / HİZMET | ADET | BİRİM FİYAT | TOPLAM FİYAT**
+- "SİSTEM / HİZMET" sütununda teknik detaylar virgülle birleştirilir: `Pistonlu Bioklimatik Sistem, 4726x6720mm, H: 3000mm, Mosel Motor, Led: Günışığı, Strafor Köpük Dolgulu, Ral: Ana Renk, Demonte.`
+- Kırmızı uyarı + Siyah `KDV HARİÇ FİYATTIR` bantı
+- Özel Notlar (sol) + Ara Toplam / Genel Toplam / İmza (sağ)
+- BANKA BİLGİLERİ tablosu (banka türü + IBAN, çoklu satır)
 
-## Key Features
-- **Sabit uygulama başlığı**: Üstte her zaman "Anında Teklif" markası görünür (teklifi hazırlarken)
-- **PDF**: HTML template ile birebir. Firmanın kendi logosu, adresi, telefonu, bankası PDF'de yer alır.
-- **WhatsApp paylaşım**: Native share sheet ile PDF paylaşımı ("Teklifiniz ekte yer almaktadır" başlığı)
-- **Otomatik müşteri kaydı**: Teklif oluşturuldukça müşteri geçmişine kaydolur, sonraki tekliflerde tek tıkla doldurulur.
-- **Toplu ürün girişi**: CSV formatında yapıştırarak (kategori,ürün,birim,fiyat,parabirimi).
-- **Durum takibi**: 4 durum + filtre + istatistik.
+## File Naming
+`Teklif_YYYY-DDMMYY-HHMM.pdf` — örn. `Teklif_2026-080826-1830.pdf`
 
-## Seed
-Uygulama ilk açılışta `SKYART GROUP GÖLGELENDİRME` demo firmasını otomatik oluşturur (email listesi + banka bilgisi ile).
+## Share Message
+"Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz."
+
+## Palette
+- Primary: `#2563EB` (bright blue)
+- Secondary: `#1E293B` (deep navy)
+- Background: pure white
+- Rounded-lg buttons, premium shadows via `theme.shadow.{sm,md,lg}`
+
+## Item Mode UX
+- Kalem eklerken alttaki `Kalem Ekle` butonuna basınca modal sheet açılır: **Sistem/Teknik**, **Manuel Bilgi**, **Genel Ürün** üç seçenek.
+- Teknik modda sistem tipi, motor ve aydınlatma dropdown'ları firmanın kendi listelerinden gelir.
+- Her teknik/manuel kartın altında "PDF ÖNİZLEME" satırı canlı gösterilir.

@@ -1,0 +1,43 @@
+{
+  "summary": "Full SaaS rewrite validated. Backend: 37/37 pytest cases PASS (100%) including: (a) 401 on every unauthenticated CRUD endpoint (18 endpoints via parametrized test), 401 on invalid Bearer token, and 401 on POST /api/auth/session with fake session_id. (b) Multi-tenant isolation VERIFIED — userB gets 404 on GET/PUT/DELETE for userA's company/catalog/quotes, and cannot list catalog/customers/quotes for a company they don't own. (c) userA quote survives userB delete attempt (data isolation holds). (d) New Company fields ozelNotlar / banklar[{banka,turu,hesapSahibi,iban}] / motorlar / aydinlatmalar / sistemTipleri / hazirlayanEmails all persist on POST + PUT. (e) Quote items with mode='technical' persist all fields (sistemTipi, genislikMm/uzunlukMm/yukseklikMm, motor, aydinlatma, kopukDolgu, ralAna, ralPanel, ekBilgi); mode='manual' persists customFields[{key,value}]; mode='general' works. (f) Server-side totals correct: subtotal 1250, iskonto 10% => 125, araToplam 1125, kdv 20% => 225, genelToplam 1350. (g) MongoDB _id excluded from every response validated. (h) Cascade delete removes catalog/customers/quotes. Frontend (390x844 mobile viewport): Login screen renders brand 'Anında Teklif' + tagline + 'Google ile Devam Et' button; on click navigates to https://auth.emergentagent.com/oauth/?redirect=... (verified via framenavigated event, then Google's own signin page loaded). Route guard: unauthenticated navigation to / redirects to /login. After injecting session_token into localStorage['session_token_v1'] (raw string, NOT JSON — helper uses window.localStorage.setItem directly), navigating to / lands on the (tabs) layout with all 5 tabs present: Teklif, Katalog, Geçmiş, Müşteri, Firma. Kalem Ekle modal opens with all three choices visible (Sistem/Teknik, Manuel Bilgi, Genel Ürün). Katalog/Geçmiş/Müşteri tabs load without crashes. No red-screen errors. Console warnings non-blocking (deprecation noise from react-native-web and Ionicons).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "react-native-web (multiple screens)", "issue": "Console warning: 'shadow*' style props are deprecated. Use 'boxShadow'. Non-blocking but should be migrated for future RN Web compatibility."},
+      {"component": "@expo/vector-icons Ionicons", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Originates from Ionicons library internals, not app code — non-blocking."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_aninda_teklif.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/it4_1_authed_home.png",
+    "/app/test_reports/it4_2_kalem_modal.png",
+    "/app/test_reports/it4_3_firma.png"
+  ],
+  "action_items": [
+    "(Nice-to-have) Migrate any remaining 'shadowColor/shadowOffset/shadowOpacity/shadowRadius' style props to 'boxShadow' for react-native-web 0.19+ compatibility.",
+    "(Optional) Testing note: The storage helper for web writes localStorage['session_token_v1'] as a RAW string (window.localStorage.setItem(key, token)), NOT JSON.stringify — the test_credentials.md hint 'JSON.stringify the value' is INCORRECT for the current implementation. Consider updating docs so next testing iteration doesn't inject a wrongly-quoted token."
+  ],
+  "critical_code_review_comments": [
+    "server.py get_current_user correctly handles expires_at as either datetime or ISO string; TTL index on user_sessions.expires_at further hardens session invalidation.",
+    "server.py _own_company gate is applied on every dependent resource route (catalog/customers/quotes list, create, and cascade delete) — good defensive pattern for multi-tenant isolation.",
+    "Quote items in server.py compute_totals coerces dict → QuoteItem defensively; PUT /quotes re-runs totals so no client-side tampering possible.",
+    "Auth session exchange endpoint (POST /api/auth/session) properly returns 401 on invalid session_id (external Emergent auth service returns non-200), and de-duplicates via emergent_session_ids collection — prevents replay of a single session_id twice.",
+    "AuthContext.tsx correctly gates on Platform.OS for web (direct window.location.href redirect) vs mobile (WebBrowser.openAuthSessionAsync); processedSessionIds Set prevents duplicate exchange calls when session_id is present in URL fragment on initial mount.",
+    "server.py:57-74 excludes _id via projection {'_id': 0} on every find_one/find call — verified by tests. Good hygiene.",
+    "server.py:390-397 cascade delete uses uid scope in every subsequent delete_many — a userB DELETE on userA's company_id passes _own_company (which 404s) so no accidental cross-tenant cascade — verified.",
+    "server.py routes return 200 (default) for POST, not 201 — inconsistent with REST convention but tests updated to match; not a bug, just a style choice."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_aninda_teklif.py (rewrote entirely: added multi-tenant fixtures with 2 seeded users, 401 guard suite via parametrize, cross-tenant isolation tests, 3-mode quote item persistence + totals, new Company fields persistence, fake session_id 401 test)"
+  ],
+  "success_rate": {"backend": "100% (37/37 pytest)", "frontend": "100% (login/route-guard/tabs/modal all functional at 390x844)"},
+  "seed_data_creation": "Synthetic UI test user seeded directly in Mongo (user_id=user_eb25bc8081cd, session_token=tok_06f5bf88e6144c989e83911bc673b859, email TEST prefixed). One TEST_UI_Company also created via authenticated API for Firma section verification. All test data prefixed TEST_ for easy cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "BACKEND: pytest file /app/backend/tests/test_aninda_teklif.py is the canonical regression suite — it seeds two users into Mongo directly (users + user_sessions collections) and covers auth guard, multi-tenancy, all 3 quote modes, cascade delete. Run: pytest backend/tests/test_aninda_teklif.py -v. FRONTEND: To bypass Google OAuth, seed a user_sessions row in Mongo and inject the token via page.evaluate(\"t => window.localStorage.setItem('session_token_v1', t)\", token) — write RAW string, NOT JSON.stringify. Then goto '/' — RouteGuard sees the token, calls /api/auth/me, sets user, and swaps route to /(tabs). testIDs to know: brand-title, google-signin-btn, add-item-btn. Tab labels are text-based ('Teklif','Katalog','Geçmiş','Müşteri','Firma'). Note: PDF generation via expo-print and image picker not tested — expected limited on web preview per task note.",
+  "rca_of_issue": ""
+}

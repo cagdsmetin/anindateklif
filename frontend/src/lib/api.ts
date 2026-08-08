@@ -1,10 +1,45 @@
+import { Platform } from 'react-native';
+import { storage } from '@/src/utils/storage';
+
 const API_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '') + '/api';
+export const SESSION_TOKEN_KEY = 'session_token_v1';
+
+let tokenCache: string | null = null;
+
+export async function setSessionToken(token: string | null) {
+  tokenCache = token;
+  if (Platform.OS === 'web') {
+    if (token) window.localStorage.setItem(SESSION_TOKEN_KEY, token);
+    else window.localStorage.removeItem(SESSION_TOKEN_KEY);
+  } else {
+    if (token) await storage.secureSet(SESSION_TOKEN_KEY, token);
+    else await storage.secureRemove(SESSION_TOKEN_KEY);
+  }
+}
+
+export async function getSessionToken(): Promise<string | null> {
+  if (tokenCache) return tokenCache;
+  if (Platform.OS === 'web') {
+    tokenCache = window.localStorage.getItem(SESSION_TOKEN_KEY);
+  } else {
+    tokenCache = (await storage.secureGet<string>(SESSION_TOKEN_KEY, '')) || null;
+    if (tokenCache === '') tokenCache = null;
+  }
+  return tokenCache;
+}
 
 async function req(path: string, opts: RequestInit = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-  });
+  const token = await getSessionToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...((opts.headers as any) || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  if (res.status === 401) {
+    await setSessionToken(null);
+    throw new Error('UNAUTHORIZED');
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     throw new Error(`API ${path} ${res.status}: ${t}`);
@@ -13,6 +48,12 @@ async function req(path: string, opts: RequestInit = {}) {
 }
 
 export const api = {
+  // Auth
+  exchangeSession: (session_id: string) =>
+    req('/auth/session', { method: 'POST', body: JSON.stringify({ session_id }) }),
+  me: () => req('/auth/me'),
+  logout: () => req('/auth/logout', { method: 'POST' }),
+
   // Companies
   listCompanies: () => req('/companies'),
   createCompany: (data: any) => req('/companies', { method: 'POST', body: JSON.stringify(data) }),
@@ -42,8 +83,13 @@ export const api = {
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
 };
 
+export type UserT = { user_id: string; email: string; name: string; picture: string };
+
+export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
+
 export type CompanyT = {
   id: string;
+  userId: string;
   sirketAdi: string;
   logoBase64: string;
   adres: string;
@@ -53,8 +99,12 @@ export type CompanyT = {
   website: string;
   vergiDairesi: string;
   vergiNo: string;
-  bankaBilgileri: string;
+  ozelNotlar: string;
+  banklar: BankAccountT[];
   hazirlayanEmails: string[];
+  motorlar: string[];
+  aydinlatmalar: string[];
+  sistemTipleri: string[];
 };
 
 export type CatalogItemT = {
@@ -80,9 +130,19 @@ export type CustomerT = {
 
 export type QuoteItemT = {
   id: string;
-  kategori: string;
+  mode: 'technical' | 'manual' | 'general';
   urunAdi: string;
-  aciklama: string;
+  sistemTipi: string;
+  genislikMm: number | null;
+  uzunlukMm: number | null;
+  yukseklikMm: number | null;
+  motor: string;
+  aydinlatma: string;
+  kopukDolgu: boolean;
+  ralAna: string;
+  ralPanel: string;
+  ekBilgi: string;
+  customFields: { key: string; value: string }[];
   adet: number;
   birim: string;
   birimFiyat: number;
@@ -90,6 +150,7 @@ export type QuoteItemT = {
 
 export type QuoteT = {
   id: string;
+  userId: string;
   companyId: string;
   teklifNo: string;
   tarih: string;

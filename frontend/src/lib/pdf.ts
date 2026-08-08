@@ -1,12 +1,16 @@
 import type { CompanyT, QuoteT } from './api';
+import { buildItemDescription } from './quote-utils';
 
 const fmt = (n: number, cur: string) => {
-  const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  const parts = new Intl.NumberFormat('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n || 0);
   const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
-  return `${s} ${sym}`;
+  return `${sym} ${parts}`;
 };
 
-const escapeHtml = (s: string) =>
+const esc = (s: string) =>
   String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -14,151 +18,215 @@ const escapeHtml = (s: string) =>
     .replace(/"/g, '&quot;')
     .replace(/\n/g, '<br/>');
 
+const trDate = (iso: string) => {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return iso;
+};
+
 export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   const cur = quote.paraBirimi || 'USD';
+
   const itemsHtml = (quote.items || [])
     .map((it, idx) => {
       const line = (it.adet || 0) * (it.birimFiyat || 0);
+      const desc = buildItemDescription(it);
       return `
-        <div class="row">
-          <div class="c1">${idx + 1}</div>
-          <div class="c2">
-            <div class="pname">${escapeHtml(it.urunAdi || '-')}</div>
-            ${it.aciklama ? `<div class="pdesc">${escapeHtml(it.aciklama)}</div>` : ''}
-          </div>
-          <div class="c3">${it.adet} ${escapeHtml(it.birim || '')}</div>
-          <div class="c4">${fmt(it.birimFiyat, cur)}</div>
-          <div class="c5">${fmt(line, cur)}</div>
-        </div>`;
+        <tr>
+          <td class="c1">${idx + 1}</td>
+          <td class="c2">${esc(desc)}</td>
+          <td class="c3">${it.adet}</td>
+          <td class="c4">${fmt(it.birimFiyat, cur)}</td>
+          <td class="c5">${fmt(line, cur)}</td>
+        </tr>`;
     })
     .join('');
 
-  const logoImg = company.logoBase64
+  const logo = company.logoBase64
     ? `<img src="${company.logoBase64}" class="logo"/>`
-    : `<div class="logo-placeholder">${escapeHtml((company.sirketAdi || 'FIRMA').substring(0, 20))}</div>`;
+    : `<div class="logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
+
+  const bankRows = (company.banklar || [])
+    .map(
+      (b) => `
+        <tr>
+          <td class="bk-name">${esc(b.turu || b.banka || '-')}</td>
+          <td class="bk-iban">${esc(b.iban || '-')}</td>
+        </tr>`
+    )
+    .join('');
+
+  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
 
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
-  @page { size: A4; margin: 10mm; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#1a1a1a; font-size:11px; }
+  @page { size: A4; margin: 8mm; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:10px; }
   .sheet { padding: 6mm 8mm; }
-  .doc-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #3a3b40; padding-bottom:10px; margin-bottom:12px; }
-  .company-block { max-width: 60%; }
-  .cname { font-weight:800; font-size:12px; color:#3a3b40; margin-bottom:3px; line-height:1.3; }
-  .cline { font-size:10.5px; color:#333; line-height:1.5; }
-  .doc-title-block { text-align:right; }
-  .logo { max-width:160px; max-height:60px; object-fit:contain; margin-bottom:6px; display:block; margin-left:auto; }
-  .logo-placeholder { padding:8px 12px; border:2px solid #3a3b40; font-weight:800; color:#3a3b40; margin-bottom:6px; display:inline-block; font-size:14px; }
-  .doc-title { margin:0 0 8px 0; font-size:20px; font-weight:800; color:#232428; letter-spacing:0.03em; }
-  .meta { font-size:10.5px; margin-bottom:2px; }
-  .meta .k { color:#6b7280; }
-  .meta .v { font-weight:700; }
-  .info-grid { display:flex; gap:10px; margin-bottom:10px; }
-  .info-box { flex:1; border:1px solid #d8dee6; border-radius:3px; overflow:hidden; }
-  .info-box .hdr { background:#3a3b40; color:#fff; font-size:10.5px; font-weight:700; padding:5px 8px; letter-spacing:0.03em; }
-  .info-box .kv { display:flex; padding:4px 8px; border-bottom:1px solid #eef1f5; font-size:10.5px; }
-  .info-box .kv:last-child { border-bottom:none; }
-  .info-box .kv .k { color:#6b7280; width:38%; font-weight:600; }
-  .info-box .kv .v { flex:1; }
-  .items-box { border:1px solid #3a3b40; border-radius:3px; overflow:hidden; margin-bottom:0; }
-  .row { display:grid; grid-template-columns: 32px 1fr 60px 90px 90px; border-bottom:1px solid #d8dee6; }
-  .row > div { padding:6px 7px; border-right:1px solid #d8dee6; font-size:10.5px; }
-  .row > div:last-child { border-right:none; }
-  .row.head { background:#3a3b40; color:#fff; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; }
-  .row.head > div { border-right:1px solid rgba(255,255,255,0.25); }
-  .row .c1 { text-align:center; }
-  .row .c3 { text-align:center; }
-  .row .c4 { text-align:right; white-space:nowrap; }
-  .row .c5 { text-align:right; white-space:nowrap; font-weight:700; }
-  .pname { font-weight:700; }
-  .pdesc { color:#6b7280; font-size:9.5px; margin-top:2px; }
-  .warn-banner { background:#c0392b; color:#fff; text-align:center; font-size:10px; font-weight:700; padding:5px; margin-top:6px; }
-  .kdv-banner { background:#232428; color:#fff; text-align:center; font-size:12px; font-weight:800; padding:6px; letter-spacing:0.04em; margin-bottom:10px; }
-  .bottom-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:12px; }
-  .notes-hdr { font-size:10.5px; font-weight:700; color:#fff; background:#3a3b40; padding:5px 8px; }
-  .notes-box { font-size:10.5px; line-height:1.55; border:1px solid #d8dee6; padding:8px; background:#f4f6f9; white-space:pre-wrap; }
-  .bank-title { font-size:10px; font-weight:700; color:#fff; background:#3a3b40; padding:4px 8px; margin-top:10px; }
-  .bank-body { font-size:10px; padding:6px 8px; border:1px solid #d8dee6; background:#fff; white-space:pre-wrap; line-height:1.5; }
-  .totals .line { display:flex; justify-content:space-between; font-size:11px; padding:6px 10px; border:1px solid #d8dee6; margin-bottom:4px; background:#fff; }
-  .totals .line.grand { font-weight:800; font-size:13px; background:#e9e9ea; color:#232428; }
-  .totals .line.disc { color:#c0392b; }
-  .signbox { margin-top:12px; border:1px solid #d8dee6; height:60px; padding:6px; font-size:10.5px; color:#6b7280; }
-  .status-badge { display:inline-block; padding:3px 8px; border-radius:3px; font-size:10px; font-weight:700; margin-left:8px; }
-  .status-Beklemede { background:#f1f1f1; color:#333; border:1px solid #d8dee6; }
-  .status-Görüldü { background:#fff3cd; color:#856404; border:1px solid #f0d98c; }
-  .status-Onaylandı { background:#d4f4dd; color:#155724; border:1px solid #8fd9a8; }
-  .status-Reddedildi { background:#fbdada; color:#721c24; border:1px solid #e69a9a; }
+
+  /* HEADER */
+  .doc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 14px; }
+  .company-block { max-width: 55%; }
+  .cname { font-weight:800; font-size:11px; color:#1E293B; margin-bottom:3px; line-height:1.3; }
+  .cline { font-size:10px; color:#0f172a; line-height:1.4; }
+  .right-block { text-align:right; }
+  .logo { max-width:180px; max-height:64px; object-fit:contain; margin-bottom:6px; margin-left:auto; display:block; }
+  .logo-fallback { padding:8px 12px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin-bottom:6px; display:inline-block; font-size:12px; }
+  .doc-title { margin: 4px 0 8px 0; font-size:22px; font-weight:900; color:#1E293B; letter-spacing:0.03em; }
+  .meta-table { border-collapse:collapse; margin-left:auto; }
+  .meta-table td { padding:2px 6px; font-size:10px; }
+  .meta-table td.k { color:#64748b; text-align:left; }
+  .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; }
+
+  /* INFO BOXES */
+  .info-grid { display: table; width:100%; margin-bottom:10px; border-spacing: 0 0; }
+  .info-cell { display: table-cell; width:50%; vertical-align:top; }
+  .info-cell:first-child { padding-right:6px; }
+  .info-cell:last-child { padding-left:6px; }
+  .info-box { border:1px solid #cbd5e1; border-radius:2px; overflow:hidden; }
+  .info-box .hdr { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; letter-spacing:0.04em; }
+  .info-box table { width:100%; border-collapse:collapse; }
+  .info-box td { font-size:10px; padding:4px 8px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+  .info-box tr:last-child td { border-bottom:none; }
+  .info-box td.k { color:#64748b; width:38%; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; font-size:9px; }
+  .info-box td.v { color:#0f172a; }
+
+  /* ITEMS TABLE */
+  .items { width:100%; border-collapse:collapse; margin-top:8px; border:1px solid #cbd5e1; }
+  .items thead th { background:#1E293B; color:#fff; font-size:9.5px; font-weight:800; padding:6px 6px; text-align:center; letter-spacing:0.03em; border-right:1px solid rgba(255,255,255,0.15); }
+  .items thead th:last-child { border-right:none; }
+  .items thead th:nth-child(2) { text-align:left; }
+  .items thead th:nth-child(4), .items thead th:nth-child(5) { text-align:right; }
+  .items tbody td { font-size:10px; padding:6px 6px; border-bottom:1px solid #e2e8f0; vertical-align:middle; border-right:1px solid #e2e8f0; }
+  .items tbody td:last-child { border-right:none; }
+  .items .c1 { text-align:center; width:34px; }
+  .items .c2 { text-align:left; line-height:1.35; }
+  .items .c3 { text-align:center; width:50px; }
+  .items .c4 { text-align:right; width:95px; white-space:nowrap; font-weight:600; }
+  .items .c5 { text-align:right; width:95px; white-space:nowrap; font-weight:700; }
+  .items tbody tr:nth-child(even) { background:#f8fafc; }
+
+  /* BANNERS */
+  .warn { background:#dc2626; color:#fff; text-align:center; font-size:9.5px; font-weight:800; padding:5px; }
+  .kdv { background:#0f172a; color:#fff; text-align:center; font-size:11px; font-weight:800; padding:5px; letter-spacing:0.05em; }
+
+  /* BOTTOM GRID */
+  .bottom { display:table; width:100%; margin-top:10px; }
+  .bt-left { display:table-cell; width:60%; vertical-align:top; padding-right:6px; }
+  .bt-right { display:table-cell; width:40%; vertical-align:top; padding-left:6px; }
+  .notes-hdr { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; letter-spacing:0.03em; }
+  .notes-body { border:1px solid #cbd5e1; border-top:none; padding:8px; font-size:10px; line-height:1.5; color:#0f172a; min-height:60px; white-space:pre-wrap; }
+  .tot-row { display:flex; justify-content:space-between; align-items:center; border:1px solid #cbd5e1; padding:6px 10px; font-size:11px; margin-bottom:4px; }
+  .tot-row .l { color:#64748b; font-weight:600; }
+  .tot-row .v { font-weight:700; color:#0f172a; }
+  .tot-row.grand { background:#0f172a; color:#fff; border-color:#0f172a; font-size:12px; }
+  .tot-row.grand .l { color:#fff; font-weight:800; letter-spacing:0.05em; }
+  .tot-row.grand .v { color:#fff; font-weight:900; }
+  .sign-box { border:1px solid #cbd5e1; height:58px; padding:6px; font-size:10px; color:#64748b; margin-top:6px; }
+
+  /* BANK */
+  .bank-title { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; margin-top:10px; letter-spacing:0.03em; }
+  .bank-table { width:100%; border-collapse:collapse; border:1px solid #cbd5e1; border-top:none; }
+  .bank-table td { padding:5px 8px; font-size:10px; border-bottom:1px solid #e2e8f0; }
+  .bank-table tr:last-child td { border-bottom:none; }
+  .bank-table td.bk-name { color:#0f172a; width:35%; font-weight:700; }
+  .bank-table td.bk-iban { color:#0f172a; font-family:'Courier New',monospace; letter-spacing:0.02em; }
+  .bank-footer { font-size:9px; color:#64748b; padding:6px 0 0; }
 </style></head>
 <body>
 <div class="sheet">
+  <!-- HEADER -->
   <div class="doc-header">
     <div class="company-block">
-      <div class="cname">${escapeHtml(company.sirketAdi || '')}</div>
-      ${company.adres ? `<div class="cline">${escapeHtml(company.adres)}</div>` : ''}
-      ${company.telefon ? `<div class="cline">Tel: ${escapeHtml(company.telefon)}${company.telefon2 ? ' • ' + escapeHtml(company.telefon2) : ''}</div>` : ''}
-      ${company.email ? `<div class="cline">E-posta: ${escapeHtml(company.email)}${company.website ? ' • ' + escapeHtml(company.website) : ''}</div>` : ''}
-      ${company.vergiDairesi || company.vergiNo ? `<div class="cline">V.D: ${escapeHtml(company.vergiDairesi)} - V.No: ${escapeHtml(company.vergiNo)}</div>` : ''}
+      <div class="cname">${esc(company.sirketAdi || '')}</div>
+      ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
+      ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
+      ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
+      ${company.email ? `<div class="cline">${esc(company.email)}</div>` : ''}
+      ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
     </div>
-    <div class="doc-title-block">
-      ${logoImg}
-      <div class="doc-title">FİYAT TEKLİFİ</div>
-      <div class="meta"><span class="k">Teklif No:</span> <span class="v">${escapeHtml(quote.teklifNo)}</span></div>
-      <div class="meta"><span class="k">Tarih:</span> <span class="v">${escapeHtml(quote.tarih)}</span></div>
-      <div class="meta"><span class="k">Geçerlilik:</span> <span class="v">${escapeHtml(quote.gecerlilik)}</span></div>
-      ${quote.hazirlayanEmail ? `<div class="meta"><span class="k">Hazırlayan:</span> <span class="v">${escapeHtml(quote.hazirlayanEmail)}</span></div>` : ''}
+    <div class="right-block">
+      ${logo}
+      <div class="doc-title">TEKLİF FORMU</div>
+      <table class="meta-table">
+        <tr><td class="k">Teklif No</td><td class="v">${esc(quote.teklifNo)}</td></tr>
+        <tr><td class="k">Tarih</td><td class="v">${esc(trDate(quote.tarih))}</td></tr>
+        <tr><td class="k">Geçerlilik Tarihi</td><td class="v">${esc(trDate(quote.gecerlilik))}</td></tr>
+      </table>
     </div>
   </div>
 
+  <!-- INFO BOXES -->
   <div class="info-grid">
-    <div class="info-box">
-      <div class="hdr">MÜŞTERİ BİLGİLERİ</div>
-      <div class="kv"><div class="k">FİRMA</div><div class="v">${escapeHtml(quote.musFirma || '-')}</div></div>
-      <div class="kv"><div class="k">YETKİLİ</div><div class="v">${escapeHtml(quote.musYetkili || '-')}</div></div>
-      <div class="kv"><div class="k">TELEFON</div><div class="v">${escapeHtml(quote.musTelefon || '-')}</div></div>
-      <div class="kv"><div class="k">E-POSTA</div><div class="v">${escapeHtml(quote.musEmail || '-')}</div></div>
-      <div class="kv"><div class="k">ADRES</div><div class="v">${escapeHtml(quote.musAdres || '-')}</div></div>
+    <div class="info-cell">
+      <div class="info-box">
+        <div class="hdr">MÜŞTERİ BİLGİLERİ</div>
+        <table>
+          <tr><td class="k">FİRMA</td><td class="v">${esc(quote.musFirma || '-')}</td></tr>
+          <tr><td class="k">MÜŞTERİ ADI</td><td class="v">${esc(quote.musYetkili || '-')}</td></tr>
+          <tr><td class="k">TELEFON</td><td class="v">${esc(quote.musTelefon || '-')}</td></tr>
+          <tr><td class="k">E-Mail</td><td class="v">${esc(quote.musEmail || '-')}</td></tr>
+          <tr><td class="k">ADRES</td><td class="v">${esc(quote.musAdres || '-')}</td></tr>
+        </table>
+      </div>
     </div>
-    <div class="info-box">
-      <div class="hdr">SİPARİŞ BİLGİLERİ</div>
-      <div class="kv"><div class="k">PROJE</div><div class="v">${escapeHtml(quote.projeAdi || '-')}</div></div>
-      <div class="kv"><div class="k">NAKLİYE</div><div class="v">${escapeHtml(quote.nakliye)}</div></div>
-      <div class="kv"><div class="k">PARA BİRİMİ</div><div class="v">${escapeHtml(cur)}</div></div>
-      <div class="kv"><div class="k">ÖDEME</div><div class="v">${escapeHtml(quote.odemeSekli || '-')}</div></div>
-      <div class="kv"><div class="k">MENŞEİ</div><div class="v">${escapeHtml(quote.mensei || '-')}</div></div>
-      <div class="kv"><div class="k">TESLİM</div><div class="v">${escapeHtml(quote.teslimGun || '-')}</div></div>
-    </div>
-  </div>
-
-  <div class="items-box">
-    <div class="row head">
-      <div class="c1">#</div>
-      <div class="c2">ÜRÜN / HİZMET</div>
-      <div class="c3">ADET</div>
-      <div class="c4">BİRİM FİYAT</div>
-      <div class="c5">TOPLAM</div>
-    </div>
-    ${itemsHtml || `<div class="row"><div style="grid-column:1/-1;text-align:center;color:#6b7280;padding:16px;font-size:11px;">Kalem eklenmedi.</div></div>`}
-  </div>
-  <div class="warn-banner">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİCE KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR. KDV HARİÇTİR.</div>
-  <div class="kdv-banner">FİYATLARIMIZA KDV (%${quote.kdvOrani}) DAHİL DEĞİLDİR</div>
-
-  <div class="bottom-grid">
-    <div>
-      <div class="notes-hdr">ÖZEL NOTLAR</div>
-      <div class="notes-box">${escapeHtml(quote.notlar || '-')}</div>
-      ${company.bankaBilgileri ? `<div class="bank-title">BANKA HESAP BİLGİLERİ</div><div class="bank-body">${escapeHtml(company.bankaBilgileri)}</div>` : ''}
-    </div>
-    <div class="totals">
-      <div class="line"><div>ARA TOPLAM</div><div>${fmt((quote.araToplam || 0) + (quote.iskontoTutar || 0), cur)}</div></div>
-      ${quote.iskonto > 0 ? `<div class="line disc"><div>İSKONTO (%${quote.iskonto})</div><div>-${fmt(quote.iskontoTutar || 0, cur)}</div></div>` : ''}
-      <div class="line"><div>KDV (%${quote.kdvOrani})</div><div>${fmt(quote.kdvTutar || 0, cur)}</div></div>
-      <div class="line grand"><div>GENEL TOPLAM</div><div>${fmt(quote.genelToplam || 0, cur)}</div></div>
+    <div class="info-cell">
+      <div class="info-box">
+        <div class="hdr">SİPARİŞ BİLGİLERİ</div>
+        <table>
+          <tr><td class="k">PROJE ADI</td><td class="v">${esc(quote.projeAdi || '-')}</td></tr>
+          <tr><td class="k">NAKLİYE</td><td class="v">${esc(quote.nakliye)}</td></tr>
+          <tr><td class="k">PARA BİRİMİ</td><td class="v">${esc(cur)}</td></tr>
+          <tr><td class="k">ÖDEME ŞEKLİ</td><td class="v">${esc(quote.odemeSekli || '-')}</td></tr>
+          <tr><td class="k">MENŞEİ</td><td class="v">${esc(quote.mensei || '-')}</td></tr>
+          <tr><td class="k">TESLİM</td><td class="v">${esc(quote.teslimGun || '-')}</td></tr>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div class="signbox">Onay / İmza:</div>
+  <!-- ITEMS TABLE -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th>S.NO</th>
+        <th>SİSTEM / HİZMET</th>
+        <th>ADET</th>
+        <th>BİRİM FİYAT</th>
+        <th>TOPLAM FİYAT</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml || `<tr><td colspan="5" style="text-align:center;color:#64748b;padding:14px;font-size:11px;">Kalem yok</td></tr>`}
+    </tbody>
+  </table>
+
+  <div class="warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
+  <div class="kdv">KDV HARİÇ FİYATTIR</div>
+
+  <!-- BOTTOM GRID -->
+  <div class="bottom">
+    <div class="bt-left">
+      <div class="notes-hdr">ÖZEL NOTLAR &amp; SATIŞ DETAYLARI</div>
+      <div class="notes-body">${esc(quote.notlar || company.ozelNotlar || '-')}</div>
+    </div>
+    <div class="bt-right">
+      <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
+      ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">İSKONTO (%${quote.iskonto})</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+      <div class="tot-row grand"><div class="l">GENEL TOPLAM</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
+      <div class="sign-box">Onay / İmza :</div>
+    </div>
+  </div>
+
+  <!-- BANK INFO -->
+  ${bankRows ? `
+  <div class="bank-title">BANKA BİLGİLERİ — ${esc(company.sirketAdi || '')}</div>
+  <table class="bank-table">${bankRows}</table>
+  <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
+  ` : ''}
 </div>
 </body></html>`;
 }

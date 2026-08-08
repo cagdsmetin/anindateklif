@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import { useRouter } from 'expo-router';
 
 export default function TopHeader({ title }: { title?: string }) {
   const { activeCompany, companies, setActiveCompanyId, toast } = useApp();
+  const { user, signOut } = useAuth();
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const router = useRouter();
 
   return (
@@ -21,28 +24,39 @@ export default function TopHeader({ title }: { title?: string }) {
       <View style={s.header}>
         <View style={s.brand}>
           <View style={s.brandIcon}>
-            <Ionicons name="flash" size={18} color={theme.colors.navy} />
+            <Ionicons name="flash" size={17} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.appName} numberOfLines={1}>Anında Teklif</Text>
-            {title ? (
-              <Text style={s.appSubtitle} numberOfLines={1}>{title}</Text>
-            ) : (
-              <Text style={s.appSubtitle} numberOfLines={1}>{activeCompany?.sirketAdi || 'Firma seçiniz'}</Text>
-            )}
+            <Text style={s.appSubtitle} numberOfLines={1}>
+              {title || activeCompany?.sirketAdi || 'Firma seçiniz'}
+            </Text>
           </View>
         </View>
-        <TouchableOpacity
-          testID="company-picker-btn"
-          style={s.pickerBtn}
-          onPress={() => setPickerVisible(true)}
-        >
-          <Ionicons name="business-outline" size={14} color={theme.colors.gold} />
-          <Text style={s.pickerText} numberOfLines={1}>Firma</Text>
-          <Ionicons name="chevron-down" size={12} color={theme.colors.gold} />
-        </TouchableOpacity>
+        <View style={s.rightActions}>
+          <TouchableOpacity
+            testID="company-picker-btn"
+            style={s.pickerBtn}
+            onPress={() => setPickerVisible(true)}
+          >
+            <Ionicons name="business-outline" size={13} color={theme.colors.primary} />
+            <Ionicons name="chevron-down" size={11} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="user-menu-btn"
+            style={s.avatarBtn}
+            onPress={() => setMenuVisible(true)}
+          >
+            {user?.picture ? (
+              <Image source={{ uri: user.picture }} style={s.avatar} />
+            ) : (
+              <Text style={s.avatarLetter}>{(user?.name || user?.email || 'U').substring(0, 1).toUpperCase()}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* Company picker */}
       <Modal visible={pickerVisible} transparent animationType="fade">
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setPickerVisible(false)}>
           <View style={s.pickerCard}>
@@ -63,7 +77,7 @@ export default function TopHeader({ title }: { title?: string }) {
                     <Ionicons
                       name={active ? 'radio-button-on' : 'radio-button-off'}
                       size={16}
-                      color={active ? theme.colors.accent : theme.colors.textMuted}
+                      color={active ? theme.colors.primary : theme.colors.textMuted}
                     />
                     <Text style={[s.pickerItemText, active && s.pickerItemTextActive]} numberOfLines={1}>
                       {c.sirketAdi}
@@ -80,8 +94,40 @@ export default function TopHeader({ title }: { title?: string }) {
                 router.push('/(tabs)/company');
               }}
             >
-              <Ionicons name="add-circle" size={16} color={theme.colors.accent} />
+              <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
               <Text style={s.addNewText}>Firma Yönetimi</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* User menu */}
+      <Modal visible={menuVisible} transparent animationType="fade">
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View style={s.menuCard}>
+            <View style={s.userHeader}>
+              {user?.picture ? (
+                <Image source={{ uri: user.picture }} style={s.avatarLarge} />
+              ) : (
+                <View style={[s.avatarLarge, { backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>
+                    {(user?.name || user?.email || 'U').substring(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <Text style={s.userName} numberOfLines={1}>{user?.name || 'Kullanıcı'}</Text>
+              <Text style={s.userEmail} numberOfLines={1}>{user?.email}</Text>
+            </View>
+            <TouchableOpacity
+              testID="signout-btn"
+              style={s.signoutBtn}
+              onPress={async () => {
+                setMenuVisible(false);
+                await signOut();
+              }}
+            >
+              <Ionicons name="log-out-outline" size={16} color={theme.colors.red} />
+              <Text style={s.signoutText}>Çıkış Yap</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -95,7 +141,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 8,
     alignSelf: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.colors.navy,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
@@ -108,55 +154,59 @@ const s = StyleSheet.create({
   toastText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   header: {
     minHeight: 62,
-    backgroundColor: theme.colors.navy,
+    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderBottomWidth: 3,
-    borderBottomColor: theme.colors.gold,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.line,
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
   brandIcon: {
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: theme.colors.gold,
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.goldBorder,
+    ...theme.shadow.sm,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.3,
   },
-  appName: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 0.4 },
-  appSubtitle: { fontSize: 11, color: theme.colors.goldSoft, marginTop: 1 },
+  appName: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.2 },
+  appSubtitle: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
+  rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(201,162,39,0.15)',
+    backgroundColor: theme.colors.primarySoft,
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: theme.colors.gold,
-    gap: 4,
-    maxWidth: 110,
+    borderColor: theme.colors.primaryBorder,
+    gap: 3,
   },
-  pickerText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.gold },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  pickerCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },
-  pickerTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 10 },
-  pickerItem: {
-    flexDirection: 'row',
+  avatarBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.navy,
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  pickerItemActive: { backgroundColor: theme.colors.accentSoft },
+  avatar: { width: 36, height: 36, borderRadius: 18 },
+  avatarLetter: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 20 },
+  pickerCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, ...theme.shadow.lg },
+  pickerTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 10 },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10 },
+  pickerItemActive: { backgroundColor: theme.colors.primarySoft },
   pickerItemText: { fontSize: 13, color: theme.colors.text, flex: 1 },
-  pickerItemTextActive: { color: theme.colors.accent, fontWeight: '700' },
+  pickerItemTextActive: { color: theme.colors.primary, fontWeight: '800' },
   addNewBtn: {
     marginTop: 10,
     flexDirection: 'row',
@@ -165,10 +215,27 @@ const s = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: theme.colors.accentBorder,
+    borderColor: theme.colors.primaryBorder,
     borderStyle: 'dashed',
-    borderRadius: 8,
-    backgroundColor: theme.colors.accentSoft,
+    borderRadius: 10,
+    backgroundColor: theme.colors.primarySoft,
   },
-  addNewText: { color: theme.colors.accent, fontWeight: '700', fontSize: 12.5 },
+  addNewText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
+  menuCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, ...theme.shadow.lg },
+  userHeader: { alignItems: 'center', paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.line, marginBottom: 12 },
+  avatarLarge: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
+  userName: { fontSize: 15, fontWeight: '800', color: theme.colors.navy },
+  userEmail: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
+  signoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.red,
+    backgroundColor: theme.colors.redSoft,
+  },
+  signoutText: { color: theme.colors.red, fontWeight: '800', fontSize: 13 },
 });

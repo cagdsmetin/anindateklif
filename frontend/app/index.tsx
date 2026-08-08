@@ -6,9 +6,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Dimensions,
-  Share,
-  Alert
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +16,6 @@ interface QuoteItem {
   kategori: string;
   urunAdi: string;
   aciklama: string;
-  kumasRal: string;
-  yerlesim: string;
-  montaj: string;
   adet: number;
   birim: string;
   birimFiyat: number;
@@ -52,7 +47,6 @@ interface SavedQuote {
 export default function Index() {
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'history'>('editor');
 
-  // Form State (tamamen boş/kullanıcı girişine açık - varsayılan şablon yok)
   const [hazirlayanMail, setHazirlayanMail] = useState('');
   const [teklifNo, setTeklifNo] = useState('2026-' + Math.floor(100000 + Math.random() * 900000));
   const [tarih, setTarih] = useState(new Date().toISOString().split('T')[0]);
@@ -75,13 +69,9 @@ export default function Index() {
     'Fabrika Teslim Fiyatıdır. Ahşap Sandıklama Fiyata Dahil Değildir. Türkiye Gümrük Ücreti Dahil Değildir. Ödeme Şekli % 50 Peşin, % 50 Fabrika Teslimidir.'
   );
 
-  // Kalemler (başlangıçta boş)
   const [items, setItems] = useState<QuoteItem[]>([]);
-
-  // Geçmiş teklifler ve kayıtlı müşteriler
   const [history, setHistory] = useState<SavedQuote[]>([]);
   const [customers, setCustomers] = useState<{ firma: string; adi: string; tel: string; mail: string; adres: string }[]>([]);
-
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -89,7 +79,6 @@ export default function Index() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Hesaplamalar
   const subtotal = items.reduce((acc, it) => acc + (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0), 0);
   const iskontoOrani = Number(iskonto) || 0;
   const iskontoTutar = (subtotal * iskontoOrani) / 100;
@@ -98,19 +87,18 @@ export default function Index() {
   const genelToplam = araToplam + kdvTutar;
 
   const handleAddItem = () => {
-    const newItem: QuoteItem = {
-      id: 'item-' + Date.now(),
-      kategori: 'Hizmet / Ürün',
-      urunAdi: '',
-      aciklama: '',
-      kumasRal: '',
-      yerlesim: '',
-      montaj: 'Dahil',
-      adet: 1,
-      birim: 'Adet',
-      birimFiyat: 0
-    };
-    setItems([...items, newItem]);
+    setItems([
+      ...items,
+      {
+        id: 'item-' + Date.now(),
+        kategori: 'Genel',
+        urunAdi: '',
+        aciklama: '',
+        adet: 1,
+        birim: 'Adet',
+        birimFiyat: 0
+      }
+    ]);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -118,9 +106,7 @@ export default function Index() {
   };
 
   const handleUpdateItem = (id: string, field: keyof QuoteItem, val: any) => {
-    setItems(
-      items.map((it) => (it.id === id ? { ...it, [field]: val } : it))
-    );
+    setItems(items.map((it) => (it.id === id ? { ...it, [field]: val } : it)));
   };
 
   const handleSaveAndShare = () => {
@@ -151,7 +137,6 @@ export default function Index() {
       totalAmount: genelToplam
     };
 
-    // Müşteriyi kaydet veya güncelle
     const existingCustIndex = customers.findIndex(c => c.firma.toLowerCase() === musFirma.toLowerCase());
     if (existingCustIndex >= 0) {
       const updated = [...customers];
@@ -162,7 +147,7 @@ export default function Index() {
     }
 
     setHistory([newQuote, ...history]);
-    showToast('Teklif kaydedildi ve geçmişe eklendi!');
+    showToast('Teklif kaydedildi!');
     setActiveTab('history');
   };
 
@@ -170,10 +155,9 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Toast */}
       {toast && (
         <View style={styles.toast} testID="toast-msg">
-          <Ionicons name="checkmark-circle" size={18} color="#fff" />
+          <Ionicons name="checkmark-circle" size={16} color="#fff" />
           <Text style={styles.toastText}>{toast}</Text>
         </View>
       )}
@@ -185,8 +169,8 @@ export default function Index() {
             <Text style={styles.logoText}>AT</Text>
           </View>
           <View>
-            <Text style={styles.brandTitle}>ANINDA TEKLİF</Text>
-            <Text style={styles.brandSubtitle}>Profesyonel Teklif Hazırlama Aracı</Text>
+            <Text style={styles.brandTitle} numberOfLines={1}>ANINDA TEKLİF</Text>
+            <Text style={styles.brandSubtitle} numberOfLines={1}>Fiyat Teklif Aracı</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -205,12 +189,12 @@ export default function Index() {
             showToast('Form sıfırlandı.');
           }}
         >
-          <Ionicons name="refresh" size={16} color="#3a3b40" />
+          <Ionicons name="refresh" size={14} color="#3a3b40" />
           <Text style={styles.resetBtnHeaderText}>Sıfırla</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Main Body */}
+      {/* Body */}
       <View style={styles.body}>
         {activeTab === 'editor' && (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -220,6 +204,7 @@ export default function Index() {
               <TextInput
                 style={styles.input}
                 placeholder="ornek@sirketiniz.com"
+                placeholderTextColor="#9ca3af"
                 value={hazirlayanMail}
                 onChangeText={setHazirlayanMail}
               />
@@ -227,7 +212,7 @@ export default function Index() {
 
             <Text style={styles.secHeader}>TEKLİF BİLGİLERİ</Text>
             <View style={styles.row2}>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Teklif No</Text>
                 <TextInput
                   style={styles.input}
@@ -235,7 +220,7 @@ export default function Index() {
                   onChangeText={setTeklifNo}
                 />
               </View>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Tarih</Text>
                 <TextInput
                   style={styles.input}
@@ -258,7 +243,8 @@ export default function Index() {
               <Text style={styles.label}>Firma Adı</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Firma adını yazın (Kayıtlı müşterilerden otomatik gelir)"
+                placeholder="Firma adını yazın..."
+                placeholderTextColor="#9ca3af"
                 value={musFirma}
                 onChangeText={(val) => {
                   setMusFirma(val);
@@ -273,20 +259,22 @@ export default function Index() {
               />
             </View>
             <View style={styles.row2}>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Müşteri Adı</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Yetkili Kişi"
+                  placeholder="Yetkili"
+                  placeholderTextColor="#9ca3af"
                   value={musAdi}
                   onChangeText={setMusAdi}
                 />
               </View>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Telefon</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="+90 5XX ..."
+                  placeholder="+90 5XX..."
+                  placeholderTextColor="#9ca3af"
                   value={musTel}
                   onChangeText={setMusTel}
                 />
@@ -297,6 +285,7 @@ export default function Index() {
               <TextInput
                 style={styles.input}
                 placeholder="musteri@firma.com"
+                placeholderTextColor="#9ca3af"
                 value={musMail}
                 onChangeText={setMusMail}
               />
@@ -306,6 +295,7 @@ export default function Index() {
               <TextInput
                 style={styles.input}
                 placeholder="Açık Adres / Şehir"
+                placeholderTextColor="#9ca3af"
                 value={musAdres}
                 onChangeText={setMusAdres}
               />
@@ -317,12 +307,13 @@ export default function Index() {
               <TextInput
                 style={styles.input}
                 placeholder="Proje veya iş adı"
+                placeholderTextColor="#9ca3af"
                 value={projeAdi}
                 onChangeText={setProjeAdi}
               />
             </View>
             <View style={styles.row2}>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Nakliye</Text>
                 <TextInput
                   style={styles.input}
@@ -330,7 +321,7 @@ export default function Index() {
                   onChangeText={setNakliye}
                 />
               </View>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Para Birimi</Text>
                 <View style={styles.pickerRow}>
                   {['USD', 'EUR', 'TRY'].map((cur) => (
@@ -348,7 +339,7 @@ export default function Index() {
               </View>
             </View>
             <View style={styles.row2}>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Ödeme Şekli</Text>
                 <TextInput
                   style={styles.input}
@@ -356,7 +347,7 @@ export default function Index() {
                   onChangeText={setOdemeSekli}
                 />
               </View>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Menşei</Text>
                 <TextInput
                   style={styles.input}
@@ -366,7 +357,7 @@ export default function Index() {
               </View>
             </View>
             <View style={styles.row2}>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Teslim Süresi</Text>
                 <TextInput
                   style={styles.input}
@@ -374,7 +365,7 @@ export default function Index() {
                   onChangeText={setTeslimGun}
                 />
               </View>
-              <View style={styles.fgroup}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>İskonto (%)</Text>
                 <TextInput
                   style={styles.input}
@@ -388,7 +379,7 @@ export default function Index() {
             <Text style={styles.secHeader}>SİSTEM / ÜRÜN KALEMLERİ ({items.length})</Text>
             {items.length === 0 ? (
               <View style={styles.emptyItemsBox}>
-                <Text style={styles.emptyItemsText}>Henüz kalem eklenmedi. Başlamak için aşağıdaki butona bas.</Text>
+                <Text style={styles.emptyItemsText}>Henüz kalem eklenmedi. Başlamak için butona basın.</Text>
               </View>
             ) : (
               items.map((it, idx) => (
@@ -400,7 +391,7 @@ export default function Index() {
                     </TouchableOpacity>
                   </View>
                   <View style={styles.fgroup}>
-                    <Text style={styles.label}>Kategori</Text>
+                    <Text style={styles.label}>Kategori / Sistem</Text>
                     <TextInput
                       style={styles.input}
                       value={it.kategori}
@@ -411,22 +402,24 @@ export default function Index() {
                     <Text style={styles.label}>Ürün / Hizmet Adı</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Ürün veya sistem adı"
+                      placeholder="Ürün adı"
+                      placeholderTextColor="#9ca3af"
                       value={it.urunAdi}
                       onChangeText={(val) => handleUpdateItem(it.id, 'urunAdi', val)}
                     />
                   </View>
                   <View style={styles.fgroup}>
-                    <Text style={styles.label}>Açıklama / Teknik Detay</Text>
+                    <Text style={styles.label}>Açıklama</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Özellikler"
+                      placeholder="Teknik detay"
+                      placeholderTextColor="#9ca3af"
                       value={it.aciklama}
                       onChangeText={(val) => handleUpdateItem(it.id, 'aciklama', val)}
                     />
                   </View>
                   <View style={styles.row2}>
-                    <View style={styles.fgroup}>
+                    <View style={[styles.fgroup, { flex: 1 }]}>
                       <Text style={styles.label}>Adet</Text>
                       <TextInput
                         style={styles.input}
@@ -435,7 +428,7 @@ export default function Index() {
                         onChangeText={(val) => handleUpdateItem(it.id, 'adet', val)}
                       />
                     </View>
-                    <View style={styles.fgroup}>
+                    <View style={[styles.fgroup, { flex: 1 }]}>
                       <Text style={styles.label}>Birim</Text>
                       <TextInput
                         style={styles.input}
@@ -458,14 +451,14 @@ export default function Index() {
             )}
 
             <TouchableOpacity testID="add-item-btn" style={styles.addItemBtn} onPress={handleAddItem}>
-              <Ionicons name="add-circle-outline" size={18} color="#3a3b40" />
+              <Ionicons name="add-circle-outline" size={16} color="#3a3b40" />
               <Text style={styles.addItemBtnText}>+ Kalem Ekle</Text>
             </TouchableOpacity>
 
             <Text style={styles.secHeader}>ÖZEL NOTLAR</Text>
             <View style={styles.fgroup}>
               <TextInput
-                style={[styles.input, { height: 80 }]}
+                style={[styles.input, { height: 75, textAlignVertical: 'top' }]}
                 multiline
                 value={notlar}
                 onChangeText={setNotlar}
@@ -477,7 +470,7 @@ export default function Index() {
               style={styles.primaryBtn}
               onPress={() => setActiveTab('preview')}
             >
-              <Ionicons name="eye-outline" size={18} color="#fff" />
+              <Ionicons name="eye-outline" size={16} color="#fff" />
               <Text style={styles.primaryBtnText}>Teklifi Önizle</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -485,10 +478,10 @@ export default function Index() {
 
         {activeTab === 'preview' && (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            {/* HTML index.html formatına birebir sadık kalan A4 Teklif Belgesi */}
+            {/* Teklif Belgesi Önizleme (HTML yapısına tam uyumlu) */}
             <View style={styles.sheet} testID="quote-sheet-preview">
               <View style={styles.sheetHeader}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
                   <Text style={styles.sheetCompanyName}>ANINDA TEKLİF SİSTEMLERİ</Text>
                   <Text style={styles.sheetCompanySub}>Temsilci: {hazirlayanMail || 'Belirtilmedi'}</Text>
                 </View>
@@ -500,7 +493,6 @@ export default function Index() {
                 </View>
               </View>
 
-              {/* Müşteri ve Sipariş Bilgi Kutuları */}
               <View style={styles.infoGrid}>
                 <View style={styles.infoBox}>
                   <Text style={styles.boxTitle}>MÜŞTERİ BİLGİLERİ</Text>
@@ -521,14 +513,14 @@ export default function Index() {
                 </View>
               </View>
 
-              {/* Kalemler Tablosu */}
+              {/* Tablo */}
               <View style={styles.table}>
                 <View style={styles.tableHdr}>
-                  <Text style={[styles.th, { flex: 0.5 }]}>S.NO</Text>
-                  <Text style={[styles.th, { flex: 2.5 }]}>SİSTEM / HİZMET</Text>
-                  <Text style={[styles.th, { flex: 1 }]}>ADET</Text>
-                  <Text style={[styles.th, { flex: 1.2 }]}>BİRİM FİYAT</Text>
-                  <Text style={[styles.th, { flex: 1.2 }]}>TOPLAM</Text>
+                  <Text style={[styles.th, { width: 36, textAlign: 'center' }]}>S.NO</Text>
+                  <Text style={[styles.th, { flex: 2 }]}>SİSTEM / HİZMET</Text>
+                  <Text style={[styles.th, { width: 50, textAlign: 'center' }]}>ADET</Text>
+                  <Text style={[styles.th, { width: 75, textAlign: 'right' }]}>BİRİM</Text>
+                  <Text style={[styles.th, { width: 75, textAlign: 'right' }]}>TOPLAM</Text>
                 </View>
                 {items.length === 0 ? (
                   <View style={styles.tableEmptyRow}>
@@ -539,14 +531,14 @@ export default function Index() {
                     const lineTotal = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
                     return (
                       <View key={it.id} style={styles.tableRow}>
-                        <Text style={[styles.td, { flex: 0.5 }]}>{idx + 1}</Text>
-                        <View style={[styles.td, { flex: 2.5 }]}>
-                          <Text style={styles.tdBold}>{it.urunAdi || 'İsimsiz Ürün'}</Text>
-                          <Text style={styles.tdSub}>{it.kategori} {it.aciklama ? `• ${it.aciklama}` : ''}</Text>
+                        <Text style={[styles.td, { width: 36, textAlign: 'center' }]}>{idx + 1}</Text>
+                        <View style={[styles.td, { flex: 2 }]}>
+                          <Text style={styles.tdBold} numberOfLines={2}>{it.urunAdi || 'İsimsiz Ürün'}</Text>
+                          <Text style={styles.tdSub} numberOfLines={1}>{it.kategori} {it.aciklama ? `• ${it.aciklama}` : ''}</Text>
                         </View>
-                        <Text style={[styles.td, { flex: 1 }]}>{it.adet} {it.birim}</Text>
-                        <Text style={[styles.td, { flex: 1.2 }]}>{Number(it.birimFiyat).toLocaleString('tr-TR')} {currencySymbol}</Text>
-                        <Text style={[styles.td, styles.tdBold, { flex: 1.2 }]}>{lineTotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                        <Text style={[styles.td, { width: 50, textAlign: 'center' }]} numberOfLines={1}>{it.adet} {it.birim}</Text>
+                        <Text style={[styles.td, { width: 75, textAlign: 'right' }]} numberOfLines={1}>{Number(it.birimFiyat).toLocaleString('tr-TR')} {currencySymbol}</Text>
+                        <Text style={[styles.td, styles.tdBold, { width: 75, textAlign: 'right' }]} numberOfLines={1}>{lineTotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
                       </View>
                     );
                   })
@@ -555,7 +547,6 @@ export default function Index() {
 
               <Text style={styles.warnText}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR. KDV HARİÇ FİYATTIR</Text>
 
-              {/* Alt Bilgiler ve Toplamlar */}
               <View style={styles.sheetFooterGrid}>
                 <View style={styles.sheetNotesBox}>
                   <Text style={styles.boxTitle}>ÖZEL NOTLAR & SATIŞ DETAYLARI</Text>
@@ -564,21 +555,21 @@ export default function Index() {
                 <View style={styles.sheetTotalsBox}>
                   <View style={styles.totRow}>
                     <Text style={styles.totLabel}>ARA TOPLAM:</Text>
-                    <Text style={styles.totVal}>{subtotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                    <Text style={styles.totVal} numberOfLines={1}>{subtotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
                   </View>
                   {iskontoOrani > 0 && (
                     <View style={styles.totRow}>
                       <Text style={styles.totLabel}>İSKONTO (%{iskontoOrani}):</Text>
-                      <Text style={[styles.totVal, { color: '#c0392b' }]}>-{iskontoTutar.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                      <Text style={[styles.totVal, { color: '#c0392b' }]} numberOfLines={1}>-{iskontoTutar.toLocaleString('tr-TR')} {currencySymbol}</Text>
                     </View>
                   )}
                   <View style={styles.totRow}>
                     <Text style={styles.totLabel}>KDV (%20):</Text>
-                    <Text style={styles.totVal}>{kdvTutar.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                    <Text style={styles.totVal} numberOfLines={1}>{kdvTutar.toLocaleString('tr-TR')} {currencySymbol}</Text>
                   </View>
                   <View style={[styles.totRow, styles.totGrand]}>
                     <Text style={styles.grandLabel}>GENEL TOPLAM:</Text>
-                    <Text style={styles.grandVal}>{genelToplam.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                    <Text style={styles.grandVal} numberOfLines={1}>{genelToplam.toLocaleString('tr-TR')} {currencySymbol}</Text>
                   </View>
                 </View>
               </View>
@@ -598,8 +589,8 @@ export default function Index() {
                   });
                 }}
               >
-                <Ionicons name="logo-whatsapp" size={18} color="#fff" />
-                <Text style={styles.actionBtnText}>WhatsApp'tan Paylaş</Text>
+                <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>WhatsApp İle Paylaş</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -607,8 +598,8 @@ export default function Index() {
                 style={[styles.actionBtn, { backgroundColor: '#3a3b40' }]}
                 onPress={handleSaveAndShare}
               >
-                <Ionicons name="save-outline" size={18} color="#fff" />
-                <Text style={styles.actionBtnText}>Kaydet & Geçmişe Ekle</Text>
+                <Ionicons name="save-outline" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Kaydet</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -618,31 +609,30 @@ export default function Index() {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.secHeader}>KAYITLI MÜŞTERİLER ({customers.length})</Text>
             {customers.length === 0 ? (
-              <Text style={styles.emptySubText}>Henüz kaydedilmiş müşteri yok. Teklif tamamlandığında firma bilgisi otomatik kaydedilir.</Text>
+              <Text style={styles.emptySubText}>Henüz kayıtlı müşteri yok.</Text>
             ) : (
               customers.map((c, idx) => (
                 <View key={idx} style={styles.historyCard}>
-                  <Text style={styles.historyFirma}>{c.firma}</Text>
-                  <Text style={styles.historyProj}>Yetkili: {c.adi || '-'} • Tel: {c.tel || '-'}</Text>
-                  <Text style={styles.historyProj}>E-Mail: {c.mail || '-'}</Text>
+                  <Text style={styles.historyFirma} numberOfLines={1}>{c.firma}</Text>
+                  <Text style={styles.historyProj} numberOfLines={1}>Yetkili: {c.adi || '-'} • Tel: {c.tel || '-'}</Text>
                 </View>
               ))
             )}
 
-            <Text style={[styles.secHeader, { marginTop: 20 }]}>GEÇMİŞ TEKLİFLER ({history.length})</Text>
+            <Text style={[styles.secHeader, { marginTop: 16 }]}>GEÇMİŞ TEKLİFLER ({history.length})</Text>
             {history.length === 0 ? (
-              <Text style={styles.emptySubText}>Henüz kayıtlı teklif yok. Bir teklifi kaydettiğinizde burada listelenir.</Text>
+              <Text style={styles.emptySubText}>Henüz kayıtlı teklif yok.</Text>
             ) : (
               history.map((q) => (
                 <View key={q.id} style={styles.historyCard}>
                   <View style={styles.historyCardTop}>
-                    <Text style={styles.historyNo}>{q.teklifNo}</Text>
-                    <Text style={styles.historyAmount}>
+                    <Text style={styles.historyNo} numberOfLines={1}>{q.teklifNo}</Text>
+                    <Text style={styles.historyAmount} numberOfLines={1}>
                       {q.totalAmount.toLocaleString('tr-TR')} {q.paraBirimi}
                     </Text>
                   </View>
-                  <Text style={styles.historyFirma}>{q.musFirma}</Text>
-                  <Text style={styles.historyProj}>{q.projeAdi || 'Proje adı yok'} • {q.tarih}</Text>
+                  <Text style={styles.historyFirma} numberOfLines={1}>{q.musFirma}</Text>
+                  <Text style={styles.historyProj} numberOfLines={1}>{q.projeAdi || 'Proje adı yok'} • {q.tarih}</Text>
                 </View>
               ))
             )}
@@ -659,10 +649,10 @@ export default function Index() {
         >
           <Ionicons
             name="create-outline"
-            size={22}
+            size={20}
             color={activeTab === 'editor' ? '#3a3b40' : '#6b7280'}
           />
-          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.tabLabelActive]}>Teklif Formu</Text>
+          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.tabLabelActive]} numberOfLines={1}>Form</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -672,10 +662,10 @@ export default function Index() {
         >
           <Ionicons
             name="eye-outline"
-            size={22}
+            size={20}
             color={activeTab === 'preview' ? '#3a3b40' : '#6b7280'}
           />
-          <Text style={[styles.tabLabel, activeTab === 'preview' && styles.tabLabelActive]}>Önizleme</Text>
+          <Text style={[styles.tabLabel, activeTab === 'preview' && styles.tabLabelActive]} numberOfLines={1}>Önizleme</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -685,10 +675,10 @@ export default function Index() {
         >
           <Ionicons
             name="time-outline"
-            size={22}
+            size={20}
             color={activeTab === 'history' ? '#3a3b40' : '#6b7280'}
           />
-          <Text style={[styles.tabLabel, activeTab === 'history' && styles.tabLabelActive]}>Müşteriler & Geçmiş</Text>
+          <Text style={[styles.tabLabel, activeTab === 'history' && styles.tabLabelActive]} numberOfLines={1}>Geçmiş</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -702,53 +692,56 @@ const styles = StyleSheet.create({
   },
   toast: {
     position: 'absolute',
-    top: 50,
+    top: 45,
     alignSelf: 'center',
     backgroundColor: '#232428',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     zIndex: 9999,
-    gap: 8,
+    gap: 6,
     elevation: 5
   },
   toastText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600'
   },
   header: {
-    height: 60,
+    height: 56,
     backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#d8dee6'
   },
   logoWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10
+    gap: 8,
+    flex: 1,
+    marginRight: 8
   },
   logoBadge: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     backgroundColor: '#3a3b40',
     borderRadius: 6,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    flexShrink: 0
   },
   logoText: {
     color: '#fff',
     fontWeight: '800',
-    fontSize: 14
+    fontSize: 13
   },
   brandTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#3a3b40'
   },
@@ -760,12 +753,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f4f6f9',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: '#d8dee6',
-    gap: 4
+    gap: 3,
+    flexShrink: 0
   },
   resetBtnHeaderText: {
     fontSize: 11,
@@ -776,63 +770,65 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 90
+    padding: 12,
+    paddingBottom: 80
   },
   secHeader: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#3a3b40',
-    marginTop: 18,
-    marginBottom: 8,
-    paddingBottom: 4,
+    marginTop: 14,
+    marginBottom: 6,
+    paddingBottom: 3,
     borderBottomWidth: 2,
     borderBottomColor: '#3a3b40',
     textTransform: 'uppercase'
   },
   fgroup: {
-    marginBottom: 10
+    marginBottom: 8
   },
   label: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 4,
+    marginBottom: 3,
     textTransform: 'uppercase'
   },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#d8dee6',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    fontSize: 14,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    fontSize: 13.5,
     color: '#1a1a1a'
   },
   row2: {
     flexDirection: 'row',
-    gap: 10
+    gap: 8
   },
   pickerRow: {
     flexDirection: 'row',
-    gap: 6
+    gap: 4,
+    flex: 1
   },
   currChip: {
     flex: 1,
-    paddingVertical: 9,
+    paddingVertical: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#d8dee6',
-    borderRadius: 5,
-    alignItems: 'center'
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   currChipActive: {
     backgroundColor: '#3a3b40',
     borderColor: '#3a3b40'
   },
   currText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#6b7280'
   },
@@ -844,23 +840,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d8dee6',
     borderStyle: 'dashed',
-    borderRadius: 6,
-    padding: 14,
+    borderRadius: 5,
+    padding: 12,
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 8
   },
   emptyItemsText: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#6b7280',
     textAlign: 'center'
   },
   itemCard: {
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 12,
+    borderRadius: 5,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#d8dee6',
-    marginBottom: 10
+    marginBottom: 8
   },
   itemCardHdr: {
     flexDirection: 'row',
@@ -876,19 +872,19 @@ const styles = StyleSheet.create({
   },
   addItemBtn: {
     width: '100%',
-    padding: 10,
+    padding: 9,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: '#3a3b40',
-    borderRadius: 6,
+    borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 16
+    gap: 5,
+    marginBottom: 12
   },
   addItemBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#3a3b40'
   },
@@ -897,86 +893,81 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 13,
-    borderRadius: 6,
-    gap: 8,
-    marginTop: 10
+    padding: 12,
+    borderRadius: 5,
+    gap: 6,
+    marginTop: 8
   },
   primaryBtnText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 14
+    fontSize: 13.5
   },
   sheet: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 20,
+    borderRadius: 6,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2
+    borderColor: '#d8dee6'
   },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    borderBottomWidth: 3,
+    borderBottomWidth: 2.5,
     borderBottomColor: '#3a3b40',
-    paddingBottom: 10,
-    marginBottom: 14
+    paddingBottom: 8,
+    marginBottom: 10
   },
   sheetCompanyName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     color: '#3a3b40'
   },
   sheetCompanySub: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333',
     marginTop: 2
   },
   sheetDocTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     color: '#232428',
     textAlign: 'right'
   },
   sheetMeta: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333',
     textAlign: 'right'
   },
   infoGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 14
+    gap: 8,
+    marginBottom: 10
   },
   infoBox: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#d8dee6',
     borderRadius: 4,
-    padding: 8,
+    padding: 6,
     backgroundColor: '#f4f6f9'
   },
   boxTitle: {
-    fontSize: 11.5,
+    fontSize: 10,
     fontWeight: '700',
     color: '#fff',
     backgroundColor: '#3a3b40',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 3,
-    marginBottom: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 2,
+    marginBottom: 4,
     textTransform: 'uppercase'
   },
   boxText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333',
-    marginBottom: 3,
-    lineHeight: 15
+    marginBottom: 2,
+    lineHeight: 14
   },
   bold: {
     fontWeight: '700'
@@ -986,93 +977,93 @@ const styles = StyleSheet.create({
     borderColor: '#3a3b40',
     borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8
+    marginBottom: 6
   },
   tableHdr: {
     flexDirection: 'row',
     backgroundColor: '#3a3b40',
-    paddingVertical: 6,
-    paddingHorizontal: 6
+    paddingVertical: 5,
+    paddingHorizontal: 4
   },
   th: {
     color: '#fff',
-    fontSize: 10.5,
+    fontSize: 9.5,
     fontWeight: '700'
   },
   tableEmptyRow: {
-    padding: 14,
+    padding: 12,
     alignItems: 'center'
   },
   tableEmptyText: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#6b7280'
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#d8dee6',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     alignItems: 'center'
   },
   td: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#1a1a1a'
   },
   tdBold: {
     fontWeight: '700'
   },
   tdSub: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#6b7280'
   },
   warnText: {
     backgroundColor: '#c0392b',
     color: '#fff',
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    padding: 6,
-    marginBottom: 14
+    padding: 5,
+    marginBottom: 10
   },
   sheetFooterGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 10
+    gap: 8,
+    marginBottom: 8
   },
   sheetNotesBox: {
-    flex: 1.3,
+    flex: 1.2,
     borderWidth: 1,
     borderColor: '#d8dee6',
-    padding: 8,
+    padding: 6,
     backgroundColor: '#f4f6f9',
     borderRadius: 4
   },
   notesText: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#333',
-    lineHeight: 15
+    lineHeight: 13
   },
   sheetTotalsBox: {
     flex: 1,
-    gap: 4
+    gap: 3
   },
   totRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: '#d8dee6',
     backgroundColor: '#fff',
-    borderRadius: 4
+    borderRadius: 3
   },
   totLabel: {
-    fontSize: 11,
+    fontSize: 9.5,
     color: '#6b7280'
   },
   totVal: {
-    fontSize: 11,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#1a1a1a'
   },
@@ -1081,59 +1072,59 @@ const styles = StyleSheet.create({
     borderColor: '#3a3b40'
   },
   grandLabel: {
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#232428'
   },
   grandVal: {
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#232428'
   },
   signBox: {
     borderWidth: 1,
     borderColor: '#d8dee6',
-    height: 60,
-    padding: 6,
-    marginTop: 10,
+    height: 50,
+    padding: 5,
+    marginTop: 8,
     borderRadius: 4
   },
   signText: {
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#6b7280',
     fontWeight: '600'
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 16
+    gap: 8,
+    marginTop: 12
   },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 6,
-    gap: 6
+    paddingVertical: 10,
+    borderRadius: 5,
+    gap: 5
   },
   actionBtnText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 12.5
+    fontSize: 12
   },
   emptySubText: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#6b7280',
-    marginBottom: 10
+    marginBottom: 8
   },
   historyCard: {
     backgroundColor: '#fff',
-    borderRadius: 6,
-    padding: 12,
+    borderRadius: 5,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#d8dee6',
-    marginBottom: 8
+    marginBottom: 6
   },
   historyCardTop: {
     flexDirection: 'row',
@@ -1141,31 +1132,31 @@ const styles = StyleSheet.create({
     marginBottom: 2
   },
   historyNo: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#6b7280'
   },
   historyAmount: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#3a3b40'
   },
   historyFirma: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#232428'
   },
   historyProj: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#6b7280',
-    marginTop: 2
+    marginTop: 1
   },
   tabBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 56,
     backgroundColor: '#fff',
     flexDirection: 'row',
     borderTopWidth: 1,
@@ -1179,12 +1170,13 @@ const styles = StyleSheet.create({
   },
   tabItemActive: {
     borderTopWidth: 2,
+    borderTopCode: '#3a3b40',
     borderTopColor: '#3a3b40'
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6b7280',
-    marginTop: 2
+    marginTop: 1
   },
   tabLabelActive: {
     color: '#3a3b40',

@@ -549,7 +549,7 @@ export default function EditorScreen() {
               testID="preview-btn"
             >
               <Ionicons name="eye-outline" size={16} color="#fff" />
-              <Text style={s.btnPrimaryText}>Önizleme</Text>
+              <Text style={s.btnSecondaryText}>Önizleme</Text>
             </TouchableOpacity>
           </View>
 
@@ -560,10 +560,10 @@ export default function EditorScreen() {
             testID="pdf-download-btn"
           >
             {saving ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={theme.colors.navy} size="small" />
             ) : (
               <>
-                <Ionicons name="document-text" size={16} color="#fff" />
+                <Ionicons name="document-text" size={16} color={theme.colors.navy} />
                 <Text style={s.btnPrimaryText}>Kaydet & PDF İndir/Paylaş</Text>
               </>
             )}
@@ -576,7 +576,7 @@ export default function EditorScreen() {
             testID="whatsapp-share-btn"
           >
             <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-            <Text style={s.btnPrimaryText}>WhatsApp&apos;ta Paylaş</Text>
+            <Text style={s.btnSecondaryText}>WhatsApp&apos;ta Paylaş</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -734,21 +734,21 @@ const s = StyleSheet.create({
     marginBottom: 10,
     gap: 12,
   },
-  totalLabel: { color: '#94a3b8', fontSize: 10.5, fontWeight: '700', letterSpacing: 0.5 },
-  totalValue: { color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 2 },
+  totalLabel: { color: theme.colors.gold, fontSize: 10.5, fontWeight: '800', letterSpacing: 0.8 },
+  totalValue: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 3, letterSpacing: 0.3 },
   miniStats: { alignItems: 'flex-end' },
   miniStat: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  miniStatSub: { color: '#94a3b8', fontSize: 10, marginTop: 2 },
+  miniStatSub: { color: theme.colors.gold, fontSize: 10, marginTop: 2, fontWeight: '700' },
   sectionH: {
     fontSize: 11,
     fontWeight: '800',
-    color: theme.colors.accent,
+    color: theme.colors.navy,
     marginTop: 14,
     marginBottom: 8,
     paddingBottom: 4,
     borderBottomWidth: 2,
-    borderBottomColor: theme.colors.accent,
-    letterSpacing: 0.3,
+    borderBottomColor: theme.colors.gold,
+    letterSpacing: 0.4,
   },
   sectionRow: {
     flexDirection: 'row',
@@ -758,10 +758,10 @@ const s = StyleSheet.create({
     marginBottom: 8,
     paddingBottom: 4,
     borderBottomWidth: 2,
-    borderBottomColor: theme.colors.accent,
+    borderBottomColor: theme.colors.gold,
   },
-  sectionH2: { fontSize: 11, fontWeight: '800', color: theme.colors.accent, letterSpacing: 0.3 },
-  sectionAction: { fontSize: 11, fontWeight: '700', color: theme.colors.accent },
+  sectionH2: { fontSize: 11, fontWeight: '800', color: theme.colors.navy, letterSpacing: 0.4 },
+  sectionAction: { fontSize: 11, fontWeight: '700', color: theme.colors.goldDark },
   label: {
     fontSize: 10,
     fontWeight: '700',
@@ -881,13 +881,14 @@ const s = StyleSheet.create({
   grandValue: { color: '#fff', fontSize: 17, fontWeight: '900' },
   btnPrimary: {
     marginTop: 10,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: theme.colors.gold,
     paddingVertical: 14,
     borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    ...Platform.select({ android: { elevation: 3 }, ios: { shadowColor: theme.colors.goldDark, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } } }),
   },
   btnSecondary: {
     backgroundColor: theme.colors.navy,
@@ -898,7 +899,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
-  btnPrimaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  btnPrimaryText: { color: theme.colors.navy, fontWeight: '900', fontSize: 13.5, letterSpacing: 0.3 },
+  btnSecondaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   btnGhost: {
     flexDirection: 'row',
     alignItems: 'center',

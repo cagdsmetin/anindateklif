@@ -21,7 +21,7 @@ export default function TopHeader({ title }: { title?: string }) {
       <View style={s.header}>
         <View style={s.brand}>
           <View style={s.brandIcon}>
-            <Ionicons name="flash" size={18} color="#fff" />
+            <Ionicons name="flash" size={18} color={theme.colors.navy} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.appName} numberOfLines={1}>Anında Teklif</Text>
@@ -37,9 +37,9 @@ export default function TopHeader({ title }: { title?: string }) {
           style={s.pickerBtn}
           onPress={() => setPickerVisible(true)}
         >
-          <Ionicons name="business-outline" size={14} color={theme.colors.accent} />
+          <Ionicons name="business-outline" size={14} color={theme.colors.gold} />
           <Text style={s.pickerText} numberOfLines={1}>Firma</Text>
-          <Ionicons name="chevron-down" size={12} color={theme.colors.accent} />
+          <Ionicons name="chevron-down" size={12} color={theme.colors.gold} />
         </TouchableOpacity>
       </View>
 
@@ -107,40 +107,42 @@ const s = StyleSheet.create({
   },
   toastText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   header: {
-    minHeight: 60,
-    backgroundColor: theme.colors.surface,
+    minHeight: 62,
+    backgroundColor: theme.colors.navy,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.line,
+    borderBottomWidth: 3,
+    borderBottomColor: theme.colors.gold,
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
   brandIcon: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: 10,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: theme.colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.goldBorder,
   },
-  appName: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.2 },
-  appSubtitle: { fontSize: 11, color: theme.colors.textMuted },
+  appName: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 0.4 },
+  appSubtitle: { fontSize: 11, color: theme.colors.goldSoft, marginTop: 1 },
   pickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: 'rgba(201,162,39,0.15)',
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.accentBorder,
+    borderColor: theme.colors.gold,
     gap: 4,
     maxWidth: 110,
   },
-  pickerText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.accent },
+  pickerText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.gold },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   pickerCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },
   pickerTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 10 },

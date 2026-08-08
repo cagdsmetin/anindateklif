@@ -160,11 +160,11 @@ export default function HistoryScreen() {
                 </View>
                 <View style={s.actionBar}>
                   <TouchableOpacity style={s.actBtn} onPress={() => openEdit(quote.id)} testID={`edit-quote-${quote.id}`}>
-                    <Ionicons name="pencil-outline" size={14} color={theme.colors.accent} />
+                    <Ionicons name="pencil-outline" size={14} color={theme.colors.navy} />
                     <Text style={s.actText}>Düzenle</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.actBtn} onPress={() => doSharePdf(quote)} testID={`pdf-${quote.id}`}>
-                    <Ionicons name="document-text-outline" size={14} color={theme.colors.accent} />
+                    <Ionicons name="document-text-outline" size={14} color={theme.colors.navy} />
                     <Text style={s.actText}>PDF</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -173,14 +173,14 @@ export default function HistoryScreen() {
                     testID={`whatsapp-${quote.id}`}
                   >
                     <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-                    <Text style={[s.actText, { color: '#16a34a' }]}>WhatsApp</Text>
+                    <Text style={[s.actText, { color: '#16a34a' }]}>WA</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[s.actBtn, { backgroundColor: theme.colors.redSoft }]}
+                    style={[s.actBtnIcon, { backgroundColor: theme.colors.redSoft }]}
                     onPress={() => deleteQuote(quote.id)}
                     testID={`delete-quote-${quote.id}`}
                   >
-                    <Ionicons name="trash-outline" size={14} color={theme.colors.red} />
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -310,13 +310,21 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: theme.colors.accentSoft,
+    paddingHorizontal: 6,
+    backgroundColor: theme.colors.navySoft,
     borderRadius: 8,
     flex: 1,
     justifyContent: 'center',
   },
-  actText: { fontSize: 11, fontWeight: '700', color: theme.colors.accent },
+  actBtnIcon: {
+    width: 40,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.redSoft,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.navy, letterSpacing: 0.2 },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 30 },
   menu: { backgroundColor: '#fff', padding: 16, borderRadius: 12, gap: 8 },
   menuTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 6, textAlign: 'center' },

@@ -9,10 +9,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.accent,
+        tabBarActiveTintColor: theme.colors.gold,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
-          height: 58 + insets.bottom,
+          height: 60 + insets.bottom,
           paddingTop: 6,
           paddingBottom: insets.bottom + 6,
           borderTopWidth: 1,
@@ -20,7 +20,8 @@ export default function TabsLayout() {
           backgroundColor: theme.colors.surface,
           elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 10.5, fontWeight: '700', marginTop: -2 },
+        tabBarLabelStyle: { fontSize: 9.5, fontWeight: '700', marginTop: 0, letterSpacing: 0 },
+        tabBarItemStyle: { paddingHorizontal: 2 },
       }}
     >
       <Tabs.Screen

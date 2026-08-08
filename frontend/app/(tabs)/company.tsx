@@ -276,7 +276,7 @@ export default function CompanyScreen() {
           </View>
 
           <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
-            <Ionicons name="checkmark-done" size={18} color="#fff" />
+            <Ionicons name="checkmark-done" size={18} color={theme.colors.navy} />
             <Text style={s.saveBtnText}>Firma Bilgilerini Kaydet</Text>
           </TouchableOpacity>
 
@@ -446,7 +446,7 @@ const s = StyleSheet.create({
   },
   saveBtn: {
     marginTop: 20,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: theme.colors.gold,
     paddingVertical: 14,
     borderRadius: 10,
     flexDirection: 'row',
@@ -454,7 +454,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
+  saveBtnText: { color: theme.colors.navy, fontWeight: '900', fontSize: 13.5, letterSpacing: 0.3 },
   deleteCompanyBtn: {
     marginTop: 10,
     borderWidth: 1,

@@ -126,7 +126,7 @@ export const CATEGORIES = [
 ];
 
 export const REPRESANTATIVES = [
-  { name: 'Çağdaş Şenyüz', email: 'cagdas@skyart-group.com', phone: '+90 532 000 0000', title: 'Satış Direktörü' },
-  { name: 'Merve Demir', email: 'merve@skyart-group.com', phone: '+90 533 111 1111', title: 'Proje Müdürü' },
-  { name: 'Caner Kaya', email: 'caner@skyart-group.com', phone: '+90 535 222 2222', title: 'Teklif Uzmanı' }
+  { name: 'Ahmet Yılmaz', email: 'ahmet@anindateklif.com', phone: '+90 532 000 0000', title: 'Satış Direktörü' },
+  { name: 'Zeynep Kaya', email: 'zeynep@anindateklif.com', phone: '+90 533 111 1111', title: 'Proje Müdürü' },
+  { name: 'Can Demir', email: 'can@anindateklif.com', phone: '+90 535 222 2222', title: 'Teklif Uzmanı' }
 ];

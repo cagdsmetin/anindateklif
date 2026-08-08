@@ -6,10 +6,29 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Share
+  Share,
+  Modal,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+
+interface CompanyProfile {
+  sirketAdi: string;
+  logoUrl: string;
+  adres: string;
+  telefon: string;
+  email: string;
+  bankaBilgileri: string;
+}
+
+interface ProductItem {
+  id: string;
+  kategori: string;
+  urunAdi: string;
+  birim: string;
+  birimFiyat: number;
+}
 
 interface QuoteItem {
   id: string;
@@ -39,19 +58,42 @@ interface SavedQuote {
   teslimGun: string;
   iskonto: number;
   notlar: string;
-  hazirlayanMail: string;
   items: QuoteItem[];
   totalAmount: number;
 }
 
 export default function Index() {
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'history'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'products' | 'company' | 'history'>('editor');
 
-  const [hazirlayanMail, setHazirlayanMail] = useState('');
-  const [teklifNo, setTeklifNo] = useState('2026-' + Math.floor(100000 + Math.random() * 900000));
+  // 1. Şirket Profili (Çoklu Şirket)
+  const [company, setCompany] = useState<CompanyProfile>({
+    sirketAdi: 'Anında Teklif Çözümleri A.Ş.',
+    logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
+    adres: 'Maslak Mah. Büyükdere Cad. No:199 Sarıyer/İstanbul',
+    telefon: '0 850 555 00 00',
+    email: 'info@anindateklif.com',
+    bankaBilgileri: 'GARANTİ BANKASI (TR12 0006 ...)'
+  });
+
+  // 2. Kayıtlı Ürün / Kalem Kataloğu
+  const [catalog, setCatalog] = useState<ProductItem[]>([
+    { id: 'cat-1', kategori: 'Yazılım', urunAdi: 'Özel Mobil Uygulama Geliştirme', birim: 'Proje', birimFiyat: 3500 },
+    { id: 'cat-2', kategori: 'Danışmanlık', urunAdi: 'UI/UX Tasarım ve Mimari Danışmanlık', birim: 'Ay', birimFiyat: 1200 },
+    { id: 'cat-3', kategori: 'Donanım', urunAdi: 'Endüstriyel Akustik Panel (10lu)', birim: 'Paket', birimFiyat: 750 }
+  ]);
+
+  // Yeni ürün ekleme modal state
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [newCat, setNewCat] = useState('Genel');
+  const [newUrunAdi, setNewUrunAdi] = useState('');
+  const [newBirim, setNewBirim] = useState('Adet');
+  const [newBirimFiyat, setNewBirimFiyat] = useState('500');
+
+  // Teklif Form State
+  const [teklifNo, setTeklifNo] = useState('AT-' + Math.floor(100000 + Math.random() * 900000));
   const [tarih, setTarih] = useState(new Date().toISOString().split('T')[0]);
   const [gecerlilik, setGecerlilik] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]
   );
   const [musFirma, setMusFirma] = useState('');
   const [musAdi, setMusAdi] = useState('');
@@ -61,12 +103,12 @@ export default function Index() {
   const [projeAdi, setProjeAdi] = useState('');
   const [nakliye, setNakliye] = useState('EXW');
   const [paraBirimi, setParaBirimi] = useState('USD');
-  const [odemeSekli, setOdemeSekli] = useState('%50 Peşin-%50 Fab. Teslim');
+  const [odemeSekli, setOdemeSekli] = useState('%50 Peşin-%50 Teslim');
   const [mensei, setMensei] = useState('TÜRKİYE');
   const [teslimGun, setTeslimGun] = useState('15-20 GÜN');
   const [iskonto, setIskonto] = useState('0');
   const [notlar, setNotlar] = useState(
-    'Fabrika Teslim Fiyatıdır. Ahşap Sandıklama Fiyata Dahil Değildir. Türkiye Gümrük Ücreti Dahil Değildir. Ödeme Şekli % 50 Peşin, % 50 Fabrika Teslimidir.'
+    'Fiyatlarımıza KDV hariçtir. Ödeme koşulları sözleşme esasına dayalıdır.'
   );
 
   const [items, setItems] = useState<QuoteItem[]>([]);
@@ -86,26 +128,25 @@ export default function Index() {
   const kdvTutar = araToplam * 0.20;
   const genelToplam = araToplam + kdvTutar;
 
-  const handleAddItem = () => {
-    setItems([
-      ...items,
-      {
-        id: 'item-' + Date.now(),
-        kategori: 'Genel',
-        urunAdi: '',
-        aciklama: '',
-        adet: 1,
-        birim: 'Adet',
-        birimFiyat: 0
-      }
-    ]);
+  const handleAddCatalogItemToQuote = (prod: ProductItem) => {
+    const newItem: QuoteItem = {
+      id: 'item-' + Date.now() + Math.random(),
+      kategori: prod.kategori,
+      urunAdi: prod.urunAdi,
+      aciklama: '',
+      adet: 1,
+      birim: prod.birim,
+      birimFiyat: prod.birimFiyat
+    };
+    setItems([...items, newItem]);
+    showToast(`"${prod.urunAdi}" teklife eklendi.`);
   };
 
-  const handleRemoveItem = (id: string) => {
+  const handleRemoveQuoteItem = (id: string) => {
     setItems(items.filter((it) => it.id !== id));
   };
 
-  const handleUpdateItem = (id: string, field: keyof QuoteItem, val: any) => {
+  const handleUpdateQuoteItem = (id: string, field: keyof QuoteItem, val: any) => {
     setItems(items.map((it) => (it.id === id ? { ...it, [field]: val } : it)));
   };
 
@@ -132,7 +173,6 @@ export default function Index() {
       teslimGun,
       iskonto: Number(iskonto),
       notlar,
-      hazirlayanMail,
       items: [...items],
       totalAmount: genelToplam
     };
@@ -148,7 +188,7 @@ export default function Index() {
 
     setHistory([newQuote, ...history]);
     showToast('Teklif kaydedildi!');
-    setActiveTab('history');
+    setActiveTab('preview');
   };
 
   const currencySymbol = paraBirimi === 'USD' ? '$' : paraBirimi === 'EUR' ? '€' : '₺';
@@ -165,77 +205,41 @@ export default function Index() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoWrap}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>AT</Text>
-          </View>
-          <View>
-            <Text style={styles.brandTitle} numberOfLines={1}>ANINDA TEKLİF</Text>
-            <Text style={styles.brandSubtitle} numberOfLines={1}>Fiyat Teklif Aracı</Text>
+          <Image source={{ uri: company.logoUrl }} style={styles.brandLogoImg} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandTitle} numberOfLines={1}>{company.sirketAdi}</Text>
+            <Text style={styles.brandSubtitle} numberOfLines={1}>Anında Teklif Sistemi</Text>
           </View>
         </View>
         <TouchableOpacity
-          testID="reset-form-btn"
-          style={styles.resetBtnHeader}
-          onPress={() => {
-            setTeklifNo('2026-' + Math.floor(100000 + Math.random() * 900000));
-            setMusFirma('');
-            setMusAdi('');
-            setMusTel('');
-            setMusMail('');
-            setMusAdres('');
-            setProjeAdi('');
-            setItems([]);
-            setHazirlayanMail('');
-            showToast('Form sıfırlandı.');
-          }}
+          testID="company-settings-btn"
+          style={styles.settingsHeaderBtn}
+          onPress={() => setActiveTab('company')}
         >
-          <Ionicons name="refresh" size={14} color="#3a3b40" />
-          <Text style={styles.resetBtnHeaderText}>Sıfırla</Text>
+          <Ionicons name="business-outline" size={16} color="#2563eb" />
+          <Text style={styles.settingsHeaderText}>Şirket</Text>
         </TouchableOpacity>
       </View>
 
       {/* Body */}
       <View style={styles.body}>
+        {/* 1. EDİTÖR / TEKLİF FORMU */}
         {activeTab === 'editor' && (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.secHeader}>HAZIRLAYAN / İLETİŞİM</Text>
-            <View style={styles.fgroup}>
-              <Text style={styles.label}>E-Mail (Hazırlayan)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="ornek@sirketiniz.com"
-                placeholderTextColor="#9ca3af"
-                value={hazirlayanMail}
-                onChangeText={setHazirlayanMail}
-              />
-            </View>
-
             <Text style={styles.secHeader}>TEKLİF BİLGİLERİ</Text>
             <View style={styles.row2}>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Teklif No</Text>
-                <TextInput
-                  style={styles.input}
-                  value={teklifNo}
-                  onChangeText={setTeklifNo}
-                />
+                <TextInput style={styles.input} value={teklifNo} onChangeText={setTeklifNo} />
               </View>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Tarih</Text>
-                <TextInput
-                  style={styles.input}
-                  value={tarih}
-                  onChangeText={setTarih}
-                />
+                <TextInput style={styles.input} value={tarih} onChangeText={setTarih} />
               </View>
             </View>
             <View style={styles.fgroup}>
               <Text style={styles.label}>Geçerlilik Tarihi</Text>
-              <TextInput
-                style={styles.input}
-                value={gecerlilik}
-                onChangeText={setGecerlilik}
-              />
+              <TextInput style={styles.input} value={gecerlilik} onChangeText={setGecerlilik} />
             </View>
 
             <Text style={styles.secHeader}>MÜŞTERİ BİLGİLERİ</Text>
@@ -261,65 +265,31 @@ export default function Index() {
             <View style={styles.row2}>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Müşteri Adı</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Yetkili"
-                  placeholderTextColor="#9ca3af"
-                  value={musAdi}
-                  onChangeText={setMusAdi}
-                />
+                <TextInput style={styles.input} placeholder="Yetkili" placeholderTextColor="#9ca3af" value={musAdi} onChangeText={setMusAdi} />
               </View>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Telefon</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="+90 5XX..."
-                  placeholderTextColor="#9ca3af"
-                  value={musTel}
-                  onChangeText={setMusTel}
-                />
+                <TextInput style={styles.input} placeholder="+90 5XX..." placeholderTextColor="#9ca3af" value={musTel} onChangeText={setMusTel} />
               </View>
             </View>
             <View style={styles.fgroup}>
               <Text style={styles.label}>E-Mail</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="musteri@firma.com"
-                placeholderTextColor="#9ca3af"
-                value={musMail}
-                onChangeText={setMusMail}
-              />
+              <TextInput style={styles.input} placeholder="musteri@firma.com" placeholderTextColor="#9ca3af" value={musMail} onChangeText={setMusMail} />
             </View>
             <View style={styles.fgroup}>
               <Text style={styles.label}>Adres</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Açık Adres / Şehir"
-                placeholderTextColor="#9ca3af"
-                value={musAdres}
-                onChangeText={setMusAdres}
-              />
+              <TextInput style={styles.input} placeholder="Açık Adres / Şehir" placeholderTextColor="#9ca3af" value={musAdres} onChangeText={setMusAdres} />
             </View>
 
             <Text style={styles.secHeader}>SİPARİŞ BİLGİLERİ</Text>
             <View style={styles.fgroup}>
               <Text style={styles.label}>Proje Adı</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Proje veya iş adı"
-                placeholderTextColor="#9ca3af"
-                value={projeAdi}
-                onChangeText={setProjeAdi}
-              />
+              <TextInput style={styles.input} placeholder="Proje veya iş adı" placeholderTextColor="#9ca3af" value={projeAdi} onChangeText={setProjeAdi} />
             </View>
             <View style={styles.row2}>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Nakliye</Text>
-                <TextInput
-                  style={styles.input}
-                  value={nakliye}
-                  onChangeText={setNakliye}
-                />
+                <TextInput style={styles.input} value={nakliye} onChangeText={setNakliye} />
               </View>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Para Birimi</Text>
@@ -330,9 +300,7 @@ export default function Index() {
                       style={[styles.currChip, paraBirimi === cur && styles.currChipActive]}
                       onPress={() => setParaBirimi(cur)}
                     >
-                      <Text style={[styles.currText, paraBirimi === cur && styles.currTextActive]}>
-                        {cur}
-                      </Text>
+                      <Text style={[styles.currText, paraBirimi === cur && styles.currTextActive]}>{cur}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -341,81 +309,34 @@ export default function Index() {
             <View style={styles.row2}>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>Ödeme Şekli</Text>
-                <TextInput
-                  style={styles.input}
-                  value={odemeSekli}
-                  onChangeText={setOdemeSekli}
-                />
-              </View>
-              <View style={[styles.fgroup, { flex: 1 }]}>
-                <Text style={styles.label}>Menşei</Text>
-                <TextInput
-                  style={styles.input}
-                  value={mensei}
-                  onChangeText={setMensei}
-                />
-              </View>
-            </View>
-            <View style={styles.row2}>
-              <View style={[styles.fgroup, { flex: 1 }]}>
-                <Text style={styles.label}>Teslim Süresi</Text>
-                <TextInput
-                  style={styles.input}
-                  value={teslimGun}
-                  onChangeText={setTeslimGun}
-                />
+                <TextInput style={styles.input} value={odemeSekli} onChangeText={setOdemeSekli} />
               </View>
               <View style={[styles.fgroup, { flex: 1 }]}>
                 <Text style={styles.label}>İskonto (%)</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={iskonto}
-                  onChangeText={setIskonto}
-                />
+                <TextInput style={styles.input} keyboardType="numeric" value={iskonto} onChangeText={setIskonto} />
               </View>
             </View>
 
-            <Text style={styles.secHeader}>SİSTEM / ÜRÜN KALEMLERİ ({items.length})</Text>
+            <Text style={styles.secHeader}>ÜRÜN VE HİZMET KALEMLERİ ({items.length})</Text>
             {items.length === 0 ? (
               <View style={styles.emptyItemsBox}>
-                <Text style={styles.emptyItemsText}>Henüz kalem eklenmedi. Başlamak için butona basın.</Text>
+                <Text style={styles.emptyItemsText}>Henüz kalem eklenmedi. Ürün kataloğundan veya aşağıdan ekleyin.</Text>
               </View>
             ) : (
               items.map((it, idx) => (
                 <View key={it.id} style={styles.itemCard} testID={`item-box-${idx}`}>
                   <View style={styles.itemCardHdr}>
                     <Text style={styles.itemCardTitle}>Kalem #{idx + 1}</Text>
-                    <TouchableOpacity onPress={() => handleRemoveItem(it.id)}>
+                    <TouchableOpacity onPress={() => handleRemoveQuoteItem(it.id)}>
                       <Ionicons name="trash-outline" size={16} color="#c0392b" />
                     </TouchableOpacity>
-                  </View>
-                  <View style={styles.fgroup}>
-                    <Text style={styles.label}>Kategori / Sistem</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={it.kategori}
-                      onChangeText={(val) => handleUpdateItem(it.id, 'kategori', val)}
-                    />
                   </View>
                   <View style={styles.fgroup}>
                     <Text style={styles.label}>Ürün / Hizmet Adı</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Ürün adı"
-                      placeholderTextColor="#9ca3af"
                       value={it.urunAdi}
-                      onChangeText={(val) => handleUpdateItem(it.id, 'urunAdi', val)}
-                    />
-                  </View>
-                  <View style={styles.fgroup}>
-                    <Text style={styles.label}>Açıklama</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Teknik detay"
-                      placeholderTextColor="#9ca3af"
-                      value={it.aciklama}
-                      onChangeText={(val) => handleUpdateItem(it.id, 'aciklama', val)}
+                      onChangeText={(val) => handleUpdateQuoteItem(it.id, 'urunAdi', val)}
                     />
                   </View>
                   <View style={styles.row2}>
@@ -425,34 +346,31 @@ export default function Index() {
                         style={styles.input}
                         keyboardType="numeric"
                         value={String(it.adet)}
-                        onChangeText={(val) => handleUpdateItem(it.id, 'adet', val)}
+                        onChangeText={(val) => handleUpdateQuoteItem(it.id, 'adet', val)}
                       />
                     </View>
                     <View style={[styles.fgroup, { flex: 1 }]}>
-                      <Text style={styles.label}>Birim</Text>
+                      <Text style={styles.label}>Birim Fiyat ({currencySymbol})</Text>
                       <TextInput
                         style={styles.input}
-                        value={it.birim}
-                        onChangeText={(val) => handleUpdateItem(it.id, 'birim', val)}
+                        keyboardType="numeric"
+                        value={String(it.birimFiyat)}
+                        onChangeText={(val) => handleUpdateQuoteItem(it.id, 'birimFiyat', val)}
                       />
                     </View>
-                  </View>
-                  <View style={styles.fgroup}>
-                    <Text style={styles.label}>Birim Fiyat ({currencySymbol})</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="numeric"
-                      value={String(it.birimFiyat)}
-                      onChangeText={(val) => handleUpdateItem(it.id, 'birimFiyat', val)}
-                    />
                   </View>
                 </View>
               ))
             )}
 
-            <TouchableOpacity testID="add-item-btn" style={styles.addItemBtn} onPress={handleAddItem}>
-              <Ionicons name="add-circle-outline" size={16} color="#3a3b40" />
-              <Text style={styles.addItemBtnText}>+ Kalem Ekle</Text>
+            {/* Katalogdan Seç Butonu */}
+            <TouchableOpacity
+              testID="open-catalog-btn"
+              style={styles.addItemBtn}
+              onPress={() => setActiveTab('products')}
+            >
+              <Ionicons name="library-outline" size={16} color="#2563eb" />
+              <Text style={styles.addItemBtnText}>+ Ürün/Katalog Yönetiminden Kalem Seç</Text>
             </TouchableOpacity>
 
             <Text style={styles.secHeader}>ÖZEL NOTLAR</Text>
@@ -466,28 +384,32 @@ export default function Index() {
             </View>
 
             <TouchableOpacity
-              testID="preview-go-btn"
+              testID="save-and-preview-btn"
               style={styles.primaryBtn}
-              onPress={() => setActiveTab('preview')}
+              onPress={handleSaveAndShare}
             >
               <Ionicons name="eye-outline" size={16} color="#fff" />
-              <Text style={styles.primaryBtnText}>Teklifi Önizle</Text>
+              <Text style={styles.primaryBtnText}>Teklifi Tamamla & Önizle</Text>
             </TouchableOpacity>
           </ScrollView>
         )}
 
+        {/* 2. TAM EKRAN PDF ÖNİZLEME */}
         {activeTab === 'preview' && (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            {/* Teklif Belgesi Önizleme (HTML yapısına tam uyumlu) */}
             <View style={styles.sheet} testID="quote-sheet-preview">
               <View style={styles.sheetHeader}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={styles.sheetCompanyName}>ANINDA TEKLİF SİSTEMLERİ</Text>
-                  <Text style={styles.sheetCompanySub}>Temsilci: {hazirlayanMail || 'Belirtilmedi'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                  <Image source={{ uri: company.logoUrl }} style={styles.previewLogoImg} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sheetCompanyName}>{company.sirketAdi}</Text>
+                    <Text style={styles.sheetCompanySub}>{company.adres}</Text>
+                    <Text style={styles.sheetCompanySub}>Tel: {company.telefon} • {company.email}</Text>
+                  </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.sheetDocTitle}>FİYAT TEKLİFİ</Text>
-                  <Text style={styles.sheetMeta}>Teklif No: {teklifNo}</Text>
+                  <Text style={styles.sheetMeta}>No: {teklifNo}</Text>
                   <Text style={styles.sheetMeta}>Tarih: {tarih}</Text>
                   <Text style={styles.sheetMeta}>Geçerlilik: {gecerlilik}</Text>
                 </View>
@@ -497,18 +419,17 @@ export default function Index() {
                 <View style={styles.infoBox}>
                   <Text style={styles.boxTitle}>MÜŞTERİ BİLGİLERİ</Text>
                   <Text style={styles.boxText}><Text style={styles.bold}>FİRMA:</Text> {musFirma || '-'}</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>MÜŞTERİ ADI:</Text> {musAdi || '-'}</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>TELEFON:</Text> {musTel || '-'}</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>E-Mail:</Text> {musMail || '-'}</Text>
+                  <Text style={styles.boxText}><Text style={styles.bold}>İLGİLİ:</Text> {musAdi || '-'}</Text>
+                  <Text style={styles.boxText}><Text style={styles.bold}>TEL:</Text> {musTel || '-'}</Text>
+                  <Text style={styles.boxText}><Text style={styles.bold}>E-POSTA:</Text> {musMail || '-'}</Text>
                   <Text style={styles.boxText}><Text style={styles.bold}>ADRES:</Text> {musAdres || '-'}</Text>
                 </View>
                 <View style={styles.infoBox}>
-                  <Text style={styles.boxTitle}>SİPARİŞ BİLGİLERİ</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>PROJE ADI:</Text> {projeAdi || '-'}</Text>
+                  <Text style={styles.boxTitle}>SİPARİŞ KOŞULLARI</Text>
+                  <Text style={styles.boxText}><Text style={styles.bold}>PROJE:</Text> {projeAdi || '-'}</Text>
                   <Text style={styles.boxText}><Text style={styles.bold}>NAKLİYE:</Text> {nakliye}</Text>
                   <Text style={styles.boxText}><Text style={styles.bold}>PARA BİRİMİ:</Text> {paraBirimi}</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>ÖDEME ŞEKLİ:</Text> {odemeSekli}</Text>
-                  <Text style={styles.boxText}><Text style={styles.bold}>MENŞEİ:</Text> {mensei}</Text>
+                  <Text style={styles.boxText}><Text style={styles.bold}>ÖDEME:</Text> {odemeSekli}</Text>
                   <Text style={styles.boxText}><Text style={styles.bold}>TESLİM:</Text> {teslimGun}</Text>
                 </View>
               </View>
@@ -516,11 +437,11 @@ export default function Index() {
               {/* Tablo */}
               <View style={styles.table}>
                 <View style={styles.tableHdr}>
-                  <Text style={[styles.th, { width: 36, textAlign: 'center' }]}>S.NO</Text>
-                  <Text style={[styles.th, { flex: 2 }]}>SİSTEM / HİZMET</Text>
-                  <Text style={[styles.th, { width: 50, textAlign: 'center' }]}>ADET</Text>
-                  <Text style={[styles.th, { width: 75, textAlign: 'right' }]}>BİRİM</Text>
-                  <Text style={[styles.th, { width: 75, textAlign: 'right' }]}>TOPLAM</Text>
+                  <Text style={[styles.th, { width: 32, textAlign: 'center' }]}>#</Text>
+                  <Text style={[styles.th, { flex: 2 }]}>HİZMET / ÜRÜN</Text>
+                  <Text style={[styles.th, { width: 45, textAlign: 'center' }]}>ADET</Text>
+                  <Text style={[styles.th, { width: 70, textAlign: 'right' }]}>BİRİM</Text>
+                  <Text style={[styles.th, { width: 70, textAlign: 'right' }]}>TOPLAM</Text>
                 </View>
                 {items.length === 0 ? (
                   <View style={styles.tableEmptyRow}>
@@ -531,26 +452,28 @@ export default function Index() {
                     const lineTotal = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
                     return (
                       <View key={it.id} style={styles.tableRow}>
-                        <Text style={[styles.td, { width: 36, textAlign: 'center' }]}>{idx + 1}</Text>
+                        <Text style={[styles.td, { width: 32, textAlign: 'center' }]}>{idx + 1}</Text>
                         <View style={[styles.td, { flex: 2 }]}>
                           <Text style={styles.tdBold} numberOfLines={2}>{it.urunAdi || 'İsimsiz Ürün'}</Text>
-                          <Text style={styles.tdSub} numberOfLines={1}>{it.kategori} {it.aciklama ? `• ${it.aciklama}` : ''}</Text>
+                          {it.aciklama ? <Text style={styles.tdSub} numberOfLines={1}>{it.aciklama}</Text> : null}
                         </View>
-                        <Text style={[styles.td, { width: 50, textAlign: 'center' }]} numberOfLines={1}>{it.adet} {it.birim}</Text>
-                        <Text style={[styles.td, { width: 75, textAlign: 'right' }]} numberOfLines={1}>{Number(it.birimFiyat).toLocaleString('tr-TR')} {currencySymbol}</Text>
-                        <Text style={[styles.td, styles.tdBold, { width: 75, textAlign: 'right' }]} numberOfLines={1}>{lineTotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
+                        <Text style={[styles.td, { width: 45, textAlign: 'center' }]} numberOfLines={1}>{it.adet} {it.birim}</Text>
+                        <Text style={[styles.td, { width: 70, textAlign: 'right' }]} numberOfLines={1}>{Number(it.birimFiyat).toLocaleString('tr-TR')} {currencySymbol}</Text>
+                        <Text style={[styles.td, styles.tdBold, { width: 70, textAlign: 'right' }]} numberOfLines={1}>{lineTotal.toLocaleString('tr-TR')} {currencySymbol}</Text>
                       </View>
                     );
                   })
                 )}
               </View>
 
-              <Text style={styles.warnText}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR. KDV HARİÇ FİYATTIR</Text>
+              <Text style={styles.warnText}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR. KDV HARİÇTİR.</Text>
 
               <View style={styles.sheetFooterGrid}>
                 <View style={styles.sheetNotesBox}>
-                  <Text style={styles.boxTitle}>ÖZEL NOTLAR & SATIŞ DETAYLARI</Text>
+                  <Text style={styles.boxTitle}>ÖZEL NOTLAR</Text>
                   <Text style={styles.notesText}>{notlar}</Text>
+                  <Text style={[styles.boxTitle, { marginTop: 8 }]}>BANKA HESAPLARI</Text>
+                  <Text style={styles.notesText}>{company.bankaBilgileri}</Text>
                 </View>
                 <View style={styles.sheetTotalsBox}>
                   <View style={styles.totRow}>
@@ -579,32 +502,143 @@ export default function Index() {
               </View>
             </View>
 
+            {/* WhatsApp ve Paylaşım butonları */}
             <View style={styles.actionRow}>
               <TouchableOpacity
                 testID="whatsapp-share-btn"
                 style={[styles.actionBtn, { backgroundColor: '#25D366' }]}
                 onPress={() => {
                   Share.share({
-                    message: `Sayın ${musFirma || 'Müşterimiz'}, ${teklifNo} nolu ${genelToplam.toLocaleString('tr-TR')} ${currencySymbol} tutarındaki teklifimiz hazırdır. Proje: ${projeAdi}`
+                    message: `Teklifiniz ekte yer almaktadır. Sayın ${musFirma || 'Müşterimiz'}, ${teklifNo} nolu ${genelToplam.toLocaleString('tr-TR')} ${currencySymbol} tutarındaki teklifimiz hazırdır.`
                   });
                 }}
               >
                 <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-                <Text style={styles.actionBtnText}>WhatsApp İle Paylaş</Text>
+                <Text style={styles.actionBtnText}>WhatsApp'ta Paylaş</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                testID="save-quote-btn"
+                testID="back-to-editor-btn"
                 style={[styles.actionBtn, { backgroundColor: '#3a3b40' }]}
-                onPress={handleSaveAndShare}
+                onPress={() => setActiveTab('editor')}
               >
-                <Ionicons name="save-outline" size={16} color="#fff" />
-                <Text style={styles.actionBtnText}>Kaydet</Text>
+                <Ionicons name="create-outline" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Düzenlemeye Dön</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
         )}
 
+        {/* 3. ÜRÜN / KALEM YÖNETİMİ */}
+        {activeTab === 'products' && (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.secHeader}>ŞİRKET ÜRÜN / HİZMET KATALOĞU</Text>
+              <TouchableOpacity
+                testID="add-product-modal-open"
+                style={styles.miniAddBtn}
+                onPress={() => setShowAddProductModal(true)}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.miniAddBtnText}>Yeni Kalem</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.infoSubText}>Buraya kaydettiğiniz kalemleri teklif hazırlarken tek tıkla ekleyebilirsiniz.</Text>
+
+            {catalog.map((prod) => (
+              <View key={prod.id} style={styles.catalogCard} testID={`catalog-item-${prod.id}`}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.catalogCat}>{prod.kategori}</Text>
+                  <Text style={styles.catalogTitle}>{prod.urunAdi}</Text>
+                  <Text style={styles.catalogPrice}>{prod.birimFiyat} USD / {prod.birim}</Text>
+                </View>
+                <TouchableOpacity
+                  testID={`add-to-quote-${prod.id}`}
+                  style={styles.addQuoteBtn}
+                  onPress={() => {
+                    handleAddCatalogItemToQuote(prod);
+                    setActiveTab('editor');
+                  }}
+                >
+                  <Ionicons name="add-circle" size={20} color="#2563eb" />
+                  <Text style={styles.addQuoteText}>Teklife Ekle</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* 4. ŞİRKET PROFİLİ (ŞİRKET AYARLARI) */}
+        {activeTab === 'company' && (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.secHeader}>ŞİRKET PROFİLİ & LOGO AYARLARI</Text>
+            <Text style={styles.infoSubText}>Buradaki bilgiler ve logo tüm tekliflerde ve önizlemede otomatik yer alır.</Text>
+
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Şirket Adı</Text>
+              <TextInput
+                style={styles.input}
+                value={company.sirketAdi}
+                onChangeText={(val) => setCompany({ ...company, sirketAdi: val })}
+              />
+            </View>
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Şirket Logo URL (Görsel Bağlantısı)</Text>
+              <TextInput
+                style={styles.input}
+                value={company.logoUrl}
+                onChangeText={(val) => setCompany({ ...company, logoUrl: val })}
+                placeholder="https://..."
+              />
+            </View>
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Şirket Adresi</Text>
+              <TextInput
+                style={styles.input}
+                value={company.adres}
+                onChangeText={(val) => setCompany({ ...company, adres: val })}
+              />
+            </View>
+            <View style={styles.row2}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
+                <Text style={styles.label}>Telefon</Text>
+                <TextInput
+                  style={styles.input}
+                  value={company.telefon}
+                  onChangeText={(val) => setCompany({ ...company, telefon: val })}
+                />
+              </View>
+              <View style={[styles.fgroup, { flex: 1 }]}>
+                <Text style={styles.label}>E-posta</Text>
+                <TextInput
+                  style={styles.input}
+                  value={company.email}
+                  onChangeText={(val) => setCompany({ ...company, email: val })}
+                />
+              </View>
+            </View>
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Banka Hesap Bilgileri</Text>
+              <TextInput
+                style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+                multiline
+                value={company.bankaBilgileri}
+                onChangeText={(val) => setCompany({ ...company, bankaBilgileri: val })}
+              />
+            </View>
+
+            <TouchableOpacity
+              testID="save-company-btn"
+              style={styles.primaryBtn}
+              onPress={() => showToast('Şirket profili güncellendi!')}
+            >
+              <Ionicons name="checkmark-done" size={16} color="#fff" />
+              <Text style={styles.primaryBtnText}>Şirket Bilgilerini Kaydet</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        {/* 5. GEÇMİŞ & MÜŞTERİLER */}
         {activeTab === 'history' && (
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <Text style={styles.secHeader}>KAYITLI MÜŞTERİLER ({customers.length})</Text>
@@ -640,6 +674,61 @@ export default function Index() {
         )}
       </View>
 
+      {/* Yeni Kalem Ekleme Modalı */}
+      <Modal visible={showAddProductModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Kataloğa Yeni Kalem Ekle</Text>
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Kategori</Text>
+              <TextInput style={styles.input} value={newCat} onChangeText={setNewCat} />
+            </View>
+            <View style={styles.fgroup}>
+              <Text style={styles.label}>Ürün / Hizmet Adı</Text>
+              <TextInput style={styles.input} placeholder="Örn: Özel Danışmanlık" value={newUrunAdi} onChangeText={setNewUrunAdi} />
+            </View>
+            <View style={styles.row2}>
+              <View style={[styles.fgroup, { flex: 1 }]}>
+                <Text style={styles.label}>Birim</Text>
+                <TextInput style={styles.input} value={newBirim} onChangeText={setNewBirim} />
+              </View>
+              <View style={[styles.fgroup, { flex: 1 }]}>
+                <Text style={styles.label}>Birim Fiyat</Text>
+                <TextInput style={styles.input} keyboardType="numeric" value={newBirimFiyat} onChangeText={setNewBirimFiyat} />
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { flex: 1, backgroundColor: '#64748b', marginTop: 0 }]}
+                onPress={() => setShowAddProductModal(false)}
+              >
+                <Text style={styles.primaryBtnText}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="save-catalog-item-btn"
+                style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}
+                onPress={() => {
+                  if (!newUrunAdi.trim()) return;
+                  const newItem: ProductItem = {
+                    id: 'cat-' + Date.now(),
+                    kategori: newCat,
+                    urunAdi: newUrunAdi,
+                    birim: newBirim,
+                    birimFiyat: Number(newBirimFiyat) || 0
+                  };
+                  setCatalog([...catalog, newItem]);
+                  setShowAddProductModal(false);
+                  setNewUrunAdi('');
+                  showToast('Kalem kataloğa eklendi!');
+                }}
+              >
+                <Text style={styles.primaryBtnText}>Kaydet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Bottom Tab Bar */}
       <View style={styles.tabBar} testID="bottom-tab-bar">
         <TouchableOpacity
@@ -647,12 +736,8 @@ export default function Index() {
           style={[styles.tabItem, activeTab === 'editor' && styles.tabItemActive]}
           onPress={() => setActiveTab('editor')}
         >
-          <Ionicons
-            name="create-outline"
-            size={20}
-            color={activeTab === 'editor' ? '#3a3b40' : '#6b7280'}
-          />
-          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.tabLabelActive]} numberOfLines={1}>Form</Text>
+          <Ionicons name="create-outline" size={20} color={activeTab === 'editor' ? '#2563eb' : '#6b7280'} />
+          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.tabLabelActive]} numberOfLines={1}>Teklif</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -660,12 +745,26 @@ export default function Index() {
           style={[styles.tabItem, activeTab === 'preview' && styles.tabItemActive]}
           onPress={() => setActiveTab('preview')}
         >
-          <Ionicons
-            name="eye-outline"
-            size={20}
-            color={activeTab === 'preview' ? '#3a3b40' : '#6b7280'}
-          />
+          <Ionicons name="eye-outline" size={20} color={activeTab === 'preview' ? '#2563eb' : '#6b7280'} />
           <Text style={[styles.tabLabel, activeTab === 'preview' && styles.tabLabelActive]} numberOfLines={1}>Önizleme</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          testID="tab-products"
+          style={[styles.tabItem, activeTab === 'products' && styles.tabItemActive]}
+          onPress={() => setActiveTab('products')}
+        >
+          <Ionicons name="library-outline" size={20} color={activeTab === 'products' ? '#2563eb' : '#6b7280'} />
+          <Text style={[styles.tabLabel, activeTab === 'products' && styles.tabLabelActive]} numberOfLines={1}>Katalog</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          testID="tab-company"
+          style={[styles.tabItem, activeTab === 'company' && styles.tabItemActive]}
+          onPress={() => setActiveTab('company')}
+        >
+          <Ionicons name="business-outline" size={20} color={activeTab === 'company' ? '#2563eb' : '#6b7280'} />
+          <Text style={[styles.tabLabel, activeTab === 'company' && styles.tabLabelActive]} numberOfLines={1}>Şirket</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -673,11 +772,7 @@ export default function Index() {
           style={[styles.tabItem, activeTab === 'history' && styles.tabItemActive]}
           onPress={() => setActiveTab('history')}
         >
-          <Ionicons
-            name="time-outline"
-            size={20}
-            color={activeTab === 'history' ? '#3a3b40' : '#6b7280'}
-          />
+          <Ionicons name="time-outline" size={20} color={activeTab === 'history' ? '#2563eb' : '#6b7280'} />
           <Text style={[styles.tabLabel, activeTab === 'history' && styles.tabLabelActive]} numberOfLines={1}>Geçmiş</Text>
         </TouchableOpacity>
       </View>
@@ -688,17 +783,17 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e9edf2'
+    backgroundColor: '#f8fafc'
   },
   toast: {
     position: 'absolute',
     top: 45,
     alignSelf: 'center',
-    backgroundColor: '#232428',
+    backgroundColor: '#0f172a',
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: 20,
     zIndex: 9999,
     gap: 6,
@@ -717,7 +812,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#d8dee6'
+    borderBottomColor: '#e2e8f0'
   },
   logoWrap: {
     flexDirection: 'row',
@@ -726,45 +821,37 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8
   },
-  logoBadge: {
-    width: 32,
-    height: 32,
-    backgroundColor: '#3a3b40',
+  brandLogoImg: {
+    width: 34,
+    height: 34,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0
-  },
-  logoText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
   },
   brandTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#3a3b40'
+    color: '#0f172a'
   },
   brandSubtitle: {
     fontSize: 10,
-    color: '#6b7280'
+    color: '#64748b'
   },
-  resetBtnHeader: {
+  settingsHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f4f6f9',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 5,
+    backgroundColor: '#eff6ff',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    gap: 3,
-    flexShrink: 0
+    borderColor: '#bfdbfe',
+    gap: 4
   },
-  resetBtnHeaderText: {
+  settingsHeaderText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#3a3b40'
+    color: '#2563eb'
   },
   body: {
     flex: 1
@@ -775,34 +862,63 @@ const styles = StyleSheet.create({
   },
   secHeader: {
     fontSize: 11.5,
-    fontWeight: '700',
-    color: '#3a3b40',
+    fontWeight: '800',
+    color: '#2563eb',
     marginTop: 14,
     marginBottom: 6,
     paddingBottom: 3,
     borderBottomWidth: 2,
-    borderBottomColor: '#3a3b40',
+    borderBottomColor: '#2563eb',
     textTransform: 'uppercase'
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2563eb',
+    paddingBottom: 3
+  },
+  miniAddBtn: {
+    backgroundColor: '#2563eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    gap: 2
+  },
+  miniAddBtnText: {
+    color: '#fff',
+    fontSize: 10.5,
+    fontWeight: '700'
+  },
+  infoSubText: {
+    fontSize: 11,
+    color: '#64748b',
+    marginBottom: 10
   },
   fgroup: {
     marginBottom: 8
   },
   label: {
     fontSize: 10.5,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#475569',
     marginBottom: 3,
     textTransform: 'uppercase'
   },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    borderRadius: 4,
-    paddingHorizontal: 8,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 13.5,
-    color: '#1a1a1a'
+    fontSize: 13,
+    color: '#0f172a'
   },
   row2: {
     flexDirection: 'row',
@@ -818,19 +934,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    borderRadius: 4,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center'
   },
   currChipActive: {
-    backgroundColor: '#3a3b40',
-    borderColor: '#3a3b40'
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb'
   },
   currText: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#6b7280'
+    color: '#64748b'
   },
   currTextActive: {
     color: '#fff'
@@ -838,24 +954,24 @@ const styles = StyleSheet.create({
   emptyItemsBox: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d8dee6',
+    borderColor: '#cbd5e1',
     borderStyle: 'dashed',
-    borderRadius: 5,
+    borderRadius: 6,
     padding: 12,
     alignItems: 'center',
     marginBottom: 8
   },
   emptyItemsText: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#64748b',
     textAlign: 'center'
   },
   itemCard: {
     backgroundColor: '#fff',
-    borderRadius: 5,
+    borderRadius: 6,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#d8dee6',
+    borderColor: '#cbd5e1',
     marginBottom: 8
   },
   itemCardHdr: {
@@ -867,36 +983,37 @@ const styles = StyleSheet.create({
   itemCardTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#3a3b40',
+    color: '#2563eb',
     textTransform: 'uppercase'
   },
   addItemBtn: {
     width: '100%',
-    padding: 9,
-    backgroundColor: '#fff',
+    padding: 10,
+    backgroundColor: '#eff6ff',
     borderWidth: 1.5,
-    borderColor: '#3a3b40',
-    borderRadius: 5,
+    borderColor: '#2563eb',
+    borderStyle: 'dashed',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
     marginBottom: 12
   },
   addItemBtnText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#3a3b40'
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563eb'
   },
   primaryBtn: {
-    backgroundColor: '#3a3b40',
+    backgroundColor: '#2563eb',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
-    borderRadius: 5,
+    borderRadius: 6,
     gap: 6,
-    marginTop: 8
+    marginTop: 10
   },
   primaryBtnText: {
     color: '#fff',
@@ -905,38 +1022,44 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#fff',
-    borderRadius: 6,
+    borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#d8dee6'
+    borderColor: '#cbd5e1'
   },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderBottomWidth: 2.5,
-    borderBottomColor: '#3a3b40',
+    borderBottomColor: '#2563eb',
     paddingBottom: 8,
     marginBottom: 10
+  },
+  previewLogoImg: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
   },
   sheetCompanyName: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#3a3b40'
+    color: '#0f172a'
   },
   sheetCompanySub: {
-    fontSize: 10,
-    color: '#333',
-    marginTop: 2
+    fontSize: 9.5,
+    color: '#64748b'
   },
   sheetDocTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#232428',
+    color: '#0f172a',
     textAlign: 'right'
   },
   sheetMeta: {
-    fontSize: 10,
-    color: '#333',
+    fontSize: 9.5,
+    color: '#475569',
     textAlign: 'right'
   },
   infoGrid: {
@@ -947,25 +1070,25 @@ const styles = StyleSheet.create({
   infoBox: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    borderRadius: 4,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
     padding: 6,
-    backgroundColor: '#f4f6f9'
+    backgroundColor: '#f8fafc'
   },
   boxTitle: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
-    backgroundColor: '#3a3b40',
-    paddingVertical: 4,
+    backgroundColor: '#2563eb',
+    paddingVertical: 3,
     paddingHorizontal: 6,
-    borderRadius: 2,
+    borderRadius: 3,
     marginBottom: 4,
     textTransform: 'uppercase'
   },
   boxText: {
-    fontSize: 10,
-    color: '#333',
+    fontSize: 9.5,
+    color: '#0f172a',
     marginBottom: 2,
     lineHeight: 14
   },
@@ -974,14 +1097,14 @@ const styles = StyleSheet.create({
   },
   table: {
     borderWidth: 1,
-    borderColor: '#3a3b40',
-    borderRadius: 4,
+    borderColor: '#2563eb',
+    borderRadius: 6,
     overflow: 'hidden',
     marginBottom: 6
   },
   tableHdr: {
     flexDirection: 'row',
-    backgroundColor: '#3a3b40',
+    backgroundColor: '#2563eb',
     paddingVertical: 5,
     paddingHorizontal: 4
   },
@@ -996,32 +1119,32 @@ const styles = StyleSheet.create({
   },
   tableEmptyText: {
     fontSize: 11,
-    color: '#6b7280'
+    color: '#64748b'
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#d8dee6',
+    borderBottomColor: '#e2e8f0',
     paddingVertical: 6,
     paddingHorizontal: 4,
     alignItems: 'center'
   },
   td: {
     fontSize: 10,
-    color: '#1a1a1a'
+    color: '#0f172a'
   },
   tdBold: {
     fontWeight: '700'
   },
   tdSub: {
     fontSize: 9,
-    color: '#6b7280'
+    color: '#64748b'
   },
   warnText: {
-    backgroundColor: '#c0392b',
+    backgroundColor: '#dc2626',
     color: '#fff',
     textAlign: 'center',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '700',
     padding: 5,
     marginBottom: 10
@@ -1034,14 +1157,14 @@ const styles = StyleSheet.create({
   sheetNotesBox: {
     flex: 1.2,
     borderWidth: 1,
-    borderColor: '#d8dee6',
+    borderColor: '#e2e8f0',
     padding: 6,
-    backgroundColor: '#f4f6f9',
-    borderRadius: 4
+    backgroundColor: '#f8fafc',
+    borderRadius: 6
   },
   notesText: {
-    fontSize: 9.5,
-    color: '#333',
+    fontSize: 9,
+    color: '#475569',
     lineHeight: 13
   },
   sheetTotalsBox: {
@@ -1054,44 +1177,44 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: '#d8dee6',
+    borderColor: '#e2e8f0',
     backgroundColor: '#fff',
-    borderRadius: 3
+    borderRadius: 4
   },
   totLabel: {
     fontSize: 9.5,
-    color: '#6b7280'
+    color: '#64748b'
   },
   totVal: {
     fontSize: 9.5,
     fontWeight: '700',
-    color: '#1a1a1a'
+    color: '#0f172a'
   },
   totGrand: {
-    backgroundColor: '#e9e9ea',
-    borderColor: '#3a3b40'
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb'
   },
   grandLabel: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
-    color: '#232428'
+    color: '#fff'
   },
   grandVal: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
-    color: '#232428'
+    color: '#fff'
   },
   signBox: {
     borderWidth: 1,
-    borderColor: '#d8dee6',
-    height: 50,
+    borderColor: '#e2e8f0',
+    height: 45,
     padding: 5,
     marginTop: 8,
-    borderRadius: 4
+    borderRadius: 6
   },
   signText: {
     fontSize: 9.5,
-    color: '#6b7280',
+    color: '#64748b',
     fontWeight: '600'
   },
   actionRow: {
@@ -1105,7 +1228,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 5,
+    borderRadius: 6,
     gap: 5
   },
   actionBtnText: {
@@ -1113,17 +1236,81 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 12
   },
+  catalogCard: {
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  catalogCat: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563eb',
+    textTransform: 'uppercase'
+  },
+  catalogTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 2
+  },
+  catalogPrice: {
+    fontSize: 11.5,
+    color: '#475569',
+    marginTop: 2
+  },
+  addQuoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    gap: 4
+  },
+  addQuoteText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563eb'
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#cbd5e1'
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
   emptySubText: {
     fontSize: 11.5,
-    color: '#6b7280',
+    color: '#64748b',
     marginBottom: 8
   },
   historyCard: {
     backgroundColor: '#fff',
-    borderRadius: 5,
+    borderRadius: 6,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#d8dee6',
+    borderColor: '#cbd5e1',
     marginBottom: 6
   },
   historyCardTop: {
@@ -1134,21 +1321,21 @@ const styles = StyleSheet.create({
   historyNo: {
     fontSize: 10.5,
     fontWeight: '700',
-    color: '#6b7280'
+    color: '#64748b'
   },
   historyAmount: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: '#3a3b40'
+    color: '#2563eb'
   },
   historyFirma: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#232428'
+    color: '#0f172a'
   },
   historyProj: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#64748b',
     marginTop: 1
   },
   tabBar: {
@@ -1160,7 +1347,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#d8dee6',
+    borderTopColor: '#e2e8f0',
     elevation: 8
   },
   tabItem: {
@@ -1170,16 +1357,15 @@ const styles = StyleSheet.create({
   },
   tabItemActive: {
     borderTopWidth: 2,
-    borderTopCode: '#3a3b40',
-    borderTopColor: '#3a3b40'
+    borderTopColor: '#2563eb'
   },
   tabLabel: {
     fontSize: 10,
-    color: '#6b7280',
+    color: '#64748b',
     marginTop: 1
   },
   tabLabelActive: {
-    color: '#3a3b40',
+    color: '#2563eb',
     fontWeight: '700'
   }
 });

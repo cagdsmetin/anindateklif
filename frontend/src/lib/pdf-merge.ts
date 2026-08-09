@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { PDFDocument } from 'pdf-lib';
+// NOTE: `pdf-lib` bundles an outdated `tslib@1.x` that crashes RN Web (`__extends` undefined).
+// We defer the import to a lazy require() so Metro's web bundle never touches the module.
+// On web we early-return with the base PDF (no merge available in browser MVP).
 
 /**
  * A single user-picked attachment held only in local component state.
@@ -64,6 +66,14 @@ export async function mergeAttachmentsIntoPdf(
   attachments: AttachmentT[],
 ): Promise<string> {
   if (!attachments || attachments.length === 0) return basePdfUri;
+
+  // Web: pdf-lib's bundled tslib is broken in Metro's web output — bypass merging
+  // entirely on the browser. Native (iOS/Android) still gets full merge support.
+  if (Platform.OS === 'web') return basePdfUri;
+
+  // Lazy-require so the web bundle never resolves pdf-lib.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PDFDocument } = require('pdf-lib') as typeof import('pdf-lib');
 
   try {
     const baseB64 = await readAsBase64(basePdfUri);

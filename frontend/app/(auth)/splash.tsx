@@ -1,8 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   StyleSheet,
   Text,
@@ -45,75 +42,88 @@ const SLIDES: Slide[] = [
 
 export default function SplashOnboarding() {
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const [index, setIndex] = useState(0);
-  const listRef = useRef<FlatList<Slide>>(null);
-
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (i !== index) setIndex(i);
-  };
 
   const goRegister = () => router.replace('/register');
   const goLogin = () => router.replace('/login');
 
   const next = () => {
-    if (index < SLIDES.length - 1) {
-      listRef.current?.scrollToIndex({ index: index + 1, animated: true });
-    } else {
-      goRegister();
-    }
+    if (index < SLIDES.length - 1) setIndex(index + 1);
+    else goRegister();
   };
+
+  const prev = () => {
+    if (index > 0) setIndex(index - 1);
+  };
+
+  const slide = SLIDES[index];
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      {/* Header */}
       <View style={s.topBar}>
         <View style={s.brandRow}>
           <Text style={s.brand}>Anında</Text>
           <Text style={s.brandAccent}> Teklif</Text>
         </View>
-        <TouchableOpacity onPress={goLogin} accessibilityLabel="Geç" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+        <TouchableOpacity
+          onPress={goLogin}
+          accessibilityLabel="Geç"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          testID="splash-skip"
+        >
           <Text style={s.skip}>Geç</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        ref={listRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.key}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-        renderItem={({ item }) => (
-          <View style={[s.slide, { width, minHeight: height * 0.55 }]}>
-            <View style={s.iconWrap}>
-              <View style={s.iconGlow} />
-              <View style={s.iconInner}>
-                <Ionicons name={item.icon} size={64} color={authTheme.primary} />
-              </View>
-            </View>
-            <Text style={s.title}>{item.title}</Text>
-            <Text style={s.desc}>{item.desc}</Text>
+      {/* Slide body */}
+      <View style={[s.slide, { minHeight: height * 0.55 }]}>
+        <View style={s.iconWrap}>
+          <View style={s.iconGlow} />
+          <View style={s.iconInner}>
+            <Ionicons name={slide.icon} size={64} color={authTheme.primary} />
           </View>
-        )}
-      />
-
-      <View style={s.dotsWrap}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              s.dot,
-              i === index ? s.dotActive : s.dotInactive,
-              i === index && { width: 26 },
-            ]}
-          />
-        ))}
+        </View>
+        <Text style={s.title}>{slide.title}</Text>
+        <Text style={s.desc}>{slide.desc}</Text>
       </View>
 
+      {/* Left/right swipe zones for accessibility */}
+      <View style={s.navRow}>
+        <TouchableOpacity
+          onPress={prev}
+          disabled={index === 0}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          style={[s.arrowBtn, index === 0 && s.arrowBtnDisabled]}
+          testID="splash-prev"
+        >
+          <Ionicons name="chevron-back" size={22} color={index === 0 ? authTheme.textMuted : authTheme.text} />
+        </TouchableOpacity>
+
+        <View style={s.dotsWrap}>
+          {SLIDES.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                s.dot,
+                i === index ? [s.dotActive, { width: 26 }] : s.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+
+        <TouchableOpacity
+          onPress={next}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          style={s.arrowBtn}
+          testID="splash-arrow-next"
+        >
+          <Ionicons name="chevron-forward" size={22} color={authTheme.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Bottom CTA */}
       <View style={s.bottom}>
         <TouchableOpacity
           activeOpacity={0.9}
@@ -156,11 +166,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
-  iconWrap: {
-    marginBottom: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  iconWrap: { marginBottom: 36, alignItems: 'center', justifyContent: 'center' },
   iconGlow: {
     position: 'absolute',
     width: 220,
@@ -202,12 +208,28 @@ const s = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 320,
   },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 20,
+  },
+  arrowBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowBtnDisabled: { opacity: 0.35 },
   dotsWrap: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 24,
   },
   dot: { height: 6, borderRadius: 3 },
   dotActive: { backgroundColor: authTheme.dotActive },

@@ -1,12 +1,22 @@
 # Anında Teklif — SaaS PRD
 
 ## Vision
-Profesyonel B2B teklif hazırlama SaaS uygulaması. Türkçe. Emergent Google Auth ile giriş, çoklu firma (multi-tenant), 3-mod dinamik kalem sistemi, SKYART PDF taslağıyla piksel uyumlu çıktı ve WhatsApp paylaşım.
+Profesyonel B2B teklif hazırlama SaaS uygulaması. Türkçe. **JWT email/şifre auth** ile giriş, çoklu firma (multi-tenant), 3-mod dinamik kalem sistemi, SKYART PDF taslağıyla piksel uyumlu çıktı ve WhatsApp paylaşım. Yeni kullanıcılar için 3 slaytlı splash + 6 adımlı kurulum sihirbazı.
 
-## Auth
-- Emergent Google Auth (POST /api/auth/session, GET /api/auth/me, POST /api/auth/logout)
-- Bearer token (session_token) → `expo-secure-store` (mobile) / `localStorage` (web)
-- Route guard: unauthenticated → `/login`; authenticated → `/(tabs)`
+## Auth (JWT — 2026-06 rewrite)
+- Endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `GET/PATCH /api/auth/me`, `POST /api/auth/logout`
+- Password rules (backend + frontend live checklist): 8+ karakter, küçük harf, büyük harf, rakam, sembol
+- Bearer JWT access token (7 gün) → `expo-secure-store` (mobile) / `localStorage` (web) under key `session_token_v1`
+- Route guard 3 durumlu: unauthenticated → `/(auth)/splash`; authenticated ama `!onboarding_completed` → `/(setup)/wizard`; tamamlanmış → `/(tabs)`
+
+## Onboarding — 6 Step Wizard (`app/(setup)/wizard.tsx`)
+1. **Ülke seçimi** — TR/GB/US/CA, currency + tax label PATCH /auth/me
+2. **İşletme kimliği** — Şirket adı + İmza metni
+3. **Logo yükleme** (opsiyonel) — expo-image-picker base64
+4. **İletişim & Vergi** — adres, telefon, vergi dairesi, vergi no
+5. **Banka hesapları** (multi-add) — banka + hesap sahibi + IBAN
+6. **İlk sistem tipi** — ad + virgülle ayrılmış alanlar (opsiyonel)
+Final adım: `POST /api/companies` + `PATCH /api/auth/me {onboarding_completed:true}`
 
 ## Multi-Tenancy
 Her koleksiyon dokümanında `userId` stamped. Her endpoint `Depends(get_current_user)` ile korunur ve queries userId ile filtrelenir. Cross-tenant read/write mümkün değil.

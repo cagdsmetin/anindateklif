@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 8 MEDIUM bug FIXED and VERIFIED. The local toast overlay added to /app/frontend/app/customer-add.tsx (lines 30 destructure `toast` from useApp, 93-98 render local toast pill, 306-321 styles) now correctly displays every showToast call while the user is still on the Müşteri Ekle screen. All three scenarios pass on 390x844 mobile viewport (public preview URL): (a) tapping 'Müşteriyi Kaydet' with empty required fields → toast pill 'Ad Soyad ve Telefon zorunludur' visible at top of screen with navy background + checkmark icon (verified via testID='toast-msg', screenshot it9_toast_validation.png); (b) filling valid Ad Soyad + Telefon and saving → 'Müşteri kaydedildi' toast is visible for ~300ms before router.back() lands on /customers where the same toast continues to render via TopHeader until the AppContext 2.5s auto-clear (screenshot it9_toast_success.png); (c) invalid inputs (1-char name, empty phone) → same validation toast + red borders (rgb(220,38,38)) on both required inputs. Full end-to-end regression on the customer flow ALSO passes: Müşteriler tab empty-state message 'Henüz müşteri yok. Yukarıdaki mavi buton ile ekleyebilirsin.' renders, testID='customer-add-btn' full-width blue CTA at the top of the list correctly routes to /customer-add via history-preserving router.push (no more GO_BACK warning when nav'd through the tab), save flow persists to /api/customers, router.back() returns to /customers where the new row appears with correct card layout (avatar circle + capital letter T, name + phone, trash + chevron icons, and 'TOPLAM TEKLİF 0 Adet' / 'TOPLAM HACİM ₺0' divider row — screenshot it9_full_flow.png). Backend pytest: 41/42 pass (10.62s) — the ONE failure (TestMultiTenancy::test_userB_cannot_update_userA_quote_ekler) is a pre-existing test-order dependency in test_phase1_features.py:225 (asserts on `pytest.p1_quote_id` which is only set by an earlier test class; xdist parallel workers may split the classes across processes so the module-level global is None in worker gw1). NOT a regression from the customer-add change — the customer-add change touches ONLY frontend and is unrelated to /api/quotes. No new deprecated packages detected (pre-existing shadow*/textShadow*/pointerEvents RN Web 0.19 warnings still present, non-blocking). No SafeAreaView issues detected. 0 page errors during the run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "N/A — test file only",
+        "issue": "backend/tests/test_phase1_features.py::TestMultiTenancy::test_userB_cannot_update_userA_quote_ekler fails intermittently (order-dependent). It reads `pytest.p1_quote_id` which is set by a different test class (TestQuoteEklerCRUD.test_post_quote_with_ekler_persists at line ~150). When pytest-xdist splits classes across workers, the global is missing in worker gw1 and the assert `qid` fires. Fix: either (a) create the quote inline in this test via sessA, or (b) restructure to make sessA a class-scoped fixture and generate the quote id in the class setup. Pre-existing issue — NOT related to iteration_9 customer-add toast fix."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_saas.py",
+    "/app/backend/tests/test_customers_regression.py",
+    "/app/backend/tests/test_phase1_features.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/it9_toast_validation.png",
+    "/app/test_reports/it9_toast_success.png",
+    "/app/test_reports/it9_customers_after.png",
+    "/app/test_reports/it9_full_flow.png"
+  ],
+  "action_items": [
+    "(OPTIONAL, LOW) Stabilise test_phase1_features.py::TestMultiTenancy::test_userB_cannot_update_userA_quote_ekler by generating the quote id inline instead of relying on module-level `pytest.p1_quote_id`. Pre-existing, does not block the customer-add fix.",
+    "(CARRY-OVER, LOW from iter7-8) Splash slide advance on react-native-web still doesn't advance beyond slide 1 on tap. Non-blocking — /register is directly reachable.",
+    "(CARRY-OVER, LOW from iter5-8) Migrate shadow*/textShadow*/pointerEvents style props to boxShadow/textShadow/style.pointerEvents equivalents for RN Web 0.19+ (console noise only).",
+    "(FUTURE ARCHITECTURE, LOW) The Toast render is now duplicated between TopHeader.tsx and customer-add.tsx. If more screens skip TopHeader, consider extracting a single <ToastHost/> mounted once in /app/frontend/app/_layout.tsx so every screen (including modals) benefits — but current minimal fix per user's request is fine."
+  ],
+  "critical_code_review_comments": [
+    "customer-add.tsx:30 — destructure `toast` from useApp() context. Clean, matches TopHeader.tsx usage.",
+    "customer-add.tsx:93-98 — local toast overlay rendered as first child of SafeAreaView with pointerEvents='none' (prevents overlay from swallowing taps), zIndex:9999, elevation:12. Correctly matches TopHeader.tsx:18-23 visual style (navy background, checkmark icon, white text pill).",
+    "customer-add.tsx:306-321 — styles.toast and styles.toastText are self-contained; use theme.colors.navy and theme.shadow.md just like the source in TopHeader. No divergence risk.",
+    "The fix is truly minimal: only 3 additions (context destructure + JSX overlay + 2 style rules). AppContext.tsx unchanged. TopHeader.tsx unchanged. No side effects on any other screen.",
+    "customer-add.tsx:72-78 — edit/add branch STILL both call api.createCustomer (upsert-key based on companyId+firma). This is a carry-over LOW note from iter8: if a user edits the 'Ad Soyad / Firma Ünvanı' the upsert key changes and a duplicate row is created rather than updating the original. Not touched in this iteration per the user's 'sadece bu iki ekran / minimal' constraint."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "97.6% (41/42 pytest — 1 pre-existing order-dependent flake, unrelated to this iteration's change)",
+    "frontend": "100% — all 3 toast scenarios visible, full customer add/list/persist regression passes, 0 page errors, red-border validation still fires, empty-state message correct, card layout intact."
+  },
+  "seed_data_creation": "Registered two throwaway users during E2E: e2e+it9toast+98b7510a@example.com and e2e+it9full+<uuid>@example.com (both Test1234!, TR/TRY/KDV onboarded, companies TEST_it9_Toast / TEST_it9_Full). Backend pytest suites created their own short-lived users (e2e+*@example.com). All customer rows prefixed TEST_.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The iter8 MEDIUM toast-invisibility bug on /customer-add is FIXED. The fix is a local toast overlay inside customer-add.tsx (not a global ToastHost). If future testers add MORE screens that skip TopHeader (custom headers), they will hit the same class of bug — either reuse TopHeader, add a local overlay like customer-add.tsx does, or push main agent to extract a <ToastHost/> into app/_layout.tsx. Backend regression suite: `EXPO_PUBLIC_BACKEND_URL=<url> pytest /app/backend/tests/ -v` gives 41/42 stable pass (1 pre-existing order-dep flake in test_phase1_features.py:225 that also existed in iter8 — iter8's 42/42 report was against a single-worker or lucky ordering; parallel xdist can split it). Frontend UI recipe: register user via page.evaluate fetch → PATCH /auth/me with country/currency/tax_label/onboarding_completed → POST /companies → localStorage.setItem('session_token_v1', RAW_TOKEN) → goto /(tabs)/customers → use testIDs customer-add-btn, cadd-name, cadd-phone, cadd-email, cadd-company, cadd-address, cadd-save, toast-msg. Delete/chevron TouchableOpacity buttons render as div[role='button'] on RN Web, not <button> — use [data-testid^='delete-cust-'] div selectors (no button tag).",
+  "rca_of_issue": "Iter8 RCA: Toast render was coupled to TopHeader.tsx and customer-add.tsx used a custom back-arrow header. Iter9 FIX (verified): three targeted additions to customer-add.tsx only — (1) line 30 destructures `toast` from useApp() context; (2) lines 93-98 render `{toast ? (<View style={s.toast} testID='toast-msg' pointerEvents='none'><Ionicons name='checkmark-circle'/><Text>{toast}</Text></View>) : null}` as the first child inside SafeAreaView; (3) lines 306-321 add styles.toast (position:absolute, top:8, alignSelf:'center', navy bg, zIndex:9999, elevation:12, shadow.md) and styles.toastText (white 12.5px 700). Confirmed by E2E: DOM now contains the string 'Ad Soyad ve Telefon zorunludur' immediately after tapping the empty-fields Kaydet button (previously absent). Success toast 'Müşteri kaydedildi' is captured mid-flight (300ms after tap, before router.back). Red-border validation still fires on required fields (rgb(220,38,38)) — no side effects on FieldRow error styling. AppContext.tsx untouched — same 2.5s auto-clear timer. TopHeader.tsx untouched — no regression on the 5 tab screens or Firma/Splash/Login/Register/Wizard."
+}

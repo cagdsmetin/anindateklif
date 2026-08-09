@@ -27,7 +27,7 @@ import { api } from '@/src/lib/api';
 export default function CustomerAddScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, reloadCustomers, showToast, customers } = useApp();
+  const { activeCompany, reloadCustomers, showToast, customers, toast } = useApp();
   const params = useLocalSearchParams<{ id?: string }>();
   const editingId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -88,6 +88,15 @@ export default function CustomerAddScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
+      {/* Local toast overlay — this screen uses a custom header instead of TopHeader,
+          so we render the toast pill locally to keep validation/success feedback visible. */}
+      {toast ? (
+        <View style={s.toast} testID="toast-msg" pointerEvents="none">
+          <Ionicons name="checkmark-circle" size={16} color="#fff" />
+          <Text style={s.toastText}>{toast}</Text>
+        </View>
+      ) : null}
+
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
@@ -294,4 +303,20 @@ const s = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  toast: {
+    position: 'absolute',
+    top: 8,
+    alignSelf: 'center',
+    backgroundColor: theme.colors.navy,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 24,
+    zIndex: 9999,
+    gap: 6,
+    elevation: 12,
+    ...theme.shadow.md,
+  },
+  toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

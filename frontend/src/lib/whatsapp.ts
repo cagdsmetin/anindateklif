@@ -1,28 +1,20 @@
 import { Platform, Linking } from 'react-native';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { QuoteT } from './api';
 
 /**
  * Normalize a Turkish phone number to E.164 without '+' (WhatsApp URL-friendly).
- * Accepts:  "0532 111 22 33", "532-111-22-33", "+90 532 111 22 33", "532 111 22 33"
- * Returns:  "905321112233" or "" if invalid.
  */
 export function normalizePhoneForWhatsApp(raw?: string): string {
   const digits = (raw || '').replace(/\D+/g, '');
   if (!digits) return '';
-  // Already contains country code (starts with 90 and 12 digits total)
   if (digits.startsWith('90') && digits.length === 12) return digits;
-  // Local Turkish with leading 0 → strip and prepend 90
   if (digits.length === 11 && digits.startsWith('0')) return '90' + digits.substring(1);
-  // Local Turkish w/o 0 → 10 digits starting with 5
   if (digits.length === 10 && digits.startsWith('5')) return '90' + digits;
-  // Give up on non-Turkish formats — return as-is
   return digits;
 }
 
-/**
- * Compose a WhatsApp-friendly message body for a quote.
- */
 export function composeQuoteWhatsAppMessage(quote: QuoteT, sirketAdi?: string): string {
   const musteri = (quote.musYetkili || quote.musFirma || 'Değerli Müşterimiz').trim();
   const firma = (sirketAdi || 'Firmamız').trim();
@@ -35,56 +27,39 @@ export function composeQuoteWhatsAppMessage(quote: QuoteT, sirketAdi?: string): 
 }
 
 /**
- * Try to open a WhatsApp chat pre-filled with the given message.
- * Returns `true` when a link was launched (native or web).
- *
- * - If `phone` is provided → jumps directly into that chat.
- * - Otherwise → opens the WA chooser so user can pick a contact.
- * - Silently returns false if WhatsApp is not installed / not reachable.
+ * Best-effort deep link into a specific WhatsApp chat, text only.
+ * Kept for the web download-companion tab; NOT used in the primary native flow
+ * because deep links can't attach files (they'd only send text).
  */
 export async function openWhatsAppChat(phone: string, message: string): Promise<boolean> {
   const cleaned = normalizePhoneForWhatsApp(phone);
   const text = encodeURIComponent(message || '');
-
   if (Platform.OS === 'web') {
-    const url = cleaned
-      ? `https://wa.me/${cleaned}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    try {
-      window.open(url, '_blank');
-      return true;
-    } catch {
-      return false;
-    }
+    const url = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
+    try { window.open(url, '_blank'); return true; } catch { return false; }
   }
-
-  // Native: prefer app scheme, fall back to universal https://wa.me link
-  const appUrl = cleaned
-    ? `whatsapp://send?phone=${cleaned}&text=${text}`
-    : `whatsapp://send?text=${text}`;
-  const webUrl = cleaned
-    ? `https://wa.me/${cleaned}?text=${text}`
-    : `https://wa.me/?text=${text}`;
+  const appUrl = cleaned ? `whatsapp://send?phone=${cleaned}&text=${text}` : `whatsapp://send?text=${text}`;
+  const webUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
   try {
-    const canApp = await Linking.canOpenURL(appUrl);
-    if (canApp) {
-      await Linking.openURL(appUrl);
-      return true;
-    }
-    await Linking.openURL(webUrl);
-    return true;
-  } catch {
-    return false;
-  }
+    if (await Linking.canOpenURL(appUrl)) { await Linking.openURL(appUrl); return true; }
+    await Linking.openURL(webUrl); return true;
+  } catch { return false; }
 }
 
 /**
- * Attempt a two-step WhatsApp send flow:
- * 1) Open WA chat with pre-filled message (jumps to the customer directly if `phone` supplied).
- * 2) Immediately open the system share sheet so the user can attach the PDF via WhatsApp.
+ * Share the quote PDF via WhatsApp.
  *
- * On web we skip step 2 and trigger a plain PDF download instead (since Sharing.shareAsync
- * is a native-only API and the OS share sheet is not available in a browser tab).
+ * IMPORTANT — Why this is a single Sharing.shareAsync call (not a deep link + share):
+ * WhatsApp's `whatsapp://send?...` / `wa.me/...` URL schemes ONLY accept text; there
+ * is no supported way to attach a file via URL. The previous two-step flow (deep-link
+ * chat, then share sheet) was misleading because the deep-link step sent text only —
+ * users perceived it as "the PDF didn't go". The correct, WhatsApp-officially-supported
+ * way to send a PDF is via the native share sheet, where WhatsApp appears as a target.
+ *
+ * We also copy the freshly-generated PDF into the persistent cache directory with a
+ * clean filename. Some Android OEMs restrict WhatsApp's read access to files that
+ * live outside a standard cache path, or reject files whose names contain unusual
+ * characters — the copy sidesteps both issues.
  */
 export async function shareQuoteViaWhatsApp(opts: {
   pdfUri: string;
@@ -94,29 +69,64 @@ export async function shareQuoteViaWhatsApp(opts: {
   const { pdfUri, quote, companyName } = opts;
   const message = composeQuoteWhatsAppMessage(quote, companyName);
 
-  // Step 1 — open WhatsApp chat (best effort).
-  await openWhatsAppChat(quote.musTelefon || '', message);
-
+  // ---------- WEB ----------
+  // No native share sheet in browsers. Open the PDF for download AND open WhatsApp
+  // Web pre-filled with the caption in a second tab, so the user can drag the file in.
   if (Platform.OS === 'web') {
-    // Browsers: expo-print already produced a data-uri; open it in a new tab as the "share".
     try {
-      window.open(pdfUri, '_blank');
+      const cleaned = normalizePhoneForWhatsApp(quote.musTelefon || '');
+      const text = encodeURIComponent(message);
+      const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
+      window.open(pdfUri, '_blank');           // PDF opens for download
+      window.open(waUrl, '_blank');            // WhatsApp Web opens with caption
     } catch {}
     return;
   }
 
-  // Step 2 — trigger the native share sheet after a short delay so the WA chat lands first.
-  await new Promise((r) => setTimeout(r, 700));
+  // ---------- NATIVE (iOS / Android) ----------
+  // 1) Move (or copy) the PDF into a stable cache path with a friendly filename.
+  let stableUri = pdfUri;
   try {
-    const available = await Sharing.isAvailableAsync();
-    if (available) {
-      await Sharing.shareAsync(pdfUri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'WhatsApp ile Gönder',
-        UTI: 'com.adobe.pdf',
-      });
+    const cacheDir = FileSystem.cacheDirectory || '';
+    if (cacheDir) {
+      const safeNo = (quote.teklifNo || `Teklif-${Date.now()}`).replace(/[^A-Za-z0-9_-]/g, '_');
+      const targetUri = `${cacheDir}${safeNo}.pdf`;
+      // Overwrite any previous copy for the same teklifNo to keep the cache tidy.
+      try { await FileSystem.deleteAsync(targetUri, { idempotent: true }); } catch {}
+      if (pdfUri.startsWith(cacheDir)) {
+        // Already in cache — just rename in place so WhatsApp gets a nice title.
+        try { await FileSystem.moveAsync({ from: pdfUri, to: targetUri }); stableUri = targetUri; }
+        catch { stableUri = pdfUri; }
+      } else {
+        try { await FileSystem.copyAsync({ from: pdfUri, to: targetUri }); stableUri = targetUri; }
+        catch { stableUri = pdfUri; }
+      }
     }
   } catch {
-    // swallow — user already saw the pre-filled chat
+    stableUri = pdfUri;
   }
+
+  // 2) Verify the file actually exists before invoking the share sheet — surfaces
+  //    permission/path errors early instead of showing an empty share dialog.
+  try {
+    const info = await FileSystem.getInfoAsync(stableUri);
+    if (!info.exists) throw new Error('PDF dosyası oluşturulamadı');
+  } catch (e) {
+    throw e;
+  }
+
+  const available = await Sharing.isAvailableAsync();
+  if (!available) {
+    // Extremely rare on modern iOS/Android — fall back to a WA text-only deep link.
+    await openWhatsAppChat(quote.musTelefon || '', message + '\n\n(PDF paylaşımı bu cihazda desteklenmiyor.)');
+    return;
+  }
+
+  // 3) Native share sheet with the PDF. `dialogTitle` becomes the WhatsApp caption
+  //    hint on Android; `UTI` is required for iOS to recognize the file as a PDF.
+  await Sharing.shareAsync(stableUri, {
+    mimeType: 'application/pdf',
+    dialogTitle: message,
+    UTI: 'com.adobe.pdf',
+  });
 }

@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';

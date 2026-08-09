@@ -15,7 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
@@ -24,6 +24,8 @@ import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import * as DocumentPicker from 'expo-document-picker';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -63,6 +65,8 @@ export default function EditorScreen() {
   const [notlar, setNotlar] = useState('');
   const [items, setItems] = useState<QuoteItemT[]>([]);
   const [ekler, setEkler] = useState<QuoteEkT[]>([]);
+  // Local-only attached files (PDF/Word/Image) merged into the outgoing PDF at share time.
+  const [attachments, setAttachments] = useState<AttachmentT[]>([]);
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
   const [showEmailPicker, setShowEmailPicker] = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -85,15 +89,48 @@ export default function EditorScreen() {
     setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
-    setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []);
+    setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]);
   };
 
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo()); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(activeCompany?.hazirlayanEmails?.[0] || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
-    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); bootedRef.current = null;
+    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); bootedRef.current = null;
   }, [activeCompany]);
+
+  const pickAttachments = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled) return;
+      const picked = res.assets || [];
+      const wordCount = picked.filter((a) => /\.(docx?|)$/i.test(a.name) && (a.mimeType || '').includes('word')).length;
+      if (wordCount > 0) showToast('Word dosyaları PDF\'e otomatik eklenemez — atlanacak');
+      const additions: AttachmentT[] = picked
+        .filter((a) => {
+          const m = (a.mimeType || '').toLowerCase();
+          return m === 'application/pdf' || m.startsWith('image/') || /\.(pdf|png|jpe?g)$/i.test(a.name);
+        })
+        .map((a) => ({
+          id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          name: a.name || 'dosya',
+          uri: a.uri,
+          mime: a.mimeType || 'application/octet-stream',
+          size: (a as any).size,
+        }));
+      if (additions.length === 0 && wordCount === 0) {
+        showToast('Desteklenmeyen dosya türü'); return;
+      }
+      setAttachments((prev) => [...prev, ...additions]);
+      if (additions.length > 0) showToast(`${additions.length} dosya eklendi`);
+    } catch (e: any) {
+      showToast('Dosya seçilemedi: ' + (e?.message || ''));
+    }
+  };
 
   useEffect(() => {
     if (activeCompany && !hazirlayanEmail && activeCompany.hazirlayanEmails?.length) {
@@ -175,16 +212,26 @@ export default function EditorScreen() {
     if (!activeCompany) throw new Error('Aktif firma yok');
     const html = buildQuotePdfHtml(activeCompany, savedQuote);
     const { uri } = await Print.printToFileAsync({ html, base64: false });
+    let baseUri = uri;
     const desiredName = buildQuoteFileName(new Date()) + '.pdf';
     if (Platform.OS !== 'web') {
       try {
         const dirIdx = uri.lastIndexOf('/');
         const newUri = uri.substring(0, dirIdx + 1) + desiredName;
         await FileSystem.moveAsync({ from: uri, to: newUri });
-        return newUri;
-      } catch { return uri; }
+        baseUri = newUri;
+      } catch { baseUri = uri; }
     }
-    return uri;
+    // Merge any user-picked PDF/image attachments at the end of the generated PDF.
+    if (attachments.length > 0) {
+      try {
+        return await mergeAttachmentsIntoPdf(baseUri, attachments);
+      } catch (e) {
+        // On failure, fall back to the base PDF without attachments.
+        return baseUri;
+      }
+    }
+    return baseUri;
   };
 
   const handleShare = async () => {
@@ -383,6 +430,36 @@ export default function EditorScreen() {
           >
             <Ionicons name="document-attach-outline" size={16} color={theme.colors.primary} />
             <Text style={s.addBtnText}>Ek Sayfa Ekle</Text>
+          </TouchableOpacity>
+
+          {/* EK DOSYALAR — user-uploaded PDFs / images, merged into the outgoing PDF */}
+          <SectionHeader title="EK DOSYALAR (PDF · GÖRSEL)" />
+          <Text style={s.helperTinyMuted}>{"Yüklediğin dosyalar teklif PDF'inin sonuna otomatik eklenir (PDF: sayfa sayfa, görsel: A4 sayfa olarak). Word dosyaları desteklenmez."}</Text>
+          {attachments.map((att, ai) => {
+            const isImg = (att.mime || '').startsWith('image/') || /\.(png|jpe?g)$/i.test(att.name);
+            const kb = att.size ? Math.round(att.size / 1024) : null;
+            return (
+              <View key={att.id} style={s.attachRow} testID={`attach-${ai}`}>
+                <View style={s.attachIcon}>
+                  <Ionicons name={isImg ? 'image' : 'document-text'} size={18} color={theme.colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.attachName} numberOfLines={1}>{att.name}</Text>
+                  <Text style={s.attachMeta}>{isImg ? 'Görsel' : 'PDF'}{kb ? ` · ${kb} KB` : ''}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setAttachments(attachments.filter((_, i) => i !== ai))}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  testID={`attach-remove-${ai}`}
+                >
+                  <Ionicons name="close-circle" size={20} color={theme.colors.red} />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+          <TouchableOpacity style={s.addBtn} onPress={pickAttachments} testID="pick-attachment-btn">
+            <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
+            <Text style={s.addBtnText}>Dosya Yükle (PDF · Görsel)</Text>
           </TouchableOpacity>
 
           {/* LIVE PDF PREVIEW */}
@@ -822,6 +899,10 @@ const s = StyleSheet.create({
   ekCard: { backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },
   ekHdr: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   ekBadge: { fontSize: 10, fontWeight: '900', color: theme.colors.primary, backgroundColor: theme.colors.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, letterSpacing: 0.4 },
+  attachRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 6 },
+  attachIcon: { width: 34, height: 34, borderRadius: 8, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  attachName: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
+  attachMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15, marginBottom: 8, marginTop: -4 },
   btnSecondary: { backgroundColor: theme.colors.navy, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnSecondaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },

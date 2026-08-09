@@ -1,0 +1,53 @@
+{
+  "summary": "Validated the full JWT-auth SaaS rewrite. Backend: 20/20 pytest cases PASS (100%) covering register (happy path, 5 weak-password rules → 422 each, duplicate email → 409, email lowercase normalization), login (200/401), GET+PATCH /auth/me (guard + field updates + persistence), forgot/reset-password (identical 200 for known/unknown emails, [PasswordReset] log entry extracted from backend.err.log, invalid token → 400, valid token allows password update, old password rejected after reset), multi-tenancy isolation on companies/catalog/customers/quotes (user B gets 404 on user A resources), new imzaMetni field persists on POST + GET + list, and full CRUD smoke (catalog + customers + quotes with server-side totals + status update + cascade delete). MongoDB _id excluded from every response. Frontend (390x844): Splash (/splash) renders with brand 'Anında Teklif', 'Geç' skip, rocket icon, İleri CTA, 3 dots, SSL trust badge — all 3 slides' text present. Register (/register) — 'Aramıza Katıl' title, Ad Soyad/Telefon/E-posta/Şifre inputs, 5-rule password checklist turns green live, terms checkbox required, 'Kayıt Ol' submits successfully → routes to /wizard with JWT stored in localStorage.session_token_v1. Wizard 6 steps executed end-to-end (country=TR pre-selected, company 'TEST_UI_Firma' + signature, logo skipped, address skipped, banks skipped, first system 'Cam Balkon'); 'Adım N/6' progress label and back-arrow visible from step 2+. Kurulumu Tamamla persisted company + patched onboarding_completed=true; RouteGuard then redirected out of /wizard to /(tabs) with all 5 tabs (Teklif/Katalog/Geçmiş/Müşteri/Firma). Login screen inline red error 'E-posta veya şifre hatalı' displayed for wrong credentials (does NOT dump to alert). Forgot-password shows green success box 'Eğer bu e-posta kayıtlıysa, sıfırlama bağlantısı gönderildi. Gelen kutunu kontrol et.' Splash pagination dot advance-on-tap not verified — likely uses FlatList onViewableItemsChanged which doesn't reliably fire on web preview; on the 3rd click it did NOT navigate to /register. NON-BLOCKING because /register is directly reachable and register CTA on final slide is the only user-facing side-effect. Deprecated packages detected: none in requirements — expo-av / expo-barcode-scanner / expo-background-fetch not referenced. RN Web deprecation warnings: shadow*, textShadow*, pointerEvents (Ionicons) — non-blocking noise only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "(auth)/splash.tsx", "issue": "On web preview, tapping the İleri CTA does not advance the visible slide/dot beyond slide 1 and does not navigate to /register on the 3rd tap. FlatList's onViewableItemsChanged is unreliable on react-native-web at this size. Users on web can still reach /register via 'Geç' skip / direct URL, but the intended slide-advance behavior is broken on web.", "testID": "splash-cta", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "react-native-web (multiple screens)", "issue": "Console warning: 'shadow*' and 'textShadow*' style props are deprecated. Use 'boxShadow'/'textShadow'. Reference: emitted across (auth)/splash.tsx, login.tsx, register.tsx and (setup)/wizard.tsx style blocks."},
+    {"component": "@expo/vector-icons Ionicons", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents.' Originates from Ionicons library internals; non-blocking."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_saas.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/it5_splash.png",
+    "/app/test_reports/it5_register_filled.png",
+    "/app/test_reports/it5_wizard_country.png",
+    "/app/test_reports/it5_wizard_step2_done.png",
+    "/app/test_reports/it5_wizard_step6.png",
+    "/app/test_reports/it5_tabs.png",
+    "/app/test_reports/it5_login_err.png",
+    "/app/test_reports/it5_fp.png"
+  ],
+  "action_items": [
+    "(MEDIUM) Fix splash slide advance on react-native-web: replace onViewableItemsChanged with explicit scrollToIndex+setIndex inside next(), or use a controlled Pager. Ensure the 3rd tap on İleri/'Ücretsiz Başla' router.replace('/register').",
+    "(LOW) Migrate remaining shadow*/textShadow* style props to boxShadow/textShadow for RN Web 0.19+ compatibility.",
+    "(LOW) Update /app/memory/test_credentials.md: password reset tokens are logged to /var/log/supervisor/backend.err.log (uvicorn stderr) — testing agents should grep there, not stdout."
+  ],
+  "critical_code_review_comments": [
+    "server.py: _validate_password enforces all 5 rules with Turkish messages; wrapped in Pydantic field_validator so FastAPI returns 422 with the field-specific message — verified for all 5 weak-password variants.",
+    "server.py: /auth/forgot-password uses identical response body regardless of whether the email exists (no timing side channel beyond bcrypt/DB lookup) and stores SHA-256 of raw token in password_resets so a DB dump can't be replayed. RESET_TOKEN_MINUTES=30 with TTL index on expires_at — good.",
+    "server.py: get_current_user validates issuer+audience+algorithm and rejects tokens whose 'type' != 'access' — good defence-in-depth against reuse of a hypothetical refresh token as access.",
+    "server.py: PATCH /auth/me uses payload.dict(exclude_unset=True) and filters None — clients can update a subset without wiping name/phone/picture. Verified: unchanged fields preserved.",
+    "server.py: _own_company gate on every company-scoped resource means cross-tenant reads always yield 404. Cascade delete uses userId in every delete_many — no accidental bleed. Verified via multi-tenancy tests.",
+    "server.py: Company model now has imzaMetni field; POST/PUT/GET all persist it. Verified.",
+    "server.py: startup creates unique indexes on users.email and users.user_id, and TTL on password_resets.expires_at — good hygiene.",
+    "AuthContext + api.ts: token stored in localStorage under 'session_token_v1' as raw string (not JSON-wrapped) — confirmed live in browser. Bootstrap calls /api/auth/me and hydrates user.",
+    "(auth)/register.tsx: 'Kayıt Ol' button uses aria-disabled but doesn't actually block onPress with disabled prop until terms checked. In test, submit worked once terms was ticked — non-blocking, aria-disabled remained 'None' throughout for both states which suggests the disabled state is styling-only (opacity) not accessibility. Recommend adding disabled={!allValid} to TouchableOpacity for a11y + preventing double-submit on slow networks.",
+    "(auth)/splash.tsx: onViewableItemsChanged pattern is web-unfriendly — see action item above."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_saas.py (new canonical regression file for the JWT auth rewrite: 20 tests across register/login/me/reset/multi-tenancy/imzaMetni/crud smoke)"
+  ],
+  "success_rate": {"backend": "100% (20/20 pytest)", "frontend": "95% (register → wizard → tabs flow works end-to-end; login inline error works; forgot-password success works; only splash slide advance on web is glitchy)"},
+  "seed_data_creation": "Every test registers its own e2e+{tag}+{uuid}@example.com user, so no manual seed. Note: EmailStr rejects the .local TLD from test_credentials.md — used @example.com throughout instead.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "BACKEND: pytest /app/backend/tests/test_auth_saas.py is the canonical regression suite for the JWT auth rewrite. The older /app/backend/tests/test_aninda_teklif.py is OBSOLETE (references removed /api/auth/session and user_sessions collection) — recommend deleting it in a future cleanup. Run with: EXPO_PUBLIC_BACKEND_URL=$(grep '^EXPO_PUBLIC_BACKEND_URL' /app/frontend/.env | cut -d= -f2) pytest /app/backend/tests/test_auth_saas.py -v. FRONTEND: To bypass onboarding programmatically, register via API → grab access_token → localStorage.setItem('session_token_v1', RAW_TOKEN_STRING_WITHOUT_JSON_QUOTES) → PATCH /api/auth/me with {country,currency,tax_label,onboarding_completed:true} → POST /api/companies → reload / → RouteGuard lands on /(tabs). Note test_credentials.md line 34 is INCORRECT: the storage helper writes the raw token, NOT JSON.stringify(token). Verified live via page.evaluate. Password reset tokens appear in /var/log/supervisor/backend.err.log (uvicorn stderr channel) — grep '[PasswordReset]'. EmailStr rejects .local TLD — use @example.com or another real TLD.",
+  "rca_of_issue": ""
+}

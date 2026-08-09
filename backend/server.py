@@ -3,10 +3,14 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
 import logging
-import httpx
+import hashlib
+import secrets as py_secrets
+import bcrypt
+import jwt
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -18,6 +22,16 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
+
+JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me-please-not-secure')
+JWT_ISSUER = os.environ.get('JWT_ISSUER', 'anindateklif-api')
+JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'anindateklif-client')
+JWT_ALGORITHM = 'HS256'
+ACCESS_TOKEN_MINUTES = 60 * 24 * 7  # 7 days for MVP
+RESET_TOKEN_MINUTES = 30
+
+# Dummy hash for timing-safe login (mitigates account enumeration)
+_DUMMY_HASH = bcrypt.hashpw(b"dummy-password-not-used", bcrypt.gensalt()).decode()
 
 app = FastAPI(title="Anında Teklif API")
 api_router = APIRouter(prefix="/api")
@@ -32,20 +46,111 @@ def utc_now_iso() -> str:
 
 
 # ============ AUTH ============
-class SessionRequest(BaseModel):
-    session_id: str
+def _utc(): return datetime.now(timezone.utc)
+
+
+def _normalize_email(e: str) -> str:
+    return (e or "").strip().lower()
+
+
+def _validate_password(p: str) -> str:
+    if not p or len(p) < 8:
+        raise ValueError("Şifre en az 8 karakter olmalıdır")
+    if not re.search(r"[a-z]", p):
+        raise ValueError("Şifre en az bir küçük harf içermelidir")
+    if not re.search(r"[A-Z]", p):
+        raise ValueError("Şifre en az bir büyük harf içermelidir")
+    if not re.search(r"\d", p):
+        raise ValueError("Şifre en az bir rakam içermelidir")
+    if not re.search(r"[^A-Za-z0-9]", p):
+        raise ValueError("Şifre en az bir sembol içermelidir")
+    return p
+
+
+def _hash_password(p: str) -> str:
+    return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(p: str, h: str) -> bool:
+    try:
+        return bcrypt.checkpw(p.encode(), h.encode())
+    except Exception:
+        return False
+
+
+def _sha256(v: str) -> str:
+    return hashlib.sha256(v.encode()).hexdigest()
+
+
+def _make_access_token(user: Dict[str, Any]) -> str:
+    now = _utc()
+    payload = {
+        "sub": user["user_id"],
+        "email": user["email"],
+        "type": "access",
+        "jti": str(uuid.uuid4()),
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "iat": now,
+        "exp": now + timedelta(minutes=ACCESS_TOKEN_MINUTES),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    phone: Optional[str] = ""
+
+    @field_validator("password")
+    @classmethod
+    def _pw(cls, v: str) -> str:
+        try:
+            return _validate_password(v)
+        except ValueError as e:
+            raise ValueError(str(e))
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 class UserOut(BaseModel):
     user_id: str
     email: str
     name: str = ""
+    phone: str = ""
     picture: str = ""
+    country: str = ""
+    currency: str = ""
+    tax_label: str = ""
+    onboarding_completed: bool = False
 
 
-class SessionResponse(BaseModel):
-    session_token: str
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
     user: UserOut
+
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    country: Optional[str] = None
+    currency: Optional[str] = None
+    tax_label: Optional[str] = None
+    onboarding_completed: Optional[bool] = None
 
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
@@ -54,104 +159,134 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
     token = authorization[7:].strip()
     if not token:
         raise HTTPException(status_code=401, detail="Empty token")
-    session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
-    if not session:
-        raise HTTPException(status_code=401, detail="Invalid session")
-    # normalize expires_at
-    exp = session.get("expires_at")
-    if isinstance(exp, str):
-        try:
-            exp = datetime.fromisoformat(exp)
-        except Exception:
-            exp = None
-    if exp:
-        if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-        if exp < utc_now():
-            raise HTTPException(status_code=401, detail="Session expired")
-    user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
+        if payload.get("type") != "access" or not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token type")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
 
-@api_router.post("/auth/session", response_model=SessionResponse)
-async def exchange_session(payload: SessionRequest):
-    session_id = payload.session_id.strip()
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id required")
-    # Guard against duplicate exchange
-    existing = await db.emergent_session_ids.find_one({"session_id": session_id}, {"_id": 0})
-    if existing:
-        # If token still valid, return it
-        sess = await db.user_sessions.find_one({"session_token": existing["session_token"]}, {"_id": 0})
-        if sess:
-            u = await db.users.find_one({"user_id": sess["user_id"]}, {"_id": 0})
-            if u:
-                return SessionResponse(
-                    session_token=existing["session_token"],
-                    user=UserOut(user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", "")),
-                )
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as hc:
-            r = await hc.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers={"X-Session-ID": session_id},
-            )
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Auth service error: {e}")
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Invalid or expired session_id")
-    data = r.json()
-    email = (data.get("email") or "").lower().strip()
-    name = data.get("name") or ""
-    picture = data.get("picture") or ""
-    session_token = data.get("session_token") or ""
-    if not email or not session_token:
-        raise HTTPException(status_code=401, detail="Invalid session data")
-
-    user = await db.users.find_one({"email": email}, {"_id": 0})
-    if not user:
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        user = {
-            "user_id": user_id,
-            "email": email,
-            "name": name,
-            "picture": picture,
-            "createdAt": utc_now_iso(),
-        }
-        await db.users.insert_one(user)
-    else:
-        # keep user_id, update name/picture
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"name": name, "picture": picture}})
-        user["name"] = name
-        user["picture"] = picture
-
-    expires_at = utc_now() + timedelta(days=7)
-    await db.user_sessions.insert_one({
-        "session_token": session_token,
-        "user_id": user["user_id"],
-        "expires_at": expires_at,
-        "created_at": utc_now(),
-    })
-    await db.emergent_session_ids.insert_one({"session_id": session_id, "session_token": session_token, "created_at": utc_now_iso()})
-
-    return SessionResponse(
-        session_token=session_token,
-        user=UserOut(user_id=user["user_id"], email=user["email"], name=user.get("name", ""), picture=user.get("picture", "")),
+def _user_out(u: Dict[str, Any]) -> UserOut:
+    return UserOut(
+        user_id=u["user_id"],
+        email=u["email"],
+        name=u.get("name", ""),
+        phone=u.get("phone", ""),
+        picture=u.get("picture", ""),
+        country=u.get("country", ""),
+        currency=u.get("currency", ""),
+        tax_label=u.get("tax_label", ""),
+        onboarding_completed=bool(u.get("onboarding_completed", False)),
     )
+
+
+@api_router.post("/auth/register", response_model=AuthResponse, status_code=201)
+async def register(payload: RegisterRequest):
+    email = _normalize_email(payload.email)
+    if await db.users.find_one({"email": email}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı")
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    user = {
+        "user_id": user_id,
+        "email": email,
+        "hashed_password": _hash_password(payload.password),
+        "name": (payload.name or "").strip(),
+        "phone": (payload.phone or "").strip(),
+        "picture": "",
+        "country": "",
+        "currency": "",
+        "tax_label": "",
+        "onboarding_completed": False,
+        "createdAt": _utc().isoformat(),
+    }
+    await db.users.insert_one(user)
+    access = _make_access_token(user)
+    return AuthResponse(access_token=access, user=_user_out(user))
+
+
+@api_router.post("/auth/login", response_model=AuthResponse)
+async def login(payload: LoginRequest):
+    email = _normalize_email(payload.email)
+    u = await db.users.find_one({"email": email}, {"_id": 0})
+    # timing-safe check
+    valid = _verify_password(payload.password, u["hashed_password"] if u else _DUMMY_HASH)
+    if not u or not valid or not u.get("hashed_password"):
+        raise HTTPException(status_code=401, detail="E-posta veya şifre hatalı")
+    access = _make_access_token(u)
+    return AuthResponse(access_token=access, user=_user_out(u))
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest):
+    # Always respond identically to prevent enumeration.
+    email = _normalize_email(payload.email)
+    u = await db.users.find_one({"email": email}, {"_id": 0})
+    if u:
+        raw = py_secrets.token_urlsafe(32)
+        await db.password_resets.insert_one({
+            "token_hash": _sha256(raw),
+            "user_id": u["user_id"],
+            "expires_at": _utc() + timedelta(minutes=RESET_TOKEN_MINUTES),
+            "used_at": None,
+        })
+        # In a real app, email raw to user. For MVP, we log it.
+        logging.info(f"[PasswordReset] {email} token={raw}")
+    return {"message": "Eğer bu e-posta kayıtlıysa, sıfırlama bağlantısı gönderildi."}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(payload: ResetPasswordRequest):
+    doc = await db.password_resets.find_one({"token_hash": _sha256(payload.token), "used_at": None}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=400, detail="Geçersiz veya kullanılmış sıfırlama bağlantısı")
+    exp = doc.get("expires_at")
+    if isinstance(exp, str):
+        try: exp = datetime.fromisoformat(exp)
+        except Exception: exp = None
+    if not exp or (exp.tzinfo and exp < _utc()) or (not exp.tzinfo and exp.replace(tzinfo=timezone.utc) < _utc()):
+        raise HTTPException(status_code=400, detail="Sıfırlama bağlantısının süresi dolmuş")
+    try:
+        _validate_password(payload.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    await db.users.update_one(
+        {"user_id": doc["user_id"]},
+        {"$set": {"hashed_password": _hash_password(payload.new_password)}},
+    )
+    await db.password_resets.update_one({"token_hash": doc["token_hash"]}, {"$set": {"used_at": _utc()}})
+    return {"message": "Şifre başarıyla güncellendi"}
 
 
 @api_router.get("/auth/me", response_model=UserOut)
 async def auth_me(user=Depends(get_current_user)):
-    return UserOut(user_id=user["user_id"], email=user["email"], name=user.get("name", ""), picture=user.get("picture", ""))
+    return _user_out(user)
+
+
+@api_router.patch("/auth/me", response_model=UserOut)
+async def update_me(payload: UserProfileUpdate, user=Depends(get_current_user)):
+    updates = {k: v for k, v in payload.dict(exclude_unset=True).items() if v is not None}
+    if updates:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
+    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return _user_out(doc)
 
 
 @api_router.post("/auth/logout")
-async def auth_logout(authorization: Optional[str] = Header(None)):
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:].strip()
-        await db.user_sessions.delete_one({"session_token": token})
+async def auth_logout():
+    # Stateless JWT — client discards token. Return OK for API symmetry.
     return {"ok": True}
 
 
@@ -164,10 +299,24 @@ class BankAccount(BaseModel):
     iban: str = ""
 
 
+class SystemField(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    label: str  # e.g. "Motor Çeşidi"
+    type: str = "text"  # text | select | number | checkbox
+    options: List[str] = Field(default_factory=list)  # only for select
+
+
+class SystemTypeDef(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # e.g. "Cam Balkon"
+    fields: List[SystemField] = Field(default_factory=list)
+
+
 class Company(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     userId: str
     sirketAdi: str
+    imzaMetni: str = ""
     logoBase64: str = ""
     adres: str = ""
     telefon: str = ""
@@ -179,15 +328,14 @@ class Company(BaseModel):
     ozelNotlar: str = ""  # PDF default notes
     banklar: List[BankAccount] = Field(default_factory=list)
     hazirlayanEmails: List[str] = Field(default_factory=list)
-    motorlar: List[str] = Field(default_factory=list)
-    aydinlatmalar: List[str] = Field(default_factory=list)
-    sistemTipleri: List[str] = Field(default_factory=list)
+    sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
 
 class CompanyCreate(BaseModel):
     sirketAdi: str
+    imzaMetni: str = ""
     logoBase64: str = ""
     adres: str = ""
     telefon: str = ""
@@ -199,9 +347,7 @@ class CompanyCreate(BaseModel):
     ozelNotlar: str = ""
     banklar: List[BankAccount] = Field(default_factory=list)
     hazirlayanEmails: List[str] = Field(default_factory=list)
-    motorlar: List[str] = Field(default_factory=list)
-    aydinlatmalar: List[str] = Field(default_factory=list)
-    sistemTipleri: List[str] = Field(default_factory=list)
+    sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
 
 
 class CatalogItem(BaseModel):
@@ -256,20 +402,15 @@ class CustomerCreate(BaseModel):
 class QuoteItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     mode: str = "general"  # "technical" | "manual" | "general"
-    urunAdi: str = ""  # e.g. "Pistonlu Bioklimatik Sistem"
-    # Technical fields (mode=technical)
-    sistemTipi: str = ""
-    genislikMm: Optional[float] = None
-    uzunlukMm: Optional[float] = None
-    yukseklikMm: Optional[float] = None
-    motor: str = ""
-    aydinlatma: str = ""
-    kopukDolgu: bool = False
-    ralAna: str = ""
-    ralPanel: str = ""
-    ekBilgi: str = ""  # e.g. "Yanyana, Demonte"
+    urunAdi: str = ""
+    # Technical mode
+    sistemTipiId: str = ""     # references company.sistemTipleri[].id
+    sistemTipi: str = ""       # snapshot name for display / PDF (e.g. "Cam Balkon")
+    sistemFields: List[Dict[str, str]] = Field(default_factory=list)  # [{label, value}]
     # Manual mode
     customFields: List[Dict[str, str]] = Field(default_factory=list)  # [{key, value}]
+    # General mode
+    aciklama: str = ""
     # Common
     adet: float = 1
     birim: str = "Adet"
@@ -569,9 +710,8 @@ async def on_startup():
     try:
         await db.users.create_index("email", unique=True)
         await db.users.create_index("user_id", unique=True)
-        await db.user_sessions.create_index("session_token", unique=True)
-        await db.user_sessions.create_index("user_id")
-        await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
+        await db.password_resets.create_index("token_hash", unique=True)
+        await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 

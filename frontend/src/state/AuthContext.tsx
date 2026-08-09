@@ -1,69 +1,28 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
 import { api, getSessionToken, setSessionToken, UserT } from '@/src/lib/api';
 
-WebBrowser.maybeCompleteAuthSession();
+type LoginArgs = { email: string; password: string };
+type RegisterArgs = { email: string; password: string; name: string; phone?: string };
 
 type AuthState = {
   loading: boolean;
   user: UserT | null;
-  signInWithGoogle: () => Promise<void>;
+  login: (args: LoginArgs) => Promise<void>;
+  register: (args: RegisterArgs) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  updateUser: (patch: Partial<UserT>) => Promise<UserT>;
+  refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const processedSessionIds = new Set<string>();
-
-function extractSessionIdFromUrl(url: string | null): string | null {
-  if (!url) return null;
-  const m = url.match(/[?#&]session_id=([^&#]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserT | null>(null);
 
-  const exchange = useCallback(async (session_id: string) => {
-    if (processedSessionIds.has(session_id)) return;
-    processedSessionIds.add(session_id);
-    try {
-      const res: { session_token: string; user: UserT } = await api.exchangeSession(session_id);
-      await setSessionToken(res.session_token);
-      setUser(res.user);
-    } catch (e) {
-      console.warn('Session exchange failed', e);
-    }
-  }, []);
-
   const bootstrap = useCallback(async () => {
     try {
-      // Web: check for session_id in URL fragment/query
-      if (Platform.OS === 'web') {
-        const hash = window.location.hash || '';
-        const search = window.location.search || '';
-        const sid = extractSessionIdFromUrl(hash) || extractSessionIdFromUrl(search);
-        if (sid) {
-          await exchange(sid);
-          // clean URL
-          try {
-            const url = new URL(window.location.href);
-            url.hash = '';
-            url.searchParams.delete('session_id');
-            window.history.replaceState(window.history.state, '', url.pathname + url.search);
-          } catch {}
-        }
-      } else {
-        // Mobile cold start
-        const initialUrl = await Linking.getInitialURL();
-        const sid = extractSessionIdFromUrl(initialUrl);
-        if (sid) await exchange(sid);
-      }
-
-      // Try existing token
       const token = await getSessionToken();
       if (token) {
         try {
@@ -77,53 +36,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [exchange]);
+  }, []);
 
   useEffect(() => {
     bootstrap();
+  }, [bootstrap]);
 
-    // Mobile: listen for hot deep-links
-    if (Platform.OS !== 'web') {
-      const sub = Linking.addEventListener('url', ({ url }) => {
-        const sid = extractSessionIdFromUrl(url);
-        if (sid) exchange(sid).then(async () => {
-          try {
-            const me: UserT = await api.me();
-            setUser(me);
-          } catch {}
-        });
-      });
-      return () => sub.remove();
-    }
-  }, [bootstrap, exchange]);
+  const login = useCallback(async ({ email, password }: LoginArgs) => {
+    const res: { access_token: string; user: UserT } = await api.login({ email, password });
+    await setSessionToken(res.access_token);
+    setUser(res.user);
+  }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    if (Platform.OS === 'web') {
-      const redirect = window.location.origin + '/';
-      const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirect)}`;
-      window.location.href = authUrl;
-    } else {
-      const redirect = Linking.createURL('');
-      const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirect)}`;
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirect);
-      let sid: string | null = null;
-      if (result.type === 'success' && (result as any).url) {
-        sid = extractSessionIdFromUrl((result as any).url);
-      }
-      if (!sid) {
-        // fallback to getInitialURL
-        const initial = await Linking.getInitialURL();
-        sid = extractSessionIdFromUrl(initial);
-      }
-      if (sid) {
-        await exchange(sid);
-        try {
-          const me: UserT = await api.me();
-          setUser(me);
-        } catch {}
-      }
+  const register = useCallback(async ({ email, password, name, phone }: RegisterArgs) => {
+    const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone });
+    await setSessionToken(res.access_token);
+    setUser(res.user);
+  }, []);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    await api.forgotPassword(email);
+  }, []);
+
+  const updateUser = useCallback(async (patch: Partial<UserT>) => {
+    const updated: UserT = await api.updateMe(patch as any);
+    setUser(updated);
+    return updated;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const me: UserT = await api.me();
+      setUser(me);
+    } catch {
+      // ignore
     }
-  }, [exchange]);
+  }, []);
 
   const signOut = useCallback(async () => {
     try { await api.logout(); } catch {}
@@ -132,8 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, user, signInWithGoogle, signOut }),
-    [loading, user, signInWithGoogle, signOut]
+    () => ({ loading, user, login, register, forgotPassword, updateUser, refreshUser, signOut }),
+    [loading, user, login, register, forgotPassword, updateUser, refreshUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

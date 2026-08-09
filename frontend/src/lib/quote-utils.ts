@@ -8,34 +8,34 @@ import type { QuoteItemT } from './api';
  */
 export function buildItemDescription(it: QuoteItemT): string {
   const parts: string[] = [];
-  const head = it.urunAdi || it.sistemTipi || '';
-  if (head) parts.push(head);
-
   if (it.mode === 'technical') {
-    // Dimensions: prefer WxU pattern, then H separately
-    const dims: string[] = [];
-    if (it.genislikMm && it.uzunlukMm) dims.push(`${format(it.genislikMm)}x${format(it.uzunlukMm)}mm`);
-    else if (it.genislikMm) dims.push(`Genişlik: ${format(it.genislikMm)}mm`);
-    else if (it.uzunlukMm) dims.push(`Uzunluk: ${format(it.uzunlukMm)}mm`);
-    if (it.yukseklikMm) dims.push(`H: ${format(it.yukseklikMm)}mm`);
-    parts.push(...dims);
-    if (it.motor) parts.push(`${it.motor} Motor`);
-    if (it.aydinlatma) parts.push(`Led: ${it.aydinlatma}`);
-    if (it.kopukDolgu) parts.push('Strafor Köpük Dolgulu');
-    if (it.ralAna) parts.push(`Ral: ${it.ralAna}`);
-    if (it.ralPanel) parts.push(`Panel Ral: ${it.ralPanel}`);
-    if (it.ekBilgi) parts.push(it.ekBilgi);
-  } else if (it.mode === 'manual') {
-    for (const f of it.customFields || []) {
-      if (f.key || f.value) parts.push(`${f.key}: ${f.value}`);
+    const head = it.sistemTipi || it.urunAdi || '';
+    if (head) parts.push(head);
+    for (const f of it.sistemFields || []) {
+      const label = (f.label || '').trim();
+      const value = (f.value || '').trim();
+      if (!label && !value) continue;
+      if (label && value) parts.push(`${label}: ${value}`);
+      else if (value) parts.push(value);
+      else parts.push(label);
     }
+  } else if (it.mode === 'manual') {
+    const head = it.urunAdi || '';
+    if (head) parts.push(head);
+    for (const f of it.customFields || []) {
+      const key = (f.key || '').trim();
+      const value = (f.value || '').trim();
+      if (!key && !value) continue;
+      if (key && value) parts.push(`${key}: ${value}`);
+      else if (value) parts.push(value);
+      else parts.push(key);
+    }
+  } else {
+    const head = it.urunAdi || '';
+    if (head) parts.push(head);
+    if (it.aciklama) parts.push(it.aciklama);
   }
-  return parts.filter(Boolean).join(', ') + (parts.length ? '.' : '');
-}
-
-function format(n: number): string {
-  if (n === Math.floor(n)) return String(n);
-  return String(n);
+  return parts.length ? parts.join(', ') + '.' : '';
 }
 
 /**

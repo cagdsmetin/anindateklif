@@ -49,9 +49,17 @@ async function req(path: string, opts: RequestInit = {}) {
 
 export const api = {
   // Auth
-  exchangeSession: (session_id: string) =>
-    req('/auth/session', { method: 'POST', body: JSON.stringify({ session_id }) }),
+  register: (data: { email: string; password: string; name: string; phone?: string }) =>
+    req('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data: { email: string; password: string }) =>
+    req('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  forgotPassword: (email: string) =>
+    req('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, new_password: string) =>
+    req('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
   me: () => req('/auth/me'),
+  updateMe: (data: Partial<Pick<UserT, 'name' | 'phone' | 'country' | 'currency' | 'tax_label' | 'onboarding_completed'>>) =>
+    req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),
 
   // Companies
@@ -83,14 +91,28 @@ export const api = {
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
 };
 
-export type UserT = { user_id: string; email: string; name: string; picture: string };
+export type UserT = {
+  user_id: string;
+  email: string;
+  name: string;
+  phone: string;
+  picture: string;
+  country: string;
+  currency: string;
+  tax_label: string;
+  onboarding_completed: boolean;
+};
 
 export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
+
+export type SystemField = { id: string; label: string; type: 'text' | 'select' | 'number' | 'checkbox'; options: string[] };
+export type SystemTypeDefT = { id: string; name: string; fields: SystemField[] };
 
 export type CompanyT = {
   id: string;
   userId: string;
   sirketAdi: string;
+  imzaMetni: string;
   logoBase64: string;
   adres: string;
   telefon: string;
@@ -102,9 +124,7 @@ export type CompanyT = {
   ozelNotlar: string;
   banklar: BankAccountT[];
   hazirlayanEmails: string[];
-  motorlar: string[];
-  aydinlatmalar: string[];
-  sistemTipleri: string[];
+  sistemTipleri: SystemTypeDefT[];
 };
 
 export type CatalogItemT = {
@@ -132,17 +152,11 @@ export type QuoteItemT = {
   id: string;
   mode: 'technical' | 'manual' | 'general';
   urunAdi: string;
+  sistemTipiId: string;
   sistemTipi: string;
-  genislikMm: number | null;
-  uzunlukMm: number | null;
-  yukseklikMm: number | null;
-  motor: string;
-  aydinlatma: string;
-  kopukDolgu: boolean;
-  ralAna: string;
-  ralPanel: string;
-  ekBilgi: string;
+  sistemFields: { label: string; value: string }[];
   customFields: { key: string; value: string }[];
+  aciklama: string;
   adet: number;
   birim: string;
   birimFiyat: number;

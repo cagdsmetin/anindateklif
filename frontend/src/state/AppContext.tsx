@@ -34,14 +34,31 @@ type Ctx = {
 
 const AppContext = createContext<Ctx | null>(null);
 
-const DEFAULT_MOTORS = ['Mosel', 'Somfy', 'Becker'];
-const DEFAULT_LIGHTS = ['Günışığı', 'Beyaz LED', 'RGB LED', 'Yok'];
-const DEFAULT_SYSTEMS = [
-  'Pistonlu Bioklimatik Sistem',
-  'Sabit Bioklimatik',
-  'Kış Bahçesi (Sabit Cam Tavan)',
-  'Pergola Sistemi',
-  'Cam Balkon',
+const DEFAULT_SYSTEM_TYPES: any[] = [
+  {
+    id: 'sys-pergola',
+    name: 'Pistonlu Bioklimatik Sistem',
+    fields: [
+      { id: 'f-w', label: 'Genişlik (mm)', type: 'number', options: [] },
+      { id: 'f-l', label: 'Uzunluk (mm)', type: 'number', options: [] },
+      { id: 'f-h', label: 'Yükseklik (mm)', type: 'number', options: [] },
+      { id: 'f-motor', label: 'Motor', type: 'select', options: ['Mosel', 'Somfy', 'Becker'] },
+      { id: 'f-led', label: 'Aydınlatma', type: 'select', options: ['Günışığı', 'Beyaz LED', 'RGB LED', 'Yok'] },
+      { id: 'f-kopuk', label: 'Köpük Dolgu', type: 'checkbox', options: [] },
+      { id: 'f-ral', label: 'Ral Rengi', type: 'text', options: [] },
+    ],
+  },
+  {
+    id: 'sys-cam',
+    name: 'Cam Balkon',
+    fields: [
+      { id: 'f-w', label: 'Genişlik (mm)', type: 'number', options: [] },
+      { id: 'f-h', label: 'Yükseklik (mm)', type: 'number', options: [] },
+      { id: 'f-cam', label: 'Cam Tipi', type: 'select', options: ['Isıcam', '8mm Temperli', '6mm Temperli', 'Lamine'] },
+      { id: 'f-profil', label: 'Profil Rengi', type: 'select', options: ['Beyaz', 'Antrasit', 'Siyah', 'Ahşap Kaplama'] },
+      { id: 'f-surgu', label: 'Sürgü Tipi', type: 'select', options: ['Alt Ray', 'Üst Ray', 'Katlanır'] },
+    ],
+  },
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -116,9 +133,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ozelNotlar: data.ozelNotlar || '',
       banklar: data.banklar || [],
       hazirlayanEmails: data.hazirlayanEmails || [],
-      motorlar: data.motorlar || DEFAULT_MOTORS,
-      aydinlatmalar: data.aydinlatmalar || DEFAULT_LIGHTS,
-      sistemTipleri: data.sistemTipleri || DEFAULT_SYSTEMS,
+      sistemTipleri: data.sistemTipleri || DEFAULT_SYSTEM_TYPES,
     });
     await reloadCompanies();
     return created;
@@ -140,8 +155,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ozelNotlar: merged.ozelNotlar || '',
       banklar: merged.banklar || [],
       hazirlayanEmails: merged.hazirlayanEmails || [],
-      motorlar: merged.motorlar || [],
-      aydinlatmalar: merged.aydinlatmalar || [],
       sistemTipleri: merged.sistemTipleri || [],
     });
     await reloadCompanies();
@@ -237,17 +250,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: it.id,
         mode: it.mode || 'general',
         urunAdi: it.urunAdi || '',
+        sistemTipiId: it.sistemTipiId || '',
         sistemTipi: it.sistemTipi || '',
-        genislikMm: it.genislikMm ?? null,
-        uzunlukMm: it.uzunlukMm ?? null,
-        yukseklikMm: it.yukseklikMm ?? null,
-        motor: it.motor || '',
-        aydinlatma: it.aydinlatma || '',
-        kopukDolgu: !!it.kopukDolgu,
-        ralAna: it.ralAna || '',
-        ralPanel: it.ralPanel || '',
-        ekBilgi: it.ekBilgi || '',
+        sistemFields: it.sistemFields || [],
         customFields: it.customFields || [],
+        aciklama: it.aciklama || '',
         adet: Number(it.adet) || 0,
         birim: it.birim || 'Adet',
         birimFiyat: Number(it.birimFiyat) || 0,
@@ -283,6 +290,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
+    // Skip data bootstrap until the user finishes onboarding.
+    // The setup wizard is responsible for creating the first company
+    // (avoids creating a duplicate empty "Yeni Firma" default).
+    if (!user.onboarding_completed) {
+      setCompanies([]);
+      setActiveCompanyIdState(null);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -294,9 +310,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const created: CompanyT = await api.createCompany({
             sirketAdi: user.name ? `${user.name} Firma` : 'Yeni Firma',
             hazirlayanEmails: user.email ? [user.email] : [],
-            motorlar: DEFAULT_MOTORS,
-            aydinlatmalar: DEFAULT_LIGHTS,
-            sistemTipleri: DEFAULT_SYSTEMS,
+            sistemTipleri: DEFAULT_SYSTEM_TYPES,
             banklar: [],
           });
           list.push(created);

@@ -1,7 +1,18 @@
 import { Platform } from 'react-native';
 import { storage } from '@/src/utils/storage';
 
-const API_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '') + '/api';
+// Build-time backend URL, with a hardcoded fallback so a missing/empty EXPO_PUBLIC_BACKEND_URL
+// in an APK build doesn't leave the app pointing at a relative "/api" URL (which resolves to
+// nothing on a native device and produces the classic "Kayıt başarısız" symptom).
+const FALLBACK_BACKEND_URL = 'https://app-genesis-52.preview.emergentagent.com';
+const RAW_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '').trim();
+const RESOLVED_BASE = RAW_BASE || FALLBACK_BACKEND_URL;
+const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';
+
+// Public: expose the resolved base for diagnostic banners / debug screens.
+export const RESOLVED_BACKEND_URL = RESOLVED_BASE;
+export const BACKEND_URL_MISSING = RAW_BASE.length === 0;
+
 export const SESSION_TOKEN_KEY = 'session_token_v1';
 
 let tokenCache: string | null = null;

@@ -1,10 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,98 +13,119 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 
+const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
+const formatMoney = (n: number) =>
+  new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n || 0);
+
 export default function CustomersScreen() {
-  const { customers, quotes, deleteCustomer, activeCompany, showToast } = useApp();
+  const { customers, quotes, deleteCustomer, activeCompany } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [q, setQ] = useState('');
 
   const enriched = useMemo(() => {
     return customers.map((c) => {
-      const cq = quotes.filter((qq) => qq.musFirma.toLowerCase() === c.firma.toLowerCase());
-      const total = cq.reduce((a, x) => a + x.genelToplam, 0);
-      return { ...c, count: cq.length, total };
+      const own = quotes.filter(
+        (qq) =>
+          qq.musFirma.trim().toLowerCase() === (c.firma || '').trim().toLowerCase() ||
+          (qq.musTelefon && c.telefon && qq.musTelefon.replace(/\D/g, '') === c.telefon.replace(/\D/g, '')),
+      );
+      const total = own.reduce((a, x) => a + (x.genelToplam || 0), 0);
+      const currency = own[0]?.paraBirimi || 'TRY';
+      return { ...c, count: own.length, total, currency };
     });
   }, [customers, quotes]);
-
-  const filtered = q
-    ? enriched.filter(
-        (c) =>
-          c.firma.toLowerCase().includes(q.toLowerCase()) ||
-          c.yetkili.toLowerCase().includes(q.toLowerCase())
-      )
-    : enriched;
 
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
         <TopHeader title="Müşteriler" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <View style={s.empty}>
+          <Text style={s.emptyText}>Önce firma seçiniz</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title={`Müşteriler (${customers.length})`} />
-      <View style={{ padding: 14 }}>
-        <View style={s.searchWrap}>
-          <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-          <TextInput
-            testID="customer-search"
-            style={s.searchInput}
-            placeholder="Firma veya yetkili ara..."
-            placeholderTextColor="#94a3b8"
-            value={q}
-            onChangeText={setQ}
-          />
-        </View>
-      </View>
+      <TopHeader title="Müşteriler" />
+
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {filtered.length === 0 ? (
+        {/* Primary CTA — matches the reference screenshot */}
+        <TouchableOpacity
+          style={s.addBtn}
+          onPress={() => router.push('/customer-add')}
+          activeOpacity={0.9}
+          testID="customer-add-btn"
+        >
+          <Ionicons name="person-add" size={20} color="#fff" />
+          <Text style={s.addBtnText}>Yeni Müşteri Ekle</Text>
+        </TouchableOpacity>
+
+        {enriched.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Kayıtlı müşteri yok. Teklif oluşturdukça otomatik eklenir.</Text>
+            <Text style={s.emptyTextBox}>Henüz müşteri yok. Yukarıdaki mavi buton ile ekleyebilirsin.</Text>
           </View>
         ) : (
-          filtered.map((c) => (
-            <View key={c.id} style={s.card} testID={`customer-card-${c.id}`}>
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text style={s.firma} numberOfLines={1}>{c.firma}</Text>
-                {c.yetkili ? <Text style={s.line} numberOfLines={1}>👤 {c.yetkili}</Text> : null}
-                {c.telefon ? <Text style={s.line} numberOfLines={1}>📞 {c.telefon}</Text> : null}
-                {c.email ? <Text style={s.line} numberOfLines={1}>✉️ {c.email}</Text> : null}
-                {c.adres ? <Text style={s.line} numberOfLines={2}>📍 {c.adres}</Text> : null}
-                <View style={s.badgeRow}>
-                  <View style={s.badge}><Text style={s.badgeText}>{c.count} teklif</Text></View>
-                  <View style={[s.badge, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-                    <Text style={[s.badgeText, { color: '#166534' }]}>
-                      Toplam: {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(c.total)}
+          enriched.map((c) => {
+            const letter = ((c.firma || '?').trim().charAt(0) || '?').toUpperCase();
+            return (
+              <View key={c.id} style={s.card} testID={`customer-card-${c.id}`}>
+                {/* Top row: avatar + name/phone + actions */}
+                <View style={s.topRow}>
+                  <View style={s.avatar}>
+                    <Text style={s.avatarLetter}>{letter}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.name} numberOfLines={1}>{c.firma || '(İsimsiz)'}</Text>
+                    {c.telefon ? (
+                      <Text style={s.phone} numberOfLines={1}>{c.telefon}</Text>
+                    ) : (
+                      <Text style={s.phoneMuted}>Telefon yok</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => deleteCustomer(c.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    testID={`delete-cust-${c.id}`}
+                    style={s.iconBtn}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => router.push({ pathname: '/customer-add', params: { id: c.id } })}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    testID={`open-cust-${c.id}`}
+                    style={s.iconBtn}
+                  >
+                    <Ionicons name="chevron-forward" size={22} color={theme.colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Divider */}
+                <View style={s.cardDivider} />
+
+                {/* Bottom stats row */}
+                <View style={s.statsRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.statLabel}>TOPLAM TEKLİF</Text>
+                    <Text style={s.statValue}>{c.count} Adet</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.statLabel}>TOPLAM HACİM</Text>
+                    <Text style={[s.statValue, { color: theme.colors.primary }]}>
+                      {currencySymbol(c.currency)}
+                      {formatMoney(c.total)}
                     </Text>
                   </View>
                 </View>
               </View>
-              <View style={{ gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    // create a new quote pre-filled? For simplicity, navigate to editor
-                    router.push('/(tabs)/');
-                    showToast(`"${c.firma}" için teklif hazırlanıyor`);
-                  }}
-                  testID={`quote-for-${c.id}`}
-                  style={s.miniBtn}
-                >
-                  <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteCustomer(c.id)} testID={`delete-cust-${c.id}`} style={s.miniBtn}>
-                  <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -114,60 +133,77 @@ export default function CustomersScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bg },
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
-  searchWrap: {
+
+  addBtn: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  emptyBox: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: theme.colors.lineDark,
-    borderRadius: 12,
-    padding: 30,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    marginBottom: 10,
-    flexDirection: 'row',
+    justifyContent: 'center',
     gap: 10,
+    marginBottom: 20,
+    ...theme.shadow.lg,
   },
-  firma: { fontSize: 14, fontWeight: '800', color: theme.colors.text },
-  line: { fontSize: 11.5, color: theme.colors.textMuted },
-  badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: theme.colors.primarySoft,
+  addBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+
+  emptyBox: {
+    marginTop: 30,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    gap: 10,
     borderWidth: 1,
-    borderColor: theme.colors.primaryBorder,
-    borderRadius: 12,
+    borderColor: theme.colors.line,
+    borderStyle: 'dashed',
   },
-  badgeText: { fontSize: 10, fontWeight: '700', color: theme.colors.primary },
-  miniBtn: {
-    width: 34,
-    height: 34,
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: 8,
+  emptyTextBox: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 18 },
+
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    ...theme.shadow.sm,
+    shadowColor: theme.colors.primary,
+    shadowOpacity: 0.05,
+  },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarLetter: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: theme.colors.primary,
+    letterSpacing: 0.5,
+  },
+  name: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
+  phone: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
+  phoneMuted: { fontSize: 12, color: theme.colors.lineDark, marginTop: 2, fontStyle: 'italic' },
+  iconBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+
+  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 12 },
+
+  statsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  statLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
+    letterSpacing: 1.1,
+    marginBottom: 4,
+  },
+  statValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text },
 });

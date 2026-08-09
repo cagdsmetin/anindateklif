@@ -1,0 +1,60 @@
+{
+  "summary": "Verified the two new Turkish customer UI screens (Müşteriler list + Müşteri Ekle form) against the reference design and ran a full backend regression. Backend: 42/42 pytest passing (11 NEW customer regression tests + 31 pre-existing auth/phase1 tests) on the public preview URL. Frontend E2E on 390x844 mobile viewport: full-width blue 'Yeni Müşteri Ekle' CTA appears at the top of the Müşteriler screen with correct empty-state message ('Henüz müşteri yok. Yukarıdaki mavi buton ile ekleyebilirsin.'), tap navigates to /customer-add, all 5 form fields render with blue icons in the required order (Ad Soyad / Firma Ünvanı*, Telefon*, E-posta Adresi, Şirket Adı, Adres), 'Müşteriyi Kaydet' with empty required fields correctly draws RED borders on both required inputs (verified via screenshot it8_validation.png), successful save with valid data POSTs to /api/customers, navigates back to /customers, and the new row appears with the correct card layout: light-blue avatar circle + dark-blue capital letter (T), name + phone, trash + chevron icons on the right, and the bottom divider row showing 'TOPLAM TEKLİF 0 Adet' (left, muted) + 'TOPLAM HACİM ₺0' (right, blue). Chevron tap routes to /customer-add?id=<uuid> with pre-populated fields and header 'Müşteri Düzenle'. Trash tap deletes the row (cards: 1 → 0). All 4 sibling tabs (Teklif, Katalog, Geçmiş, Firma) still mount without crashing — 0 console errors, 0 page errors across the entire session. One real minor UI bug found: the Toast rendering component lives inside src/components/TopHeader.tsx, and customer-add.tsx does NOT use TopHeader (it renders a custom header with a back arrow), so `showToast('Ad Soyad ve Telefon zorunludur')`, `showToast('Müşteri kaydedildi')`, and `showToast('Kayıt hatası: ...')` set the AppContext toast state but never render any visible message while the user is still on the /customer-add screen. Users only see the red-border validation cue; success and error toasts are silently swallowed unless the user has already navigated back to a screen that mounts TopHeader before the 2.5s auto-clear expires. Deprecated packages detected: none new. No SafeAreaView issues detected.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "customer-add.tsx (Müşteri Ekle screen)",
+        "issue": "Toast component is rendered exclusively inside src/components/TopHeader.tsx (see TopHeader.tsx:18-23). customer-add.tsx renders its own custom header (customer-add.tsx:91-98) and never mounts TopHeader, so every showToast(...) call fired from this screen — validation ('Ad Soyad ve Telefon zorunludur'), success ('Müşteri kaydedildi'), error ('Kayıt hatası: ...'), and 'Önce firma seçiniz' — updates AppContext state but produces NO visible feedback to the user. E2E confirmed the string 'Ad Soyad ve Telefon zorunludur' is absent from the DOM after tapping Müşteriyi Kaydet with empty required fields. Red-border input styling still fires correctly so validation is not entirely silent, but users lose the confirmation for success and the diagnostic text for errors. Reference: /app/frontend/app/customer-add.tsx:55 (validation toast), :80 (success toast), :83 (error toast); /app/frontend/src/components/TopHeader.tsx:18-23 (Toast render site).",
+        "testID": "toast-msg (never mounted on customer-add)",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/customer-add",
+        "issues": [
+          "Success toast 'Müşteri kaydedildi' briefly flashes AFTER router.back() lands on /customers (because TopHeader mounts there), but during the ~200-400ms of route transition the user sees only the CTA revert from spinner → text, which is easy to miss. Consider showing a persistent inline banner OR reusing TopHeader on customer-add."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_customers_regression.py",
+    "/app/backend/tests/test_auth_saas.py",
+    "/app/backend/tests/test_phase1_features.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/it8_customers_empty.png",
+    "/app/test_reports/it8_customer_add.png",
+    "/app/test_reports/it8_validation.png",
+    "/app/test_reports/it8_filled.png",
+    "/app/test_reports/it8_saved_list.png",
+    "/app/test_reports/it8_edit.png",
+    "/app/test_reports/it8_final.png"
+  ],
+  "action_items": [
+    "(MEDIUM) Make toasts visible on the /customer-add screen. Two simple options: (a) reuse TopHeader in customer-add.tsx (drop the custom header), which will render the Toast automatically; OR (b) extract the toast render block from TopHeader.tsx:18-23 into a small <ToastHost/> component and mount it once in /app/frontend/app/_layout.tsx so every screen (including modal / stack routes) benefits.",
+    "(LOW / DOCUMENTED LIMITATION per the request) Customer edit re-uses api.createCustomer (customer-add.tsx:72-78). This is safe today because server.py:598-608 upserts on (companyId, firma, userId) — same firma + same user replaces the existing row (verified by TestCustomerCreate.test_create_customer_upserts_when_firma_and_telefon_match). BUT if the user edits the 'Ad Soyad / Firma Ünvanı' field the upsert key changes and a duplicate row is created instead of updating the original. Consider adding a PUT /api/customers/{id} endpoint or passing the existing customer.id to the upsert filter to keep the id stable across edits.",
+    "(CARRY-OVER, LOW from iter7) Splash slide advance on react-native-web still doesn't advance beyond slide 1 on tap. Non-blocking.",
+    "(CARRY-OVER, LOW from iter7) Migrate shadow*/textShadow*/pointerEvents style props to boxShadow/textShadow/style.pointerEvents equivalents for RN Web 0.19+ (console noise only)."
+  ],
+  "critical_code_review_comments": [
+    "customers.tsx: enrichment loop at lines 25-36 matches quotes to customers by BOTH normalised firma name AND normalised phone digits — resilient and correct. The map ignores customers whose companyId doesn't match (they'd never be in `customers` state anyway because reloadCustomers filters by activeCompanyId).",
+    "customers.tsx:16-18 currency helpers are inline; if this pattern is repeated elsewhere consider extracting to /src/lib/format.ts (very minor DRY hint).",
+    "customer-add.tsx:39-43 initial-state read from `editing` runs only on mount — if the user navigates from card A to card B via chevron without unmounting (e.g. deep-link), the form would keep A's values. Not currently possible because router.push always mounts a fresh screen, but worth noting.",
+    "customer-add.tsx:72-78 both edit and add branches call api.createCustomer, which is fine ONLY while the upsert key (companyId + firma) is stable. See action_items note about edit-with-renamed-firma creating a duplicate.",
+    "customer-add.tsx: the FieldRow component correctly forwards `multiline` to the inputWrap styling. Good.",
+    "AppContext.tsx: `deleteCustomer` is exposed and used correctly by the customers screen. No createCustomer wrapper in the context (screen calls api.createCustomer directly + reloadCustomers) — acceptable per the request's agent-to-agent note."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_customers_regression.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (42/42 pytest, 11 new customer regression tests + 31 pre-existing)", "frontend": "95% — every functional check passes (nav, form render, validation borders, save, persist, list, edit chevron, delete, cross-tab regression, 0 console/page errors); the single UI issue is the invisible toast on /customer-add."},
+  "seed_data_creation": "Registered throwaway user e2e+customerui+04c2e980@example.com (password Test1234!, onboarded TR/TRY/KDV, company 'TEST_CustUI_Firma'). Additional short-lived users created by pytest: e2e+cust+A+*, e2e+cust+B+*, plus phase1 + auth suites' own users. All customer rows prefixed TEST_ for cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "For customer-related regressions: (1) `pytest /app/backend/tests/test_customers_regression.py -v` covers POST/GET/DELETE/multi-tenancy/auth-guard/upsert (11 tests, ~2s). (2) Full backend regression: 42/42 in ~10s parallel. (3) UI test recipe: register a user via fetch inside page.evaluate, PATCH /auth/me with country/currency/tax_label + onboarding_completed=true, POST /companies, localStorage.setItem('session_token_v1', RAW_TOKEN), navigate to /(tabs) or directly /(tabs)/customers, then use data-testid selectors: customer-add-btn, cadd-name, cadd-phone, cadd-email, cadd-company, cadd-address, cadd-save, customer-card-<id>, delete-cust-<id>, open-cust-<id>, toast-msg. (4) The Toast rendering coupling to TopHeader is a broader architectural quirk — any new screen that renders a custom header instead of TopHeader will lose all toast feedback; verify this whenever new modal or standalone screens are added.",
+  "rca_of_issue": "Toast invisibility on /customer-add — ROOT CAUSE: the toast overlay is defined in-line inside TopHeader.tsx (lines 18-23) rather than being a globally mounted <ToastHost/> in the root Expo layout. customer-add.tsx intentionally renders a custom back-arrow header (customer-add.tsx:91-98) and therefore never mounts TopHeader, so the {toast && (...)} branch never appears while the user is on this screen. The AppContext state still updates, and TopHeader on the next screen (customers.tsx) does render it, but the 2.5s auto-clear timer (AppContext.tsx:76) may have already fired by then, and router.back() plus data reload means the toast is usually gone before the user sees anything. REPRODUCTION: (1) navigate to /customer-add, (2) leave both required fields empty, (3) tap Müşteriyi Kaydet — red borders appear on Ad Soyad and Telefon, no toast text appears anywhere. Confirmed via DOM scrape: substring 'Ad Soyad ve Telefon zorunludur' absent immediately after the tap. MITIGATION (minimal): move the {toast && ...} block from TopHeader.tsx:18-23 into a new tiny component and mount it once at the top of _layout.tsx so every screen gets it, OR (even simpler) render <ToastBar/> inside customer-add.tsx above the header. No backend change required."
+}

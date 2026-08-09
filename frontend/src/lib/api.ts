@@ -162,6 +162,8 @@ export type QuoteItemT = {
   birimFiyat: number;
 };
 
+export type QuoteEkT = { id: string; baslik: string; icerik: string };
+
 export type QuoteT = {
   id: string;
   userId: string;
@@ -185,6 +187,7 @@ export type QuoteT = {
   kdvOrani: number;
   notlar: string;
   items: QuoteItemT[];
+  ekler: QuoteEkT[];
   durum: string;
   araToplam: number;
   iskontoTutar: number;

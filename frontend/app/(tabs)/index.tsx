@@ -20,9 +20,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { QuoteItemT, QuoteT, SystemTypeDefT, SystemField } from '@/src/lib/api';
+import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo } from '@/src/lib/quote-utils';
+import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -61,6 +62,7 @@ export default function EditorScreen() {
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
   const [items, setItems] = useState<QuoteItemT[]>([]);
+  const [ekler, setEkler] = useState<QuoteEkT[]>([]);
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
   const [showEmailPicker, setShowEmailPicker] = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -83,14 +85,14 @@ export default function EditorScreen() {
     setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
-    setNotlar(q.notlar); setItems(q.items);
+    setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []);
   };
 
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo()); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(activeCompany?.hazirlayanEmails?.[0] || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
-    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); bootedRef.current = null;
+    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); bootedRef.current = null;
   }, [activeCompany]);
 
   useEffect(() => {
@@ -114,7 +116,7 @@ export default function EditorScreen() {
   const currentQuote = (): Partial<QuoteT> => ({
     teklifNo, tarih, gecerlilik, hazirlayanEmail, musFirma, musYetkili, musTelefon, musEmail, musAdres,
     projeAdi, nakliye, paraBirimi, odemeSekli, mensei, teslimGun,
-    iskonto: iskontoOr, kdvOrani: kdvOr, notlar, items, durum: 'Beklemede',
+    iskonto: iskontoOr, kdvOrani: kdvOr, notlar, items, ekler, durum: 'Beklemede',
   });
 
   const updateItem = (id: string, patch: Partial<QuoteItemT>) => {
@@ -193,6 +195,20 @@ export default function EditorScreen() {
       if (available) await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       else showToast('Paylaşım desteklenmiyor (web indirme)');
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+  };
+
+  // Direct WhatsApp: open the customer's chat pre-filled, then trigger the share sheet
+  // so the user can attach the PDF into that same chat with one tap.
+  const handleWhatsAppShare = async () => {
+    const saved = await handleSave(); if (!saved) return;
+    try {
+      const uri = await generatePdfUri(saved);
+      await shareQuoteViaWhatsApp({
+        pdfUri: uri,
+        quote: saved,
+        companyName: activeCompany?.sirketAdi,
+      });
+    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 
   const handlePreview = async () => {
@@ -319,7 +335,7 @@ export default function EditorScreen() {
             <View style={s.warningBox}>
               <Ionicons name="warning" size={16} color={theme.colors.gold} />
               <Text style={s.warningText}>
-                Henüz sistem tipi tanımlamadınız. <Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/company')}>Firma sekmesinden</Text> Sistem Yapılandırıcı ile tanımlayın.
+                Henüz hizmet / ürün tanımlamadınız. <Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/company')}>Firma sekmesinden</Text> Hizmet / Ürün Yapılandırıcı ile tanımlayın.
               </Text>
             </View>
           )}
@@ -328,6 +344,46 @@ export default function EditorScreen() {
           <FGroup>
             <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder="Notlar, garanti, koşullar..." placeholderTextColor="#94a3b8" />
           </FGroup>
+
+          {/* EKLER — Additional attachment pages (References, Katalog, etc.) */}
+          <SectionHeader title="EKLER (İSTEĞE BAĞLI)" />
+          <Text style={s.helperTinyMuted}>{"Teklifin altına özel sayfalar ekleyebilirsiniz (örn. Referanslar listesi, Katalog). Her ek, PDF'de teklifle aynı stilde yeni sayfa olarak eklenir."}</Text>
+          {ekler.map((ek, ei) => (
+            <View key={ek.id} style={s.ekCard} testID={`ek-${ei}`}>
+              <View style={s.ekHdr}>
+                <Text style={s.ekBadge}>EK {ei + 1}</Text>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity onPress={() => setEkler(ekler.filter((_, i) => i !== ei))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`ek-remove-${ei}`}>
+                  <Ionicons name="close-circle" size={20} color={theme.colors.red} />
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={[s.input, { marginBottom: 6 }]}
+                value={ek.baslik}
+                onChangeText={(v) => setEkler(ekler.map((x, i) => (i === ei ? { ...x, baslik: v } : x)))}
+                placeholder="Başlık (örn: Referanslarımız)"
+                placeholderTextColor="#94a3b8"
+                testID={`ek-title-${ei}`}
+              />
+              <TextInput
+                style={[s.input, s.multiline, { minHeight: 100 }]}
+                multiline
+                value={ek.icerik}
+                onChangeText={(v) => setEkler(ekler.map((x, i) => (i === ei ? { ...x, icerik: v } : x)))}
+                placeholder="İçerik (referans firma listeniz, açıklamalar, teknik notlar...)"
+                placeholderTextColor="#94a3b8"
+                testID={`ek-content-${ei}`}
+              />
+            </View>
+          ))}
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => setEkler([...ekler, { id: 'ek-' + Date.now() + Math.random().toString(36).slice(2, 8), baslik: '', icerik: '' }])}
+            testID="add-ek-btn"
+          >
+            <Ionicons name="document-attach-outline" size={16} color={theme.colors.primary} />
+            <Text style={s.addBtnText}>Ek Sayfa Ekle</Text>
+          </TouchableOpacity>
 
           {/* LIVE PDF PREVIEW */}
           <View style={s.livePreviewSection}>
@@ -340,7 +396,7 @@ export default function EditorScreen() {
             <View style={s.miniTable}>
               <View style={s.miniTHead}>
                 <Text style={[s.miniTh, { width: 22, textAlign: 'center' }]}>#</Text>
-                <Text style={[s.miniTh, { flex: 1 }]}>SİSTEM / HİZMET</Text>
+                <Text style={[s.miniTh, { flex: 1 }]}>HİZMET / ÜRÜN</Text>
                 <Text style={[s.miniTh, { width: 38, textAlign: 'center' }]}>ADET</Text>
                 <Text style={[s.miniTh, { width: 66, textAlign: 'right' }]}>TOPLAM</Text>
               </View>
@@ -372,19 +428,25 @@ export default function EditorScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-            <TouchableOpacity style={[s.btnGhost, { flex: 1 }]} onPress={resetForm}>
+            <TouchableOpacity style={[s.btnGhost, { flex: 0.8 }]} onPress={resetForm}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSoft} />
               <Text style={s.btnGhostText}>Sıfırla</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.btnSecondary, { flex: 1 }]} onPress={handlePreview} disabled={saving} testID="preview-btn">
               <Ionicons name="eye-outline" size={16} color="#fff" />
-              <Text style={s.btnSecondaryText}>Tam Önizleme</Text>
+              <Text style={s.btnSecondaryText}>Önizle</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={[s.btnPrimary, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
-            {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet & PDF Paylaş</Text></>)}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <TouchableOpacity style={[s.btnPrimary, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
+              {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet & PDF</Text></>)}
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving} testID="share-whatsapp-btn">
+              <Ionicons name="logo-whatsapp" size={17} color="#fff" />
+              <Text style={s.btnPrimaryText}>WhatsApp Gönder</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -393,7 +455,7 @@ export default function EditorScreen() {
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowModeSheet(false)}>
           <View style={s.modalSheet}>
             <Text style={s.modalTitle}>Kalem Tipi Seçin</Text>
-            <ModeChoice icon="construct" title="Sistem / Teknik" desc="Firma ayarlarında tanımlı sistem tiplerinden seçin" onPress={() => addItem('technical')} tid="add-technical" />
+            <ModeChoice icon="construct" title="Hizmet / Ürün" desc="Firma ayarlarında tanımlı hizmet/ürün tiplerinden seçin" onPress={() => addItem('technical')} tid="add-technical" />
             <ModeChoice icon="list" title="Manuel Bilgi" desc="Kendi Key: Value çiftlerinizi ekleyin" onPress={() => addItem('manual')} tid="add-manual" />
             <ModeChoice icon="pricetag" title="Genel Ürün" desc="İsim + adet + fiyat" onPress={() => addItem('general')} tid="add-general" />
           </View>
@@ -465,7 +527,7 @@ export default function EditorScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Sistem Tipi Seç</Text>
+              <Text style={s.modalTitle}>Hizmet / Ürün Seç</Text>
               <TouchableOpacity onPress={() => setShowSystemPicker(null)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             {(activeCompany?.sistemTipleri || []).length === 0 ? (
@@ -533,7 +595,7 @@ function ItemCard({
 }) {
   const line = (item.adet || 0) * (item.birimFiyat || 0);
   const modeMeta =
-    item.mode === 'technical' ? { label: 'SİSTEM/TEKNİK', color: theme.colors.primary } :
+    item.mode === 'technical' ? { label: 'HİZMET / ÜRÜN', color: theme.colors.primary } :
     item.mode === 'manual' ? { label: 'MANUEL', color: theme.colors.gold } :
     { label: 'GENEL ÜRÜN', color: theme.colors.textMuted };
   const preview = buildItemDescription(item);
@@ -559,10 +621,10 @@ function ItemCard({
       {/* TECHNICAL MODE — dynamic fields based on selected system */}
       {item.mode === 'technical' && (
         <>
-          <FieldGroup label="Sistem Tipi">
+          <FieldGroup label="Hizmet / Ürün">
             <TouchableOpacity style={[itemStyles.select, !item.sistemTipiId && itemStyles.selectHighlight]} onPress={onOpenSystemPicker} testID={`item-${idx}-syspick`}>
               <Text style={[itemStyles.selectText, !item.sistemTipiId && { color: theme.colors.primary, fontWeight: '800' }]} numberOfLines={1}>
-                {item.sistemTipi || '👆 Bir Sistem Tipi Seçin'}
+                {item.sistemTipi || '👆 Bir Hizmet / Ürün Seçin'}
               </Text>
               <Ionicons name="chevron-down" size={14} color={theme.colors.primary} />
             </TouchableOpacity>
@@ -755,7 +817,12 @@ const s = StyleSheet.create({
   grandLabel: { color: '#cbd5e1', fontSize: 11.5, fontWeight: '900', letterSpacing: 0.6 },
   grandValue: { color: '#fff', fontSize: 17, fontWeight: '900' },
   btnPrimary: { marginTop: 12, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
-  btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.3 },
+  btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
+  btnWhatsApp: { marginTop: 12, backgroundColor: '#25D366', paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: '#25D366', shadowOpacity: 0.35 },
+  ekCard: { backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },
+  ekHdr: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  ekBadge: { fontSize: 10, fontWeight: '900', color: theme.colors.primary, backgroundColor: theme.colors.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, letterSpacing: 0.4 },
+  helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15, marginBottom: 8, marginTop: -4 },
   btnSecondary: { backgroundColor: theme.colors.navy, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnSecondaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   btnGhost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark },

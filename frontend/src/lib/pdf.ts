@@ -59,6 +59,23 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
 
   const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
 
+  // Additional attachment pages (references, catalog etc.)
+  const ekler = quote.ekler || [];
+  const eklerHtml = ekler
+    .filter((e) => (e.baslik || '').trim() || (e.icerik || '').trim())
+    .map(
+      (e) => `
+    <div class="ek-page">
+      <div class="ek-hdr">
+        <div class="ek-brand">${esc(company.sirketAdi || '')}</div>
+        <div class="ek-meta">Teklif No: <b>${esc(quote.teklifNo)}</b> · Sayfa Eki</div>
+      </div>
+      <div class="ek-title">${esc(e.baslik || 'EK')}</div>
+      <div class="ek-body">${esc(e.icerik || '')}</div>
+    </div>`
+    )
+    .join('');
+
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
@@ -67,19 +84,22 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:10px; }
   .sheet { padding: 6mm 8mm; }
 
-  /* HEADER */
-  .doc-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 14px; }
-  .company-block { max-width: 55%; }
-  .cname { font-weight:800; font-size:11px; color:#1E293B; margin-bottom:3px; line-height:1.3; }
-  .cline { font-size:10px; color:#0f172a; line-height:1.4; }
-  .right-block { text-align:right; }
-  .logo { max-width:180px; max-height:64px; object-fit:contain; margin-bottom:6px; margin-left:auto; display:block; }
-  .logo-fallback { padding:8px 12px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin-bottom:6px; display:inline-block; font-size:12px; }
-  .doc-title { margin: 4px 0 8px 0; font-size:22px; font-weight:900; color:#1E293B; letter-spacing:0.03em; }
-  .meta-table { border-collapse:collapse; margin-left:auto; }
-  .meta-table td { padding:2px 6px; font-size:10px; }
-  .meta-table td.k { color:#64748b; text-align:left; }
-  .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; }
+  /* HEADER — table layout guarantees strict top alignment between the two columns. */
+  .hdr { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  .hdr td { padding:0; vertical-align:top; }
+  .hdr td.left-col { width:55%; padding-right:12px; }
+  .hdr td.right-col { width:45%; padding-left:12px; text-align:right; }
+
+  .cname { font-weight:800; font-size:11px; color:#1E293B; margin:0 0 4px 0; line-height:1.3; }
+  .cline { font-size:10px; color:#0f172a; line-height:1.4; margin:0 0 1px 0; }
+
+  .logo { max-width:150px; max-height:56px; object-fit:contain; margin:0 0 6px auto; display:block; }
+  .logo-fallback { padding:6px 10px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 6px auto; display:inline-block; font-size:11px; }
+  .doc-title { margin: 0 0 8px 0; font-size:20px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; }
+  .meta-table { border-collapse:collapse; margin:0 0 0 auto; }
+  .meta-table td { padding:2px 0 2px 10px; font-size:10px; }
+  .meta-table td.k { color:#64748b; text-align:right; padding-right:6px; padding-left:0; }
+  .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; min-width:70px; }
 
   /* INFO BOXES */
   .info-grid { display: table; width:100%; margin-bottom:10px; border-spacing: 0 0; }
@@ -87,7 +107,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   .info-cell:first-child { padding-right:6px; }
   .info-cell:last-child { padding-left:6px; }
   .info-box { border:1px solid #cbd5e1; border-radius:2px; overflow:hidden; }
-  .info-box .hdr { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; letter-spacing:0.04em; }
+  .info-box .hdr-cell { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; letter-spacing:0.04em; }
   .info-box table { width:100%; border-collapse:collapse; }
   .info-box td { font-size:10px; padding:4px 8px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
   .info-box tr:last-child td { border-bottom:none; }
@@ -125,7 +145,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   .tot-row.grand { background:#0f172a; color:#fff; border-color:#0f172a; font-size:12px; }
   .tot-row.grand .l { color:#fff; font-weight:800; letter-spacing:0.05em; }
   .tot-row.grand .v { color:#fff; font-weight:900; }
-  .sign-box { border:1px solid #cbd5e1; height:58px; padding:6px; font-size:10px; color:#64748b; margin-top:6px; }
+  .sign-box { border:1px solid #cbd5e1; height:58px; padding:6px; font-size:10px; color:#64748b; margin-top:6px; white-space:pre-wrap; }
 
   /* BANK */
   .bank-title { background:#1E293B; color:#fff; font-size:10px; font-weight:800; padding:5px 8px; margin-top:10px; letter-spacing:0.03em; }
@@ -135,35 +155,45 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   .bank-table td.bk-name { color:#0f172a; width:35%; font-weight:700; }
   .bank-table td.bk-iban { color:#0f172a; font-family:'Courier New',monospace; letter-spacing:0.02em; }
   .bank-footer { font-size:9px; color:#64748b; padding:6px 0 0; }
+
+  /* ATTACHMENTS */
+  .ek-page { page-break-before: always; padding: 4mm 0 0 0; }
+  .ek-hdr { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid #1E293B; padding-bottom:6px; margin-bottom:12px; }
+  .ek-brand { font-weight:800; font-size:11px; color:#1E293B; }
+  .ek-meta { font-size:9.5px; color:#64748b; }
+  .ek-title { font-size:14px; font-weight:900; color:#1E293B; margin-bottom:8px; letter-spacing:0.03em; text-transform:uppercase; }
+  .ek-body { font-size:10.5px; line-height:1.55; color:#0f172a; white-space:pre-wrap; }
 </style></head>
 <body>
 <div class="sheet">
   <!-- HEADER -->
-  <div class="doc-header">
-    <div class="company-block">
-      <div class="cname">${esc(company.sirketAdi || '')}</div>
-      ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
-      ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
-      ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
-      ${company.email ? `<div class="cline">${esc(company.email)}</div>` : ''}
-      ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
-    </div>
-    <div class="right-block">
-      ${logo}
-      <div class="doc-title">TEKLİF FORMU</div>
-      <table class="meta-table">
-        <tr><td class="k">Teklif No</td><td class="v">${esc(quote.teklifNo)}</td></tr>
-        <tr><td class="k">Tarih</td><td class="v">${esc(trDate(quote.tarih))}</td></tr>
-        <tr><td class="k">Geçerlilik Tarihi</td><td class="v">${esc(trDate(quote.gecerlilik))}</td></tr>
-      </table>
-    </div>
-  </div>
+  <table class="hdr">
+    <tr>
+      <td class="left-col">
+        <div class="cname">${esc(company.sirketAdi || '')}</div>
+        ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
+        ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
+        ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
+        ${company.email ? `<div class="cline">${esc(company.email)}</div>` : ''}
+        ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
+      </td>
+      <td class="right-col">
+        ${logo}
+        <div class="doc-title">TEKLİF FORMU</div>
+        <table class="meta-table">
+          <tr><td class="k">Teklif No</td><td class="v">${esc(quote.teklifNo)}</td></tr>
+          <tr><td class="k">Tarih</td><td class="v">${esc(trDate(quote.tarih))}</td></tr>
+          <tr><td class="k">Geçerlilik Tarihi</td><td class="v">${esc(trDate(quote.gecerlilik))}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 
   <!-- INFO BOXES -->
   <div class="info-grid">
     <div class="info-cell">
       <div class="info-box">
-        <div class="hdr">MÜŞTERİ BİLGİLERİ</div>
+        <div class="hdr-cell">MÜŞTERİ BİLGİLERİ</div>
         <table>
           <tr><td class="k">FİRMA</td><td class="v">${esc(quote.musFirma || '-')}</td></tr>
           <tr><td class="k">MÜŞTERİ ADI</td><td class="v">${esc(quote.musYetkili || '-')}</td></tr>
@@ -175,7 +205,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
     </div>
     <div class="info-cell">
       <div class="info-box">
-        <div class="hdr">SİPARİŞ BİLGİLERİ</div>
+        <div class="hdr-cell">SİPARİŞ BİLGİLERİ</div>
         <table>
           <tr><td class="k">PROJE ADI</td><td class="v">${esc(quote.projeAdi || '-')}</td></tr>
           <tr><td class="k">NAKLİYE</td><td class="v">${esc(quote.nakliye)}</td></tr>
@@ -193,7 +223,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
     <thead>
       <tr>
         <th>S.NO</th>
-        <th>SİSTEM / HİZMET</th>
+        <th>HİZMET / ÜRÜN</th>
         <th>ADET</th>
         <th>BİRİM FİYAT</th>
         <th>TOPLAM FİYAT</th>
@@ -217,7 +247,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
       <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
       ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">İSKONTO (%${quote.iskonto})</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
       <div class="tot-row grand"><div class="l">GENEL TOPLAM</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
-      <div class="sign-box">Onay / İmza :</div>
+      <div class="sign-box">Onay / İmza :${company.imzaMetni ? `\n${esc(company.imzaMetni)}` : ''}</div>
     </div>
   </div>
 
@@ -227,6 +257,9 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
   <table class="bank-table">${bankRows}</table>
   <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
   ` : ''}
+
+  <!-- ATTACHMENT PAGES -->
+  ${eklerHtml}
 </div>
 </body></html>`;
 }

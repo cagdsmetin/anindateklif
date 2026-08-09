@@ -21,6 +21,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { QuoteT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
+import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -53,20 +54,27 @@ export default function HistoryScreen() {
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/', params: { quoteId: id } });
 
+  const generatePdf = async (quote: QuoteT): Promise<string | null> => {
+    if (!activeCompany) return null;
+    const html = buildQuotePdfHtml(activeCompany, quote);
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    let finalUri = uri;
+    const desired = buildQuoteFileName(new Date()) + '.pdf';
+    if (Platform.OS !== 'web') {
+      try {
+        const dirIdx = uri.lastIndexOf('/');
+        finalUri = uri.substring(0, dirIdx + 1) + desired;
+        await FileSystem.moveAsync({ from: uri, to: finalUri });
+      } catch { finalUri = uri; }
+    }
+    return finalUri;
+  };
+
   const doShare = async (quote: QuoteT) => {
     if (!activeCompany) return;
     try {
-      const html = buildQuotePdfHtml(activeCompany, quote);
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      let finalUri = uri;
-      const desired = buildQuoteFileName(new Date()) + '.pdf';
-      if (Platform.OS !== 'web') {
-        try {
-          const dirIdx = uri.lastIndexOf('/');
-          finalUri = uri.substring(0, dirIdx + 1) + desired;
-          await FileSystem.moveAsync({ from: uri, to: finalUri });
-        } catch { finalUri = uri; }
-      }
+      const finalUri = await generatePdf(quote);
+      if (!finalUri) return;
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
         await Sharing.shareAsync(finalUri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
@@ -74,6 +82,15 @@ export default function HistoryScreen() {
         showToast('Paylaşım desteklenmiyor (web indirme)');
       }
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+  };
+
+  const doWhatsApp = async (quote: QuoteT) => {
+    if (!activeCompany) return;
+    try {
+      const uri = await generatePdf(quote);
+      if (!uri) return;
+      await shareQuoteViaWhatsApp({ pdfUri: uri, quote, companyName: activeCompany.sirketAdi });
+    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 
   if (!activeCompany) {
@@ -145,7 +162,7 @@ export default function HistoryScreen() {
                   <Ionicons name="document-text-outline" size={14} color={theme.colors.primary} />
                   <Text style={s.actText}>PDF</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => doShare(quote)} testID={`whatsapp-${quote.id}`}>
+                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => doWhatsApp(quote)} testID={`whatsapp-${quote.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
                   <Text style={[s.actText, { color: '#16a34a' }]}>WA</Text>
                 </TouchableOpacity>

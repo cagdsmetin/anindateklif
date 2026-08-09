@@ -317,8 +317,8 @@ export default function SetupWizard() {
           )}
 
           {step === 6 && (
-            <StepShell icon="cube-outline" title="İlk Sistem Tipin" subtitle="Sık kullandığın bir sistem tipini tanımla. Alanları virgülle ayır. Daha sonra Ayarlar'dan sistem tiplerini genişletebilirsin.">
-              <Field label="Sistem Tipi Adı">
+            <StepShell icon="cube-outline" title="İlk Hizmet / Ürün Kalemin" subtitle="Sık kullandığın bir hizmeti veya ürünü tanımla. Alanları virgülle ayır. Daha sonra Ayarlar'dan Hizmet / Ürün listeni genişletebilirsin.">
+              <Field label="Hizmet / Ürün Adı">
                 <TextInput
                   value={systemName}
                   onChangeText={setSystemName}
@@ -328,11 +328,11 @@ export default function SetupWizard() {
                   testID="setup-system-name"
                 />
               </Field>
-              <Field label="Alanlar (virgülle ayır)">
+              <Field label="Alt Alanlar (virgülle ayır)">
                 <TextInput
                   value={systemFieldsRaw}
                   onChangeText={setSystemFieldsRaw}
-                  placeholder="Örn: Cam Kalınlığı, Renk, Motor Çeşidi"
+                  placeholder="Örn: Ölçü, Cam Kalınlığı, Motor Çeşidi"
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   testID="setup-system-fields"

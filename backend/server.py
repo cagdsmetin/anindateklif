@@ -440,6 +440,7 @@ class Quote(BaseModel):
     kdvOrani: float = 20
     notlar: str = ""
     items: List[QuoteItem] = Field(default_factory=list)
+    ekler: List[Dict[str, str]] = Field(default_factory=list)  # [{id, baslik, icerik}]
     durum: str = "Beklemede"
     araToplam: float = 0
     iskontoTutar: float = 0
@@ -470,6 +471,7 @@ class QuoteCreate(BaseModel):
     kdvOrani: float = 20
     notlar: str = ""
     items: List[QuoteItem] = Field(default_factory=list)
+    ekler: List[Dict[str, str]] = Field(default_factory=list)
     durum: str = "Beklemede"
 
 

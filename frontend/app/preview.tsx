@@ -18,6 +18,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName } from '@/src/lib/quote-utils';
+import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
@@ -25,6 +26,13 @@ function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
   const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
   return `${sym} ${s}`;
+}
+
+// Render DD-MM-YYYY (matches PDF `trDate`)
+function trDate(iso: string): string {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso;
 }
 
 export default function PreviewScreen() {
@@ -50,26 +58,38 @@ export default function PreviewScreen() {
 
   const cur = quote.paraBirimi;
 
+  const generatePdf = async () => {
+    const html = buildQuotePdfHtml(activeCompany, quote);
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    let finalUri = uri;
+    const desired = buildQuoteFileName(new Date()) + '.pdf';
+    if (Platform.OS !== 'web') {
+      try {
+        const dirIdx = uri.lastIndexOf('/');
+        finalUri = uri.substring(0, dirIdx + 1) + desired;
+        await FileSystem.moveAsync({ from: uri, to: finalUri });
+      } catch { finalUri = uri; }
+    }
+    return finalUri;
+  };
+
   const doShare = async () => {
     try {
-      const html = buildQuotePdfHtml(activeCompany, quote);
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      let finalUri = uri;
-      const desired = buildQuoteFileName(new Date()) + '.pdf';
-      if (Platform.OS !== 'web') {
-        try {
-          const dirIdx = uri.lastIndexOf('/');
-          finalUri = uri.substring(0, dirIdx + 1) + desired;
-          await FileSystem.moveAsync({ from: uri, to: finalUri });
-        } catch { finalUri = uri; }
-      }
+      const uri = await generatePdf();
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
-        await Sharing.shareAsync(finalUri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
         showToast('Paylaşım desteklenmiyor');
       }
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+  };
+
+  const doWhatsAppShare = async () => {
+    try {
+      const uri = await generatePdf();
+      await shareQuoteViaWhatsApp({ pdfUri: uri, quote, companyName: activeCompany.sirketAdi });
+    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 
   return (
@@ -82,9 +102,9 @@ export default function PreviewScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         <View style={s.sheet} testID="preview-sheet">
-          {/* HEADER */}
+          {/* HEADER — matches the PDF layout: two columns, top-aligned. */}
           <View style={s.sheetHeader}>
-            <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={s.headerLeft}>
               <Text style={s.cName} numberOfLines={2}>{activeCompany.sirketAdi}</Text>
               {activeCompany.adres ? <Text style={s.cLine}>{activeCompany.adres}</Text> : null}
               {activeCompany.telefon ? <Text style={s.cLine}>{activeCompany.telefon}</Text> : null}
@@ -92,16 +112,18 @@ export default function PreviewScreen() {
               {activeCompany.email ? <Text style={s.cLine}>{activeCompany.email}</Text> : null}
               {activeCompany.website ? <Text style={s.cLine}>{activeCompany.website}</Text> : null}
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
+            <View style={s.headerRight}>
               {activeCompany.logoBase64 ? (
                 <Image source={{ uri: activeCompany.logoBase64 }} style={s.logo} resizeMode="contain" />
               ) : (
-                <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{activeCompany.sirketAdi.substring(0, 12)}</Text></View>
+                <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{(activeCompany.sirketAdi || 'FIRMA').substring(0, 14)}</Text></View>
               )}
               <Text style={s.docTitle}>TEKLİF FORMU</Text>
-              <Text style={s.meta}>Teklif No: <Text style={s.metaV}>{quote.teklifNo}</Text></Text>
-              <Text style={s.meta}>Tarih: <Text style={s.metaV}>{quote.tarih}</Text></Text>
-              <Text style={s.meta}>Geçerlilik: <Text style={s.metaV}>{quote.gecerlilik}</Text></Text>
+              <View style={s.metaTable}>
+                <View style={s.metaRow}><Text style={s.metaK}>Teklif No</Text><Text style={s.metaV} numberOfLines={1}>{quote.teklifNo}</Text></View>
+                <View style={s.metaRow}><Text style={s.metaK}>Tarih</Text><Text style={s.metaV}>{trDate(quote.tarih)}</Text></View>
+                <View style={s.metaRow}><Text style={s.metaK}>Geçerlilik Tarihi</Text><Text style={s.metaV}>{trDate(quote.gecerlilik)}</Text></View>
+              </View>
             </View>
           </View>
 
@@ -128,7 +150,7 @@ export default function PreviewScreen() {
           <View style={s.table}>
             <View style={s.thead}>
               <Text style={[s.th, { width: 30, textAlign: 'center' }]}>S.NO</Text>
-              <Text style={[s.th, { flex: 2 }]}>SİSTEM / HİZMET</Text>
+              <Text style={[s.th, { flex: 2 }]}>HİZMET / ÜRÜN</Text>
               <Text style={[s.th, { width: 40, textAlign: 'center' }]}>ADET</Text>
               <Text style={[s.th, { width: 70, textAlign: 'right' }]}>BİRİM</Text>
               <Text style={[s.th, { width: 72, textAlign: 'right' }]}>TOPLAM</Text>
@@ -196,7 +218,7 @@ export default function PreviewScreen() {
           <Ionicons name="share-social" size={16} color="#fff" />
           <Text style={s.actionBtnAccText}>PDF Paylaş</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtnWa} onPress={doShare} testID="preview-wa-btn">
+        <TouchableOpacity style={s.actionBtnWa} onPress={doWhatsAppShare} testID="preview-wa-btn">
           <Ionicons name="logo-whatsapp" size={16} color="#fff" />
           <Text style={s.actionBtnAccText}>WhatsApp</Text>
         </TouchableOpacity>
@@ -234,15 +256,21 @@ const s = StyleSheet.create({
   topTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 10 },
-  cName: { fontSize: 13, fontWeight: '900', color: theme.colors.navy, marginBottom: 4 },
-  cLine: { fontSize: 10, color: '#333', lineHeight: 14 },
-  logo: { width: 110, height: 44, marginBottom: 4 },
-  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 5, paddingHorizontal: 10, marginBottom: 4, maxWidth: 130 },
+  // Header uses a strict two-column layout with `alignItems: flex-start` so both
+  // columns start at the exact same top edge — mirrors the PDF <table> layout.
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 10 },
+  headerLeft: { flex: 1.15, paddingRight: 8 },
+  headerRight: { flex: 1, alignItems: 'flex-end', paddingLeft: 8 },
+  cName: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 4, lineHeight: 15 },
+  cLine: { fontSize: 10, color: '#333', lineHeight: 14, marginBottom: 1 },
+  logo: { width: 130, height: 44, marginBottom: 6 },
+  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 5, paddingHorizontal: 10, marginBottom: 6, alignSelf: 'flex-end' },
   logoText: { fontSize: 11, fontWeight: '900', color: theme.colors.navy },
-  docTitle: { fontSize: 18, fontWeight: '900', color: theme.colors.navy, marginBottom: 4, letterSpacing: 0.3 },
-  meta: { fontSize: 10, color: theme.colors.textMuted },
-  metaV: { fontWeight: '900', color: theme.colors.text },
+  docTitle: { fontSize: 18, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, letterSpacing: 0.5, textAlign: 'right' },
+  metaTable: { alignSelf: 'flex-end' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingVertical: 1.5 },
+  metaK: { fontSize: 10, color: theme.colors.textMuted, marginRight: 6, textAlign: 'right' },
+  metaV: { fontSize: 10, fontWeight: '900', color: theme.colors.text, minWidth: 78, textAlign: 'right' },
   infoGrid: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   infoBox: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 3, overflow: 'hidden' },
   infoHdr: { backgroundColor: theme.colors.navy, color: '#fff', fontSize: 9.5, fontWeight: '900', paddingVertical: 5, paddingHorizontal: 6, letterSpacing: 0.4 },

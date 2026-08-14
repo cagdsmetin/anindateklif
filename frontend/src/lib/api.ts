@@ -12,7 +12,7 @@ import { storage } from '@/src/utils/storage';
 //
 // Preview / development is unaffected because `.env` sets EXPO_PUBLIC_BACKEND_URL to the
 // preview host, and this fallback only kicks in when that env var is empty.
-const FALLBACK_BACKEND_URL = 'https://app-genesis-52.emergent.host';
+const FALLBACK_BACKEND_URL = 'https://anindateklif-production.up.railway.app';
 const RAW_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '').trim();
 const RESOLVED_BASE = RAW_BASE || FALLBACK_BACKEND_URL;
 const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';

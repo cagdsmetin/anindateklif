@@ -4,7 +4,15 @@ import { storage } from '@/src/utils/storage';
 // Build-time backend URL, with a hardcoded fallback so a missing/empty EXPO_PUBLIC_BACKEND_URL
 // in an APK build doesn't leave the app pointing at a relative "/api" URL (which resolves to
 // nothing on a native device and produces the classic "Kayıt başarısız" symptom).
-const FALLBACK_BACKEND_URL = 'https://app-genesis-52.preview.emergentagent.com';
+//
+// The fallback intentionally points at the PRODUCTION host (`*.emergent.host`) — that's the
+// public URL served through Cloudflare and reachable from any mobile network. The preview
+// URL (`*.preview.emergentagent.com`) is dev-only and can be unreachable from external
+// networks, so it must never be baked into a distributed APK.
+//
+// Preview / development is unaffected because `.env` sets EXPO_PUBLIC_BACKEND_URL to the
+// preview host, and this fallback only kicks in when that env var is empty.
+const FALLBACK_BACKEND_URL = 'https://app-genesis-52.emergent.host';
 const RAW_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '').trim();
 const RESOLVED_BASE = RAW_BASE || FALLBACK_BACKEND_URL;
 const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';

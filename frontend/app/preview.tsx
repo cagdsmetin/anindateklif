@@ -19,6 +19,8 @@ import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { downloadFileWeb } from '@/src/lib/web-download';
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
@@ -39,7 +41,7 @@ export default function PreviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ quoteId?: string }>();
-  const { quotes, activeCompany, showToast } = useApp();
+  const { quotes, activeCompany, showToast, getQuoteAttachments } = useApp();
 
   const quote = useMemo(() => quotes.find((q) => q.id === params.quoteId), [quotes, params.quoteId]);
 
@@ -70,25 +72,32 @@ export default function PreviewScreen() {
         await FileSystem.moveAsync({ from: uri, to: finalUri });
       } catch { finalUri = uri; }
     }
-    return finalUri;
+    // Include any PDF/image attachments picked for this quote in the editor.
+    const atts = getQuoteAttachments(quote.id);
+    if (atts.length > 0) {
+      try { finalUri = await mergeAttachmentsIntoPdf(finalUri, atts); } catch {}
+    }
+    return { uri: finalUri, fileName: desired };
   };
 
   const doShare = async () => {
     try {
-      const uri = await generatePdf();
+      const { uri, fileName } = await generatePdf();
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        showToast('Paylaşım desteklenmiyor');
+        // Web: no native share sheet — trigger a real browser download instead.
+        await downloadFileWeb(uri, fileName);
+        showToast('PDF indirildi');
       }
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
   const doWhatsAppShare = async () => {
     try {
-      const uri = await generatePdf();
-      await shareQuoteViaWhatsApp({ pdfUri: uri, quote, companyName: activeCompany.sirketAdi });
+      const { uri, fileName } = await generatePdf();
+      await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
     } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 

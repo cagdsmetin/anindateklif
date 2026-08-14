@@ -22,6 +22,8 @@ import { QuoteT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { downloadFileWeb } from '@/src/lib/web-download';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -33,7 +35,7 @@ const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
 export default function HistoryScreen() {
-  const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [q, setQ] = useState('');
@@ -54,7 +56,7 @@ export default function HistoryScreen() {
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/', params: { quoteId: id } });
 
-  const generatePdf = async (quote: QuoteT): Promise<string | null> => {
+  const generatePdf = async (quote: QuoteT): Promise<{ uri: string; fileName: string } | null> => {
     if (!activeCompany) return null;
     const html = buildQuotePdfHtml(activeCompany, quote);
     const { uri } = await Print.printToFileAsync({ html, base64: false });
@@ -67,19 +69,26 @@ export default function HistoryScreen() {
         await FileSystem.moveAsync({ from: uri, to: finalUri });
       } catch { finalUri = uri; }
     }
-    return finalUri;
+    // Include any PDF/image attachments picked for this quote in the editor.
+    const atts = getQuoteAttachments(quote.id);
+    if (atts.length > 0) {
+      try { finalUri = await mergeAttachmentsIntoPdf(finalUri, atts); } catch {}
+    }
+    return { uri: finalUri, fileName: desired };
   };
 
   const doShare = async (quote: QuoteT) => {
     if (!activeCompany) return;
     try {
-      const finalUri = await generatePdf(quote);
-      if (!finalUri) return;
+      const result = await generatePdf(quote);
+      if (!result) return;
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
-        await Sharing.shareAsync(finalUri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        showToast('Paylaşım desteklenmiyor (web indirme)');
+        // Web: no native share sheet — trigger a real browser download instead.
+        await downloadFileWeb(result.uri, result.fileName);
+        showToast('PDF indirildi');
       }
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
@@ -87,9 +96,9 @@ export default function HistoryScreen() {
   const doWhatsApp = async (quote: QuoteT) => {
     if (!activeCompany) return;
     try {
-      const uri = await generatePdf(quote);
-      if (!uri) return;
-      await shareQuoteViaWhatsApp({ pdfUri: uri, quote, companyName: activeCompany.sirketAdi });
+      const result = await generatePdf(quote);
+      if (!result) return;
+      await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi });
     } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 

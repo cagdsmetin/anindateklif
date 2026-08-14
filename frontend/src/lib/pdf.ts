@@ -223,7 +223,7 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT): string {
     <thead>
       <tr>
         <th>S.NO</th>
-        <th>HİZMET / ÜRÜN</th>
+        <th>SİSTEM / HİZMET</th>
         <th>ADET</th>
         <th>BİRİM FİYAT</th>
         <th>TOPLAM FİYAT</th>

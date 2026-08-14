@@ -72,17 +72,36 @@ export async function shareQuoteViaWhatsApp(opts: {
   const message = composeQuoteWhatsAppMessage(quote, companyName);
 
   // ---------- WEB ----------
-  // No native share sheet in browsers. Force a real, correctly-named download of the
-  // PDF (including any merged attachments) AND open WhatsApp Web pre-filled with the
-  // caption in a second tab, so the user can drag the downloaded file into the chat.
   if (Platform.OS === 'web') {
+    const desiredName = fileName || `${(quote.teklifNo || 'teklif').replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`;
+    const cleaned = normalizePhoneForWhatsApp(quote.musTelefon || '');
+    const text = encodeURIComponent(message);
+    const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
+
+    // Preferred: the OS-native share sheet (Web Share API, files supported on
+    // HTTPS in current Chrome/Edge/Safari — desktop and mobile). This lets the
+    // user tap WhatsApp directly with the PDF already attached — no separate
+    // save/download step at all.
     try {
-      const cleaned = normalizePhoneForWhatsApp(quote.musTelefon || '');
-      const text = encodeURIComponent(message);
-      const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
-      const desiredName = fileName || `${(quote.teklifNo || 'teklif').replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`;
+      const res = await fetch(pdfUri);
+      const blob = await res.blob();
+      const file = new File([blob], desiredName, { type: 'application/pdf' });
+      const nav: any = navigator;
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], text: message, title: desiredName });
+        return;
+      }
+    } catch {
+      // Fall through to the download + wa.me fallback below (also covers the
+      // user dismissing the share sheet, which throws an AbortError).
+    }
+
+    // Fallback (older browsers without file sharing support): download the
+    // PDF (including any merged attachments) AND open WhatsApp with the
+    // caption pre-filled, so the user can attach the already-downloaded file.
+    try {
       await downloadFileWeb(pdfUri, desiredName);
-      window.open(waUrl, '_blank');            // WhatsApp Web opens with caption
+      window.open(waUrl, '_blank');
     } catch {}
     return;
   }

@@ -1,0 +1,312 @@
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { theme } from '@/src/lib/theme';
+import { api } from '@/src/lib/api';
+import { useAuth } from '@/src/state/AuthContext';
+
+type StatusT = {
+  subscription_active: boolean;
+  subscription_expires_at?: string | null;
+  plan_price_try: number;
+  period: string;
+  quotes_used_this_month: number;
+  free_limit: number;
+  remaining_free?: number | null;
+};
+
+export default function SubscriptionScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  const [status, setStatus] = useState<StatusT | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const [kimlikNo, setKimlikNo] = useState('');
+  const [adres, setAdres] = useState('');
+  const [sehir, setSehir] = useState('İstanbul');
+  const [posta, setPosta] = useState('34000');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.subscriptionStatus();
+        setStatus(res as StatusT);
+      } catch (e: any) {
+        setError('Abonelik bilgisi alınamadı');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const onSubscribe = async () => {
+    if (busy) return;
+    if (kimlikNo.trim().length < 5) {
+      setError('TC Kimlik / Vergi No zorunlu');
+      return;
+    }
+    if (!adres.trim() || !sehir.trim()) {
+      setError('Adres ve şehir zorunlu');
+      return;
+    }
+    setError('');
+    setBusy(true);
+    try {
+      const res = await api.subscriptionCheckout({
+        buyer_identity_number: kimlikNo.trim(),
+        billing_address: adres.trim(),
+        billing_city: sehir.trim(),
+        billing_zip: posta.trim(),
+      });
+      const url = res?.payment_page_url;
+      if (url) {
+        await Linking.openURL(url);
+      } else {
+        setError('Ödeme sayfası oluşturulamadı');
+      }
+    } catch (e: any) {
+      let msg = 'Ödeme başlatılamadı, lütfen tekrar deneyin';
+      if (e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          if (parsed?.detail) msg = parsed.detail;
+        } catch {}
+      }
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remaining = status?.subscription_active ? null : status?.remaining_free ?? 0;
+  const usedUp = !status?.subscription_active && (status?.remaining_free ?? 0) <= 0;
+
+  return (
+    <SafeAreaView style={s.container} edges={['top']}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="subscription-back">
+          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Abonelik</Text>
+        <View style={s.headerBtn} />
+      </View>
+      <View style={s.divider} />
+
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            {/* Status card */}
+            <View style={[s.statusCard, status?.subscription_active ? s.statusCardActive : usedUp ? s.statusCardDanger : s.statusCardInfo]}>
+              <Ionicons
+                name={status?.subscription_active ? 'checkmark-circle' : usedUp ? 'alert-circle' : 'information-circle'}
+                size={26}
+                color={status?.subscription_active ? theme.colors.green : usedUp ? theme.colors.red : theme.colors.primary}
+              />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                {status?.subscription_active ? (
+                  <>
+                    <Text style={s.statusTitle}>Aboneliğiniz aktif</Text>
+                    <Text style={s.statusText}>Sınırsız teklif oluşturabilirsiniz.</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={s.statusTitle}>
+                      Bu ay {status?.quotes_used_this_month ?? 0} / {status?.free_limit ?? 5} ücretsiz teklif kullanıldı
+                    </Text>
+                    <Text style={s.statusText}>
+                      {usedUp
+                        ? 'Ücretsiz hakkınız bitti. Devam etmek için abone olun.'
+                        : `Kalan ücretsiz hak: ${remaining}`}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </View>
+
+            {!status?.subscription_active && (
+              <>
+                {/* Plan card */}
+                <View style={s.planCard}>
+                  <View style={s.planHeaderRow}>
+                    <Text style={s.planName}>Aylık Abonelik</Text>
+                    <View style={s.planBadge}>
+                      <Text style={s.planBadgeText}>Önerilen</Text>
+                    </View>
+                  </View>
+                  <Text style={s.planPrice}>
+                    ₺{(status?.plan_price_try ?? 149).toFixed(0)} <Text style={s.planPriceUnit}>/ ay</Text>
+                  </Text>
+                  <View style={{ marginTop: 12, gap: 8 }}>
+                    <PlanBullet text="Sınırsız teklif oluşturma" />
+                    <PlanBullet text="Aylık otomatik yenileme" />
+                    <PlanBullet text="Dilediğiniz zaman iptal" />
+                  </View>
+                </View>
+
+                {/* Billing form */}
+                <Text style={s.formLabel}>Fatura Bilgileri</Text>
+                <View style={s.card}>
+                  <FieldRow label="TC Kimlik / Vergi No" icon="card-outline" placeholder="11111111111" value={kimlikNo} onChange={setKimlikNo} keyboardType="number-pad" testID="sub-identity" />
+                  <FieldRow label="Adres" icon="location-outline" placeholder="Fatura adresi" value={adres} onChange={setAdres} multiline testID="sub-address" />
+                  <FieldRow label="Şehir" icon="business-outline" placeholder="İstanbul" value={sehir} onChange={setSehir} testID="sub-city" />
+                  <FieldRow label="Posta Kodu" icon="mail-outline" placeholder="34000" value={posta} onChange={setPosta} keyboardType="number-pad" isLast testID="sub-zip" />
+                </View>
+
+                {error ? <Text style={s.errorText}>{error}</Text> : null}
+
+                <TouchableOpacity style={[s.cta, busy && s.ctaDisabled]} onPress={onSubscribe} disabled={busy} activeOpacity={0.9} testID="sub-subscribe">
+                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Abone Ol — ₺{(status?.plan_price_try ?? 149).toFixed(0)}/ay</Text>}
+                </TouchableOpacity>
+                <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
+              </>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function PlanBullet({ text }: { text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Ionicons name="checkmark" size={16} color={theme.colors.green} />
+      <Text style={{ fontSize: 13.5, color: theme.colors.textSoft }}>{text}</Text>
+    </View>
+  );
+}
+
+function FieldRow({
+  label,
+  icon,
+  isLast,
+  onChange,
+  ...rest
+}: React.ComponentProps<typeof TextInput> & {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  isLast?: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={[s.field, isLast && { marginBottom: 0 }]}>
+      <Text style={s.fieldLabel}>{label}</Text>
+      <View style={[s.inputWrap, rest.multiline && s.inputWrapMultiline]}>
+        <Ionicons name={icon} size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: rest.multiline ? 2 : 0 }} />
+        <TextInput
+          {...rest}
+          onChangeText={onChange}
+          placeholderTextColor="#94a3b8"
+          style={[s.input, rest.multiline && s.inputMultiline]}
+        />
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F5F7FA',
+  },
+  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
+  divider: { height: 1, backgroundColor: theme.colors.line },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 20,
+  },
+  statusCardInfo: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primaryBorder },
+  statusCardActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
+  statusCardDanger: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
+  statusTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text, marginBottom: 4 },
+  statusText: { fontSize: 13, color: theme.colors.textMuted, lineHeight: 18 },
+  planCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBorder,
+    padding: 18,
+    marginBottom: 22,
+    ...theme.shadow.sm,
+  },
+  planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  planName: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
+  planBadge: { backgroundColor: theme.colors.primary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  planBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  planPrice: { fontSize: 30, fontWeight: '900', color: theme.colors.primary },
+  planPriceUnit: { fontSize: 14, fontWeight: '700', color: theme.colors.textMuted },
+  formLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    ...theme.shadow.sm,
+  },
+  field: { marginBottom: 16 },
+  fieldLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FBFDFF',
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14, minHeight: 80 },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: theme.colors.text,
+    paddingVertical: 0,
+    ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
+  },
+  inputMultiline: { minHeight: 56, textAlignVertical: 'top' },
+  errorText: { color: theme.colors.red, fontSize: 13, fontWeight: '700', marginTop: 14, textAlign: 'center' },
+  cta: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    ...theme.shadow.lg,
+  },
+  ctaDisabled: { opacity: 0.6 },
+  ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
+  footNote: { fontSize: 11.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 10 },
+});

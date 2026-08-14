@@ -2,6 +2,7 @@ import { Platform, Linking } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import type { QuoteT } from './api';
+import { downloadFileWeb } from './web-download';
 
 /**
  * Normalize a Turkish phone number to E.164 without '+' (WhatsApp URL-friendly).
@@ -65,19 +66,22 @@ export async function shareQuoteViaWhatsApp(opts: {
   pdfUri: string;
   quote: QuoteT;
   companyName?: string;
+  fileName?: string;
 }): Promise<void> {
-  const { pdfUri, quote, companyName } = opts;
+  const { pdfUri, quote, companyName, fileName } = opts;
   const message = composeQuoteWhatsAppMessage(quote, companyName);
 
   // ---------- WEB ----------
-  // No native share sheet in browsers. Open the PDF for download AND open WhatsApp
-  // Web pre-filled with the caption in a second tab, so the user can drag the file in.
+  // No native share sheet in browsers. Force a real, correctly-named download of the
+  // PDF (including any merged attachments) AND open WhatsApp Web pre-filled with the
+  // caption in a second tab, so the user can drag the downloaded file into the chat.
   if (Platform.OS === 'web') {
     try {
       const cleaned = normalizePhoneForWhatsApp(quote.musTelefon || '');
       const text = encodeURIComponent(message);
       const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
-      window.open(pdfUri, '_blank');           // PDF opens for download
+      const desiredName = fileName || `${(quote.teklifNo || 'teklif').replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`;
+      await downloadFileWeb(pdfUri, desiredName);
       window.open(waUrl, '_blank');            // WhatsApp Web opens with caption
     } catch {}
     return;

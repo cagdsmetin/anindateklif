@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, CatalogItemT, CompanyT, CustomerT, QuoteT } from '@/src/lib/api';
+import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
 
@@ -30,6 +31,10 @@ type Ctx = {
   updateQuoteStatus: (id: string, durum: string) => Promise<void>;
   toast: string | null;
   showToast: (msg: string) => void;
+  // Session-only registry of local (unsaved-to-backend) file attachments per quote,
+  // shared between the editor, preview, and history screens so PDF merging is consistent.
+  getQuoteAttachments: (quoteId: string) => AttachmentT[];
+  setQuoteAttachments: (quoteId: string, atts: AttachmentT[]) => void;
 };
 
 const AppContext = createContext<Ctx | null>(null);
@@ -70,6 +75,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [customers, setCustomers] = useState<CustomerT[]>([]);
   const [quotes, setQuotes] = useState<QuoteT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
+
+  const getQuoteAttachments = useCallback(
+    (quoteId: string) => attachmentsByQuoteId[quoteId] || [],
+    [attachmentsByQuoteId]
+  );
+  const setQuoteAttachments = useCallback((quoteId: string, atts: AttachmentT[]) => {
+    if (!quoteId) return;
+    setAttachmentsByQuoteId((prev) => ({ ...prev, [quoteId]: atts }));
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -369,6 +384,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateQuoteStatus,
         toast,
         showToast,
+        getQuoteAttachments,
+        setQuoteAttachments,
       }}
     >
       {children}

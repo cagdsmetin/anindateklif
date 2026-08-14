@@ -204,7 +204,15 @@ export default function EditorScreen() {
     try {
       const saved = await saveQuote(currentQuote(), editingId);
       setEditingId(saved.id); showToast('Teklif kaydedildi'); return saved;
-    } catch (e: any) { showToast('Kayıt hatası: ' + (e?.message || '')); return null; }
+    } catch (e: any) {
+      if (e?.status === 402) {
+        showToast('Ücretsiz teklif hakkınız bu ay doldu');
+        router.push('/subscription');
+        return null;
+      }
+      showToast('Kayıt hatası: ' + (e?.message || ''));
+      return null;
+    }
     finally { setSaving(false); }
   };
 

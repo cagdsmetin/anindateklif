@@ -25,6 +25,7 @@ import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { downloadFileWeb } from '@/src/lib/web-download';
 import * as DocumentPicker from 'expo-document-picker';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
@@ -39,7 +40,7 @@ function newItemId() { return 'it-' + Date.now() + '-' + Math.random().toString(
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
 export default function EditorScreen() {
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ quoteId?: string }>();
@@ -203,7 +204,11 @@ export default function EditorScreen() {
     setSaving(true);
     try {
       const saved = await saveQuote(currentQuote(), editingId);
-      setEditingId(saved.id); showToast('Teklif kaydedildi'); return saved;
+      setEditingId(saved.id);
+      // Keep the currently-picked local attachments available to Preview/History
+      // for this quote, so they can also include them when generating a PDF.
+      setQuoteAttachments(saved.id, attachments);
+      showToast('Teklif kaydedildi'); return saved;
     } catch (e: any) {
       if (e?.status === 402) {
         showToast('Ücretsiz teklif hakkınız bu ay doldu');
@@ -216,7 +221,7 @@ export default function EditorScreen() {
     finally { setSaving(false); }
   };
 
-  const generatePdfUri = async (savedQuote: QuoteT) => {
+  const generatePdfUri = async (savedQuote: QuoteT): Promise<{ uri: string; fileName: string }> => {
     if (!activeCompany) throw new Error('Aktif firma yok');
     const html = buildQuotePdfHtml(activeCompany, savedQuote);
     const { uri } = await Print.printToFileAsync({ html, base64: false });
@@ -233,22 +238,28 @@ export default function EditorScreen() {
     // Merge any user-picked PDF/image attachments at the end of the generated PDF.
     if (attachments.length > 0) {
       try {
-        return await mergeAttachmentsIntoPdf(baseUri, attachments);
+        const merged = await mergeAttachmentsIntoPdf(baseUri, attachments);
+        return { uri: merged, fileName: desiredName };
       } catch (e) {
         // On failure, fall back to the base PDF without attachments.
-        return baseUri;
+        return { uri: baseUri, fileName: desiredName };
       }
     }
-    return baseUri;
+    return { uri: baseUri, fileName: desiredName };
   };
 
   const handleShare = async () => {
     const saved = await handleSave(); if (!saved) return;
     try {
-      const uri = await generatePdfUri(saved);
+      const { uri, fileName } = await generatePdfUri(saved);
       const available = await Sharing.isAvailableAsync();
-      if (available) await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
-      else showToast('Paylaşım desteklenmiyor (web indirme)');
+      if (available) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
+      } else {
+        // Web: no native share sheet — trigger a real browser download instead.
+        await downloadFileWeb(uri, fileName);
+        showToast('PDF indirildi');
+      }
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
@@ -257,9 +268,10 @@ export default function EditorScreen() {
   const handleWhatsAppShare = async () => {
     const saved = await handleSave(); if (!saved) return;
     try {
-      const uri = await generatePdfUri(saved);
+      const { uri, fileName } = await generatePdfUri(saved);
       await shareQuoteViaWhatsApp({
         pdfUri: uri,
+        fileName,
         quote: saved,
         companyName: activeCompany?.sirketAdi,
       });

@@ -159,6 +159,18 @@ export const api = {
   updateQuoteStatus: (id: string, durum: string) =>
     req(`/quotes/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
+
+  // App config (public)
+  getAppConfig: () => req('/config'),
+
+  // Subscription / quota
+  subscriptionStatus: () => req('/subscription/status'),
+  subscriptionCheckout: (data: { buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
+    req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
+
+  // AI Assistant
+  assistantChat: (data: { message: string; quote_context?: any }) =>
+    req('/assistant/chat', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 export type UserT = {

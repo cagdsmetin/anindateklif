@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -172,7 +173,13 @@ export default function CompanyScreen() {
               );
             })}
           </View>
-
+          {/* Support */}
+          <SectionHeader title="DESTEK" />
+          <View style={s.supportBox}>
+            <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
+            <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
+            </TouchableOpacity>
+          </View>
           {/* Logo */}
           <SectionHeader title="ŞİRKET LOGOSU" />
           <View style={s.logoBox}>
@@ -494,4 +501,7 @@ const s = StyleSheet.create({
   confirmTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginTop: 8 },
   confirmText: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 18 },
   confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  supportBox: { marginBottom: 4 },
+  whatsappBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#25D366', paddingVertical: 14, borderRadius: 14 },
+  whatsappBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
 });

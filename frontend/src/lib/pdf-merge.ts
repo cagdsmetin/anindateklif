@@ -1,8 +1,10 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-// NOTE: `pdf-lib` bundles an outdated `tslib@1.x` that crashes RN Web (`__extends` undefined).
-// We defer the import to a lazy require() so Metro's web bundle never touches the module.
-// On web we early-return with the base PDF (no merge available in browser MVP).
+// NOTE: `pdf-lib` bundles an outdated `tslib@1.x` that crashes RN Web (`__extends`
+// undefined) when Metro bundles it into the app. To keep native untouched we still
+// lazy-require() the npm package there. On web we instead load pdf-lib's prebuilt
+// UMD bundle from a CDN at runtime (a plain <script> tag, never touched by Metro),
+// which exposes `window.PDFLib` with the exact same API.
 
 /**
  * A single user-picked attachment held only in local component state.
@@ -12,10 +14,45 @@ import * as FileSystem from 'expo-file-system/legacy';
 export type AttachmentT = {
   id: string;
   name: string;
-  uri: string;            // native file://, cache path, or data: URI on web
+  uri: string;            // native file://, cache path, or data:/blob: URI on web
   mime: string;           // application/pdf, image/jpeg, image/png, ...
   size?: number;
 };
+
+const PDF_LIB_CDN_URL = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+
+let pdfLibWebPromise: Promise<any> | null = null;
+
+// Loads pdf-lib's UMD build as a plain <script> tag on web, so Metro never sees
+// (and never breaks on) the package. Cached so repeated merges don't re-fetch it.
+function loadPdfLibWeb(): Promise<any> {
+  if (typeof window === 'undefined') return Promise.reject(new Error('window yok'));
+  const w = window as any;
+  if (w.PDFLib) return Promise.resolve(w.PDFLib);
+  if (pdfLibWebPromise) return pdfLibWebPromise;
+
+  pdfLibWebPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-pdf-lib-cdn]') as HTMLScriptElement | null;
+    const onReady = () => {
+      if (w.PDFLib) resolve(w.PDFLib);
+      else reject(new Error('pdf-lib yüklenemedi'));
+    };
+    if (existing) {
+      existing.addEventListener('load', onReady);
+      existing.addEventListener('error', () => reject(new Error('pdf-lib script hatası')));
+      if (w.PDFLib) onReady();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = PDF_LIB_CDN_URL;
+    script.async = true;
+    script.setAttribute('data-pdf-lib-cdn', 'true');
+    script.onload = onReady;
+    script.onerror = () => reject(new Error('pdf-lib script hatası'));
+    document.head.appendChild(script);
+  });
+  return pdfLibWebPromise;
+}
 
 const b64ToBytes = (b64: string): Uint8Array => {
   const bin =
@@ -44,8 +81,8 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
 async function readAsBase64(uri: string): Promise<string> {
   if (!uri) return '';
   if (uri.startsWith('data:')) return uri.split(',')[1] || '';
-  if (Platform.OS === 'web' && uri.startsWith('blob:')) {
-    // expo-document-picker on web returns blob: URIs — read via fetch.
+  if (Platform.OS === 'web' && (uri.startsWith('blob:') || uri.startsWith('http'))) {
+    // expo-document-picker / expo-print on web return blob: (or occasionally http) URIs.
     const res = await fetch(uri);
     const buf = await res.arrayBuffer();
     return bytesToBase64(new Uint8Array(buf));
@@ -60,6 +97,8 @@ async function readAsBase64(uri: string): Promise<string> {
  * - Unsupported types (e.g. .docx): silently skipped.
  *
  * If the merge fails or `attachments` is empty, `basePdfUri` is returned unchanged.
+ * Works on both native (iOS/Android, via the npm `pdf-lib` package) and web
+ * (via a CDN-loaded `pdf-lib` UMD bundle).
  */
 export async function mergeAttachmentsIntoPdf(
   basePdfUri: string,
@@ -67,13 +106,21 @@ export async function mergeAttachmentsIntoPdf(
 ): Promise<string> {
   if (!attachments || attachments.length === 0) return basePdfUri;
 
-  // Web: pdf-lib's bundled tslib is broken in Metro's web output — bypass merging
-  // entirely on the browser. Native (iOS/Android) still gets full merge support.
-  if (Platform.OS === 'web') return basePdfUri;
-
-  // Lazy-require so the web bundle never resolves pdf-lib.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PDFDocument } = require('pdf-lib') as typeof import('pdf-lib');
+  let PDFDocument: any;
+  try {
+    if (Platform.OS === 'web') {
+      const PDFLib = await loadPdfLibWeb();
+      PDFDocument = PDFLib.PDFDocument;
+    } else {
+      // Lazy-require so the web bundle never resolves pdf-lib via Metro.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      ({ PDFDocument } = require('pdf-lib') as typeof import('pdf-lib'));
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[pdf-merge] pdf-lib yüklenemedi, ekler olmadan devam ediliyor', e);
+    return basePdfUri;
+  }
 
   try {
     const baseB64 = await readAsBase64(basePdfUri);
@@ -90,7 +137,7 @@ export async function mergeAttachmentsIntoPdf(
         if (mime === 'application/pdf' || att.name.toLowerCase().endsWith('.pdf')) {
           const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
           const pages = await base.copyPages(doc, doc.getPageIndices());
-          pages.forEach((p) => base.addPage(p));
+          pages.forEach((p: any) => base.addPage(p));
         } else if (mime.startsWith('image/') || /\.(png|jpe?g)$/i.test(att.name)) {
           const isPng = mime.includes('png') || /\.png$/i.test(att.name);
           const img = isPng ? await base.embedPng(bytes) : await base.embedJpg(bytes);

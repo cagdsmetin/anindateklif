@@ -1,9 +1,12 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
+import json
+import asyncio
 import logging
 import hashlib
 import secrets as py_secrets
@@ -29,6 +32,41 @@ JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'anindateklif-client')
 JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_MINUTES = 60 * 24 * 7  # 7 days for MVP
 RESET_TOKEN_MINUTES = 30
+
+# ============ MONETIZATION CONFIG ============
+FREE_MONTHLY_QUOTE_LIMIT = 5
+SUBSCRIPTION_PRICE_TRY = 149.0
+SUBSCRIPTION_DURATION_DAYS = 30
+
+BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "https://anindateklif-production.up.railway.app")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://just-mercy-production.up.railway.app")
+WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
+
+IYZICO_API_KEY = os.environ.get("IYZICO_API_KEY", "")
+IYZICO_SECRET_KEY = os.environ.get("IYZICO_SECRET_KEY", "")
+IYZICO_BASE_URL = os.environ.get("IYZICO_BASE_URL", "https://sandbox-api.iyzipay.com")
+
+
+def _iyzico_options():
+    return {"api_key": IYZICO_API_KEY, "secret_key": IYZICO_SECRET_KEY, "base_url": IYZICO_BASE_URL}
+
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+_anthropic_client = None
+if ANTHROPIC_API_KEY:
+    try:
+        import anthropic
+        _anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    except Exception:
+        _anthropic_client = None
+
+ASSISTANT_SYSTEM_PROMPT = (
+    "Sen 'Anında Teklif' uygulamasının Türkçe konuşan yapay zeka asistanısın. "
+    "Kullanıcılara uygulamayı nasıl kullanacaklarını anlatır VE teklif (fiyat teklifi/proforma) hazırlamalarına "
+    "yardımcı olursun: ürün/hizmet açıklamasından teklif kalemi metni önerirsin, fiyatlandırma notu ve genel "
+    "teklif notları için taslak yazarsın. Kısa, net ve profesyonel bir Türkçe kullan. Kullanıcı adına gerçek "
+    "bir işlem (kayıt, ödeme, silme vb.) yapamazsın; sadece metin önerisi/taslak üretirsin."
+)
 
 # Dummy hash for timing-safe login (mitigates account enumeration)
 _DUMMY_HASH = bcrypt.hashpw(b"dummy-password-not-used", bcrypt.gensalt()).decode()
@@ -190,6 +228,59 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         currency=u.get("currency", ""),
         tax_label=u.get("tax_label", ""),
         onboarding_completed=bool(u.get("onboarding_completed", False)),
+    )
+
+
+# ============ QUOTA / SUBSCRIPTION HELPERS ============
+def _current_period_key() -> str:
+    now = _utc()
+    return f"{now.year:04d}-{now.month:02d}"
+
+
+def _is_subscription_active(user: Dict[str, Any]) -> bool:
+    exp = user.get("subscription_expires_at")
+    if not exp:
+        return False
+    if isinstance(exp, str):
+        try:
+            exp = datetime.fromisoformat(exp)
+        except Exception:
+            return False
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    return exp > _utc()
+
+
+async def _get_quota_state(user: Dict[str, Any]) -> Dict[str, Any]:
+    period = _current_period_key()
+    stored_period = user.get("monthly_quote_period")
+    count = user.get("monthly_quote_count", 0) if stored_period == period else 0
+    active = _is_subscription_active(user)
+    remaining = None if active else max(0, FREE_MONTHLY_QUOTE_LIMIT - count)
+    return {
+        "period": period,
+        "count": count,
+        "subscription_active": active,
+        "free_limit": FREE_MONTHLY_QUOTE_LIMIT,
+        "remaining_free": remaining,
+    }
+
+
+async def _enforce_and_increment_quota(user: Dict[str, Any]):
+    """Raises 402 if the user is out of free quotes this month and has no active subscription.
+    Otherwise increments (or resets + increments, on month rollover) the counter."""
+    period = _current_period_key()
+    stored_period = user.get("monthly_quote_period")
+    count = user.get("monthly_quote_count", 0) if stored_period == period else 0
+    active = _is_subscription_active(user)
+    if not active and count >= FREE_MONTHLY_QUOTE_LIMIT:
+        raise HTTPException(
+            status_code=402,
+            detail="Bu ay için 5 ücretsiz teklif hakkınızı kullandınız. Devam etmek için aboneliği başlatın.",
+        )
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"monthly_quote_period": period, "monthly_quote_count": count + 1}},
     )
 
 
@@ -625,6 +716,7 @@ async def list_quotes(company_id: str, user=Depends(get_current_user)):
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     await _own_company(user["user_id"], payload.companyId)
+    await _enforce_and_increment_quota(user)
     data = payload.dict()
     items = [QuoteItem(**it) if isinstance(it, dict) else it for it in data.get("items", [])]
     data["items"] = [it.dict() for it in items]
@@ -691,6 +783,211 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
 async def delete_quote(quote_id: str, user=Depends(get_current_user)):
     await db.quotes.delete_one({"id": quote_id, "userId": user["user_id"]})
     return {"ok": True}
+
+
+# ============ APP CONFIG (public) ============
+class AppConfig(BaseModel):
+    whatsapp_number: str = ""
+    ai_assistant_enabled: bool = False
+    subscription_price_try: float = SUBSCRIPTION_PRICE_TRY
+    payment_enabled: bool = False
+
+
+@api_router.get("/config", response_model=AppConfig)
+async def get_app_config():
+    return AppConfig(
+        whatsapp_number=WHATSAPP_SUPPORT_NUMBER,
+        ai_assistant_enabled=bool(_anthropic_client),
+        subscription_price_try=SUBSCRIPTION_PRICE_TRY,
+        payment_enabled=bool(IYZICO_API_KEY and IYZICO_SECRET_KEY),
+    )
+
+
+# ============ SUBSCRIPTION / QUOTA ============
+class SubscriptionStatus(BaseModel):
+    subscription_active: bool
+    subscription_expires_at: Optional[str] = None
+    plan_price_try: float = SUBSCRIPTION_PRICE_TRY
+    period: str
+    quotes_used_this_month: int
+    free_limit: int
+    remaining_free: Optional[int] = None
+
+
+@api_router.get("/subscription/status", response_model=SubscriptionStatus)
+async def subscription_status(user=Depends(get_current_user)):
+    state = await _get_quota_state(user)
+    return SubscriptionStatus(
+        subscription_active=state["subscription_active"],
+        subscription_expires_at=user.get("subscription_expires_at"),
+        plan_price_try=SUBSCRIPTION_PRICE_TRY,
+        period=state["period"],
+        quotes_used_this_month=state["count"],
+        free_limit=state["free_limit"],
+        remaining_free=state["remaining_free"],
+    )
+
+
+class SubscriptionCheckoutRequest(BaseModel):
+    buyer_identity_number: str
+    billing_address: str
+    billing_city: str
+    billing_zip: str = ""
+
+
+class SubscriptionCheckoutResponse(BaseModel):
+    payment_page_url: Optional[str] = None
+    checkout_form_content: Optional[str] = None
+    token: str
+
+
+@api_router.post("/subscription/checkout", response_model=SubscriptionCheckoutResponse)
+async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, user=Depends(get_current_user)):
+    if not IYZICO_API_KEY or not IYZICO_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Ödeme sistemi henüz yapılandırılmadı")
+    import iyzipay
+
+    name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
+    first_name = name_parts[0] or "Müşteri"
+    last_name = name_parts[1] if len(name_parts) > 1 else "-"
+    conversation_id = f"sub_{user['user_id']}_{uuid.uuid4().hex[:8]}"
+    address = payload.billing_address or "-"
+    city = payload.billing_city or "İstanbul"
+    zip_code = payload.billing_zip or "34000"
+
+    request = {
+        "locale": "tr",
+        "conversationId": conversation_id,
+        "price": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
+        "paidPrice": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
+        "currency": "TRY",
+        "basketId": f"sub_{user['user_id']}_{utc_now().strftime('%Y%m')}",
+        "paymentGroup": "SUBSCRIPTION",
+        "callbackUrl": f"{BACKEND_BASE_URL.rstrip('/')}/api/subscription/callback",
+        "buyer": {
+            "id": user["user_id"],
+            "name": first_name,
+            "surname": last_name,
+            "gsmNumber": user.get("phone") or "+905000000000",
+            "email": user["email"],
+            "identityNumber": payload.buyer_identity_number,
+            "registrationAddress": address,
+            "ip": "85.34.78.112",
+            "city": city,
+            "country": "Turkey",
+            "zipCode": zip_code,
+        },
+        "shippingAddress": {
+            "contactName": user.get("name") or "Müşteri",
+            "city": city,
+            "country": "Turkey",
+            "address": address,
+            "zipCode": zip_code,
+        },
+        "billingAddress": {
+            "contactName": user.get("name") or "Müşteri",
+            "city": city,
+            "country": "Turkey",
+            "address": address,
+            "zipCode": zip_code,
+        },
+        "basketItems": [{
+            "id": "anindateklif_monthly",
+            "name": "Anında Teklif Aylık Abonelik",
+            "category1": "Yazılım",
+            "itemType": "VIRTUAL",
+            "price": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
+        }],
+    }
+    cf = iyzipay.CheckoutFormInitialize()
+    result = await asyncio.to_thread(cf.create, request, _iyzico_options())
+    response = json.load(result)
+    if response.get("status") != "success":
+        raise HTTPException(status_code=502, detail=response.get("errorMessage", "Ödeme başlatılamadı"))
+    await db.subscription_payments.insert_one({
+        "user_id": user["user_id"],
+        "token": response["token"],
+        "conversation_id": conversation_id,
+        "status": "pending",
+        "created_at": utc_now_iso(),
+    })
+    return SubscriptionCheckoutResponse(
+        payment_page_url=response.get("paymentPageUrl"),
+        checkout_form_content=response.get("checkoutFormContent"),
+        token=response["token"],
+    )
+
+
+@api_router.post("/subscription/callback")
+async def subscription_callback(token: str = Form(...)):
+    import iyzipay
+
+    request = {"locale": "tr", "conversationId": str(uuid.uuid4()), "token": token}
+    cf = iyzipay.CheckoutForm()
+    result = await asyncio.to_thread(cf.retrieve, request, _iyzico_options())
+    response = json.load(result)
+
+    pending = await db.subscription_payments.find_one({"token": token}, {"_id": 0})
+    user_id = pending["user_id"] if pending else None
+    success = response.get("status") == "success" and response.get("paymentStatus") == "SUCCESS"
+
+    if success and user_id:
+        new_expiry = utc_now() + timedelta(days=SUBSCRIPTION_DURATION_DAYS)
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"subscription_status": "active", "subscription_expires_at": new_expiry.isoformat()}},
+        )
+        if pending:
+            await db.subscription_payments.update_one(
+                {"token": token}, {"$set": {"status": "paid", "payment_id": response.get("paymentId")}}
+            )
+        redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=success"
+    else:
+        if pending:
+            await db.subscription_payments.update_one({"token": token}, {"$set": {"status": "failed"}})
+        redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed"
+
+    return RedirectResponse(url=redirect_url, status_code=302)
+
+
+# ============ AI ASSISTANT ============
+class AssistantChatRequest(BaseModel):
+    message: str
+    quote_context: Optional[Dict[str, Any]] = None
+
+
+class AssistantChatResponse(BaseModel):
+    reply: str
+
+
+@api_router.post("/assistant/chat", response_model=AssistantChatResponse)
+async def assistant_chat(payload: AssistantChatRequest, user=Depends(get_current_user)):
+    if not _anthropic_client:
+        raise HTTPException(status_code=503, detail="Yapay zeka asistanı henüz yapılandırılmadı")
+    user_message = (payload.message or "").strip()
+    if not user_message:
+        raise HTTPException(status_code=422, detail="Mesaj boş olamaz")
+    context_note = ""
+    if payload.quote_context:
+        try:
+            context_note = "\n\nMevcut teklif taslağı bilgileri (JSON):\n" + json.dumps(payload.quote_context, ensure_ascii=False)
+        except Exception:
+            context_note = ""
+    try:
+        resp = await asyncio.to_thread(
+            _anthropic_client.messages.create,
+            model="claude-sonnet-5",
+            max_tokens=1024,
+            system=ASSISTANT_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message + context_note}],
+        )
+        reply_text = "".join(
+            block.text for block in resp.content if getattr(block, "type", None) == "text"
+        ).strip()
+    except Exception as e:
+        logger.error(f"Assistant chat error: {e}")
+        raise HTTPException(status_code=502, detail="Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin")
+    return AssistantChatResponse(reply=reply_text or "Üzgünüm, şu anda bir yanıt oluşturamadım.")
 
 
 app.include_router(api_router)

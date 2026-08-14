@@ -24,6 +24,7 @@ import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
+import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -59,10 +60,16 @@ export default function HistoryScreen() {
   const generatePdf = async (quote: QuoteT): Promise<{ uri: string; fileName: string } | null> => {
     if (!activeCompany) return null;
     const html = buildQuotePdfHtml(activeCompany, quote);
-    const { uri } = await Print.printToFileAsync({ html, base64: false });
-    let finalUri = uri;
     const desired = buildQuoteFileName(new Date()) + '.pdf';
-    if (Platform.OS !== 'web') {
+    let finalUri: string;
+    if (Platform.OS === 'web') {
+      // expo-print's printToFileAsync is just window.print() on web (ignores
+      // our html and opens the browser's print dialog) — render a real PDF
+      // client-side instead.
+      finalUri = await htmlToPdfObjectUrlWeb(html);
+    } else {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      finalUri = uri;
       try {
         const dirIdx = uri.lastIndexOf('/');
         finalUri = uri.substring(0, dirIdx + 1) + desired;

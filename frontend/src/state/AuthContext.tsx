@@ -43,14 +43,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [bootstrap]);
 
   const login = useCallback(async ({ email, password }: LoginArgs) => {
+    // eslint-disable-next-line no-console
+    console.log('[auth] login attempt', { email });
     const res: { access_token: string; user: UserT } = await api.login({ email, password });
-    await setSessionToken(res.access_token);
+    try {
+      await setSessionToken(res.access_token);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[auth] token storage failed, using in-memory session', e);
+    }
     setUser(res.user);
   }, []);
 
   const register = useCallback(async ({ email, password, name, phone }: RegisterArgs) => {
+    // Debug hook: `adb logcat *:S ReactNativeJS:V` shows this on Android APK.
+    // eslint-disable-next-line no-console
+    console.log('[auth] register attempt', { email });
     const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone });
-    await setSessionToken(res.access_token);
+    try {
+      await setSessionToken(res.access_token);
+    } catch (e) {
+      // Token storage failure MUST NOT block sign-in — keep the token in memory
+      // (getSessionToken() will still find it via the module-level `tokenCache`)
+      // and let the user continue. On next app launch they'll have to log in again.
+      // eslint-disable-next-line no-console
+      console.warn('[auth] token storage failed, using in-memory session', e);
+    }
     setUser(res.user);
   }, []);
 

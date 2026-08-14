@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { useAuth } from '@/src/state/AuthContext';
+import { ApiError } from '@/src/lib/api';
 import {
   evaluatePassword,
   isPasswordValid,
@@ -63,10 +64,30 @@ export default function RegisterScreen() {
         phone: phone.trim(),
       });
     } catch (e: any) {
-      const msg = String(e?.message || '');
-      if (msg.includes('409')) setError('Bu e-posta zaten kayıtlı');
-      else if (msg.includes('422')) setError('Bilgileri kontrol edin');
-      else setError('Kayıt başarısız. Lütfen tekrar deneyin.');
+      // Debug on native: `adb logcat | grep ReactNativeJS` will show this.
+      // eslint-disable-next-line no-console
+      console.warn('[register] failed', { kind: e?.kind, status: e?.status, msg: e?.message });
+
+      if (e instanceof ApiError) {
+        if (e.kind === 'network') {
+          setError('Sunucuya bağlanılamıyor. İnternet bağlantınızı ve uygulamanın güncel sürüm olduğunu kontrol edin.');
+        } else if (e.kind === 'timeout') {
+          setError('Sunucu yanıt vermedi. Lütfen tekrar deneyin.');
+        } else if (e.status === 409) {
+          setError('Bu e-posta zaten kayıtlı');
+        } else if (e.status === 422) {
+          // Backend validation — try to surface the reason (password rules etc.)
+          const bodyMsg = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
+          setError(bodyMsg || 'Bilgileri kontrol edin');
+        } else if (typeof e.status === 'number' && e.status >= 500) {
+          setError('Sunucu geçici olarak yanıt vermiyor. Birazdan tekrar deneyin.');
+        } else {
+          setError(`Kayıt başarısız (${e.status || '?'}). Tekrar deneyin.`);
+        }
+      } else {
+        const msg = String(e?.message || '');
+        setError(msg ? `Kayıt başarısız: ${msg}` : 'Kayıt başarısız. Lütfen tekrar deneyin.');
+      }
     } finally {
       setBusy(false);
     }

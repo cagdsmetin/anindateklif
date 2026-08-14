@@ -39,23 +39,74 @@ export async function getSessionToken(): Promise<string | null> {
   return tokenCache;
 }
 
+/**
+ * Structured API error so screens can distinguish network vs HTTP status errors.
+ * `.kind` is the primary signal callers should switch on:
+ *   - 'network'  : fetch itself threw (no internet, DNS, TLS, CORS, aborted)
+ *   - 'timeout'  : request exceeded the client-side timeout
+ *   - 'http'     : we got a response but status was not OK (has .status + .body)
+ *   - 'parse'    : response OK but JSON was malformed
+ */
+export class ApiError extends Error {
+  kind: 'network' | 'timeout' | 'http' | 'parse';
+  status?: number;
+  body?: string;
+  constructor(message: string, kind: ApiError['kind'], status?: number, body?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.kind = kind;
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function req(path: string, opts: RequestInit = {}) {
   const token = await getSessionToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...((opts.headers as any) || {}),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000); // 20s client timeout
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...opts, headers, signal: controller.signal });
+  } catch (e: any) {
+    // fetch() throws on: no network, DNS failure, SSL error, CORS on web, abort.
+    if (e?.name === 'AbortError') {
+      throw new ApiError('Zaman aşımı — sunucu yanıt vermedi', 'timeout');
+    }
+    // Log so a native `adb logcat | grep ReactNativeJS` shows the true cause.
+    // eslint-disable-next-line no-console
+    console.warn('[api]', 'network error', path, String(e?.message || e));
+    throw new ApiError(
+      `Ağ hatası: ${e?.message || 'sunucuya ulaşılamadı'}`,
+      'network',
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (res.status === 401) {
     await setSessionToken(null);
-    throw new Error('UNAUTHORIZED');
+    throw new ApiError('Oturum süreniz doldu', 'http', 401);
   }
   if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`API ${path} ${res.status}: ${t}`);
+    const body = await res.text().catch(() => '');
+    // eslint-disable-next-line no-console
+    console.warn('[api]', 'http', res.status, path, body.slice(0, 200));
+    throw new ApiError(`API ${path} ${res.status}`, 'http', res.status, body);
   }
-  return res.json();
+
+  try {
+    return await res.json();
+  } catch (e: any) {
+    throw new ApiError('Geçersiz sunucu yanıtı', 'parse');
+  }
 }
 
 export const api = {

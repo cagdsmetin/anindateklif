@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { useAuth } from '@/src/state/AuthContext';
+import { ApiError } from '@/src/lib/api';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -39,9 +40,14 @@ export default function LoginScreen() {
       await login({ email: em, password });
       // Route guard will redirect based on onboarding state.
     } catch (e: any) {
-      const msg = String(e?.message || '');
-      if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
-        setError('E-posta veya şifre hatalı');
+      // eslint-disable-next-line no-console
+      console.warn('[login] failed', { kind: e?.kind, status: e?.status, msg: e?.message });
+      if (e instanceof ApiError) {
+        if (e.kind === 'network') setError('Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.');
+        else if (e.kind === 'timeout') setError('Sunucu yanıt vermedi. Tekrar deneyin.');
+        else if (e.status === 401) setError('E-posta veya şifre hatalı');
+        else if (typeof e.status === 'number' && e.status >= 500) setError('Sunucu şu anda meşgul. Birazdan tekrar deneyin.');
+        else setError(`Giriş yapılamadı (${e.status || '?'}).`);
       } else {
         setError('Giriş yapılamadı. Lütfen tekrar deneyin.');
       }

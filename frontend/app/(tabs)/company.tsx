@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -30,6 +31,7 @@ const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = 
 const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
 export default function CompanyScreen() {
+  const router = useRouter();
   const { companies, activeCompany, setActiveCompanyId, createCompany, updateCompany, deleteCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<CompanyT | null>(null);
@@ -178,6 +180,14 @@ export default function CompanyScreen() {
           <View style={s.supportBox}>
             <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
             <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/assistant')} testID="ai-assistant-btn">
+              <Ionicons name="sparkles" size={18} color="#fff" />
+              <Text style={s.assistantBtnText}>AI Asistan ile Konuş</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/subscription')} testID="subscription-btn">
+              <Ionicons name="star" size={18} color={theme.colors.primary} />
+              <Text style={s.subscriptionBtnText}>Abonelik Yönetimi</Text>
             </TouchableOpacity>
           </View>
           {/* Logo */}
@@ -504,4 +514,8 @@ const s = StyleSheet.create({
   supportBox: { marginBottom: 4 },
   whatsappBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#25D366', paddingVertical: 14, borderRadius: 14 },
   whatsappBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
+  assistantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
+  assistantBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
+  subscriptionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
+  subscriptionBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
 });

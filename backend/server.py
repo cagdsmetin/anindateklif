@@ -38,6 +38,15 @@ FREE_MONTHLY_QUOTE_LIMIT = 5
 SUBSCRIPTION_PRICE_TRY = 149.0
 SUBSCRIPTION_DURATION_DAYS = 30
 
+# Comma-separated list of emails that always get unlimited free access, no
+# subscription required. Managed entirely via the FREE_ACCESS_EMAILS env var
+# on Railway -- add/remove an email there any time, no code change or
+# redeploy needed (the service picks up the new value on its next restart,
+# which Railway does automatically when you edit a variable).
+FREE_ACCESS_EMAILS = set(
+    e.strip().lower() for e in os.environ.get("FREE_ACCESS_EMAILS", "").split(",") if e.strip()
+)
+
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "https://anindateklif-production.up.railway.app")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://just-mercy-production.up.railway.app")
 WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
@@ -238,6 +247,9 @@ def _current_period_key() -> str:
 
 
 def _is_subscription_active(user: Dict[str, Any]) -> bool:
+    email = (user.get("email") or "").strip().lower()
+    if email in FREE_ACCESS_EMAILS:
+        return True
     exp = user.get("subscription_expires_at")
     if not exp:
         return False

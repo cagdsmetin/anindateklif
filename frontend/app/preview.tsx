@@ -23,11 +23,11 @@ import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 
-const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadÄ±r. Ä°yi Ã§alÄ±Åmalar dileriz.';
+const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
-  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? 'â¬' : 'âº';
+  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
   return `${sym} ${s}`;
 }
 
@@ -51,10 +51,10 @@ export default function PreviewScreen() {
       <SafeAreaView style={s.container} edges={['top', 'bottom']}>
         <View style={s.topBar}>
           <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={theme.colors.text} /></TouchableOpacity>
-          <Text style={s.topTitle}>Ãnizleme</Text>
+          <Text style={s.topTitle}>Önizleme</Text>
           <View style={{ width: 22 }} />
         </View>
-        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadÄ±</Text></View>
+        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadı</Text></View>
       </SafeAreaView>
     );
   }
@@ -67,7 +67,7 @@ export default function PreviewScreen() {
     let finalUri: string;
     if (Platform.OS === 'web') {
       // expo-print's printToFileAsync is just window.print() on web (ignores
-      // our html and opens the browser's print dialog) â render a real PDF
+      // our html and opens the browser's print dialog) — render a real PDF
       // client-side instead.
       finalUri = await htmlToPdfObjectUrlWeb(html);
     } else {
@@ -94,31 +94,31 @@ export default function PreviewScreen() {
       if (avail) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        // Web: no native share sheet â trigger a real browser download instead.
+        // Web: no native share sheet — trigger a real browser download instead.
         await downloadFileWeb(uri, fileName);
         showToast('PDF indirildi');
       }
-    } catch (e: any) { showToast('PDF hatasÄ±: ' + (e?.message || '')); }
+    } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
   const doWhatsAppShare = async () => {
     try {
       const { uri, fileName } = await generatePdf();
       await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
-    } catch (e: any) { showToast('WhatsApp hatasÄ±: ' + (e?.message || '')); }
+    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()} testID="back-btn"><Ionicons name="arrow-back" size={22} color={theme.colors.navy} /></TouchableOpacity>
-        <Text style={s.topTitle}>PDF Ãnizleme</Text>
+        <Text style={s.topTitle}>PDF Önizleme</Text>
         <View style={{ width: 22 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         <View style={s.sheet} testID="preview-sheet">
-          {/* HEADER â matches the PDF layout: two columns, top-aligned, with a
+          {/* HEADER — matches the PDF layout: two columns, top-aligned, with a
               navy rule under the whole block so it reads as one letterhead
               band even when the two columns end up different heights. */}
           <View style={s.sheetHeader}>
@@ -136,31 +136,31 @@ export default function PreviewScreen() {
               ) : (
                 <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{(activeCompany.sirketAdi || 'FIRMA').substring(0, 14)}</Text></View>
               )}
-              <Text style={s.docTitle}>TEKLÄ°F FORMU</Text>
+              <Text style={s.docTitle}>TEKLİF FORMU</Text>
               <View style={s.metaTable}>
                 <View style={s.metaRow}><Text style={s.metaK}>Teklif No</Text><Text style={s.metaV} numberOfLines={1}>{quote.teklifNo}</Text></View>
                 <View style={s.metaRow}><Text style={s.metaK}>Tarih</Text><Text style={s.metaV}>{trDate(quote.tarih)}</Text></View>
-                <View style={s.metaRow}><Text style={s.metaK}>GeÃ§erlilik Tarihi</Text><Text style={s.metaV}>{trDate(quote.gecerlilik)}</Text></View>
+                <View style={s.metaRow}><Text style={s.metaK}>Geçerlilik Tarihi</Text><Text style={s.metaV}>{trDate(quote.gecerlilik)}</Text></View>
               </View>
             </View>
           </View>
 
           {/* INFO BOXES */}
           <View style={s.infoGrid}>
-            <InfoBox title="MÃÅTERÄ° BÄ°LGÄ°LERÄ°" rows={[
-              ['FÄ°RMA', quote.musFirma],
-              ['MÃÅTERÄ° ADI', quote.musYetkili],
+            <InfoBox title="MÜŞTERİ BİLGİLERİ" rows={[
+              ['FİRMA', quote.musFirma],
+              ['MÜŞTERİ ADI', quote.musYetkili],
               ['TELEFON', quote.musTelefon],
               ['E-Mail', quote.musEmail],
               ['ADRES', quote.musAdres],
             ]} />
-            <InfoBox title="SÄ°PARÄ°Å BÄ°LGÄ°LERÄ°" rows={[
+            <InfoBox title="SİPARİŞ BİLGİLERİ" rows={[
               ['PROJE ADI', quote.projeAdi],
-              ['NAKLÄ°YE', quote.nakliye],
-              ['PARA BÄ°RÄ°MÄ°', quote.paraBirimi],
-              ['ÃDEME ÅEKLÄ°', quote.odemeSekli],
-              ['MENÅEÄ°', quote.mensei],
-              ['TESLÄ°M', quote.teslimGun],
+              ['NAKLİYE', quote.nakliye],
+              ['PARA BİRİMİ', quote.paraBirimi],
+              ['ÖDEME ŞEKLİ', quote.odemeSekli],
+              ['MENŞEİ', quote.mensei],
+              ['TESLİM', quote.teslimGun],
             ]} />
           </View>
 
@@ -168,9 +168,9 @@ export default function PreviewScreen() {
           <View style={s.table}>
             <View style={s.thead}>
               <Text style={[s.th, { width: 30, textAlign: 'center' }]}>S.NO</Text>
-              <Text style={[s.th, { flex: 2 }]}>HÄ°ZMET / ÃRÃN</Text>
+              <Text style={[s.th, { flex: 2 }]}>HİZMET / ÜRÜN</Text>
               <Text style={[s.th, { width: 40, textAlign: 'center' }]}>ADET</Text>
-              <Text style={[s.th, { width: 70, textAlign: 'right' }]}>BÄ°RÄ°M</Text>
+              <Text style={[s.th, { width: 70, textAlign: 'right' }]}>BİRİM</Text>
               <Text style={[s.th, { width: 72, textAlign: 'right' }]}>TOPLAM</Text>
             </View>
             {quote.items.length === 0 ? (
@@ -190,30 +190,30 @@ export default function PreviewScreen() {
             })}
           </View>
 
-          <Text style={s.warn}>ÃLÃÃ VE ÃZELLÄ°KLERÄ° DÄ°KKATLÄ° KONTROL EDÄ°NÄ°Z.</Text>
-          <Text style={s.kdvBanner}>KDV HARÄ°Ã FÄ°YATTIR</Text>
+          <Text style={s.warn}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ.</Text>
+          <Text style={s.kdvBanner}>KDV HARİÇ FİYATTIR</Text>
 
           {/* Bottom */}
           <View style={s.bottomGrid}>
             <View style={{ flex: 1.3 }}>
-              <Text style={s.boxTitleDark}>ÃZEL NOTLAR &amp; SATIÅ DETAYLARI</Text>
+              <Text style={s.boxTitleDark}>ÖZEL NOTLAR &amp; SATIŞ DETAYLARI</Text>
               <View style={s.notesBody}><Text style={s.noteText}>{quote.notlar || activeCompany.ozelNotlar || '-'}</Text></View>
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <TotRow label="ARA TOPLAM" value={fmt((quote.araToplam || 0) + (quote.iskontoTutar || 0), cur)} />
-              {quote.iskonto > 0 ? <TotRow label={`Ä°SKONTO (%${quote.iskonto})`} value={`-${fmt(quote.iskontoTutar, cur)}`} negative /> : null}
+              {quote.iskonto > 0 ? <TotRow label={`İSKONTO (%${quote.iskonto})`} value={`-${fmt(quote.iskontoTutar, cur)}`} negative /> : null}
               <View style={s.grand}>
                 <Text style={s.grandL}>GENEL TOPLAM</Text>
                 <Text style={s.grandV} numberOfLines={1}>{fmt(quote.genelToplam, cur)}</Text>
               </View>
-              <View style={s.signBox}><Text style={s.signText}>Onay / Ä°mza :</Text></View>
+              <View style={s.signBox}><Text style={s.signText}>Onay / İmza :</Text></View>
             </View>
           </View>
 
           {/* Bank */}
           {(activeCompany.banklar || []).length > 0 ? (
             <>
-              <Text style={s.bankTitle}>BANKA BÄ°LGÄ°LERÄ° â {activeCompany.sirketAdi}</Text>
+              <Text style={s.bankTitle}>BANKA BİLGİLERİ — {activeCompany.sirketAdi}</Text>
               <View style={s.bankTable}>
                 {(activeCompany.banklar || []).map((b) => (
                   <View key={b.id} style={s.bankRow}>
@@ -230,11 +230,11 @@ export default function PreviewScreen() {
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
         <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/', params: { quoteId: quote.id } })} testID="preview-edit-btn">
           <Ionicons name="pencil" size={16} color={theme.colors.textSoft} />
-          <Text style={s.actionBtnGhostText}>DÃ¼zenle</Text>
+          <Text style={s.actionBtnGhostText}>Düzenle</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnAcc} onPress={doShare} testID="preview-pdf-btn">
           <Ionicons name="share-social" size={16} color="#fff" />
-          <Text style={s.actionBtnAccText}>PDF PaylaÅ</Text>
+          <Text style={s.actionBtnAccText}>PDF Paylaş</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnWa} onPress={doWhatsAppShare} testID="preview-wa-btn">
           <Ionicons name="logo-whatsapp" size={16} color="#fff" />
@@ -275,7 +275,7 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
   // Header uses a strict two-column layout with `alignItems: flex-start` so both
-  // columns start at the exact same top edge â mirrors the PDF <table> layout.
+  // columns start at the exact same top edge — mirrors the PDF <table> layout.
   // A navy rule under the whole block turns it into one letterhead band, same
   // treatment as the exported PDF, so short vs. tall columns never look like
   // a mistake.

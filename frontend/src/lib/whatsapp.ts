@@ -16,6 +16,12 @@ export function normalizePhoneForWhatsApp(raw?: string): string {
   return digits;
 }
 
+function fmtMoney(n: number, cur: string): string {
+  const parts = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
+  return `${sym} ${parts}`;
+}
+
 export function composeQuoteWhatsAppMessage(quote: QuoteT, sirketAdi?: string): string {
   const musteri = (quote.musYetkili || quote.musFirma || 'Değerli Müşterimiz').trim();
   const firma = (sirketAdi || 'Firmamız').trim();
@@ -25,6 +31,83 @@ export function composeQuoteWhatsAppMessage(quote: QuoteT, sirketAdi?: string): 
     `Herhangi bir sorunuz olursa bize dönüş yapabilirsiniz.\n\n` +
     `İyi çalışmalar dileriz,\n${firma}`
   );
+}
+
+// ============================================================================
+// WHATSAPP MESSAGE TEMPLATES
+//
+// A small library of pre-built messages the user can pick from when sharing a
+// quote via WhatsApp. Each template body uses simple {variable} placeholders
+// that get substituted with real quote/company data at send time.
+//
+// Supported placeholders: {musteri} {isletme} {tutar} {teklifNo}
+// ============================================================================
+
+export type WhatsAppTemplateId = 'teklif_hazir' | 'odeme_hatirlatma' | 'randevu_hatirlatma' | 'tesekkur';
+
+export type WhatsAppTemplate = {
+  id: WhatsAppTemplateId;
+  label: string;
+  icon: string; // Ionicons name
+  body: string;
+};
+
+export const WHATSAPP_TEMPLATES: WhatsAppTemplate[] = [
+  {
+    id: 'teklif_hazir',
+    label: 'Teklif Hazır',
+    icon: 'document-text-outline',
+    body:
+      'Merhaba {musteri},\n\n' +
+      '{teklifNo} numaralı teklifiniz hazır — PDF olarak ekte iletilmiştir. Toplam tutar: {tutar}.\n\n' +
+      'Herhangi bir sorunuz olursa bize dönüş yapabilirsiniz.\n\n' +
+      'İyi çalışmalar dileriz,\n{isletme}',
+  },
+  {
+    id: 'odeme_hatirlatma',
+    label: 'Ödeme Hatırlatma',
+    icon: 'cash-outline',
+    body:
+      'Merhaba {musteri},\n\n' +
+      '{teklifNo} numaralı teklifinizle ilgili {tutar} tutarındaki ödemenizi hatırlatmak isteriz.\n\n' +
+      'Uygun olduğunuzda tarafımıza bilgi verebilirseniz memnun oluruz.\n\n' +
+      'Teşekkür ederiz,\n{isletme}',
+  },
+  {
+    id: 'randevu_hatirlatma',
+    label: 'Randevu / Servis Hatırlatma',
+    icon: 'calendar-outline',
+    body:
+      'Merhaba {musteri},\n\n' +
+      '{teklifNo} numaralı işinizle ilgili randevunuzu hatırlatmak isteriz.\n\n' +
+      'Herhangi bir değişiklik olursa lütfen bize bildirin.\n\n' +
+      'İyi çalışmalar dileriz,\n{isletme}',
+  },
+  {
+    id: 'tesekkur',
+    label: 'Teşekkür',
+    icon: 'heart-outline',
+    body:
+      'Merhaba {musteri},\n\n' +
+      'Bizi tercih ettiğiniz için teşekkür ederiz! {teklifNo} numaralı işinizle ilgili herhangi bir sorunuz olursa bize ulaşabilirsiniz.\n\n' +
+      'Saygılarımızla,\n{isletme}',
+  },
+];
+
+/**
+ * Fill a template body's {musteri} {isletme} {tutar} {teklifNo} placeholders
+ * with real values from a quote + company name.
+ */
+export function renderWhatsAppTemplate(body: string, quote: QuoteT, companyName?: string): string {
+  const musteri = (quote.musYetkili || quote.musFirma || 'Değerli Müşterimiz').trim();
+  const isletme = (companyName || 'Firmamız').trim();
+  const tutar = fmtMoney(quote.genelToplam, quote.paraBirimi);
+  const teklifNo = quote.teklifNo || '';
+  return body
+    .replace(/\{musteri\}/g, musteri)
+    .replace(/\{isletme\}/g, isletme)
+    .replace(/\{tutar\}/g, tutar)
+    .replace(/\{teklifNo\}/g, teklifNo);
 }
 
 /**
@@ -67,9 +150,10 @@ export async function shareQuoteViaWhatsApp(opts: {
   quote: QuoteT;
   companyName?: string;
   fileName?: string;
+  message?: string;
 }): Promise<void> {
   const { pdfUri, quote, companyName, fileName } = opts;
-  const message = composeQuoteWhatsAppMessage(quote, companyName);
+  const message = opts.message || composeQuoteWhatsAppMessage(quote, companyName);
 
   // ---------- WEB ----------
   if (Platform.OS === 'web') {

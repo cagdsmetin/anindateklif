@@ -2,6 +2,7 @@
   "expo": {
     "name": "Anında Teklif",
     "slug": "aninda-teklif",
+    "owner": "cagdsmetin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -21,7 +22,8 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.emergent.appgenesis.p6b8pb"
+      "package": "com.emergent.appgenesis.p6b8pb",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +44,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7d8d615f-66fb-42ec-b916-2ef957a4ac28"
+      }
     }
   }
 }

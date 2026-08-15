@@ -284,263 +284,488 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
 </body></html>`;
 }
 
-// ============================================================================
-// MODERN — dark rounded "card" header, compact single-column body. Inspired
-// by the reference mockups the customer shared (dark navy hero band with a
-// reference-number pill and a white logo chip, then a clean white body).
-// ============================================================================
 function buildModernHtml(company: CompanyT, quote: QuoteT): string {
-  const cur = quote.paraBirimi || 'USD';
-  const kdvOrani = quote.kdvOrani || 0;
-  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
-  const kdvTutar = quote.kdvTutar || 0;
+  const cur = quote.paraBirimi || 'TL';
+  const items = quote.items || [];
+  const ekler = quote.ekler || [];
+  const banklar = company.banklar || [];
 
-  const itemsHtml = (quote.items || [])
-    .map((it) => {
-      const line = (it.adet || 0) * (it.birimFiyat || 0);
-      const desc = buildItemDescription(it);
-      return `
-        <div class="m-item">
-          <div class="m-item-main">
-            <div class="m-item-name">${esc(desc)}</div>
-            <div class="m-item-sub">Birim: ${fmt(it.birimFiyat, cur)}${kdvOrani ? ` (+%${kdvOrani} KDV)` : ''}</div>
-          </div>
-          <div class="m-item-qty">${it.adet}</div>
-          <div class="m-item-tot">${fmt(line, cur)}</div>
-        </div>`;
-    })
-    .join('');
+  const v = (s?: string | number | null): string => {
+    if (s === null || s === undefined) return '-';
+    const str = String(s).trim();
+    return str.length > 0 ? esc(str) : '-';
+  };
 
-  const logo = company.logoBase64
-    ? `<img src="${company.logoBase64}" class="m-logo-img"/>`
-    : `<div class="m-logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 15))}</div>`;
+  const monogram = ((company.sirketAdi || '?').trim().split(/\s+/).slice(0, 2)
+    .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
 
-  const bankRows = (company.banklar || [])
-    .map(
-      (b) => `
-        <tr>
-          <td class="bk-name">${esc(b.turu || b.banka || '-')}</td>
-          <td class="bk-iban">${esc(b.iban || '-')}</td>
-        </tr>`
-    )
-    .join('');
+  const logoSrc = company.logoBase64
+    ? (company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    : '';
+
+  const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '-';
+
+  const itemsRows = items.map((it, idx) => {
+    const desc = buildItemDescription(it);
+    const total = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
+    return `<tr>
+      <td class="c-idx">${idx + 1}</td>
+      <td class="c-desc">${esc(desc)}</td>
+      <td class="c-num">${esc(String(it.adet))}</td>
+      <td class="c-num">${fmt(it.birimFiyat, cur)}</td>
+      <td class="c-num c-total">${fmt(total, cur)}</td>
+    </tr>`;
+  }).join('');
+
+  const showIskonto = !!quote.iskonto && quote.iskonto > 0;
+  const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+
+  const bankSection = banklar.length > 0 ? `
+    <section class="bank-card">
+      <div class="bank-title">Banka Bilgileri &mdash; ${v(company.sirketAdi)}</div>
+      <table class="bank">
+        <tbody>
+          ${banklar.map((b) => `<tr>
+            <td><strong>${v(b.banka)}</strong>${b.turu ? ` <span class="bank-turu">(${v(b.turu)})</span>` : ''}</td>
+            <td class="iban">${v(b.iban)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </section>` : '';
+
+  const ekPages = ekler.map((ek) => `
+    <section class="ek-page">
+      <div class="ek-header">
+        <span>${v(company.sirketAdi)}</span>
+        <span>Teklif No: ${v(quote.teklifNo)} &middot; Sayfa Eki</span>
+      </div>
+      <div class="ek-title">${v(ek.baslik)}</div>
+      <div class="ek-body">${esc(ek.icerik || '')}</div>
+    </section>`).join('');
 
   return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
 <style>
-  @page { size: A4; margin: 0; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:11px; }
-  .m-sheet { padding: 10mm 12mm; }
+  @page { size: A4; margin: 14mm 13mm 16mm 13mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Segoe UI', sans-serif;
+    color:#1c1c1e;
+    background:#f6f4ef;
+    font-size:9.5pt;
+    line-height:1.45;
+  }
+  .sheet { padding: 0; }
 
-  .m-hero { background:#111827; border-radius:16px; padding:20px 22px; position:relative; color:#fff; margin-bottom:18px; }
-  .m-tag { display:inline-block; background:rgba(255,255,255,0.14); color:#e2e8f0; font-size:9px; font-weight:800; letter-spacing:0.08em; padding:4px 11px; border-radius:20px; text-transform:uppercase; }
-  .m-ref { font-size:21px; font-weight:900; margin-top:9px; letter-spacing:0.02em; }
-  .m-logo-chip { position:absolute; top:18px; right:18px; background:#fff; border-radius:10px; padding:8px 12px; max-width:170px; }
-  .m-logo-img { max-width:130px; max-height:44px; object-fit:contain; display:block; }
-  .m-logo-fallback { font-size:10px; font-weight:800; color:#111827; line-height:1.3; }
+  /* Header */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:2.5px solid #1c1c1e; margin-bottom:16px; }
+  .company-block { max-width:56%; }
+  .company-name { font-size:15pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 6px; }
+  .company-meta { font-size:8pt; color:#6b6b6b; line-height:1.7; }
+  .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
+  .logo-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .logo-img { height:44px; max-width:130px; object-fit:contain; }
+  .logo-fallback { width:44px; height:44px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13pt; border-radius:4px; }
+  .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
+  .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
+  .meta-table { border-collapse:collapse; margin-top:8px; }
+  .meta-table td { padding:2.5px 0 2.5px 16px; text-align:right; }
+  .meta-label { display:block; color:#9a998f; text-transform:uppercase; letter-spacing:0.6px; font-size:6.8pt; }
+  .meta-value { font-weight:700; font-size:9pt; }
 
-  .m-meta-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:14px; }
-  .m-cust-label { font-size:9px; color:#94a3b8; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
-  .m-cust-name { font-size:15px; font-weight:900; color:#0f172a; margin-bottom:3px; }
-  .m-cust-loc { font-size:10.5px; color:#64748b; }
-  .m-dates { text-align:right; font-size:10.5px; }
-  .m-dates .d1 { font-weight:800; color:#0f172a; margin-bottom:3px; }
-  .m-dates .d2 { color:#dc2626; font-weight:700; }
+  /* Info boxes */
+  .info-row { display:flex; gap:14px; margin-bottom:14px; }
+  .info-box { flex:1; background:#ffffff; border-top:3px solid #4338ca; padding:11px 13px; }
+  .info-title { font-size:7.6pt; font-weight:800; letter-spacing:1.2px; color:#4338ca; margin-bottom:9px; text-transform:uppercase; }
+  .info-line { display:table; width:100%; margin-bottom:5px; }
+  .info-k { display:table-cell; width:36%; font-size:7.4pt; color:#9a998f; text-transform:uppercase; letter-spacing:.3px; vertical-align:top; padding:1px 0; }
+  .info-v { display:table-cell; font-size:8.7pt; font-weight:600; vertical-align:top; padding:1px 0; }
 
-  .m-table-hdr { display:flex; justify-content:space-between; font-size:9.5px; font-weight:800; color:#94a3b8; letter-spacing:0.06em; text-transform:uppercase; padding:0 2px 6px; border-bottom:2px solid #111827; margin-bottom:2px; }
-  .m-item { display:flex; justify-content:space-between; align-items:flex-start; padding:10px 2px; border-bottom:1px solid #e2e8f0; gap:8px; }
-  .m-item-main { flex:1; }
-  .m-item-name { font-size:11.5px; font-weight:700; color:#0f172a; margin-bottom:2px; }
-  .m-item-sub { font-size:9.5px; color:#94a3b8; }
-  .m-item-qty { width:40px; text-align:center; font-size:11px; color:#0f172a; padding-top:1px; }
-  .m-item-tot { width:90px; text-align:right; font-size:11.5px; font-weight:800; color:#0f172a; padding-top:1px; }
+  /* Items table */
+  table.items { width:100%; border-collapse:collapse; margin-bottom:10px; }
+  table.items thead th { background:#1c1c1e; color:#fff; font-size:7.3pt; text-transform:uppercase; letter-spacing:.6px; padding:8px 9px; text-align:left; font-weight:700; }
+  table.items thead th.num { text-align:right; }
+  table.items tbody td { padding:7px 9px; border-bottom:1px solid #e4e1d8; font-size:8.8pt; vertical-align:top; }
+  table.items tbody tr:nth-child(even) { background:#efece3; }
+  td.c-idx { color:#9a998f; width:22px; font-weight:600; }
+  td.c-num { text-align:right; white-space:nowrap; }
+  td.c-total { font-weight:800; }
 
-  .m-totals { margin-top:14px; margin-left:auto; width:220px; }
-  .m-trow { display:flex; justify-content:space-between; font-size:11px; color:#64748b; padding:4px 2px; }
-  .m-trow .v { color:#0f172a; font-weight:700; }
-  .m-grand { display:flex; justify-content:space-between; align-items:center; background:#111827; color:#fff; border-radius:10px; padding:11px 14px; margin-top:8px; font-size:13px; font-weight:900; letter-spacing:0.02em; }
+  /* Banners */
+  .banner { padding:8px 12px; font-size:8pt; font-weight:700; margin-bottom:9px; border-left:3px solid; }
+  .banner-warn { background:#fff1d6; color:#7a4a00; border-left-color:#c98a00; }
+  .banner-kdv { background:#eef0fb; color:#4338ca; border-left-color:#4338ca; margin-bottom:16px; }
 
-  .m-warn { text-align:center; font-size:9.5px; color:#94a3b8; margin-top:16px; padding:0 6px; line-height:1.5; }
-  .m-notes { margin-top:14px; font-size:10.5px; color:#475569; line-height:1.55; white-space:pre-wrap; }
-  .m-footer { text-align:center; font-size:9px; color:#cbd5e1; background:#111827; border-radius:10px; padding:9px; margin-top:16px; letter-spacing:0.02em; }
+  /* Bottom */
+  .bottom { display:flex; gap:14px; align-items:stretch; }
+  .notes-card { flex:1.5; background:#ffffff; padding:13px 15px; }
+  .sub-title { font-size:7.4pt; color:#4338ca; font-weight:800; letter-spacing:.7px; text-transform:uppercase; margin-bottom:5px; }
+  .sub-body { font-size:8.6pt; color:#333; margin-bottom:12px; line-height:1.65; }
+  .sub-body:last-child { margin-bottom:0; }
+  .sign-box { margin-top:16px; border-top:1px solid #e4e1d8; padding-top:10px; }
+  .sign-label { font-size:8pt; font-weight:700; margin-bottom:28px; color:#1c1c1e; }
+  .sign-line { border-top:1px solid #1c1c1e; width:62%; }
 
-  .bank-title { background:#111827; color:#fff; font-size:11px; font-weight:800; padding:8px 12px; margin-top:16px; letter-spacing:0.03em; border-radius:10px 10px 0 0; }
-  .bank-table { width:100%; border-collapse:collapse; border:1px solid #e2e8f0; border-top:none; border-radius:0 0 10px 10px; overflow:hidden; }
-  .bank-table td { padding:7px 12px; font-size:11px; border-bottom:1px solid #e2e8f0; }
-  .bank-table tr:last-child td { border-bottom:none; }
-  .bank-table td.bk-name { color:#0f172a; width:35%; font-weight:700; }
-  .bank-table td.bk-iban { color:#0f172a; font-family:'Courier New',monospace; letter-spacing:0.02em; }
-</style></head>
+  .totals-card { flex:1; background:#1c1c1e; color:#fff; padding:16px 18px; }
+  .totals-row { display:table; width:100%; margin-bottom:7px; }
+  .totals-k { display:table-cell; font-size:8pt; color:#c9c8c3; }
+  .totals-v { display:table-cell; text-align:right; font-size:9pt; font-weight:600; }
+  .totals-div { border-top:1px solid #45443f; margin:10px 0; }
+  .grand-label { font-size:7.6pt; color:#a5b4fc; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:3px; }
+  .grand-value { font-size:23pt; font-weight:800; color:#fff; letter-spacing:-0.5px; }
+  .kdv-note { margin-top:8px; font-size:7.4pt; color:#a09fb0; }
+
+  /* Bank */
+  .bank-card { margin-top:14px; background:#ffffff; border-top:3px solid #4338ca; padding:11px 15px; }
+  .bank-title { font-size:7.6pt; font-weight:800; color:#4338ca; text-transform:uppercase; letter-spacing:.7px; margin-bottom:9px; }
+  table.bank { width:100%; border-collapse:collapse; }
+  table.bank td { padding:5px 6px; font-size:8.4pt; border-bottom:1px solid #eeece4; }
+  .bank-turu { color:#9a998f; font-weight:400; }
+  .iban { text-align:right; font-weight:600; letter-spacing:.3px; }
+
+  /* Attachment pages */
+  .ek-page { page-break-before:always; padding-top:2px; }
+  .ek-header { display:flex; justify-content:space-between; border-bottom:2px solid #1c1c1e; padding-bottom:8px; margin-bottom:16px; font-size:8pt; color:#6b6b6b; }
+  .ek-title { font-size:15pt; font-weight:800; color:#4338ca; margin-bottom:14px; }
+  .ek-body { font-size:9pt; line-height:1.75; color:#222; }
+</style>
+</head>
 <body>
-<div class="m-sheet">
-  <div class="m-hero">
-    <div class="m-tag">Proje Teklifi</div>
-    <div class="m-ref">#${esc(quote.teklifNo)}</div>
-    <div class="m-logo-chip">${logo}</div>
-  </div>
-
-  <div class="m-meta-row">
-    <div>
-      <div class="m-cust-label">Müşteri</div>
-      <div class="m-cust-name">${esc(quote.musFirma || quote.musYetkili || '-')}</div>
-      <div class="m-cust-loc">${esc(quote.musAdres || quote.musTelefon || '-')}</div>
+  <div class="sheet">
+    <div class="header">
+      <div class="company-block">
+        <div class="company-name">${v(company.sirketAdi)}</div>
+        <div class="company-meta">
+          ${v(company.adres)}<br/>
+          Tel: ${phoneLine}<br/>
+          E-Mail: ${v(company.email)} &nbsp;&middot;&nbsp; ${v(company.website)}
+        </div>
+      </div>
+      <div class="head-right">
+        <div class="logo-row">
+          ${logoSrc
+            ? `<img class="logo-img" src="${logoSrc}" />`
+            : `<div class="logo-fallback">${esc(monogram)}</div>`}
+        </div>
+        <div class="doc-tag">ANINDA TEKLİF</div>
+        <div class="doc-title">TEKLİF FORMU</div>
+        <table class="meta-table">
+          <tr><td><span class="meta-label">Teklif No</span><span class="meta-value">${v(quote.teklifNo)}</span></td></tr>
+          <tr><td><span class="meta-label">Tarih</span><span class="meta-value">${trDate(quote.tarih)}</span></td></tr>
+          <tr><td><span class="meta-label">Geçerlilik Tarihi</span><span class="meta-value">${trDate(quote.gecerlilik)}</span></td></tr>
+        </table>
+      </div>
     </div>
-    <div class="m-dates">
-      <div class="d1">${esc(trDate(quote.tarih))}</div>
-      <div class="d2">Geçerlilik: ${esc(trDate(quote.gecerlilik))}</div>
+
+    <div class="info-row">
+      <div class="info-box">
+        <div class="info-title">Müşteri Bilgileri</div>
+        <div class="info-line"><div class="info-k">Firma</div><div class="info-v">${v(quote.musFirma)}</div></div>
+        <div class="info-line"><div class="info-k">Müşteri Adı</div><div class="info-v">${v(quote.musYetkili)}</div></div>
+        <div class="info-line"><div class="info-k">Telefon</div><div class="info-v">${v(quote.musTelefon)}</div></div>
+        <div class="info-line"><div class="info-k">E-Mail</div><div class="info-v">${v(quote.musEmail)}</div></div>
+        <div class="info-line"><div class="info-k">Adres</div><div class="info-v">${v(quote.musAdres)}</div></div>
+      </div>
+      <div class="info-box">
+        <div class="info-title">Sipariş Bilgileri</div>
+        <div class="info-line"><div class="info-k">Proje Adı</div><div class="info-v">${v(quote.projeAdi)}</div></div>
+        <div class="info-line"><div class="info-k">Nakliye</div><div class="info-v">${v(quote.nakliye)}</div></div>
+        <div class="info-line"><div class="info-k">Para Birimi</div><div class="info-v">${v(quote.paraBirimi)}</div></div>
+        <div class="info-line"><div class="info-k">Ödeme Şekli</div><div class="info-v">${v(quote.odemeSekli)}</div></div>
+        <div class="info-line"><div class="info-k">Menşei</div><div class="info-v">${v(quote.mensei)}</div></div>
+        <div class="info-line"><div class="info-k">Teslim</div><div class="info-v">${v(quote.teslimGun)}</div></div>
+      </div>
     </div>
+
+    <table class="items">
+      <thead>
+        <tr>
+          <th style="width:24px;">S.No</th>
+          <th>Sistem / Hizmet</th>
+          <th class="num" style="width:50px;">Adet</th>
+          <th class="num" style="width:90px;">Birim Fiyat</th>
+          <th class="num" style="width:100px;">Toplam Fiyat</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsRows}
+      </tbody>
+    </table>
+
+    <div class="banner banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
+    <div class="banner banner-kdv">KDV HARİÇ FİYATTIR</div>
+
+    <div class="bottom">
+      <div class="notes-card">
+        <div class="sub-title">Özel Notlar</div>
+        <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
+        <div class="sub-title">Satış Detayları</div>
+        <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+        <div class="sign-box">
+          <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
+          <div class="sign-line"></div>
+        </div>
+      </div>
+      <div class="totals-card">
+        <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(quote.araToplam, cur)}</div></div>
+        ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+        <div class="totals-div"></div>
+        <div class="grand-label">Genel Toplam</div>
+        <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
+        ${showKdv ? `<div class="kdv-note">KDV (%${esc(String(quote.kdvOrani))}) dahil değildir &middot; + ${fmt(quote.kdvTutar, cur)}</div>` : ''}
+      </div>
+    </div>
+
+    ${bankSection}
   </div>
-
-  <div class="m-table-hdr"><span>Hizmet</span><span style="display:flex;gap:26px;"><span>Adet</span><span>Toplam</span></span></div>
-  ${itemsHtml || `<div style="text-align:center;color:#94a3b8;padding:18px 0;font-size:11px;">Kalem yok</div>`}
-
-  <div class="m-totals">
-    <div class="m-trow"><span>Ara Toplam</span><span class="v">${fmt(araToplamRaw, cur)}</span></div>
-    ${quote.iskonto > 0 ? `<div class="m-trow"><span>İskonto (%${quote.iskonto})</span><span class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
-    ${kdvOrani ? `<div class="m-trow"><span>KDV (%${kdvOrani})</span><span class="v">${fmt(kdvTutar, cur)}</span></div>` : ''}
-    <div class="m-grand"><span>Genel Toplam</span><span>${fmt(quote.genelToplam || 0, cur)}</span></div>
-  </div>
-
-  <div class="m-warn">Ölçü ve özellikleri dikkatli kontrol ediniz. Olası hatalardan firmamız sorumlu değildir. Fiyatlara KDV dahil değildir.</div>
-
-  ${(quote.notlar || company.ozelNotlar) ? `<div class="m-notes">${esc(quote.notlar || company.ozelNotlar || '')}</div>` : ''}
-
-  ${bankRows ? `
-  <div class="bank-title">Banka Bilgileri — ${esc(company.sirketAdi || '')}</div>
-  <table class="bank-table">${bankRows}</table>
-  ` : ''}
-
-  <div class="m-footer">Bu belge ${esc(company.sirketAdi || '')} tarafından hazırlanmıştır.</div>
-</div>
-</body></html>`;
+  ${ekPages}
+</body>
+</html>`;
 }
 
-// ============================================================================
-// MINIMAL — centered logo, plenty of whitespace, thin single-column table.
-// Inspired by the plain, understated reference the customer shared.
-// ============================================================================
 function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
-  const cur = quote.paraBirimi || 'USD';
-  const kdvOrani = quote.kdvOrani || 0;
-  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
-  const kdvTutar = quote.kdvTutar || 0;
+  const cur = quote.paraBirimi || 'TL';
+  const items = quote.items || [];
+  const ekler = quote.ekler || [];
+  const banklar = company.banklar || [];
 
-  const itemsHtml = (quote.items || [])
-    .map((it) => {
-      const line = (it.adet || 0) * (it.birimFiyat || 0);
-      const desc = buildItemDescription(it);
-      return `
-        <tr>
-          <td class="mi-desc">
-            <div class="mi-desc-name">${esc(desc)}</div>
-            <div class="mi-desc-sub">Birim: ${fmt(it.birimFiyat, cur)}</div>
-          </td>
-          <td class="mi-qty">${it.adet}</td>
-          <td class="mi-tot">${fmt(line, cur)}</td>
-        </tr>`;
-    })
-    .join('');
+  const v = (s?: string | number | null): string => {
+    if (s === null || s === undefined) return '-';
+    const str = String(s).trim();
+    return str.length > 0 ? esc(str) : '-';
+  };
 
-  const logo = company.logoBase64
-    ? `<img src="${company.logoBase64}" class="mi-logo-img"/>`
-    : `<div class="mi-logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
+  const monogram = ((company.sirketAdi || '?').trim().split(/\s+/).slice(0, 2)
+    .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
 
-  const bankRows = (company.banklar || [])
-    .map(
-      (b) => `
-        <tr>
-          <td class="bk-name">${esc(b.turu || b.banka || '-')}</td>
-          <td class="bk-iban">${esc(b.iban || '-')}</td>
-        </tr>`
-    )
-    .join('');
+  const logoSrc = company.logoBase64
+    ? (company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    : '';
+
+  const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '-';
+
+  const itemsRows = items.map((it, idx) => {
+    const desc = buildItemDescription(it);
+    const total = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
+    return `<tr>
+      <td class="c-idx">${String(idx + 1).padStart(2, '0')}</td>
+      <td class="c-desc">${esc(desc)}</td>
+      <td class="c-num">${esc(String(it.adet))}</td>
+      <td class="c-num">${fmt(it.birimFiyat, cur)}</td>
+      <td class="c-num c-total">${fmt(total, cur)}</td>
+    </tr>`;
+  }).join('');
+
+  const showIskonto = !!quote.iskonto && quote.iskonto > 0;
+  const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+
+  const bankSection = banklar.length > 0 ? `
+    <section class="bank-card">
+      <div class="bank-title">Banka Bilgileri &mdash; ${v(company.sirketAdi)}</div>
+      <table class="bank">
+        <tbody>
+          ${banklar.map((b) => `<tr>
+            <td><strong>${v(b.banka)}</strong>${b.turu ? ` <span class="bank-turu">(${v(b.turu)})</span>` : ''}</td>
+            <td class="iban">${v(b.iban)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </section>` : '';
+
+  const ekPages = ekler.map((ek) => `
+    <section class="ek-page">
+      <div class="ek-header">
+        <span>${v(company.sirketAdi)}</span>
+        <span>Teklif No: ${v(quote.teklifNo)} &middot; Sayfa Eki</span>
+      </div>
+      <div class="ek-title">${v(ek.baslik)}</div>
+      <div class="ek-body">${esc(ek.icerik || '')}</div>
+    </section>`).join('');
 
   return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
 <style>
-  @page { size: A4; margin: 12mm; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#1e293b; font-size:11px; }
-  .mi-sheet { text-align:center; }
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    color:#2b2926;
+    background:#fbfaf7;
+    font-size:9.5pt;
+    line-height:1.6;
+  }
+  .label, .sans { font-family: 'Helvetica Neue', Arial, 'Segoe UI', sans-serif; }
 
-  .mi-logo-img { max-width:150px; max-height:56px; object-fit:contain; margin:0 auto 10px; display:block; }
-  .mi-logo-fallback { font-size:14px; font-weight:800; color:#1e293b; margin-bottom:10px; }
+  /* Header */
+  .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
+  .brand-mark { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .logo-img { height:38px; max-width:120px; object-fit:contain; }
+  .logo-fallback { width:38px; height:38px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11pt; font-family:'Helvetica Neue', Arial, sans-serif; }
+  .brand-name { font-size:12.5pt; letter-spacing:.4px; font-weight:700; }
+  .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.6pt; color:#8a8478; margin-top:7px; line-height:1.85; }
+  .doc-id { text-align:right; }
+  .doc-title { font-size:27pt; letter-spacing:5px; font-weight:400; color:#2b2926; }
+  .doc-sub { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }
+  .meta-list { margin-top:16px; }
+  .meta-list-row { display:table; width:230px; margin-left:auto; margin-bottom:5px; }
+  .meta-list-k { display:table-cell; font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.8pt; letter-spacing:1.1px; text-transform:uppercase; color:#8a8478; }
+  .meta-list-v { display:table-cell; text-align:right; font-size:8.6pt; font-weight:700; }
+  .divider { height:1px; background:#dcd6c9; margin:18px 0; }
 
-  .mi-meta { font-size:10px; color:#94a3b8; margin-bottom:20px; }
-  .mi-meta b { color:#475569; }
+  /* Info */
+  .info-row { display:flex; gap:32px; margin-bottom:26px; }
+  .info-col { flex:1; }
+  .info-col-title { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.9pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; border-bottom:1px solid #2b2926; padding-bottom:7px; margin-bottom:11px; }
+  .info-line { display:table; width:100%; margin-bottom:6px; }
+  .info-line-k { display:table-cell; width:42%; font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.1pt; text-transform:uppercase; letter-spacing:.4px; color:#8a8478; vertical-align:top; }
+  .info-line-v { display:table-cell; font-size:8.8pt; vertical-align:top; }
 
-  .mi-title { font-size:20px; font-weight:900; color:#1e293b; letter-spacing:0.06em; margin-bottom:8px; }
-  .mi-rule { width:52px; height:3px; background:#2563eb; margin:0 auto 26px; border-radius:2px; }
+  /* Items */
+  table.items { width:100%; border-collapse:collapse; margin-bottom:22px; }
+  table.items thead th { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.8pt; letter-spacing:1.2px; text-transform:uppercase; color:#8a8478; border-bottom:1px solid #2b2926; padding:0 8px 9px; text-align:left; font-weight:400; }
+  table.items thead th.num { text-align:right; }
+  table.items tbody td { padding:11px 8px; border-bottom:1px solid #e5e0d4; font-size:9pt; vertical-align:top; }
+  td.c-idx { font-size:13pt; color:#ddd1bd; font-weight:700; width:32px; font-family:'Helvetica Neue', Arial, sans-serif; }
+  td.c-num { text-align:right; white-space:nowrap; font-family:'Helvetica Neue', Arial, sans-serif; }
+  td.c-total { font-weight:700; }
 
-  .mi-block { text-align:left; margin-bottom:22px; }
-  .mi-label { font-size:9px; color:#94a3b8; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:5px; }
-  .mi-name { font-size:15px; font-weight:800; color:#1e293b; margin-bottom:3px; }
-  .mi-sub { font-size:10.5px; color:#64748b; }
+  /* Banners */
+  .banner { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; letter-spacing:1px; text-transform:uppercase; padding:9px 0; border-top:1px solid #2b2926; border-bottom:1px solid #2b2926; margin-bottom:11px; text-align:center; color:#5b5850; }
+  .banner-warn { color:#b5502e; font-weight:700; }
+  .banner-kdv { margin-bottom:22px; }
 
-  .mi-table { width:100%; border-collapse:collapse; text-align:left; margin-bottom:18px; }
-  .mi-table thead th { font-size:9.5px; color:#94a3b8; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; padding:0 4px 8px; border-bottom:2px solid #1e293b; }
-  .mi-table thead th.mi-qty, .mi-table thead th.mi-tot { text-align:right; }
-  .mi-table td { padding:10px 4px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
-  .mi-desc-name { font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:2px; }
-  .mi-desc-sub { font-size:9.5px; color:#94a3b8; }
-  .mi-qty { text-align:right; font-size:11px; color:#1e293b; width:60px; }
-  .mi-tot { text-align:right; font-size:11.5px; font-weight:800; color:#1e293b; width:100px; }
+  /* Bottom */
+  .bottom { display:flex; gap:44px; margin-top:12px; }
+  .notes-col { flex:1.4; }
+  .totals-col { flex:1; }
+  .sub-title { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.9pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; margin-bottom:7px; }
+  .sub-body { font-size:9pt; margin-bottom:18px; line-height:1.75; }
+  .sub-body:last-of-type { margin-bottom:0; }
+  .sign-box { margin-top:22px; }
+  .sign-label { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.4pt; text-transform:uppercase; letter-spacing:.6px; margin-bottom:36px; color:#5b5850; }
+  .sign-line { border-top:1px solid #2b2926; width:72%; }
 
-  .mi-totals { margin-left:auto; width:240px; text-align:left; }
-  .mi-trow { display:flex; justify-content:space-between; font-size:11px; color:#64748b; padding:5px 0; }
-  .mi-trow .v { color:#1e293b; font-weight:700; }
-  .mi-grand { display:flex; justify-content:space-between; border-top:2px solid #1e293b; margin-top:6px; padding-top:9px; font-size:14px; font-weight:900; color:#1e293b; }
+  .totals-row { display:table; width:100%; margin-bottom:9px; }
+  .totals-k { display:table-cell; font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; text-transform:uppercase; letter-spacing:.6px; color:#8a8478; }
+  .totals-v { display:table-cell; text-align:right; font-size:9.5pt; }
+  .grand-wrap { border-top:1px solid #2b2926; margin-top:12px; padding-top:12px; }
+  .grand-label { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; }
+  .grand-value { font-size:27pt; font-weight:400; letter-spacing:.5px; margin-top:3px; }
+  .kdv-note { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.2pt; color:#8a8478; margin-top:9px; }
 
-  .mi-warn { font-size:9.5px; color:#94a3b8; margin-top:22px; line-height:1.5; }
-  .mi-notes { text-align:left; font-size:10.5px; color:#475569; line-height:1.55; margin-top:16px; white-space:pre-wrap; border-top:1px solid #e2e8f0; padding-top:12px; }
-  .mi-footer { font-size:9px; color:#cbd5e1; margin-top:22px; letter-spacing:0.03em; }
+  /* Bank */
+  .bank-card { margin-top:24px; padding-top:16px; border-top:1px solid #dcd6c9; }
+  .bank-title { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.9pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; margin-bottom:9px; }
+  table.bank { width:100%; border-collapse:collapse; font-family:'Helvetica Neue', Arial, sans-serif; }
+  table.bank td { padding:6px 4px; font-size:8.4pt; border-bottom:1px solid #eee6d8; }
+  .bank-turu { color:#8a8478; font-weight:400; }
+  .iban { text-align:right; font-weight:600; letter-spacing:.3px; }
 
-  .bank-title { text-align:left; font-size:10.5px; font-weight:800; color:#1e293b; margin-top:18px; letter-spacing:0.03em; border-top:1px solid #e2e8f0; padding-top:12px; }
-  .bank-table { width:100%; border-collapse:collapse; text-align:left; }
-  .bank-table td { padding:6px 4px; font-size:10.5px; border-bottom:1px solid #e2e8f0; }
-  .bank-table tr:last-child td { border-bottom:none; }
-  .bank-table td.bk-name { color:#1e293b; width:35%; font-weight:700; }
-  .bank-table td.bk-iban { color:#1e293b; font-family:'Courier New',monospace; letter-spacing:0.02em; }
-</style></head>
+  /* Attachment pages */
+  .ek-page { page-break-before:always; padding-top:2px; }
+  .ek-header { display:flex; justify-content:space-between; border-bottom:1px solid #2b2926; padding-bottom:9px; margin-bottom:20px; font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.6pt; letter-spacing:.4px; color:#8a8478; }
+  .ek-title { font-size:18pt; font-weight:400; letter-spacing:1px; color:#2b2926; margin-bottom:16px; }
+  .ek-title:after { content:''; display:block; width:48px; height:2px; background:#b5502e; margin-top:10px; }
+  .ek-body { font-size:9.2pt; line-height:1.85; color:#2b2926; }
+</style>
+</head>
 <body>
-<div class="mi-sheet">
-  ${logo}
-  <div class="mi-meta">Teklif No: <b>#${esc(quote.teklifNo)}</b> &nbsp;·&nbsp; Tarih: <b>${esc(trDate(quote.tarih))}</b> &nbsp;·&nbsp; Geçerlilik: <b>${esc(trDate(quote.gecerlilik))}</b></div>
-
-  <div class="mi-title">TEKLİF DETAYLARI</div>
-  <div class="mi-rule"></div>
-
-  <div class="mi-block">
-    <div class="mi-label">Sayın</div>
-    <div class="mi-name">${esc(quote.musFirma || quote.musYetkili || '-')}</div>
-    <div class="mi-sub">${[quote.musTelefon, quote.musAdres].filter(Boolean).map(esc).join(' · ') || '-'}</div>
+  <div class="header">
+    <div class="top-row">
+      <div class="brand">
+        <div class="brand-mark">
+          ${logoSrc
+            ? `<img class="logo-img" src="${logoSrc}" />`
+            : `<div class="logo-fallback">${esc(monogram)}</div>`}
+          <div class="brand-name">${v(company.sirketAdi)}</div>
+        </div>
+        <div class="brand-meta">
+          ${v(company.adres)}<br/>
+          Tel: ${phoneLine}<br/>
+          E-Mail: ${v(company.email)} &nbsp;&middot;&nbsp; ${v(company.website)}
+        </div>
+      </div>
+      <div class="doc-id">
+        <div class="doc-title">TEKLİF</div>
+        <div class="doc-sub">Anında Teklif &middot; Form No ${v(quote.teklifNo)}</div>
+        <div class="meta-list">
+          <div class="meta-list-row"><div class="meta-list-k">Teklif No</div><div class="meta-list-v">${v(quote.teklifNo)}</div></div>
+          <div class="meta-list-row"><div class="meta-list-k">Tarih</div><div class="meta-list-v">${trDate(quote.tarih)}</div></div>
+          <div class="meta-list-row"><div class="meta-list-k">Geçerlilik Tarihi</div><div class="meta-list-v">${trDate(quote.gecerlilik)}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
   </div>
 
-  <table class="mi-table">
-    <thead><tr><th>Açıklama</th><th class="mi-qty">Miktar</th><th class="mi-tot">Tutar</th></tr></thead>
+  <div class="info-row">
+    <div class="info-col">
+      <div class="info-col-title">Müşteri Bilgileri</div>
+      <div class="info-line"><div class="info-line-k">Firma</div><div class="info-line-v">${v(quote.musFirma)}</div></div>
+      <div class="info-line"><div class="info-line-k">Müşteri Adı</div><div class="info-line-v">${v(quote.musYetkili)}</div></div>
+      <div class="info-line"><div class="info-line-k">Telefon</div><div class="info-line-v">${v(quote.musTelefon)}</div></div>
+      <div class="info-line"><div class="info-line-k">E-Mail</div><div class="info-line-v">${v(quote.musEmail)}</div></div>
+      <div class="info-line"><div class="info-line-k">Adres</div><div class="info-line-v">${v(quote.musAdres)}</div></div>
+    </div>
+    <div class="info-col">
+      <div class="info-col-title">Sipariş Bilgileri</div>
+      <div class="info-line"><div class="info-line-k">Proje Adı</div><div class="info-line-v">${v(quote.projeAdi)}</div></div>
+      <div class="info-line"><div class="info-line-k">Nakliye</div><div class="info-line-v">${v(quote.nakliye)}</div></div>
+      <div class="info-line"><div class="info-line-k">Para Birimi</div><div class="info-line-v">${v(quote.paraBirimi)}</div></div>
+      <div class="info-line"><div class="info-line-k">Ödeme Şekli</div><div class="info-line-v">${v(quote.odemeSekli)}</div></div>
+      <div class="info-line"><div class="info-line-k">Menşei</div><div class="info-line-v">${v(quote.mensei)}</div></div>
+      <div class="info-line"><div class="info-line-k">Teslim</div><div class="info-line-v">${v(quote.teslimGun)}</div></div>
+    </div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:32px;">No</th>
+        <th>Sistem / Hizmet</th>
+        <th class="num" style="width:50px;">Adet</th>
+        <th class="num" style="width:90px;">Birim Fiyat</th>
+        <th class="num" style="width:100px;">Toplam Fiyat</th>
+      </tr>
+    </thead>
     <tbody>
-      ${itemsHtml || `<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:16px 0;">Kalem yok</td></tr>`}
+      ${itemsRows}
     </tbody>
   </table>
 
-  <div class="mi-totals">
-    <div class="mi-trow"><span>Ara Toplam</span><span class="v">${fmt(araToplamRaw, cur)}</span></div>
-    ${quote.iskonto > 0 ? `<div class="mi-trow"><span>İskonto (%${quote.iskonto})</span><span class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
-    ${kdvOrani ? `<div class="mi-trow"><span>KDV (%${kdvOrani})</span><span class="v">${fmt(kdvTutar, cur)}</span></div>` : ''}
-    <div class="mi-grand"><span>Genel Toplam</span><span>${fmt(quote.genelToplam || 0, cur)}</span></div>
+  <div class="banner banner-warn">Ölçü ve Özellikleri Dikkatli Kontrol Ediniz. Olası Hatalardan Firmamız Sorumlu Değildir.</div>
+  <div class="banner banner-kdv">KDV Hariç Fiyattır</div>
+
+  <div class="bottom">
+    <div class="notes-col">
+      <div class="sub-title">Özel Notlar</div>
+      <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
+      <div class="sub-title">Satış Detayları</div>
+      <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+      <div class="sign-box">
+        <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
+        <div class="sign-line"></div>
+      </div>
+    </div>
+    <div class="totals-col">
+      <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(quote.araToplam, cur)}</div></div>
+      ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+      <div class="grand-wrap">
+        <div class="grand-label">Genel Toplam</div>
+        <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
+        ${showKdv ? `<div class="kdv-note">KDV (%${esc(String(quote.kdvOrani))}) dahil değildir &middot; + ${fmt(quote.kdvTutar, cur)}</div>` : ''}
+      </div>
+    </div>
   </div>
 
-  <div class="mi-warn">Ölçü ve özellikleri dikkatli kontrol ediniz. Olası hatalardan firmamız sorumlu değildir. Fiyatlara KDV dahil değildir.</div>
-
-  ${(quote.notlar || company.ozelNotlar) ? `<div class="mi-notes">${esc(quote.notlar || company.ozelNotlar || '')}</div>` : ''}
-
-  ${bankRows ? `
-  <div class="bank-title">Banka Bilgileri — ${esc(company.sirketAdi || '')}</div>
-  <table class="bank-table">${bankRows}</table>
-  ` : ''}
-
-  <div class="mi-footer">Bu belge ${esc(company.sirketAdi || '')} tarafından hazırlanmıştır.</div>
-</div>
-</body></html>`;
+  ${bankSection}
+  ${ekPages}
+</body>
+</html>`;
 }

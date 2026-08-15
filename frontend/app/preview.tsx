@@ -143,16 +143,28 @@ export default function PreviewScreen() {
       {template !== 'classic' ? (
         // MODERN / MINIMAL — rendered from the exact HTML used for the PDF,
         // so the preview can never drift out of sync with what gets shared.
+        // react-native-webview has no web implementation, so on web we fall
+        // back to a plain iframe with the same HTML.
         <View style={s.webviewWrap} testID="preview-webview-wrap">
-          <WebView
-            key={template}
-            testID="preview-webview"
-            originWhitelist={['*']}
-            source={{ html: buildQuotePdfHtml(activeCompany, quote, template) }}
-            style={s.webview}
-            scalesPageToFit
-            javaScriptEnabled={false}
-          />
+          {Platform.OS === 'web' ? (
+            React.createElement('iframe', {
+              key: template,
+              'data-testid': 'preview-webview',
+              srcDoc: buildQuotePdfHtml(activeCompany, quote, template),
+              style: { flex: 1, width: '100%', height: '100%', border: 'none' },
+              title: 'PDF Önizleme',
+            })
+          ) : (
+            <WebView
+              key={template}
+              testID="preview-webview"
+              originWhitelist={['*']}
+              source={{ html: buildQuotePdfHtml(activeCompany, quote, template) }}
+              style={s.webview}
+              scalesPageToFit
+              javaScriptEnabled={false}
+            />
+          )}
         </View>
       ) : (
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>

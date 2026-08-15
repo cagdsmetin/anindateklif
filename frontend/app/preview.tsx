@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   Platform,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,12 +17,18 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { buildQuotePdfHtml } from '@/src/lib/pdf';
+import { buildQuotePdfHtml, PdfTemplateId } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
+
+const TEMPLATES: { id: PdfTemplateId; label: string }[] = [
+  { id: 'classic', label: 'Klasik' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'minimal', label: 'Minimal' },
+];
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
@@ -45,6 +52,7 @@ export default function PreviewScreen() {
   const { quotes, activeCompany, showToast, getQuoteAttachments } = useApp();
 
   const quote = useMemo(() => quotes.find((q) => q.id === params.quoteId), [quotes, params.quoteId]);
+  const [template, setTemplate] = useState<PdfTemplateId>('classic');
 
   if (!quote || !activeCompany) {
     return (
@@ -62,7 +70,7 @@ export default function PreviewScreen() {
   const cur = quote.paraBirimi;
 
   const generatePdf = async () => {
-    const html = buildQuotePdfHtml(activeCompany, quote);
+    const html = buildQuotePdfHtml(activeCompany, quote, template);
     const desired = buildQuoteFileName(new Date()) + '.pdf';
     let finalUri: string;
     if (Platform.OS === 'web') {
@@ -116,6 +124,37 @@ export default function PreviewScreen() {
         <View style={{ width: 22 }} />
       </View>
 
+      {/* TEMPLATE PICKER — lets the user preview and pick which quote design
+          gets shared/printed. "Klasik" is the original design and stays the
+          default so nothing changes unless the user actively switches. */}
+      <View style={s.templateBar}>
+        {TEMPLATES.map((t) => (
+          <TouchableOpacity
+            key={t.id}
+            onPress={() => setTemplate(t.id)}
+            style={[s.templateChip, template === t.id && s.templateChipActive]}
+            testID={`template-${t.id}`}
+          >
+            <Text style={[s.templateChipText, template === t.id && s.templateChipTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {template !== 'classic' ? (
+        // MODERN / MINIMAL — rendered from the exact HTML used for the PDF,
+        // so the preview can never drift out of sync with what gets shared.
+        <View style={s.webviewWrap} testID="preview-webview-wrap">
+          <WebView
+            key={template}
+            testID="preview-webview"
+            originWhitelist={['*']}
+            source={{ html: buildQuotePdfHtml(activeCompany, quote, template) }}
+            style={s.webview}
+            scalesPageToFit
+            javaScriptEnabled={false}
+          />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         <View style={s.sheet} testID="preview-sheet">
           {/* HEADER — matches the PDF layout: two columns, top-aligned, with a
@@ -226,6 +265,7 @@ export default function PreviewScreen() {
           ) : null}
         </View>
       </ScrollView>
+      )}
 
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
         <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/', params: { quoteId: quote.id } })} testID="preview-edit-btn">
@@ -273,6 +313,13 @@ const s = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   topTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  templateBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  templateChip: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.line, backgroundColor: '#fff' },
+  templateChipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '14' },
+  templateChipText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textSoft },
+  templateChipTextActive: { color: theme.colors.primary },
+  webviewWrap: { flex: 1, backgroundColor: '#e9edf2' },
+  webview: { flex: 1, backgroundColor: 'transparent' },
   sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
   // Header uses a strict two-column layout with `alignItems: flex-start` so both
   // columns start at the exact same top edge — mirrors the PDF <table> layout.

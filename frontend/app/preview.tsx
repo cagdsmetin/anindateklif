@@ -23,11 +23,11 @@ import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 
-const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
+const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadÄ±r. Ä°yi Ã§alÄ±Åmalar dileriz.';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
-  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
+  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? 'â¬' : 'âº';
   return `${sym} ${s}`;
 }
 
@@ -51,10 +51,10 @@ export default function PreviewScreen() {
       <SafeAreaView style={s.container} edges={['top', 'bottom']}>
         <View style={s.topBar}>
           <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={theme.colors.text} /></TouchableOpacity>
-          <Text style={s.topTitle}>Önizleme</Text>
+          <Text style={s.topTitle}>Ãnizleme</Text>
           <View style={{ width: 22 }} />
         </View>
-        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadı</Text></View>
+        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadÄ±</Text></View>
       </SafeAreaView>
     );
   }
@@ -67,7 +67,7 @@ export default function PreviewScreen() {
     let finalUri: string;
     if (Platform.OS === 'web') {
       // expo-print's printToFileAsync is just window.print() on web (ignores
-      // our html and opens the browser's print dialog) — render a real PDF
+      // our html and opens the browser's print dialog) â render a real PDF
       // client-side instead.
       finalUri = await htmlToPdfObjectUrlWeb(html);
     } else {
@@ -94,31 +94,33 @@ export default function PreviewScreen() {
       if (avail) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        // Web: no native share sheet — trigger a real browser download instead.
+        // Web: no native share sheet â trigger a real browser download instead.
         await downloadFileWeb(uri, fileName);
         showToast('PDF indirildi');
       }
-    } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+    } catch (e: any) { showToast('PDF hatasÄ±: ' + (e?.message || '')); }
   };
 
   const doWhatsAppShare = async () => {
     try {
       const { uri, fileName } = await generatePdf();
       await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
-    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
+    } catch (e: any) { showToast('WhatsApp hatasÄ±: ' + (e?.message || '')); }
   };
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.topBar}>
         <TouchableOpacity onPress={() => router.back()} testID="back-btn"><Ionicons name="arrow-back" size={22} color={theme.colors.navy} /></TouchableOpacity>
-        <Text style={s.topTitle}>PDF Önizleme</Text>
+        <Text style={s.topTitle}>PDF Ãnizleme</Text>
         <View style={{ width: 22 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         <View style={s.sheet} testID="preview-sheet">
-          {/* HEADER — matches the PDF layout: two columns, top-aligned. */}
+          {/* HEADER â matches the PDF layout: two columns, top-aligned, with a
+              navy rule under the whole block so it reads as one letterhead
+              band even when the two columns end up different heights. */}
           <View style={s.sheetHeader}>
             <View style={s.headerLeft}>
               <Text style={s.cName} numberOfLines={2}>{activeCompany.sirketAdi}</Text>
@@ -134,31 +136,31 @@ export default function PreviewScreen() {
               ) : (
                 <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{(activeCompany.sirketAdi || 'FIRMA').substring(0, 14)}</Text></View>
               )}
-              <Text style={s.docTitle}>TEKLİF FORMU</Text>
+              <Text style={s.docTitle}>TEKLÄ°F FORMU</Text>
               <View style={s.metaTable}>
                 <View style={s.metaRow}><Text style={s.metaK}>Teklif No</Text><Text style={s.metaV} numberOfLines={1}>{quote.teklifNo}</Text></View>
                 <View style={s.metaRow}><Text style={s.metaK}>Tarih</Text><Text style={s.metaV}>{trDate(quote.tarih)}</Text></View>
-                <View style={s.metaRow}><Text style={s.metaK}>Geçerlilik Tarihi</Text><Text style={s.metaV}>{trDate(quote.gecerlilik)}</Text></View>
+                <View style={s.metaRow}><Text style={s.metaK}>GeÃ§erlilik Tarihi</Text><Text style={s.metaV}>{trDate(quote.gecerlilik)}</Text></View>
               </View>
             </View>
           </View>
 
           {/* INFO BOXES */}
           <View style={s.infoGrid}>
-            <InfoBox title="MÜŞTERİ BİLGİLERİ" rows={[
-              ['FİRMA', quote.musFirma],
-              ['MÜŞTERİ ADI', quote.musYetkili],
+            <InfoBox title="MÃÅTERÄ° BÄ°LGÄ°LERÄ°" rows={[
+              ['FÄ°RMA', quote.musFirma],
+              ['MÃÅTERÄ° ADI', quote.musYetkili],
               ['TELEFON', quote.musTelefon],
               ['E-Mail', quote.musEmail],
               ['ADRES', quote.musAdres],
             ]} />
-            <InfoBox title="SİPARİŞ BİLGİLERİ" rows={[
+            <InfoBox title="SÄ°PARÄ°Å BÄ°LGÄ°LERÄ°" rows={[
               ['PROJE ADI', quote.projeAdi],
-              ['NAKLİYE', quote.nakliye],
-              ['PARA BİRİMİ', quote.paraBirimi],
-              ['ÖDEME ŞEKLİ', quote.odemeSekli],
-              ['MENŞEİ', quote.mensei],
-              ['TESLİM', quote.teslimGun],
+              ['NAKLÄ°YE', quote.nakliye],
+              ['PARA BÄ°RÄ°MÄ°', quote.paraBirimi],
+              ['ÃDEME ÅEKLÄ°', quote.odemeSekli],
+              ['MENÅEÄ°', quote.mensei],
+              ['TESLÄ°M', quote.teslimGun],
             ]} />
           </View>
 
@@ -166,9 +168,9 @@ export default function PreviewScreen() {
           <View style={s.table}>
             <View style={s.thead}>
               <Text style={[s.th, { width: 30, textAlign: 'center' }]}>S.NO</Text>
-              <Text style={[s.th, { flex: 2 }]}>HİZMET / ÜRÜN</Text>
+              <Text style={[s.th, { flex: 2 }]}>HÄ°ZMET / ÃRÃN</Text>
               <Text style={[s.th, { width: 40, textAlign: 'center' }]}>ADET</Text>
-              <Text style={[s.th, { width: 70, textAlign: 'right' }]}>BİRİM</Text>
+              <Text style={[s.th, { width: 70, textAlign: 'right' }]}>BÄ°RÄ°M</Text>
               <Text style={[s.th, { width: 72, textAlign: 'right' }]}>TOPLAM</Text>
             </View>
             {quote.items.length === 0 ? (
@@ -188,30 +190,30 @@ export default function PreviewScreen() {
             })}
           </View>
 
-          <Text style={s.warn}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ.</Text>
-          <Text style={s.kdvBanner}>KDV HARİÇ FİYATTIR</Text>
+          <Text style={s.warn}>ÃLÃÃ VE ÃZELLÄ°KLERÄ° DÄ°KKATLÄ° KONTROL EDÄ°NÄ°Z.</Text>
+          <Text style={s.kdvBanner}>KDV HARÄ°Ã FÄ°YATTIR</Text>
 
           {/* Bottom */}
           <View style={s.bottomGrid}>
             <View style={{ flex: 1.3 }}>
-              <Text style={s.boxTitleDark}>ÖZEL NOTLAR &amp; SATIŞ DETAYLARI</Text>
+              <Text style={s.boxTitleDark}>ÃZEL NOTLAR &amp; SATIÅ DETAYLARI</Text>
               <View style={s.notesBody}><Text style={s.noteText}>{quote.notlar || activeCompany.ozelNotlar || '-'}</Text></View>
             </View>
             <View style={{ flex: 1, gap: 4 }}>
               <TotRow label="ARA TOPLAM" value={fmt((quote.araToplam || 0) + (quote.iskontoTutar || 0), cur)} />
-              {quote.iskonto > 0 ? <TotRow label={`İSKONTO (%${quote.iskonto})`} value={`-${fmt(quote.iskontoTutar, cur)}`} negative /> : null}
+              {quote.iskonto > 0 ? <TotRow label={`Ä°SKONTO (%${quote.iskonto})`} value={`-${fmt(quote.iskontoTutar, cur)}`} negative /> : null}
               <View style={s.grand}>
                 <Text style={s.grandL}>GENEL TOPLAM</Text>
                 <Text style={s.grandV} numberOfLines={1}>{fmt(quote.genelToplam, cur)}</Text>
               </View>
-              <View style={s.signBox}><Text style={s.signText}>Onay / İmza :</Text></View>
+              <View style={s.signBox}><Text style={s.signText}>Onay / Ä°mza :</Text></View>
             </View>
           </View>
 
           {/* Bank */}
           {(activeCompany.banklar || []).length > 0 ? (
             <>
-              <Text style={s.bankTitle}>BANKA BİLGİLERİ — {activeCompany.sirketAdi}</Text>
+              <Text style={s.bankTitle}>BANKA BÄ°LGÄ°LERÄ° â {activeCompany.sirketAdi}</Text>
               <View style={s.bankTable}>
                 {(activeCompany.banklar || []).map((b) => (
                   <View key={b.id} style={s.bankRow}>
@@ -228,11 +230,11 @@ export default function PreviewScreen() {
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
         <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/', params: { quoteId: quote.id } })} testID="preview-edit-btn">
           <Ionicons name="pencil" size={16} color={theme.colors.textSoft} />
-          <Text style={s.actionBtnGhostText}>Düzenle</Text>
+          <Text style={s.actionBtnGhostText}>DÃ¼zenle</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnAcc} onPress={doShare} testID="preview-pdf-btn">
           <Ionicons name="share-social" size={16} color="#fff" />
-          <Text style={s.actionBtnAccText}>PDF Paylaş</Text>
+          <Text style={s.actionBtnAccText}>PDF PaylaÅ</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnWa} onPress={doWhatsAppShare} testID="preview-wa-btn">
           <Ionicons name="logo-whatsapp" size={16} color="#fff" />
@@ -273,52 +275,55 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
   // Header uses a strict two-column layout with `alignItems: flex-start` so both
-  // columns start at the exact same top edge — mirrors the PDF <table> layout.
-  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 10, marginBottom: 10 },
-  headerLeft: { flex: 1.15, paddingRight: 8 },
-  headerRight: { flex: 1, alignItems: 'flex-end', paddingLeft: 8 },
-  cName: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 4, lineHeight: 15 },
-  cLine: { fontSize: 10, color: '#333', lineHeight: 14, marginBottom: 1 },
-  logo: { width: 130, height: 44, marginBottom: 6 },
-  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 5, paddingHorizontal: 10, marginBottom: 6, alignSelf: 'flex-end' },
-  logoText: { fontSize: 11, fontWeight: '900', color: theme.colors.navy },
-  docTitle: { fontSize: 18, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, letterSpacing: 0.5, textAlign: 'right' },
+  // columns start at the exact same top edge â mirrors the PDF <table> layout.
+  // A navy rule under the whole block turns it into one letterhead band, same
+  // treatment as the exported PDF, so short vs. tall columns never look like
+  // a mistake.
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottomWidth: 2.5, borderBottomColor: theme.colors.navy },
+  headerLeft: { flex: 1.15, paddingRight: 10 },
+  headerRight: { flex: 1, alignItems: 'flex-end', paddingLeft: 10 },
+  cName: { fontSize: 13.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 5, lineHeight: 16.5 },
+  cLine: { fontSize: 10.5, color: '#333', lineHeight: 15, marginBottom: 1 },
+  logo: { width: 140, height: 50, marginBottom: 7 },
+  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 6, paddingHorizontal: 11, marginBottom: 7, alignSelf: 'flex-end' },
+  logoText: { fontSize: 11.5, fontWeight: '900', color: theme.colors.navy },
+  docTitle: { fontSize: 19.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 7, letterSpacing: 0.5, textAlign: 'right' },
   metaTable: { alignSelf: 'flex-end' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingVertical: 1.5 },
-  metaK: { fontSize: 10, color: theme.colors.textMuted, marginRight: 6, textAlign: 'right' },
-  metaV: { fontSize: 10, fontWeight: '900', color: theme.colors.text, minWidth: 78, textAlign: 'right' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingVertical: 2 },
+  metaK: { fontSize: 10.5, color: theme.colors.textMuted, marginRight: 6, textAlign: 'right' },
+  metaV: { fontSize: 10.5, fontWeight: '900', color: theme.colors.text, minWidth: 80, textAlign: 'right' },
   infoGrid: { flexDirection: 'row', gap: 6, marginBottom: 10 },
   infoBox: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 3, overflow: 'hidden' },
-  infoHdr: { backgroundColor: theme.colors.navy, color: '#fff', fontSize: 9.5, fontWeight: '900', paddingVertical: 5, paddingHorizontal: 6, letterSpacing: 0.4 },
-  infoRow: { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  infoK: { width: '38%', fontSize: 9, color: theme.colors.textMuted, fontWeight: '800' },
-  infoV: { flex: 1, fontSize: 9.5, color: theme.colors.text },
+  infoHdr: { backgroundColor: theme.colors.navy, color: '#fff', fontSize: 10.5, fontWeight: '900', paddingVertical: 6, paddingHorizontal: 7, letterSpacing: 0.4 },
+  infoRow: { flexDirection: 'row', paddingVertical: 4.5, paddingHorizontal: 7, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  infoK: { width: '38%', fontSize: 9.5, color: theme.colors.textMuted, fontWeight: '800' },
+  infoV: { flex: 1, fontSize: 10, color: theme.colors.text },
   table: { borderWidth: 1, borderColor: theme.colors.navy, borderRadius: 3, overflow: 'hidden' },
-  thead: { flexDirection: 'row', backgroundColor: theme.colors.navy, paddingVertical: 5, paddingHorizontal: 4 },
-  th: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
-  trow: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.line, gap: 2, alignItems: 'flex-start' },
-  td: { fontSize: 9.5, color: theme.colors.text },
-  tdBold: { fontSize: 9.5, fontWeight: '700', color: theme.colors.text },
+  thead: { flexDirection: 'row', backgroundColor: theme.colors.navy, paddingVertical: 6, paddingHorizontal: 4 },
+  th: { color: '#fff', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.3 },
+  trow: { flexDirection: 'row', paddingVertical: 7, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.colors.line, gap: 2, alignItems: 'flex-start' },
+  td: { fontSize: 10, color: theme.colors.text },
+  tdBold: { fontSize: 10, fontWeight: '700', color: theme.colors.text },
   tEmpty: { padding: 12, textAlign: 'center', color: theme.colors.textMuted, fontSize: 11 },
-  warn: { backgroundColor: theme.colors.red, color: '#fff', textAlign: 'center', fontSize: 8.5, fontWeight: '900', padding: 4, marginTop: 6 },
-  kdvBanner: { backgroundColor: theme.colors.navyDark, color: '#fff', textAlign: 'center', fontSize: 10, fontWeight: '900', padding: 5, letterSpacing: 0.4, marginBottom: 10 },
+  warn: { backgroundColor: theme.colors.red, color: '#fff', textAlign: 'center', fontSize: 9, fontWeight: '900', padding: 5, marginTop: 6 },
+  kdvBanner: { backgroundColor: theme.colors.navyDark, color: '#fff', textAlign: 'center', fontSize: 10.5, fontWeight: '900', padding: 6, letterSpacing: 0.4, marginBottom: 10 },
   bottomGrid: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  boxTitleDark: { fontSize: 9.5, fontWeight: '900', color: '#fff', backgroundColor: theme.colors.navy, padding: 4, letterSpacing: 0.4 },
-  notesBody: { borderWidth: 1, borderColor: theme.colors.line, padding: 6, backgroundColor: '#f8fafc' },
-  noteText: { fontSize: 9.5, color: '#475569', lineHeight: 14 },
-  totRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 3, backgroundColor: '#fff', alignItems: 'center' },
-  totL: { fontSize: 10, color: theme.colors.textMuted, fontWeight: '700' },
-  totV: { fontSize: 10.5, color: theme.colors.text, fontWeight: '800' },
-  grand: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 8, backgroundColor: theme.colors.navyDark, borderRadius: 3, alignItems: 'center' },
-  grandL: { fontSize: 10.5, color: '#cbd5e1', fontWeight: '900', letterSpacing: 0.4 },
-  grandV: { fontSize: 12, color: '#fff', fontWeight: '900' },
-  signBox: { borderWidth: 1, borderColor: theme.colors.line, height: 45, padding: 5, marginTop: 4 },
-  signText: { fontSize: 10, color: theme.colors.textMuted, fontWeight: '700' },
-  bankTitle: { fontSize: 9.5, fontWeight: '900', color: '#fff', backgroundColor: theme.colors.navy, padding: 5, marginTop: 10, letterSpacing: 0.3 },
+  boxTitleDark: { fontSize: 10.5, fontWeight: '900', color: '#fff', backgroundColor: theme.colors.navy, padding: 5, letterSpacing: 0.4 },
+  notesBody: { borderWidth: 1, borderColor: theme.colors.line, padding: 7, backgroundColor: '#f8fafc' },
+  noteText: { fontSize: 10, color: '#475569', lineHeight: 15 },
+  totRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, paddingHorizontal: 9, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 3, backgroundColor: '#fff', alignItems: 'center' },
+  totL: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '700' },
+  totV: { fontSize: 11, color: theme.colors.text, fontWeight: '800' },
+  grand: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, paddingHorizontal: 9, backgroundColor: theme.colors.navyDark, borderRadius: 3, alignItems: 'center' },
+  grandL: { fontSize: 11, color: '#cbd5e1', fontWeight: '900', letterSpacing: 0.4 },
+  grandV: { fontSize: 12.5, color: '#fff', fontWeight: '900' },
+  signBox: { borderWidth: 1, borderColor: theme.colors.line, height: 48, padding: 6, marginTop: 4 },
+  signText: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '700' },
+  bankTitle: { fontSize: 10.5, fontWeight: '900', color: '#fff', backgroundColor: theme.colors.navy, padding: 6, marginTop: 10, letterSpacing: 0.3 },
   bankTable: { borderWidth: 1, borderColor: theme.colors.line, borderTopWidth: 0 },
-  bankRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.line, gap: 6 },
-  bankName: { width: '35%', fontSize: 9.5, color: theme.colors.text, fontWeight: '700' },
-  bankIban: { flex: 1, fontSize: 9.5, color: theme.colors.text, fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) },
+  bankRow: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 7, borderBottomWidth: 1, borderBottomColor: theme.colors.line, gap: 6 },
+  bankName: { width: '35%', fontSize: 10, color: theme.colors.text, fontWeight: '700' },
+  bankIban: { flex: 1, fontSize: 10, color: theme.colors.text, fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) },
   actionBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8,

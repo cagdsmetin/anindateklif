@@ -26,6 +26,7 @@ import { buildItemDescription, buildQuoteFileName, buildTeklifNo } from '@/src/l
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
+import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
@@ -224,10 +225,15 @@ export default function EditorScreen() {
   const generatePdfUri = async (savedQuote: QuoteT): Promise<{ uri: string; fileName: string }> => {
     if (!activeCompany) throw new Error('Aktif firma yok');
     const html = buildQuotePdfHtml(activeCompany, savedQuote);
-    const { uri } = await Print.printToFileAsync({ html, base64: false });
-    let baseUri = uri;
     const desiredName = buildQuoteFileName(new Date()) + '.pdf';
-    if (Platform.OS !== 'web') {
+    let baseUri: string;
+    if (Platform.OS === 'web') {
+      // expo-print's printToFileAsync is just window.print() on web (ignores
+      // our html and opens the browser's print dialog) — render a real PDF
+      // client-side instead.
+      baseUri = await htmlToPdfObjectUrlWeb(html);
+    } else {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
       try {
         const dirIdx = uri.lastIndexOf('/');
         const newUri = uri.substring(0, dirIdx + 1) + desiredName;

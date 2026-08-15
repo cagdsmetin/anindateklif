@@ -21,7 +21,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { QuoteT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
-import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -33,7 +33,6 @@ function fmt(n: number, cur: string) {
 }
 
 const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
-const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
 export default function HistoryScreen() {
   const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
@@ -42,6 +41,7 @@ export default function HistoryScreen() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<string>('Tümü');
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
+  const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -91,7 +91,7 @@ export default function HistoryScreen() {
       if (!result) return;
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
-        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.', UTI: 'com.adobe.pdf' });
       } else {
         // Web: no native share sheet — trigger a real browser download instead.
         await downloadFileWeb(result.uri, result.fileName);
@@ -100,14 +100,16 @@ export default function HistoryScreen() {
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
-  const doWhatsApp = async (quote: QuoteT) => {
+  const doWhatsApp = async (quote: QuoteT, message?: string) => {
     if (!activeCompany) return;
     try {
       const result = await generatePdf(quote);
       if (!result) return;
-      await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi });
+      await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi, message });
     } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
+
+  const waMenuQuote = waMenuFor ? quotes.find((x) => x.id === waMenuFor) : null;
 
   if (!activeCompany) {
     return (
@@ -178,7 +180,7 @@ export default function HistoryScreen() {
                   <Ionicons name="document-text-outline" size={14} color={theme.colors.primary} />
                   <Text style={s.actText}>PDF</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => doWhatsApp(quote)} testID={`whatsapp-${quote.id}`}>
+                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
                   <Text style={[s.actText, { color: '#16a34a' }]}>WA</Text>
                 </TouchableOpacity>
@@ -206,6 +208,40 @@ export default function HistoryScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!waMenuFor} transparent animationType="fade" onRequestClose={() => setWaMenuFor(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setWaMenuFor(null)}>
+          <View style={s.waMenu} onStartShouldSetResponder={() => true}>
+            <Text style={s.menuTitle}>Mesaj Şablonu Seç</Text>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {WHATSAPP_TEMPLATES.map((tpl) => {
+                const preview = waMenuQuote ? renderWhatsAppTemplate(tpl.body, waMenuQuote, activeCompany?.sirketAdi) : tpl.body;
+                return (
+                  <TouchableOpacity
+                    key={tpl.id}
+                    testID={`wa-template-${tpl.id}`}
+                    style={s.waTemplateCard}
+                    onPress={() => {
+                      const quote = waMenuQuote;
+                      setWaMenuFor(null);
+                      if (quote) doWhatsApp(quote, preview);
+                    }}
+                  >
+                    <View style={s.waTemplateHead}>
+                      <Ionicons name={tpl.icon as any} size={15} color="#16a34a" />
+                      <Text style={s.waTemplateLabel}>{tpl.label}</Text>
+                    </View>
+                    <Text style={s.waTemplatePreview} numberOfLines={3}>{preview}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={s.waCancelBtn} onPress={() => setWaMenuFor(null)}>
+              <Text style={s.waCancelText}>Vazgeç</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -248,4 +284,11 @@ const s = StyleSheet.create({
   menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, textAlign: 'center' },
   menuItem: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   menuItemText: { fontSize: 13, fontWeight: '800' },
+  waMenu: { backgroundColor: '#fff', padding: 16, borderRadius: 16, ...theme.shadow.lg, maxHeight: '80%' },
+  waTemplateCard: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: '#f8fafc' },
+  waTemplateHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  waTemplateLabel: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy },
+  waTemplatePreview: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15 },
+  waCancelBtn: { marginTop: 4, paddingVertical: 10, alignItems: 'center' },
+  waCancelText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textMuted },
 });

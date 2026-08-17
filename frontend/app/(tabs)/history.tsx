@@ -32,6 +32,16 @@ function fmt(n: number, cur: string) {
   return `${sym} ${s}`;
 }
 
+function parseTarih(tarih: string): Date | null {
+  const m = (tarih || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${d.getMonth()}`;
+}
+
 const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
 
 export default function HistoryScreen() {
@@ -53,7 +63,29 @@ export default function HistoryScreen() {
     return list;
   }, [quotes, filter, q]);
 
-  const totalValue = quotes.reduce((a, x) => a + (x.durum === 'Onaylandı' ? x.genelToplam : 0), 0);
+  // USD-first: approved total only counts USD-denominated quotes (mixed currencies aren't summed together).
+  const totalValue = quotes.reduce((a, x) => a + (x.durum === 'Onaylandı' && (x.paraBirimi || 'USD') === 'USD' ? x.genelToplam : 0), 0);
+
+  const pendingCount = quotes.filter((x) => x.durum === 'Beklemede' || x.durum === 'Görüldü').length;
+
+  const now = new Date();
+  const curMonthKey = monthKey(now);
+  const thisMonthQuotes = quotes.filter((x) => {
+    const d = parseTarih(x.tarih);
+    return d ? monthKey(d) === curMonthKey : false;
+  });
+  const thisMonthCount = thisMonthQuotes.length;
+
+  const monthTotalsByCurrency = thisMonthQuotes.reduce((acc: Record<string, number>, x) => {
+    const cur = x.paraBirimi || 'USD';
+    acc[cur] = (acc[cur] || 0) + (x.genelToplam || 0);
+    return acc;
+  }, {});
+  const monthVolumeUSD = monthTotalsByCurrency['USD'] || 0;
+  const monthOtherCurrenciesLine = Object.keys(monthTotalsByCurrency)
+    .filter((c) => c !== 'USD' && monthTotalsByCurrency[c] > 0)
+    .map((c) => fmt(monthTotalsByCurrency[c], c))
+    .join(', ');
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/', params: { quoteId: id } });
 
@@ -129,9 +161,22 @@ export default function HistoryScreen() {
             <Text style={s.statLabel}>Toplam Teklif</Text>
             <Text style={s.statValue}>{quotes.length}</Text>
           </View>
+          <View style={s.statCard}>
+            <Text style={s.statLabel}>Bekleyen Teklif</Text>
+            <Text style={s.statValue}>{pendingCount}</Text>
+          </View>
           <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
             <Text style={[s.statLabel, { color: '#166534' }]}>Onaylanan (USD)</Text>
             <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>{fmt(totalValue, 'USD')}</Text>
+          </View>
+          <View style={s.statCard}>
+            <Text style={s.statLabel}>Bu Ay Oluşturulan</Text>
+            <Text style={s.statValue}>{thisMonthCount}</Text>
+          </View>
+          <View style={s.statCard}>
+            <Text style={s.statLabel}>Bu Ay Toplam Hacim</Text>
+            <Text style={s.statValue} numberOfLines={1}>{fmt(monthVolumeUSD, 'USD')}</Text>
+            {monthOtherCurrenciesLine ? <Text style={s.statSubLabel} numberOfLines={1}>+ {monthOtherCurrenciesLine}</Text> : null}
           </View>
         </View>
         <View style={s.searchWrap}>
@@ -253,10 +298,11 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  statCard: { flexGrow: 1, flexBasis: '47%', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
   statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
   statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
+  statSubLabel: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 2 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
   filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 8 },

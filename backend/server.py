@@ -502,6 +502,40 @@ class CustomerCreate(BaseModel):
     adres: str = ""
 
 
+class Service(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    musFirma: str = ""
+    musYetkili: str = ""
+    musTelefon: str = ""
+    baslik: str
+    aciklama: str = ""
+    servisTarihi: str = ""       # ISO date the installation/service took place
+    garantiBitis: str = ""       # warranty end date (ISO), optional
+    bakimTarihi: str = ""        # next scheduled maintenance date (ISO), optional
+    durum: str = "Açık"          # Açık | Devam ediyor | Tamamlandı | İptal
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class ServiceCreate(BaseModel):
+    companyId: str
+    musFirma: str = ""
+    musYetkili: str = ""
+    musTelefon: str = ""
+    baslik: str
+    aciklama: str = ""
+    servisTarihi: str = ""
+    garantiBitis: str = ""
+    bakimTarihi: str = ""
+    durum: str = "Açık"
+
+
+class ServiceStatusUpdate(BaseModel):
+    durum: str
+
+
 class QuoteItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     mode: str = "general"  # "technical" | "manual" | "general"
@@ -640,6 +674,7 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     await db.catalog.delete_many({"companyId": company_id, "userId": uid})
     await db.customers.delete_many({"companyId": company_id, "userId": uid})
     await db.quotes.delete_many({"companyId": company_id, "userId": uid})
+    await db.services.delete_many({"companyId": company_id, "userId": uid})
     return {"ok": True}
 
 
@@ -714,6 +749,49 @@ async def create_customer(payload: CustomerCreate, user=Depends(get_current_user
 @api_router.delete("/customers/{customer_id}")
 async def delete_customer(customer_id: str, user=Depends(get_current_user)):
     await db.customers.delete_one({"id": customer_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ SERVICE ROUTES (Servis & Garanti) ============
+@api_router.get("/services/{company_id}", response_model=List[Service])
+async def list_services(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], company_id)
+    docs = await db.services.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    return [Service(**d) for d in docs]
+
+
+@api_router.post("/services", response_model=Service)
+async def create_service(payload: ServiceCreate, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], payload.companyId)
+    obj = Service(userId=user["user_id"], **payload.dict())
+    await db.services.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/services/{service_id}", response_model=Service)
+async def update_service(service_id: str, payload: ServiceCreate, user=Depends(get_current_user)):
+    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Service not found")
+    updated = {**doc, **payload.dict(), "updatedAt": utc_now_iso()}
+    await db.services.replace_one({"id": service_id, "userId": user["user_id"]}, updated)
+    return Service(**updated)
+
+
+@api_router.patch("/services/{service_id}/status", response_model=Service)
+async def update_service_status(service_id: str, payload: ServiceStatusUpdate, user=Depends(get_current_user)):
+    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Service not found")
+    doc["durum"] = payload.durum
+    doc["updatedAt"] = utc_now_iso()
+    await db.services.replace_one({"id": service_id, "userId": user["user_id"]}, doc)
+    return Service(**doc)
+
+
+@api_router.delete("/services/{service_id}")
+async def delete_service(service_id: str, user=Depends(get_current_user)):
+    await db.services.delete_one({"id": service_id, "userId": user["user_id"]})
     return {"ok": True}
 
 

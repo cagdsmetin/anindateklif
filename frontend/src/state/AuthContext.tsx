@@ -10,6 +10,7 @@ type AuthState = {
   login: (args: LoginArgs) => Promise<void>;
   register: (args: RegisterArgs) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
   updateUser: (patch: Partial<UserT>) => Promise<UserT>;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -76,6 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await api.forgotPassword(email);
   }, []);
 
+  const resetPassword = useCallback(async (token: string, newPassword: string) => {
+    await api.resetPassword(token, newPassword);
+  }, []);
+
   const updateUser = useCallback(async (patch: Partial<UserT>) => {
     const updated: UserT = await api.updateMe(patch as any);
     setUser(updated);
@@ -98,8 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, user, login, register, forgotPassword, updateUser, refreshUser, signOut }),
-    [loading, user, login, register, forgotPassword, updateUser, refreshUser, signOut]
+    () => ({ loading, user, login, register, forgotPassword, resetPassword, updateUser, refreshUser, signOut }),
+    [loading, user, login, register, forgotPassword, resetPassword, updateUser, refreshUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, CatalogItemT, CompanyT, CustomerT, QuoteT, ServiceT } from '@/src/lib/api';
+import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, QuoteT, ServiceT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -30,6 +30,11 @@ type Ctx = {
   updateService: (id: string, data: Partial<ServiceT>) => Promise<void>;
   updateServiceStatus: (id: string, durum: string) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
+  campaigns: CampaignT[];
+  reloadCampaigns: () => Promise<void>;
+  createCampaign: (data: { baslik: string; mesaj: string }) => Promise<CampaignT>;
+  deleteCampaign: (id: string) => Promise<void>;
+  markCampaignSent: (id: string, customerId: string) => Promise<void>;
   quotes: QuoteT[];
   reloadQuotes: () => Promise<void>;
   saveQuote: (quote: Partial<QuoteT>, existingId?: string) => Promise<QuoteT>;
@@ -80,6 +85,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [catalog, setCatalog] = useState<CatalogItemT[]>([]);
   const [customers, setCustomers] = useState<CustomerT[]>([]);
   const [services, setServices] = useState<ServiceT[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignT[]>([]);
   const [quotes, setQuotes] = useState<QuoteT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
@@ -134,6 +140,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const list = await api.listServices(activeCompanyId);
     setServices(list);
+  }, [activeCompanyId]);
+
+  const reloadCampaigns = useCallback(async () => {
+    if (!activeCompanyId) {
+      setCampaigns([]);
+      return;
+    }
+    const list = await api.listCampaigns(activeCompanyId);
+    setCampaigns(list);
   }, [activeCompanyId]);
 
   const reloadQuotes = useCallback(async () => {
@@ -301,6 +316,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reloadServices();
   }, [reloadServices]);
 
+  const createCampaign = useCallback(async (data: { baslik: string; mesaj: string }) => {
+    if (!activeCompanyId) throw new Error('Aktif firma yok');
+    const created: CampaignT = await api.createCampaign({
+      companyId: activeCompanyId,
+      baslik: data.baslik || '',
+      mesaj: data.mesaj || '',
+    });
+    await reloadCampaigns();
+    return created;
+  }, [activeCompanyId, reloadCampaigns]);
+
+  const deleteCampaign = useCallback(async (id: string) => {
+    await api.deleteCampaign(id);
+    await reloadCampaigns();
+  }, [reloadCampaigns]);
+
+  const markCampaignSent = useCallback(async (id: string, customerId: string) => {
+    await api.markCampaignSent(id, customerId);
+    await reloadCampaigns();
+  }, [reloadCampaigns]);
+
   const saveQuote = useCallback(async (quote: Partial<QuoteT>, existingId?: string) => {
     if (!activeCompanyId) throw new Error('Aktif firma yok');
     const payload = {
@@ -364,6 +400,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCatalog([]);
       setCustomers([]);
       setServices([]);
+      setCampaigns([]);
       setQuotes([]);
       setLoading(false);
       return;
@@ -418,8 +455,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reloadCatalog();
     reloadCustomers();
     reloadServices();
+    reloadCampaigns();
     reloadQuotes();
-  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadQuotes]);
+  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadQuotes]);
 
   return (
     <AppContext.Provider
@@ -447,6 +485,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateService,
         updateServiceStatus,
         deleteService,
+        campaigns,
+        reloadCampaigns,
+        createCampaign,
+        deleteCampaign,
+        markCampaignSent,
         quotes,
         reloadQuotes,
         saveQuote,

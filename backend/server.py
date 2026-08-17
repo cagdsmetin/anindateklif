@@ -616,6 +616,32 @@ class QuoteStatusUpdate(BaseModel):
     durum: str
 
 
+class CampaignSend(BaseModel):
+    sent: bool = False
+    sentAt: Optional[str] = None
+
+
+class Campaign(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    baslik: str
+    mesaj: str
+    sends: Dict[str, CampaignSend] = Field(default_factory=dict)
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class CampaignCreate(BaseModel):
+    companyId: str
+    baslik: str
+    mesaj: str
+
+
+class CampaignMarkSent(BaseModel):
+    customerId: str
+
+
 # ============ HELPERS ============
 def compute_totals(items: List[QuoteItem], iskonto: float, kdvOrani: float):
     subtotal = sum((it.adet or 0) * (it.birimFiyat or 0) for it in items)
@@ -675,6 +701,7 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     await db.customers.delete_many({"companyId": company_id, "userId": uid})
     await db.quotes.delete_many({"companyId": company_id, "userId": uid})
     await db.services.delete_many({"companyId": company_id, "userId": uid})
+    await db.campaigns.delete_many({"companyId": company_id, "userId": uid})
     return {"ok": True}
 
 
@@ -792,6 +819,41 @@ async def update_service_status(service_id: str, payload: ServiceStatusUpdate, u
 @api_router.delete("/services/{service_id}")
 async def delete_service(service_id: str, user=Depends(get_current_user)):
     await db.services.delete_one({"id": service_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ CAMPAIGN ROUTES (Kampanya) ============
+@api_router.get("/campaigns/{company_id}", response_model=List[Campaign])
+async def list_campaigns(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], company_id)
+    docs = await db.campaigns.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    return [Campaign(**d) for d in docs]
+
+
+@api_router.post("/campaigns", response_model=Campaign)
+async def create_campaign(payload: CampaignCreate, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], payload.companyId)
+    obj = Campaign(userId=user["user_id"], **payload.dict())
+    await db.campaigns.insert_one(obj.dict())
+    return obj
+
+
+@api_router.patch("/campaigns/{campaign_id}/mark-sent", response_model=Campaign)
+async def mark_campaign_sent(campaign_id: str, payload: CampaignMarkSent, user=Depends(get_current_user)):
+    doc = await db.campaigns.find_one({"id": campaign_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Campaign not found")
+    sends = doc.get("sends") or {}
+    sends[payload.customerId] = {"sent": True, "sentAt": utc_now_iso()}
+    doc["sends"] = sends
+    doc["updatedAt"] = utc_now_iso()
+    await db.campaigns.replace_one({"id": campaign_id, "userId": user["user_id"]}, doc)
+    return Campaign(**doc)
+
+
+@api_router.delete("/campaigns/{campaign_id}")
+async def delete_campaign(campaign_id: str, user=Depends(get_current_user)):
+    await db.campaigns.delete_one({"id": campaign_id, "userId": user["user_id"]})
     return {"ok": True}
 
 

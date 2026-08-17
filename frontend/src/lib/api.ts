@@ -152,6 +152,21 @@ export const api = {
   createCustomer: (data: any) => req('/customers', { method: 'POST', body: JSON.stringify(data) }),
   deleteCustomer: (id: string) => req(`/customers/${id}`, { method: 'DELETE' }),
 
+  // Services (Servis & Garanti)
+  listServices: (companyId: string) => req(`/services/${companyId}`),
+  createService: (data: any) => req('/services', { method: 'POST', body: JSON.stringify(data) }),
+  updateService: (id: string, data: any) => req(`/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateServiceStatus: (id: string, durum: string) =>
+    req(`/services/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  deleteService: (id: string) => req(`/services/${id}`, { method: 'DELETE' }),
+
+  // Campaigns (Kampanya)
+  listCampaigns: (companyId: string) => req(`/campaigns/${companyId}`),
+  createCampaign: (data: any) => req('/campaigns', { method: 'POST', body: JSON.stringify(data) }),
+  markCampaignSent: (id: string, customerId: string) =>
+    req(`/campaigns/${id}/mark-sent`, { method: 'PATCH', body: JSON.stringify({ customerId }) }),
+  deleteCampaign: (id: string) => req(`/campaigns/${id}`, { method: 'DELETE' }),
+
   // Quotes
   listQuotes: (companyId: string) => req(`/quotes/${companyId}`),
   createQuote: (data: any) => req('/quotes', { method: 'POST', body: JSON.stringify(data) }),
@@ -228,6 +243,36 @@ export type CustomerT = {
   telefon: string;
   email: string;
   adres: string;
+};
+
+export type ServiceT = {
+  id: string;
+  userId: string;
+  companyId: string;
+  musFirma: string;
+  musYetkili: string;
+  musTelefon: string;
+  baslik: string;
+  aciklama: string;
+  servisTarihi: string;
+  garantiBitis: string;
+  bakimTarihi: string;
+  durum: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CampaignSendT = { sent: boolean; sentAt: string | null };
+
+export type CampaignT = {
+  id: string;
+  userId: string;
+  companyId: string;
+  baslik: string;
+  mesaj: string;
+  sends: Record<string, CampaignSendT>;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type QuoteItemT = {

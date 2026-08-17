@@ -12,6 +12,7 @@ import hashlib
 import secrets as py_secrets
 import bcrypt
 import jwt
+import requests
 from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any
@@ -54,6 +55,13 @@ WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
 IYZICO_API_KEY = os.environ.get("IYZICO_API_KEY", "")
 IYZICO_SECRET_KEY = os.environ.get("IYZICO_SECRET_KEY", "")
 IYZICO_BASE_URL = os.environ.get("IYZICO_BASE_URL", "https://sandbox-api.iyzipay.com")
+
+# Resend (https://resend.com) transactional email — used to deliver password-reset
+# links. If RESEND_API_KEY is unset, forgot_password() falls back to logging the
+# reset link (dev/MVP mode) instead of raising — the API always behaves the same
+# either way, it just won't actually reach the user's inbox until the key is set.
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Anında Teklif <onboarding@resend.dev>")
 
 
 def _iyzico_options():
@@ -127,6 +135,41 @@ def _verify_password(p: str, h: str) -> bool:
 
 def _sha256(v: str) -> str:
     return hashlib.sha256(v.encode()).hexdigest()
+
+
+async def _send_password_reset_email(to_email: str, reset_link: str):
+    """Send the password-reset link via Resend. Silently falls back to a log
+    line if RESEND_API_KEY isn't configured yet, so forgot_password() never
+    has to change behavior based on whether email delivery is set up."""
+    if not RESEND_API_KEY:
+        logging.info(f"[PasswordReset] RESEND_API_KEY not set, link={reset_link}")
+        return
+    try:
+        resp = await asyncio.to_thread(
+            requests.post,
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": "Şifre Sıfırlama - Anında Teklif",
+                "html": (
+                    "<div style=\"font-family: sans-serif; max-width: 480px; margin: 0 auto;\">"
+                    "<h2>Şifreni Sıfırla</h2>"
+                    "<p>Anında Teklif hesabın için şifre sıfırlama talebinde bulundun. Aşağıdaki bağlantıya "
+                    "tıklayarak yeni şifreni belirleyebilirsin. Bu bağlantı 30 dakika geçerlidir.</p>"
+                    f"<p><a href=\"{reset_link}\" style=\"display:inline-block;background:#2563eb;color:#fff;"
+                    "padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;\">Şifremi Sıfırla</a></p>"
+                    "<p>Eğer bu talebi sen yapmadıysan bu e-postayı yok sayabilirsin.</p>"
+                    "</div>"
+                ),
+            },
+            timeout=10,
+        )
+        if resp.status_code >= 300:
+            logging.warning(f"[PasswordReset] resend send failed status={resp.status_code} body={resp.text[:300]}")
+    except Exception as e:
+        logging.warning(f"[PasswordReset] resend send exception: {e}")
 
 
 def _make_access_token(user: Dict[str, Any]) -> str:
@@ -345,7 +388,9 @@ async def forgot_password(payload: ForgotPasswordRequest):
             "expires_at": _utc() + timedelta(minutes=RESET_TOKEN_MINUTES),
             "used_at": None,
         })
-        # In a real app, email raw to user. For MVP, we log it.
+        reset_link = f"{FRONTEND_BASE_URL.rstrip('/')}/reset-password?token={raw}"
+        await _send_password_reset_email(email, reset_link)
+        # Also logged for local/dev visibility when RESEND_API_KEY isn't set.
         logging.info(f"[PasswordReset] {email} token={raw}")
     return {"message": "Eğer bu e-posta kayıtlıysa, sıfırlama bağlantısı gönderildi."}
 

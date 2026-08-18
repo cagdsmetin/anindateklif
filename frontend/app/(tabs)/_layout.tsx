@@ -1,7 +1,22 @@
 import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
+
+function tabIcon(name: string, color: string) {
+  return ({ focused, size }: { focused: boolean; size: number }) => (
+    <Ionicons name={(focused ? name : `${name}-outline`) as any} size={size} color={focused ? color : theme.colors.textMuted} />
+  );
+}
+
+function tabLabel(color: string) {
+  return ({ focused, children }: { focused: boolean; children: string }) => (
+    <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0, color: focused ? color : theme.colors.textMuted, marginTop: -2 }}>
+      {children}
+    </Text>
+  );
+}
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -10,8 +25,6 @@ export default function TabsLayout() {
       initialRouteName="panel"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
           height: 60 + insets.bottom,
           paddingTop: 6,
@@ -21,64 +34,79 @@ export default function TabsLayout() {
           backgroundColor: '#fff',
           elevation: 8,
         },
-        tabBarLabelStyle: { fontSize: 9.5, fontWeight: '800', marginTop: 0, letterSpacing: 0 },
-        tabBarItemStyle: { paddingHorizontal: 2 },
+        tabBarItemStyle: { paddingHorizontal: 1 },
       }}
     >
       <Tabs.Screen
         name="panel"
         options={{
           title: 'Panel',
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('grid', theme.colors.primary),
+          tabBarLabel: tabLabel(theme.colors.primary),
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
           title: 'Teklif',
-          tabBarIcon: ({ color, size }) => <Ionicons name="create-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('create', '#2563EB'),
+          tabBarLabel: tabLabel('#2563EB'),
         }}
       />
       <Tabs.Screen
         name="catalog"
         options={{
           title: 'Katalog',
-          tabBarIcon: ({ color, size }) => <Ionicons name="library-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('library', '#7C3AED'),
+          tabBarLabel: tabLabel('#7C3AED'),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'Geçmiş',
-          tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('time', '#EA580C'),
+          tabBarLabel: tabLabel('#EA580C'),
         }}
       />
       <Tabs.Screen
         name="customers"
         options={{
           title: 'Müşteri',
-          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('people', '#059669'),
+          tabBarLabel: tabLabel('#059669'),
         }}
       />
       <Tabs.Screen
         name="services"
         options={{
           title: 'Servis',
-          tabBarIcon: ({ color, size }) => <Ionicons name="construct-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('construct', '#DC2626'),
+          tabBarLabel: tabLabel('#DC2626'),
         }}
       />
       <Tabs.Screen
         name="campaigns"
         options={{
           title: 'Kampanya',
-          tabBarIcon: ({ color, size }) => <Ionicons name="megaphone-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('megaphone', '#DB2777'),
+          tabBarLabel: tabLabel('#DB2777'),
+        }}
+      />
+      <Tabs.Screen
+        name="reminders"
+        options={{
+          title: 'Hatırlat.',
+          tabBarIcon: tabIcon('notifications', '#D97706'),
+          tabBarLabel: tabLabel('#D97706'),
         }}
       />
       <Tabs.Screen
         name="company"
         options={{
           title: 'Firma',
-          tabBarIcon: ({ color, size }) => <Ionicons name="business-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon('business', '#4F46E5'),
+          tabBarLabel: tabLabel('#4F46E5'),
         }}
       />
     </Tabs>

@@ -178,6 +178,14 @@ export default function CompanyScreen() {
           {/* Support */}
           <SectionHeader title="DESTEK" />
           <View style={s.supportBox}>
+            <TouchableOpacity style={s.remindersBtn} onPress={() => router.push('/reminders')} testID="reminders-btn">
+              <Ionicons name="notifications-outline" size={18} color={theme.colors.primary} />
+              <Text style={s.remindersBtnText}>Hatırlatmalar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.reportsBtn} onPress={() => router.push('/reports')} testID="reports-btn">
+              <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
+              <Text style={s.reportsBtnText}>Raporlar</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
             <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
             </TouchableOpacity>
@@ -518,4 +526,8 @@ const s = StyleSheet.create({
   assistantBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
   subscriptionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
   subscriptionBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
+  remindersBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
+  remindersBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
+  reportsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
+  reportsBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
 });

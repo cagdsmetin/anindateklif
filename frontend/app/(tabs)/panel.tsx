@@ -249,15 +249,15 @@ export default function PanelScreen() {
         {/* Modüller */}
         <SectionHeader icon="grid-outline" title="Modüller" />
         <View style={s.moduleGrid}>
-          <ModuleTile icon="create-outline" label="Teklif" onPress={() => router.push('/(tabs)/')} />
-          <ModuleTile icon="library-outline" label="Katalog" onPress={() => router.push('/(tabs)/catalog')} />
-          <ModuleTile icon="time-outline" label="Geçmiş" onPress={() => router.push('/(tabs)/history')} />
-          <ModuleTile icon="people-outline" label="Müşteri" onPress={() => router.push('/(tabs)/customers')} />
-          <ModuleTile icon="construct-outline" label="Servis" onPress={() => router.push('/(tabs)/services')} />
-          <ModuleTile icon="megaphone-outline" label="Kampanya" onPress={() => router.push('/(tabs)/campaigns')} />
-          <ModuleTile icon="notifications-outline" label="Hatırlatmalar" onPress={() => router.push('/reminders' as any)} />
-          <ModuleTile icon="bar-chart-outline" label="Raporlar" onPress={() => router.push('/reports' as any)} />
-          <ModuleTile icon="business-outline" label="Firma" onPress={() => router.push('/(tabs)/company')} />
+          <ModuleTile icon="create" label="Teklif" color="#2563EB" bg="#DBEAFE" onPress={() => router.push('/(tabs)/')} />
+          <ModuleTile icon="library" label="Katalog" color="#7C3AED" bg="#EDE9FE" onPress={() => router.push('/(tabs)/catalog')} />
+          <ModuleTile icon="time" label="Geçmiş" color="#EA580C" bg="#FFEDD5" onPress={() => router.push('/(tabs)/history')} />
+          <ModuleTile icon="people" label="Müşteri" color="#059669" bg="#D1FAE5" onPress={() => router.push('/(tabs)/customers')} />
+          <ModuleTile icon="construct" label="Servis" color="#DC2626" bg="#FEE2E2" onPress={() => router.push('/(tabs)/services')} />
+          <ModuleTile icon="megaphone" label="Kampanya" color="#DB2777" bg="#FCE7F3" onPress={() => router.push('/(tabs)/campaigns')} />
+          <ModuleTile icon="notifications" label="Hatırlatmalar" color="#D97706" bg="#FEF3C7" onPress={() => router.push('/reminders' as any)} />
+          <ModuleTile icon="bar-chart" label="Raporlar" color="#0891B2" bg="#CFFAFE" onPress={() => router.push('/reports' as any)} />
+          <ModuleTile icon="business" label="Firma" color="#4F46E5" bg="#E0E7FF" onPress={() => router.push('/(tabs)/company')} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -308,11 +308,11 @@ function QuickAction({ icon, label, onPress }: { icon: any; label: string; onPre
   );
 }
 
-function ModuleTile({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
+function ModuleTile({ icon, label, color, bg, onPress }: { icon: any; label: string; color: string; bg: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.moduleTile} onPress={onPress} activeOpacity={0.85}>
-      <View style={s.moduleIconWrap}>
-        <Ionicons name={icon} size={18} color={theme.colors.navy} />
+      <View style={[s.moduleIconWrap, { backgroundColor: bg }]}>
+        <Ionicons name={icon} size={19} color={color} />
       </View>
       <Text style={s.moduleLabel} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
@@ -403,15 +403,16 @@ const s = StyleSheet.create({
   moduleTile: {
     width: '31%',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
+    ...theme.shadow.sm,
   },
   moduleIconWrap: {
-    width: 34, height: 34, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft,
+    width: 38, height: 38, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
   moduleLabel: { fontSize: 10.5, fontWeight: '700', color: theme.colors.text, textAlign: 'center' },

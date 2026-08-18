@@ -7,6 +7,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   return (
     <Tabs
+      initialRouteName="panel"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
@@ -24,6 +25,13 @@ export default function TabsLayout() {
         tabBarItemStyle: { paddingHorizontal: 2 },
       }}
     >
+      <Tabs.Screen
+        name="panel"
+        options={{
+          title: 'Panel',
+          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{

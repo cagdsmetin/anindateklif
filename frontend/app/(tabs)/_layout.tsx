@@ -1,18 +1,29 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 
 function tabIcon(name: string, color: string) {
   return ({ focused, size }: { focused: boolean; size: number }) => (
-    <Ionicons name={(focused ? name : `${name}-outline`) as any} size={size} color={focused ? color : theme.colors.textMuted} />
+    <View
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: focused ? color : 'transparent',
+      }}
+    >
+      <Ionicons name={(focused ? name : `${name}-outline`) as any} size={size - 4} color={focused ? '#fff' : theme.colors.textOnDark} />
+    </View>
   );
 }
 
-function tabLabel(color: string) {
+function tabLabel() {
   return ({ focused, children }: { focused: boolean; children: string }) => (
-    <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0, color: focused ? color : theme.colors.textMuted, marginTop: -2 }}>
+    <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0, color: focused ? '#fff' : theme.colors.textOnDark, marginTop: -2 }}>
       {children}
     </Text>
   );
@@ -20,6 +31,7 @@ function tabLabel(color: string) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const m = theme.colors.modules;
   return (
     <Tabs
       initialRouteName="panel"
@@ -29,9 +41,8 @@ export default function TabsLayout() {
           height: 60 + insets.bottom,
           paddingTop: 6,
           paddingBottom: insets.bottom + 6,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.line,
-          backgroundColor: '#fff',
+          borderTopWidth: 0,
+          backgroundColor: theme.colors.navyDark,
           elevation: 8,
         },
         tabBarItemStyle: { paddingHorizontal: 1 },
@@ -42,71 +53,71 @@ export default function TabsLayout() {
         options={{
           title: 'Panel',
           tabBarIcon: tabIcon('grid', theme.colors.primary),
-          tabBarLabel: tabLabel(theme.colors.primary),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
           title: 'Teklif',
-          tabBarIcon: tabIcon('create', '#2563EB'),
-          tabBarLabel: tabLabel('#2563EB'),
+          tabBarIcon: tabIcon('create', m.teklif),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="catalog"
         options={{
           title: 'Katalog',
-          tabBarIcon: tabIcon('library', '#7C3AED'),
-          tabBarLabel: tabLabel('#7C3AED'),
+          tabBarIcon: tabIcon('library', m.katalog),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'Geçmiş',
-          tabBarIcon: tabIcon('time', '#EA580C'),
-          tabBarLabel: tabLabel('#EA580C'),
+          tabBarIcon: tabIcon('time', m.gecmis),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="customers"
         options={{
           title: 'Müşteri',
-          tabBarIcon: tabIcon('people', '#059669'),
-          tabBarLabel: tabLabel('#059669'),
+          tabBarIcon: tabIcon('people', m.musteri),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="services"
         options={{
           title: 'Servis',
-          tabBarIcon: tabIcon('construct', '#DC2626'),
-          tabBarLabel: tabLabel('#DC2626'),
+          tabBarIcon: tabIcon('construct', m.servis),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="campaigns"
         options={{
           title: 'Kampanya',
-          tabBarIcon: tabIcon('megaphone', '#DB2777'),
-          tabBarLabel: tabLabel('#DB2777'),
+          tabBarIcon: tabIcon('megaphone', m.kampanya),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="reminders"
         options={{
           title: 'Hatırlat.',
-          tabBarIcon: tabIcon('notifications', '#D97706'),
-          tabBarLabel: tabLabel('#D97706'),
+          tabBarIcon: tabIcon('notifications', m.hatirlatma),
+          tabBarLabel: tabLabel(),
         }}
       />
       <Tabs.Screen
         name="company"
         options={{
           title: 'Firma',
-          tabBarIcon: tabIcon('business', '#4F46E5'),
-          tabBarLabel: tabLabel('#4F46E5'),
+          tabBarIcon: tabIcon('business', m.firma),
+          tabBarLabel: tabLabel(),
         }}
       />
     </Tabs>

@@ -172,28 +172,28 @@ export default function PanelScreen() {
             <Text style={s.heroValue} numberOfLines={1}>{fmt(hacimBuAy, 'USD')}</Text>
             <Text style={s.heroSub}>{quotesThisMonth.length} teklif</Text>
           </View>
-          <View style={[s.heroCard, { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.goldBorder }]}>
-            <Text style={[s.heroLabel, { color: theme.colors.goldDark }]}>YANIT BEKLEYEN</Text>
-            <Text style={[s.heroValue, { color: theme.colors.goldDark }]}>{yanitBekleyen}</Text>
-            <Text style={[s.heroSub, { color: theme.colors.goldDark }]}>teklif</Text>
+          <View style={[s.heroCard, s.heroCardWarn]}>
+            <Text style={[s.heroLabel, { color: theme.colors.gold }]}>YANIT BEKLEYEN</Text>
+            <Text style={[s.heroValue, { color: '#fff' }]}>{yanitBekleyen}</Text>
+            <Text style={[s.heroSub, { color: theme.colors.textOnDark }]}>teklif</Text>
           </View>
         </View>
 
         {/* İkincil istatistikler */}
         <View style={s.statGrid}>
-          <StatCard icon="people-outline" label="Müşteri" value={String(customers.length)} onPress={() => router.push('/(tabs)/customers')} />
-          <StatCard icon="construct-outline" label="Aktif Servis" value={String(aktifServis)} onPress={() => router.push('/(tabs)/services')} />
-          <StatCard icon="shield-checkmark-outline" label="Garanti Aktif" value={String(garantiAktif)} onPress={() => router.push('/(tabs)/services')} />
-          <StatCard icon="megaphone-outline" label="Kampanya" value={String(campaigns.length)} onPress={() => router.push('/(tabs)/campaigns')} />
+          <StatCard icon="people" label="Müşteri" value={String(customers.length)} color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
+          <StatCard icon="construct" label="Aktif Servis" value={String(aktifServis)} color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
+          <StatCard icon="shield-checkmark" label="Garanti Aktif" value={String(garantiAktif)} color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/services')} />
+          <StatCard icon="megaphone" label="Kampanya" value={String(campaigns.length)} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
         </View>
 
         {/* Hızlı işlemler */}
         <SectionHeader icon="flash-outline" title="Hızlı İşlemler" />
         <View style={s.quickGrid}>
-          <QuickAction icon="add-circle" label="Yeni Teklif" onPress={() => router.push('/(tabs)/')} />
-          <QuickAction icon="person-add" label="Yeni Müşteri" onPress={() => router.push('/customer-add' as any)} />
-          <QuickAction icon="build" label="Yeni Servis" onPress={() => router.push('/service-add' as any)} />
-          <QuickAction icon="megaphone" label="Yeni Kampanya" onPress={() => router.push('/campaign-add' as any)} />
+          <QuickAction icon="add-circle" label="Yeni Teklif" color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/')} />
+          <QuickAction icon="person-add" label="Yeni Müşteri" color={theme.colors.modules.musteri} onPress={() => router.push('/customer-add' as any)} />
+          <QuickAction icon="build" label="Yeni Servis" color={theme.colors.modules.servis} onPress={() => router.push('/service-add' as any)} />
+          <QuickAction icon="megaphone" label="Yeni Kampanya" color={theme.colors.modules.kampanya} onPress={() => router.push('/campaign-add' as any)} />
         </View>
 
         {/* Yaklaşan işler */}
@@ -249,15 +249,15 @@ export default function PanelScreen() {
         {/* Modüller */}
         <SectionHeader icon="grid-outline" title="Modüller" />
         <View style={s.moduleGrid}>
-          <ModuleTile icon="create" label="Teklif" color="#2563EB" bg="#DBEAFE" onPress={() => router.push('/(tabs)/')} />
-          <ModuleTile icon="library" label="Katalog" color="#7C3AED" bg="#EDE9FE" onPress={() => router.push('/(tabs)/catalog')} />
-          <ModuleTile icon="time" label="Geçmiş" color="#EA580C" bg="#FFEDD5" onPress={() => router.push('/(tabs)/history')} />
-          <ModuleTile icon="people" label="Müşteri" color="#059669" bg="#D1FAE5" onPress={() => router.push('/(tabs)/customers')} />
-          <ModuleTile icon="construct" label="Servis" color="#DC2626" bg="#FEE2E2" onPress={() => router.push('/(tabs)/services')} />
-          <ModuleTile icon="megaphone" label="Kampanya" color="#DB2777" bg="#FCE7F3" onPress={() => router.push('/(tabs)/campaigns')} />
-          <ModuleTile icon="notifications" label="Hatırlatmalar" color="#D97706" bg="#FEF3C7" onPress={() => router.push('/reminders' as any)} />
-          <ModuleTile icon="bar-chart" label="Raporlar" color="#0891B2" bg="#CFFAFE" onPress={() => router.push('/reports' as any)} />
-          <ModuleTile icon="business" label="Firma" color="#4F46E5" bg="#E0E7FF" onPress={() => router.push('/(tabs)/company')} />
+          <ModuleTile icon="create" label="Teklif" color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/')} />
+          <ModuleTile icon="library" label="Katalog" color={theme.colors.modules.katalog} onPress={() => router.push('/(tabs)/catalog')} />
+          <ModuleTile icon="time" label="Geçmiş" color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/history')} />
+          <ModuleTile icon="people" label="Müşteri" color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
+          <ModuleTile icon="construct" label="Servis" color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
+          <ModuleTile icon="megaphone" label="Kampanya" color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
+          <ModuleTile icon="notifications" label="Hatırlatmalar" color={theme.colors.modules.hatirlatma} onPress={() => router.push('/reminders' as any)} />
+          <ModuleTile icon="bar-chart" label="Raporlar" color={theme.colors.modules.raporlar} onPress={() => router.push('/reports' as any)} />
+          <ModuleTile icon="business" label="Firma" color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -287,11 +287,11 @@ function SectionHeaderWithAction({ icon, title, actionLabel, onAction }: { icon:
   );
 }
 
-function StatCard({ icon, label, value, onPress }: { icon: any; label: string; value: string; onPress: () => void }) {
+function StatCard({ icon, label, value, color, onPress }: { icon: any; label: string; value: string; color: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.statCard} onPress={onPress} activeOpacity={0.85}>
-      <View style={s.statIconWrap}>
-        <Ionicons name={icon} size={16} color={theme.colors.primary} />
+      <View style={[s.statIconWrap, { backgroundColor: color }]}>
+        <Ionicons name={icon} size={16} color="#fff" />
       </View>
       <Text style={s.statValue}>{value}</Text>
       <Text style={s.statLabel} numberOfLines={1}>{label}</Text>
@@ -299,20 +299,23 @@ function StatCard({ icon, label, value, onPress }: { icon: any; label: string; v
   );
 }
 
-function QuickAction({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
+function QuickAction({ icon, label, color, onPress }: { icon: any; label: string; color: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.quickCard} onPress={onPress} activeOpacity={0.85}>
-      <Ionicons name={icon} size={20} color={theme.colors.primary} />
+      <View style={[s.quickIconWrap, { backgroundColor: color }]}>
+        <Ionicons name={icon} size={17} color="#fff" />
+      </View>
       <Text style={s.quickLabel} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-function ModuleTile({ icon, label, color, bg, onPress }: { icon: any; label: string; color: string; bg: string; onPress: () => void }) {
+function ModuleTile({ icon, label, color, onPress }: { icon: any; label: string; color: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={s.moduleTile} onPress={onPress} activeOpacity={0.85}>
-      <View style={[s.moduleIconWrap, { backgroundColor: bg }]}>
-        <Ionicons name={icon} size={19} color={color} />
+      <View style={[s.moduleAccentBar, { backgroundColor: color }]} />
+      <View style={[s.moduleIconWrap, { backgroundColor: color }]}>
+        <Ionicons name={icon} size={19} color="#fff" />
       </View>
       <Text style={s.moduleLabel} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
@@ -341,15 +344,14 @@ const s = StyleSheet.create({
   heroRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   heroCard: {
     flex: 1,
-    backgroundColor: theme.colors.primarySoft,
-    borderWidth: 1,
-    borderColor: theme.colors.primaryBorder,
+    backgroundColor: theme.colors.navyDark,
     borderRadius: 14,
     padding: 14,
   },
-  heroLabel: { fontSize: 9.5, fontWeight: '900', color: theme.colors.primaryDark, letterSpacing: 0.4, marginBottom: 6 },
-  heroValue: { fontSize: 20, fontWeight: '900', color: theme.colors.primaryDark },
-  heroSub: { fontSize: 11, fontWeight: '700', color: theme.colors.primaryDark, marginTop: 4, opacity: 0.75 },
+  heroCardWarn: { borderLeftWidth: 3, borderLeftColor: theme.colors.gold, borderRadius: 0, borderTopRightRadius: 14, borderBottomRightRadius: 14 },
+  heroLabel: { fontSize: 9.5, fontWeight: '900', color: '#A5B4FC', letterSpacing: 0.4, marginBottom: 6 },
+  heroValue: { fontSize: 20, fontWeight: '900', color: '#fff' },
+  heroSub: { fontSize: 11, fontWeight: '700', color: theme.colors.textOnDark, marginTop: 4 },
 
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
   statCard: {
@@ -362,7 +364,7 @@ const s = StyleSheet.create({
     ...theme.shadow.sm,
   },
   statIconWrap: {
-    width: 30, height: 30, borderRadius: 9, backgroundColor: theme.colors.primarySoft,
+    width: 30, height: 30, borderRadius: 9,
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
   statValue: { fontSize: 18, fontWeight: '900', color: theme.colors.navy },
@@ -378,15 +380,16 @@ const s = StyleSheet.create({
     width: '47.5%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     backgroundColor: '#fff',
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
   },
+  quickIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, flexShrink: 1 },
 
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 6, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
@@ -406,11 +409,12 @@ const s = StyleSheet.create({
     gap: 7,
     backgroundColor: '#fff',
     borderRadius: 14,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.line,
+    paddingTop: 11,
+    paddingBottom: 14,
+    overflow: 'hidden',
     ...theme.shadow.sm,
   },
+  moduleAccentBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
   moduleIconWrap: {
     width: 38, height: 38, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',

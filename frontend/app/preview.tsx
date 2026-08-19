@@ -211,7 +211,7 @@ export default function PreviewScreen() {
               ['E-Mail', quote.musEmail],
               ['ADRES', quote.musAdres],
             ]} />
-            <InfoBox title="SİPARİŞ BİLGD�LERİ" rows={[
+            <InfoBox title="SİPARİŞ BİLGİLERİ" rows={[
               ['PROJE ADI', quote.projeAdi],
               ['NAKLİYE', quote.nakliye],
               ['PARA BİRİM', quote.paraBirimi],

@@ -40,11 +40,26 @@ function newItemId() { return 'it-' + Date.now() + '-' + Math.random().toString(
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
+// Cold-start guard: the (tabs) group's file-based default route lands
+// here (Teklif) before the tab bar's initialRouteName="panel" can take
+// effect, so we bounce to Panel exactly once per app session — see the
+// effect below.
+let hasBounceToPanelRun = false;
+
 export default function EditorScreen() {
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ quoteId?: string }>();
+
+  // Only bounce on a true cold start (not when deep-linked here to edit a
+  // specific quote), and only the first time this screen mounts.
+  useEffect(() => {
+    if (!hasBounceToPanelRun && !params.quoteId) {
+      hasBounceToPanelRun = true;
+      router.replace('/(tabs)/panel');
+    }
+  }, []);
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [teklifNo, setTeklifNo] = useState(buildTeklifNo());

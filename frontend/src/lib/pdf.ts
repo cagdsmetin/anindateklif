@@ -94,32 +94,37 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
-  @page { size: A4; margin: 8mm; }
+  @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:11px; }
-  .sheet { padding: 8mm 10mm; }
+  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; }
+  .sheet { padding: 12mm; }
 
-  /* HEADER — table layout guarantees strict top alignment between the two
-     columns on every renderer (html2canvas on web, native WebView print
-     engines on iOS/Android). A 3px navy rule + padding under the whole
-     header turns it into a clean "letterhead" band, so the block reads as
-     one deliberate unit even when the left (company info) and right
-     (logo/title) columns end up different heights. */
-  .hdr { width:100%; border-collapse:collapse; border-bottom:3px solid #1E293B; padding-bottom:14px; margin-bottom:18px; }
+  /* HEADER — table-layout:fixed pins both columns to their declared % width
+     no matter how long the company name/address/logo filename is, so long
+     content wraps inside its own column instead of pushing the table wider
+     than the page (the old cause of text bleeding past the right/left
+     margins). A 3px navy rule + padding under the whole header turns it
+     into a clean "letterhead" band, so the block reads as one deliberate
+     unit even when the left (logo/company) and right (title/meta) columns
+     end up different heights. */
+  .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; padding-bottom:14px; margin-bottom:18px; }
   .hdr td { padding:0; vertical-align:top; }
   .hdr td.left-col { width:55%; padding-right:16px; }
   .hdr td.right-col { width:45%; padding-left:16px; text-align:right; }
 
-  .cname { font-weight:800; font-size:14px; color:#1E293B; margin:0 0 5px 0; line-height:1.3; }
-  .cline { font-size:11.5px; color:#0f172a; line-height:1.55; margin:0 0 1px 0; }
+  /* Logo always sits first (top), company name directly under it, then the
+     rest of the contact lines — left-aligned since this column now anchors
+     the whole letterhead. */
+  .logo { max-width:180px; max-height:70px; object-fit:contain; margin:0 0 10px 0; display:block; }
+  .logo-fallback { padding:8px 14px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 10px 0; display:inline-block; font-size:12.5px; }
+  .cname { font-weight:800; font-size:16px; color:#1E293B; margin:0 0 6px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
+  .cline { font-size:12.5px; color:#0f172a; line-height:1.6; margin:0 0 2px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
-  .logo { max-width:190px; max-height:72px; object-fit:contain; margin:0 0 8px auto; display:block; }
-  .logo-fallback { padding:8px 14px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 8px auto; display:inline-block; font-size:12.5px; }
-  .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; }
-  .meta-table { border-collapse:collapse; margin:0 0 0 auto; }
+  .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; word-wrap:break-word; overflow-wrap:break-word; }
+  .meta-table { border-collapse:collapse; margin:0 0 0 auto; max-width:100%; }
   .meta-table td { padding:3px 0 3px 12px; font-size:11.5px; }
   .meta-table td.k { color:#64748b; text-align:right; padding-right:8px; padding-left:0; }
-  .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; min-width:80px; }
+  .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; min-width:80px; word-wrap:break-word; overflow-wrap:break-word; }
 
   /* INFO BOXES */
   .info-grid { display: table; width:100%; margin-bottom:12px; border-spacing: 0 0; }
@@ -132,7 +137,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .info-box td { font-size:11px; padding:5px 9px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
   .info-box tr:last-child td { border-bottom:none; }
   .info-box td.k { color:#64748b; width:38%; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; font-size:10px; }
-  .info-box td.v { color:#0f172a; }
+  .info-box td.v { color:#0f172a; word-wrap:break-word; overflow-wrap:break-word; }
 
   /* ITEMS TABLE */
   .items { width:100%; border-collapse:collapse; margin-top:8px; border:1px solid #cbd5e1; }
@@ -143,7 +148,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .items tbody td { font-size:11px; padding:7px 6px; border-bottom:1px solid #e2e8f0; vertical-align:middle; border-right:1px solid #e2e8f0; }
   .items tbody td:last-child { border-right:none; }
   .items .c1 { text-align:center; width:38px; }
-  .items .c2 { text-align:left; line-height:1.4; }
+  .items .c2 { text-align:left; line-height:1.4; word-wrap:break-word; overflow-wrap:break-word; }
   .items .c3 { text-align:center; width:58px; }
   .items .c4 { text-align:right; width:105px; white-space:nowrap; font-weight:600; }
   .items .c5 { text-align:right; width:105px; white-space:nowrap; font-weight:700; }
@@ -190,6 +195,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <table class="hdr">
     <tr>
       <td class="left-col">
+        ${logo}
         <div class="cname">${esc(company.sirketAdi || '')}</div>
         ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
         ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
@@ -198,7 +204,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
         ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
       </td>
       <td class="right-col">
-        ${logo}
         <div class="doc-title">TEKLİF FORMU</div>
         <table class="meta-table">
           <tr><td class="k">Teklif No</td><td class="v">${esc(quote.teklifNo)}</td></tr>
@@ -495,7 +500,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
       </tbody>
     </table>
 
-    <div class="banner banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
+    <div class="banner banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLI KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
     <div class="banner banner-kdv">KDV HARİÇ FİYATTIR</div>
 
     <div class="bottom">

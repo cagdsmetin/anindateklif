@@ -131,19 +131,43 @@ export async function openWhatsAppChat(phone: string, message: string): Promise<
 }
 
 /**
+ * Result of shareQuoteViaWhatsApp — tells the caller whether the PDF actually
+ * got attached automatically, or whether the user still needs to attach it
+ * by hand (see the 'attachManually' branch below for why that can happen).
+ */
+export type WhatsAppShareResult = {
+  /** true: PDF was handed straight to WhatsApp (native share sheet / Web Share API). */
+  attached: boolean;
+  /** true: we downloaded the PDF to the computer and the user must drag it into the opened chat. */
+  downloaded: boolean;
+};
+
+/**
  * Share the quote PDF via WhatsApp.
  *
- * IMPORTANT — Why this is a single Sharing.shareAsync call (not a deep link + share):
- * WhatsApp's `whatsapp://send?...` / `wa.me/...` URL schemes ONLY accept text; there
- * is no supported way to attach a file via URL. The previous two-step flow (deep-link
- * chat, then share sheet) was misleading because the deep-link step sent text only —
- * users perceived it as "the PDF didn't go". The correct, WhatsApp-officially-supported
- * way to send a PDF is via the native share sheet, where WhatsApp appears as a target.
+ * IMPORTANT — platform limitation that shapes this whole function:
+ * WhatsApp's `whatsapp://send?...` / `wa.me/...` / `web.whatsapp.com/send?...` URL
+ * schemes ONLY accept pre-filled TEXT. There is no URL parameter, query string, or
+ * official API that can attach a file — this is a hard limitation of WhatsApp's own
+ * web/deep-link surface, not something our code can work around. The ONLY way to
+ * hand a file to WhatsApp programmatically is the browser's native share sheet
+ * (Web Share API with `files`), which only works when the browser/OS exposes
+ * WhatsApp (or WhatsApp Desktop) as a registered share target — mobile Chrome/Safari
+ * mostly, some desktop setups with WhatsApp Desktop installed, but NOT the general
+ * case on a desktop browser with only WhatsApp Web available.
  *
- * We also copy the freshly-generated PDF into the persistent cache directory with a
- * clean filename. Some Android OEMs restrict WhatsApp's read access to files that
- * live outside a standard cache path, or reject files whose names contain unusual
- * characters — the copy sidesteps both issues.
+ * So the flow is:
+ *   1) Try the native share sheet with the PDF file attached (works silently when
+ *      supported — no extra step for the user at all).
+ *   2) If that's unavailable or fails, we cannot attach the file automatically.
+ *      In that case we download the PDF (so it's one click away in the Downloads
+ *      folder) AND open the WhatsApp chat with the message pre-filled, so the user
+ *      only has to drag-and-drop the just-downloaded file into the chat that's
+ *      already open — the smallest possible manual step given the platform limit.
+ *
+ * The return value tells the caller (the Preview screen) which path was taken, so
+ * it can show the right toast — e.g. "PDF indirildi, WhatsApp'a sürükleyin" only
+ * when a manual attach step is actually needed.
  */
 export async function shareQuoteViaWhatsApp(opts: {
   pdfUri: string;
@@ -151,7 +175,7 @@ export async function shareQuoteViaWhatsApp(opts: {
   companyName?: string;
   fileName?: string;
   message?: string;
-}): Promise<void> {
+}): Promise<WhatsAppShareResult> {
   const { pdfUri, quote, companyName, fileName } = opts;
   const message = opts.message || composeQuoteWhatsAppMessage(quote, companyName);
 
@@ -163,9 +187,9 @@ export async function shareQuoteViaWhatsApp(opts: {
     const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
 
     // Preferred: the OS-native share sheet (Web Share API, files supported on
-    // HTTPS in current Chrome/Edge/Safari — desktop and mobile). This lets the
-    // user tap WhatsApp directly with the PDF already attached — no separate
-    // save/download step at all.
+    // HTTPS in current Chrome/Edge/Safari where a share target is registered).
+    // This lets the user tap WhatsApp directly with the PDF already attached —
+    // no separate save/download step at all.
     try {
       const res = await fetch(pdfUri);
       const blob = await res.blob();
@@ -173,21 +197,22 @@ export async function shareQuoteViaWhatsApp(opts: {
       const nav: any = navigator;
       if (nav.canShare && nav.canShare({ files: [file] })) {
         await nav.share({ files: [file], text: message, title: desiredName });
-        return;
+        return { attached: true, downloaded: false };
       }
-    } catch {
-      // Fall through to the download + wa.me fallback below (also covers the
-      // user dismissing the share sheet, which throws an AbortError).
+    } catch (e: any) {
+      // AbortError = user closed the share sheet without picking anything —
+      // treat that as "done", don't also force a download on top of it.
+      if (e && e.name === 'AbortError') return { attached: false, downloaded: false };
+      // Any other failure (file sharing unsupported, share target rejected the
+      // file, etc.) falls through to the download+open fallback below.
     }
 
-    // Fallback (older browsers without file sharing support): download the
-    // PDF (including any merged attachments) AND open WhatsApp with the
-    // caption pre-filled, so the user can attach the already-downloaded file.
-    try {
-      await downloadFileWeb(pdfUri, desiredName);
-      window.open(waUrl, '_blank');
-    } catch {}
-    return;
+    // Fallback: there is no way to hand WhatsApp a file via URL, so download the
+    // PDF and open the chat with the note pre-filled — the user just drags the
+    // downloaded file into the chat that opens.
+    await downloadFileWeb(pdfUri, desiredName);
+    window.open(waUrl, '_blank');
+    return { attached: false, downloaded: true };
   }
 
   // ---------- NATIVE (iOS / Android) ----------
@@ -226,7 +251,7 @@ export async function shareQuoteViaWhatsApp(opts: {
   if (!available) {
     // Extremely rare on modern iOS/Android — fall back to a WA text-only deep link.
     await openWhatsAppChat(quote.musTelefon || '', message + '\n\n(PDF paylaşımı bu cihazda desteklenmiyor.)');
-    return;
+    return { attached: false, downloaded: false };
   }
 
   // 3) Native share sheet with the PDF. `dialogTitle` becomes the WhatsApp caption
@@ -236,4 +261,5 @@ export async function shareQuoteViaWhatsApp(opts: {
     dialogTitle: message,
     UTI: 'com.adobe.pdf',
   });
+  return { attached: true, downloaded: false };
 }

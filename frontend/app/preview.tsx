@@ -112,7 +112,13 @@ export default function PreviewScreen() {
   const doWhatsAppShare = async () => {
     try {
       const { uri, fileName } = await generatePdf();
-      await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
+      const result = await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
+      // WhatsApp's web/deep-link URLs can never carry a file — when the native
+      // share sheet isn't available we download the PDF and open the chat, so
+      // let the user know the one manual step they still need to do.
+      if (result.downloaded) {
+        showToast('PDF indirildi — WhatsApp’ta açılan sohbete dosyayı sürükleyip bırakın');
+      }
     } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
   };
 
@@ -205,7 +211,7 @@ export default function PreviewScreen() {
               ['E-Mail', quote.musEmail],
               ['ADRES', quote.musAdres],
             ]} />
-            <InfoBox title="SİPARİŞ BİLGİLERİ" rows={[
+            <InfoBox title="SİPARİŞ BİLGD�LERİ" rows={[
               ['PROJE ADI', quote.projeAdi],
               ['NAKLİYE', quote.nakliye],
               ['PARA BİRİM', quote.paraBirimi],

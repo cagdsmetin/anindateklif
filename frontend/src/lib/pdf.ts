@@ -389,11 +389,15 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   .info-k { display:table-cell; width:36%; font-size:7.4pt; color:#9a998f; text-transform:uppercase; letter-spacing:.3px; vertical-align:top; padding:1px 0; }
   .info-v { display:table-cell; font-size:8.7pt; font-weight:600; vertical-align:top; padding:1px 0; }
 
-  /* Items table */
-  table.items { width:100%; border-collapse:collapse; margin-bottom:10px; }
-  table.items thead th { background:#1c1c1e; color:#fff; font-size:7.3pt; text-transform:uppercase; letter-spacing:.6px; padding:8px 9px; text-align:left; font-weight:700; }
+  /* Items table — bordered box + column dividers so the grid reads clearly on
+     print/PDF instead of relying only on the zebra-stripe row background. */
+  table.items { width:100%; border-collapse:collapse; margin-bottom:10px; border:1px solid #1c1c1e; }
+  table.items thead th { background:#1c1c1e; color:#fff; font-size:7.3pt; text-transform:uppercase; letter-spacing:.6px; padding:8px 9px; text-align:left; font-weight:700; border-right:1px solid rgba(255,255,255,0.18); }
+  table.items thead th:last-child { border-right:none; }
   table.items thead th.num { text-align:right; }
-  table.items tbody td { padding:7px 9px; border-bottom:1px solid #e4e1d8; font-size:8.8pt; vertical-align:top; }
+  table.items tbody td { padding:7px 9px; border-bottom:1px solid #e4e1d8; border-right:1px solid #e4e1d8; font-size:8.8pt; vertical-align:top; }
+  table.items tbody td:last-child { border-right:none; }
+  table.items tbody tr:last-child td { border-bottom:none; }
   table.items tbody tr:nth-child(even) { background:#efece3; }
   td.c-idx { color:#9a998f; width:22px; font-weight:600; }
   td.c-num { text-align:right; white-space:nowrap; }
@@ -631,11 +635,15 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .info-line-k { display:table-cell; width:42%; font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.1pt; text-transform:uppercase; letter-spacing:.4px; color:#8a8478; vertical-align:top; }
   .info-line-v { display:table-cell; font-size:8.8pt; vertical-align:top; }
 
-  /* Items */
-  table.items { width:100%; border-collapse:collapse; margin-bottom:22px; }
-  table.items thead th { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.8pt; letter-spacing:1.2px; text-transform:uppercase; color:#8a8478; border-bottom:1px solid #2b2926; padding:0 8px 9px; text-align:left; font-weight:400; }
+  /* Items — bordered box + column dividers so the grid reads clearly on
+     print/PDF instead of relying only on the thin row underlines. */
+  table.items { width:100%; border-collapse:collapse; margin-bottom:22px; border:1px solid #2b2926; }
+  table.items thead th { font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.8pt; letter-spacing:1.2px; text-transform:uppercase; color:#8a8478; border-bottom:1px solid #2b2926; border-right:1px solid #2b2926; padding:7px 8px 9px; text-align:left; font-weight:400; }
+  table.items thead th:last-child { border-right:none; }
   table.items thead th.num { text-align:right; }
-  table.items tbody td { padding:11px 8px; border-bottom:1px solid #e5e0d4; font-size:9pt; vertical-align:top; }
+  table.items tbody td { padding:11px 8px; border-bottom:1px solid #e5e0d4; border-right:1px solid #e5e0d4; font-size:9pt; vertical-align:top; }
+  table.items tbody td:last-child { border-right:none; }
+  table.items tbody tr:last-child td { border-bottom:none; }
   td.c-idx { font-size:13pt; color:#ddd1bd; font-weight:700; width:32px; font-family:'Helvetica Neue', Arial, sans-serif; }
   td.c-num { text-align:right; white-space:nowrap; font-family:'Helvetica Neue', Arial, sans-serif; }
   td.c-total { font-weight:700; }

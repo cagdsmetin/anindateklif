@@ -174,6 +174,11 @@ export default function PreviewScreen() {
               band even when the two columns end up different heights. */}
           <View style={s.sheetHeader}>
             <View style={s.headerLeft}>
+              {activeCompany.logoBase64 ? (
+                <Image source={{ uri: activeCompany.logoBase64 }} style={s.logo} resizeMode="contain" />
+              ) : (
+                <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{(activeCompany.sirketAdi || 'FIRMA').substring(0, 14)}</Text></View>
+              )}
               <Text style={s.cName} numberOfLines={2}>{activeCompany.sirketAdi}</Text>
               {activeCompany.adres ? <Text style={s.cLine}>{activeCompany.adres}</Text> : null}
               {activeCompany.telefon ? <Text style={s.cLine}>{activeCompany.telefon}</Text> : null}
@@ -182,11 +187,6 @@ export default function PreviewScreen() {
               {activeCompany.website ? <Text style={s.cLine}>{activeCompany.website}</Text> : null}
             </View>
             <View style={s.headerRight}>
-              {activeCompany.logoBase64 ? (
-                <Image source={{ uri: activeCompany.logoBase64 }} style={s.logo} resizeMode="contain" />
-              ) : (
-                <View style={s.logoBox}><Text style={s.logoText} numberOfLines={1}>{(activeCompany.sirketAdi || 'FIRMA').substring(0, 14)}</Text></View>
-              )}
               <Text style={s.docTitle}>TEKLİF FORMU</Text>
               <View style={s.metaTable}>
                 <View style={s.metaRow}><Text style={s.metaK}>Teklif No</Text><Text style={s.metaV} numberOfLines={1}>{quote.teklifNo}</Text></View>
@@ -208,7 +208,7 @@ export default function PreviewScreen() {
             <InfoBox title="SİPARİŞ BİLGİLERİ" rows={[
               ['PROJE ADI', quote.projeAdi],
               ['NAKLİYE', quote.nakliye],
-              ['PARA BİRİMİ', quote.paraBirimi],
+              ['PARA BİRİM', quote.paraBirimi],
               ['ÖDEME ŞEKLİ', quote.odemeSekli],
               ['MENŞEİ', quote.mensei],
               ['TESLİM', quote.teslimGun],
@@ -241,7 +241,7 @@ export default function PreviewScreen() {
             })}
           </View>
 
-          <Text style={s.warn}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ.</Text>
+          <Text style={s.warn}>ÖLÇÜ VE ÖZELLİKLERİ DİKKATLI KONTROL EDİNİZ.</Text>
           <Text style={s.kdvBanner}>KDV HARİÇ FİYATTIR</Text>
 
           {/* Bottom */}
@@ -332,7 +332,7 @@ const s = StyleSheet.create({
   templateChipTextActive: { color: theme.colors.primary },
   webviewWrap: { flex: 1, backgroundColor: '#e9edf2' },
   webview: { flex: 1, backgroundColor: 'transparent' },
-  sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
+  sheet: { backgroundColor: '#fff', borderRadius: 10, padding: 18, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md },
   // Header uses a strict two-column layout with `alignItems: flex-start` so both
   // columns start at the exact same top edge — mirrors the PDF <table> layout.
   // A navy rule under the whole block turns it into one letterhead band, same
@@ -341,10 +341,10 @@ const s = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingBottom: 12, marginBottom: 12, borderBottomWidth: 2.5, borderBottomColor: theme.colors.navy },
   headerLeft: { flex: 1.15, paddingRight: 10 },
   headerRight: { flex: 1, alignItems: 'flex-end', paddingLeft: 10 },
-  cName: { fontSize: 13.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 5, lineHeight: 16.5 },
-  cLine: { fontSize: 10.5, color: '#333', lineHeight: 15, marginBottom: 1 },
-  logo: { width: 140, height: 50, marginBottom: 7 },
-  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 6, paddingHorizontal: 11, marginBottom: 7, alignSelf: 'flex-end' },
+  cName: { fontSize: 15.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, lineHeight: 19 },
+  cLine: { fontSize: 12, color: '#333', lineHeight: 17, marginBottom: 2 },
+  logo: { width: 150, height: 56, marginBottom: 9, alignSelf: 'flex-start' },
+  logoBox: { borderWidth: 2, borderColor: theme.colors.navy, paddingVertical: 6, paddingHorizontal: 11, marginBottom: 9, alignSelf: 'flex-start' },
   logoText: { fontSize: 11.5, fontWeight: '900', color: theme.colors.navy },
   docTitle: { fontSize: 19.5, fontWeight: '900', color: theme.colors.navy, marginBottom: 7, letterSpacing: 0.5, textAlign: 'right' },
   metaTable: { alignSelf: 'flex-end' },

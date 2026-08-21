@@ -363,7 +363,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     font-size:9.5pt;
     line-height:1.45;
   }
-  .sheet { padding: 0; }
+  .sheet { padding: 14mm 13mm 16mm 13mm; } /* real padding — @page margin is ignored by html2canvas on web */
 
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:2.5px solid #1c1c1e; margin-bottom:16px; }
@@ -608,6 +608,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     background:#fbfaf7;
     font-size:9.5pt;
     line-height:1.6;
+    padding: 18mm 16mm 20mm 16mm; /* real padding — @page margin is ignored by html2canvas on web */
   }
   .label, .sans { font-family: 'Helvetica Neue', Arial, 'Segoe UI', sans-serif; }
 

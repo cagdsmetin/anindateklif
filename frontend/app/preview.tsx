@@ -286,7 +286,7 @@ export default function PreviewScreen() {
       )}
 
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
-        <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/', params: { quoteId: quote.id } })} testID="preview-edit-btn">
+        <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: quote.id } })} testID="preview-edit-btn">
           <Ionicons name="pencil" size={16} color={theme.colors.textSoft} />
           <Text style={s.actionBtnGhostText}>Düzenle</Text>
         </TouchableOpacity>

@@ -35,7 +35,7 @@ export default function TabsLayout() {
   const m = theme.colors.modules;
   return (
     <Tabs
-      initialRouteName="panel"
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -50,7 +50,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="panel"
+        name="index"
         options={{
           title: 'Panel',
           tabBarIcon: tabIcon('grid', theme.colors.primary),
@@ -58,7 +58,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="teklif"
         options={{
           title: 'Teklif',
           tabBarIcon: tabIcon('create', m.teklif),

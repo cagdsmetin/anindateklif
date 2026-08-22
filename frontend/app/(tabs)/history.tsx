@@ -87,7 +87,7 @@ export default function HistoryScreen() {
     .map((c) => fmt(monthTotalsByCurrency[c], c))
     .join(', ');
 
-  const openEdit = (id: string) => router.push({ pathname: '/(tabs)/', params: { quoteId: id } });
+  const openEdit = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: id } });
 
   const generatePdf = async (quote: QuoteT): Promise<{ uri: string; fileName: string } | null> => {
     if (!activeCompany) return null;

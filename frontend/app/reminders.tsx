@@ -187,7 +187,7 @@ export default function RemindersScreen() {
               sub={`Geçerlilik: ${trDate(q.gecerlilik)}`}
               badge={urgency(days)}
               label={urgency(days).label}
-              onPress={() => router.push({ pathname: '/(tabs)/', params: { quoteId: q.id } } as any)}
+              onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: q.id } } as any)}
               phone={q.musTelefon}
               waMessage={`Merhaba ${q.musYetkili || q.musFirma || ''},\n\n${q.teklifNo} numaralı teklifinizin geçerlilik süresi ${trDate(q.gecerlilik)} tarihinde sona eriyor. Teklifi onaylamak veya güncellemek isterseniz bize ulaşabilirsiniz.\n\nİyi çalışmalar dileriz,\n${sirketAdi}`}
               onHide={() => hide(`t-${q.id}`)}

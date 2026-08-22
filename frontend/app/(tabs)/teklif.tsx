@@ -78,6 +78,9 @@ export default function EditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+  // Tracks whether the person has hand-edited the Teklif No field — once
+  // they have, the auto-numbering effect below stops overwriting it.
+  const teklifNoManualRef = useRef(false);
 
   // Live "Firma Adı" autocomplete — suggests previously saved customers as the
   // user types, so name/phone/e-mail/address can be filled with one tap
@@ -95,15 +98,15 @@ export default function EditorScreen() {
     }
   }, [params.quoteId, quotes]);
 
-  // Quotes may still be loading when this screen first mounts for a brand
-  // new (non-edit) quote, so the initial Teklif No could be numbered before
-  // today's existing quotes were counted. Re-sync it once loading finishes.
+  // `quotes` loads asynchronously (after `loading` already flips to false),
+  // so the initial Teklif No may be numbered before today's quotes were
+  // actually counted. Keep it in sync with `quotes` for a brand new,
+  // untouched quote — stop the moment the person edits it by hand.
   useEffect(() => {
-    if (!loading && !params.quoteId && !editingId && bootedRef.current === null) {
+    if (!params.quoteId && !editingId && !teklifNoManualRef.current) {
       setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [quotes, params.quoteId, editingId]);
 
   const loadFromQuote = (q: QuoteT) => {
     setEditingId(q.id); setTeklifNo(q.teklifNo); setTarih(q.tarih); setGecerlilik(q.gecerlilik);
@@ -119,6 +122,7 @@ export default function EditorScreen() {
     setHazirlayanEmail(activeCompany?.hazirlayanEmails?.[0] || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); bootedRef.current = null;
+    teklifNoManualRef.current = false;
   }, [activeCompany, quotes]);
 
   const pickAttachments = async () => {
@@ -348,7 +352,7 @@ export default function EditorScreen() {
             </FGroup>
           ) : null}
           <Row>
-            <FGroup label="Teklif No" flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={setTeklifNo} testID="teklif-no-input" /></FGroup>
+            <FGroup label="Teklif No" flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
             <FGroup label="Tarih" flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
           </Row>
           <FGroup label="Geçerlilik Tarihi"><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>

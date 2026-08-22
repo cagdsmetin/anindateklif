@@ -91,7 +91,17 @@ export default function EditorScreen() {
   const [showSystemPicker, setShowSystemPicker] = useState<string | null>(null); // itemId
   const [showSelectPicker, setShowSelectPicker] = useState<{ itemId: string; fieldId: string; options: string[]; title: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+
+  // Live "Firma Adı" autocomplete — suggests previously saved customers as the
+  // user types, so name/phone/e-mail/address can be filled with one tap
+  // instead of retyping them for a returning customer.
+  const firmaSuggestions = useMemo(() => {
+    const q = musFirma.trim().toLowerCase();
+    if (!q) return [];
+    return customers.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 6);
+  }, [musFirma, customers]);
 
   useEffect(() => {
     if (params.quoteId && bootedRef.current !== params.quoteId) {
@@ -197,7 +207,7 @@ export default function EditorScreen() {
   const fillFromCustomer = (id: string) => {
     const c = customers.find((x) => x.id === id); if (!c) return;
     setMusFirma(c.firma); setMusYetkili(c.yetkili); setMusTelefon(c.telefon); setMusEmail(c.email); setMusAdres(c.adres);
-    setShowCustomerPicker(false); showToast('Müşteri bilgileri dolduruldu');
+    setShowCustomerPicker(false); setShowFirmaSuggestions(false); showToast('Müşteri bilgileri dolduruldu');
   };
 
   const selectSystemType = (itemId: string, sys: SystemTypeDefT) => {
@@ -349,7 +359,37 @@ export default function EditorScreen() {
           <FGroup label="Geçerlilik Tarihi"><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
 
           <SectionHeaderWithAction title="MÜŞTERİ BİLGİLERİ" actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} />
-          <FGroup label="Firma Adı"><TextInput style={s.input} placeholder="Müşteri firma adı" placeholderTextColor="#94a3b8" value={musFirma} onChangeText={setMusFirma} testID="mus-firma-input" /></FGroup>
+          <View style={{ marginBottom: 8, zIndex: 20 }}>
+            <Text style={s.label}>Firma Adı</Text>
+            <TextInput
+              style={s.input}
+              placeholder="Müşteri firma adı"
+              placeholderTextColor="#94a3b8"
+              value={musFirma}
+              onChangeText={(v) => { setMusFirma(v); setShowFirmaSuggestions(true); }}
+              onFocus={() => setShowFirmaSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowFirmaSuggestions(false), 150)}
+              testID="mus-firma-input"
+            />
+            {showFirmaSuggestions && firmaSuggestions.length > 0 ? (
+              <View style={s.suggestBox}>
+                {firmaSuggestions.map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={s.suggestRow}
+                    onPress={() => fillFromCustomer(c.id)}
+                    testID={`firma-suggest-${c.id}`}
+                  >
+                    <Ionicons name="business-outline" size={14} color={theme.colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.suggestName} numberOfLines={1}>{c.firma}</Text>
+                      <Text style={s.suggestSub} numberOfLines={1}>{[c.yetkili, c.telefon, c.email].filter(Boolean).join(' • ') || '-'}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+          </View>
           <Row>
             <FGroup label="Müşteri Adı" flex={1}><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder="Ad Soyad" placeholderTextColor="#94a3b8" /></FGroup>
             <FGroup label="Telefon" flex={1}><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder="Telefon" placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
@@ -898,6 +938,24 @@ const s = StyleSheet.create({
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 14, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
+  suggestBox: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: theme.colors.lineDark,
+    borderRadius: 10,
+    paddingVertical: 4,
+    ...theme.shadow.sm,
+    zIndex: 30,
+    elevation: 6,
+  },
+  suggestRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
+  suggestName: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
+  suggestSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
   selectBox: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectText: { fontSize: 13, color: theme.colors.text, flex: 1 },
   chipRow: { flexDirection: 'row', gap: 4 },

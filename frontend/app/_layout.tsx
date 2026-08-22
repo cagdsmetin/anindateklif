@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, LogBox, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
@@ -62,43 +62,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppProvider>
-          <WebFrame>
-            <RouteGuard>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
-            </RouteGuard>
-          </WebFrame>
+          <RouteGuard>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
+          </RouteGuard>
         </AppProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
-
-// On the web, a phone-shaped UI stretched edge-to-edge across a wide desktop
-// browser window looks broken. Constrain it to a comfortable, centered
-// column on large screens while leaving mobile browsers untouched (the
-// max-width simply never kicks in below that width).
-function WebFrame({ children }: { children: React.ReactNode }) {
-  if (Platform.OS !== 'web') return <>{children}</>;
-  return (
-    <View style={webStyles.outer}>
-      <View style={webStyles.inner}>{children}</View>
-    </View>
-  );
-}
-
-const webStyles = StyleSheet.create({
-  outer: {
-    flex: 1,
-    alignItems: 'center',
-    // @ts-ignore web-only CSS custom property fallback
-    backgroundColor: '#E2E8F0',
-  },
-  inner: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 480,
-    backgroundColor: '#fff',
-    // @ts-ignore web-only box shadow, ignored on native
-    boxShadow: '0 0 40px rgba(15,23,42,0.12)',
-  },
-});

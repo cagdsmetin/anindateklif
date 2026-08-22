@@ -1,4 +1,4 @@
-import type { QuoteItemT } from './api';
+import type { QuoteItemT, QuoteT } from './api';
 
 /**
  * Builds the "SİSTEM / HİZMET" cell text for a quote item based on its mode.
@@ -54,13 +54,23 @@ export function buildQuoteFileName(d: Date = new Date()): string {
 }
 
 /**
- * Auto-generated Teklif No shown on the PDF header (short form).
- * Matches example: 2026-260806 → YYYY-DDMMHH
+ * Counts how many quotes were already created "today" (matched by the
+ * quote's `tarih` field, YYYY-MM-DD) — used to number today's next quote.
  */
-export function buildTeklifNo(d: Date = new Date()): string {
+export function countQuotesToday(quotes: QuoteT[], d: Date = new Date()): number {
+  const todayIso = d.toISOString().split('T')[0];
+  return quotes.filter((q) => q.tarih === todayIso).length;
+}
+
+/**
+ * Auto-generated Teklif No shown on the PDF header (short form).
+ * Format: YYYY-DDMMNN, where NN is that day's quote sequence (01, 02, ...).
+ * Example: the 1st quote created on 2026-08-22 → 2026-220801
+ */
+export function buildTeklifNo(seq: number = 1, d: Date = new Date()): string {
   const yyyy = d.getFullYear();
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  return `${yyyy}-${dd}${mm}${hh}`;
+  const nn = String(Math.max(1, seq)).padStart(2, '0');
+  return `${yyyy}-${dd}${mm}${nn}`;
 }

@@ -22,7 +22,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
-import { buildItemDescription, buildQuoteFileName, buildTeklifNo } from '@/src/lib/quote-utils';
+import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
@@ -47,7 +47,7 @@ export default function EditorScreen() {
   const params = useLocalSearchParams<{ quoteId?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
-  const [teklifNo, setTeklifNo] = useState(buildTeklifNo());
+  const [teklifNo, setTeklifNo] = useState(() => buildTeklifNo(countQuotesToday(quotes) + 1));
   const [tarih, setTarih] = useState(todayIso());
   const [gecerlilik, setGecerlilik] = useState(plusDaysIso(7));
   const [hazirlayanEmail, setHazirlayanEmail] = useState('');
@@ -95,6 +95,16 @@ export default function EditorScreen() {
     }
   }, [params.quoteId, quotes]);
 
+  // Quotes may still be loading when this screen first mounts for a brand
+  // new (non-edit) quote, so the initial Teklif No could be numbered before
+  // today's existing quotes were counted. Re-sync it once loading finishes.
+  useEffect(() => {
+    if (!loading && !params.quoteId && !editingId && bootedRef.current === null) {
+      setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   const loadFromQuote = (q: QuoteT) => {
     setEditingId(q.id); setTeklifNo(q.teklifNo); setTarih(q.tarih); setGecerlilik(q.gecerlilik);
     setHazirlayanEmail(q.hazirlayanEmail); setMusFirma(q.musFirma); setMusYetkili(q.musYetkili);
@@ -105,11 +115,11 @@ export default function EditorScreen() {
   };
 
   const resetForm = useCallback(() => {
-    setEditingId(undefined); setTeklifNo(buildTeklifNo()); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
+    setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(activeCompany?.hazirlayanEmails?.[0] || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); bootedRef.current = null;
-  }, [activeCompany]);
+  }, [activeCompany, quotes]);
 
   const pickAttachments = async () => {
     try {

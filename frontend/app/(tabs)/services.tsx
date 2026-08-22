@@ -126,7 +126,7 @@ export default function ServicesScreen() {
           />
         </View>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
         {['Tümü', ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
             <Text style={[s.filterText, filter === st && s.filterTextActive]}>{st}</Text>
@@ -237,7 +237,8 @@ const s = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: 8, fontSize: 13, color: theme.colors.text },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  filterRowOuter: { flexGrow: 0, height: 52 },
+  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
   filterChip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },

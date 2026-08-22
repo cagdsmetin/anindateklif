@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -51,6 +51,17 @@ FREE_ACCESS_EMAILS = set(
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "https://anindateklif-production.up.railway.app")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://just-mercy-production.up.railway.app")
 WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
+
+# Explicit CORS allowlist — override via the ALLOWED_ORIGINS env var (comma
+# separated) if a new frontend domain goes live without a code change.
+ALLOWED_ORIGINS = [
+    o.strip() for o in os.environ.get(
+        "ALLOWED_ORIGINS",
+        f"{FRONTEND_BASE_URL},https://anindateklif.co,https://www.anindateklif.co",
+    ).split(",") if o.strip()
+]
+
+MAX_LOGO_BASE64_CHARS = 2_800_000  # ~2MB decoded
 
 IYZICO_API_KEY = os.environ.get("IYZICO_API_KEY", "")
 IYZICO_SECRET_KEY = os.environ.get("IYZICO_SECRET_KEY", "")
@@ -135,6 +146,34 @@ def _verify_password(p: str, h: str) -> bool:
 
 def _sha256(v: str) -> str:
     return hashlib.sha256(v.encode()).hexdigest()
+
+
+# ============ RATE LIMITING ============
+# Simple in-memory sliding window — enough for a single-replica deploy. If
+# this service ever scales to multiple replicas, swap the dict below for a
+# shared store (e.g. Redis) so limits are enforced consistently across them.
+import time as _time
+from collections import defaultdict as _defaultdict
+
+_rate_buckets: Dict[str, list] = _defaultdict(list)
+
+
+def _rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
+    now = _time.time()
+    bucket = _rate_buckets[key]
+    cutoff = now - window_seconds
+    while bucket and bucket[0] < cutoff:
+        bucket.pop(0)
+    if len(bucket) >= max_requests:
+        raise HTTPException(status_code=429, detail="Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.")
+    bucket.append(now)
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 async def _send_password_reset_email(to_email: str, reset_link: str):
@@ -263,6 +302,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         raise HTTPException(status_code=401, detail="Session expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    if payload.get("jti") and await db.revoked_tokens.find_one({"jti": payload["jti"]}):
+        raise HTTPException(status_code=401, detail="Session expired")
     user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -340,7 +381,8 @@ async def _enforce_and_increment_quota(user: Dict[str, Any]):
 
 
 @api_router.post("/auth/register", response_model=AuthResponse, status_code=201)
-async def register(payload: RegisterRequest):
+async def register(payload: RegisterRequest, request: Request):
+    _rate_limit(f"register:ip:{_client_ip(request)}", 8, 3600)
     email = _normalize_email(payload.email)
     if await db.users.find_one({"email": email}, {"_id": 0}):
         raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı")
@@ -364,8 +406,10 @@ async def register(payload: RegisterRequest):
 
 
 @api_router.post("/auth/login", response_model=AuthResponse)
-async def login(payload: LoginRequest):
+async def login(payload: LoginRequest, request: Request):
     email = _normalize_email(payload.email)
+    _rate_limit(f"login:ip:{_client_ip(request)}", 20, 300)
+    _rate_limit(f"login:email:{email}", 8, 900)
     u = await db.users.find_one({"email": email}, {"_id": 0})
     # timing-safe check
     valid = _verify_password(payload.password, u["hashed_password"] if u else _DUMMY_HASH)
@@ -376,9 +420,11 @@ async def login(payload: LoginRequest):
 
 
 @api_router.post("/auth/forgot-password")
-async def forgot_password(payload: ForgotPasswordRequest):
+async def forgot_password(payload: ForgotPasswordRequest, request: Request):
     # Always respond identically to prevent enumeration.
     email = _normalize_email(payload.email)
+    _rate_limit(f"forgot:ip:{_client_ip(request)}", 10, 3600)
+    _rate_limit(f"forgot:email:{email}", 3, 900)
     u = await db.users.find_one({"email": email}, {"_id": 0})
     if u:
         raw = py_secrets.token_urlsafe(32)
@@ -390,13 +436,15 @@ async def forgot_password(payload: ForgotPasswordRequest):
         })
         reset_link = f"{FRONTEND_BASE_URL.rstrip('/')}/reset-password?token={raw}"
         await _send_password_reset_email(email, reset_link)
-        # Also logged for local/dev visibility when RESEND_API_KEY isn't set.
-        logging.info(f"[PasswordReset] {email} token={raw}")
+        # Intentionally not logging the raw token/link — anyone with log
+        # access could otherwise hijack the reset.
+        logging.info(f"[PasswordReset] Reset link issued for {email}")
     return {"message": "Eğer bu e-posta kayıtlıysa, sıfırlama bağlantısı gönderildi."}
 
 
 @api_router.post("/auth/reset-password")
-async def reset_password(payload: ResetPasswordRequest):
+async def reset_password(payload: ResetPasswordRequest, request: Request):
+    _rate_limit(f"reset:ip:{_client_ip(request)}", 20, 900)
     doc = await db.password_resets.find_one({"token_hash": _sha256(payload.token), "used_at": None}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=400, detail="Geçersiz veya kullanılmış sıfırlama bağlantısı")
@@ -433,8 +481,29 @@ async def update_me(payload: UserProfileUpdate, user=Depends(get_current_user)):
 
 
 @api_router.post("/auth/logout")
-async def auth_logout():
-    # Stateless JWT — client discards token. Return OK for API symmetry.
+async def auth_logout(authorization: Optional[str] = Header(None)):
+    # Revoke this specific token server-side (by jti) so a stolen/leaked
+    # token stops working immediately instead of staying valid until it
+    # naturally expires.
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:].strip()
+        try:
+            payload = jwt.decode(
+                token, JWT_SECRET, algorithms=[JWT_ALGORITHM],
+                issuer=JWT_ISSUER, audience=JWT_AUDIENCE,
+                options={"verify_exp": False},
+            )
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if jti:
+                expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else _utc() + timedelta(minutes=ACCESS_TOKEN_MINUTES)
+                await db.revoked_tokens.update_one(
+                    {"jti": jti},
+                    {"$set": {"jti": jti, "revoked_at": utc_now_iso(), "expires_at": expires_at}},
+                    upsert=True,
+                )
+        except Exception:
+            pass
     return {"ok": True}
 
 
@@ -496,6 +565,13 @@ class CompanyCreate(BaseModel):
     banklar: List[BankAccount] = Field(default_factory=list)
     hazirlayanEmails: List[str] = Field(default_factory=list)
     sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
+
+    @field_validator("logoBase64")
+    @classmethod
+    def _logo_size(cls, v: str) -> str:
+        if v and len(v) > MAX_LOGO_BASE64_CHARS:
+            raise ValueError("Logo dosyası çok büyük (maksimum ~2MB)")
+        return v
 
 
 class CatalogItem(BaseModel):
@@ -1192,10 +1268,22 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -1208,6 +1296,8 @@ async def on_startup():
         await db.users.create_index("user_id", unique=True)
         await db.password_resets.create_index("token_hash", unique=True)
         await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
+        await db.revoked_tokens.create_index("jti", unique=True)
+        await db.revoked_tokens.create_index("expires_at", expireAfterSeconds=0)
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 

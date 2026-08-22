@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, LogBox, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
@@ -62,33 +62,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppProvider>
-          <WebFrame>
-            <RouteGuard>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
-            </RouteGuard>
-          </WebFrame>
+          <RouteGuard>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
+          </RouteGuard>
         </AppProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
-
-// Desktop web only: this is a phone-first UI, so on a wide monitor letting
-// every card/button stretch edge-to-edge just spreads them thin with dead
-// space in between. Cap the content at a comfortable reading width and
-// center it — no box, no shadow, no background color change, just a quiet
-// width limit. Mobile browsers are already narrower than the cap, so
-// nothing changes there.
-function WebFrame({ children }: { children: React.ReactNode }) {
-  if (Platform.OS !== 'web') return <>{children}</>;
-  return <View style={webStyles.center}>{children}</View>;
-}
-
-const webStyles = StyleSheet.create({
-  center: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
-  },
-});

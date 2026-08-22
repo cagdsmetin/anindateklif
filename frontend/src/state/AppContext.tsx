@@ -357,7 +357,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       mensei: quote.mensei || 'TÜRKİYE',
       teslimGun: quote.teslimGun || '',
       iskonto: Number(quote.iskonto) || 0,
-      kdvOrani: Number(quote.kdvOrani) || 20,
+      kdvOrani: Number(quote.kdvOrani ?? 20),
       notlar: quote.notlar || '',
       items: (quote.items || []).map((it) => ({
         id: it.id,

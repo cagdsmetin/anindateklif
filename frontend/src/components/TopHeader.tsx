@@ -22,7 +22,12 @@ export default function TopHeader({ title }: { title?: string }) {
         </View>
       )}
       <View style={s.header}>
-        <View style={s.brand}>
+        <TouchableOpacity
+          style={s.brand}
+          activeOpacity={0.7}
+          onPress={() => router.push('/(tabs)')}
+          testID="brand-home-btn"
+        >
           <View style={s.brandIcon}>
             <Ionicons name="flash" size={17} color="#fff" />
           </View>
@@ -32,7 +37,7 @@ export default function TopHeader({ title }: { title?: string }) {
               {title || activeCompany?.sirketAdi || 'Firma seçiniz'}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={s.rightActions}>
           <TouchableOpacity
             testID="company-picker-btn"

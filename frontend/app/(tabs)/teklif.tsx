@@ -448,7 +448,7 @@ export default function EditorScreen() {
             <View style={s.warningBox}>
               <Ionicons name="warning" size={16} color={theme.colors.gold} />
               <Text style={s.warningText}>
-                Henüz hizmet / ürün tanımlamadınız. <Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/company')}>Firma sekmesinden</Text> Hizmet / Ürün Yapılandırıcı ile tanımlayın.
+                Henüz hizmet / ürün tanımlamadınız. <Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/catalog')}>Katalog sekmesinden</Text> Hizmet / Ürün Yapılandırıcı ile tanımlayın.
               </Text>
             </View>
           )}

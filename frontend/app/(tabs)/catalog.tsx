@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -18,7 +18,16 @@ import * as XLSX from 'xlsx';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { CatalogItemT } from '@/src/lib/api';
+import { CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
+
+const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
+  { value: 'text', label: 'Metin', icon: 'text-outline' },
+  { value: 'number', label: 'Sayı', icon: 'calculator-outline' },
+  { value: 'select', label: 'Liste', icon: 'list-outline' },
+  { value: 'checkbox', label: 'Onay', icon: 'checkbox-outline' },
+];
+
+const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -134,13 +143,71 @@ function sheetToRows(wb: XLSX.WorkBook): string[][] {
 }
 
 export default function CatalogScreen() {
-  const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, showToast } = useApp();
+  const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, updateCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const [showForm, setShowForm] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [editing, setEditing] = useState<CatalogItemT | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [q, setQ] = useState('');
+
+  // --- Hizmet / Ürün Yapılandırıcı (seçenekli sistemler) -------------------
+  const [sistemTipleri, setSistemTipleri] = useState<SystemTypeDefT[]>(activeCompany?.sistemTipleri || []);
+  const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
+  const [newSystemName, setNewSystemName] = useState('');
+  const [showAddField, setShowAddField] = useState<string | null>(null);
+  const [newField, setNewField] = useState<{ label: string; type: SystemField['type']; options: string[]; optionInput: string }>({ label: '', type: 'text', options: [], optionInput: '' });
+
+  useEffect(() => { setSistemTipleri(activeCompany?.sistemTipleri || []); }, [activeCompany]);
+
+  const persistSystems = async (next: SystemTypeDefT[]) => {
+    setSistemTipleri(next);
+    if (!activeCompany) return;
+    try { await updateCompany(activeCompany.id, { sistemTipleri: next }); }
+    catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
+  };
+
+  const addSystemType = () => {
+    if (!newSystemName.trim()) return;
+    const sys: SystemTypeDefT = { id: uid(), name: newSystemName.trim(), fields: [] };
+    persistSystems([...sistemTipleri, sys]);
+    setNewSystemName('');
+    setExpandedSystem(sys.id);
+  };
+  const updateSystemName = (id: string, name: string) => setSistemTipleri(sistemTipleri.map((s) => (s.id === id ? { ...s, name } : s)));
+  const commitSystemName = () => persistSystems(sistemTipleri);
+  const removeSystemType = (id: string) => persistSystems(sistemTipleri.filter((s) => s.id !== id));
+
+  const openAddField = (sysId: string) => {
+    setShowAddField(sysId);
+    setNewField({ label: '', type: 'text', options: [], optionInput: '' });
+  };
+  const commitAddField = () => {
+    if (!showAddField || !newField.label.trim()) { showToast('Alan adı zorunlu'); return; }
+    const field: SystemField = {
+      id: uid(),
+      label: newField.label.trim(),
+      type: newField.type,
+      options: newField.type === 'select' ? newField.options : [],
+    };
+    if (newField.type === 'select' && field.options.length === 0) { showToast('Liste tipi için en az bir seçenek ekleyin'); return; }
+    persistSystems(sistemTipleri.map((s) => (s.id === showAddField ? { ...s, fields: [...(s.fields || []), field] } : s)));
+    setShowAddField(null);
+  };
+  const removeField = (sysId: string, fieldId: string) => persistSystems(
+    sistemTipleri.map((s) => (s.id === sysId ? { ...s, fields: (s.fields || []).filter((f) => f.id !== fieldId) } : s))
+  );
+  const moveField = (sysId: string, fromIdx: number, direction: -1 | 1) => {
+    const next = sistemTipleri.map((sys) => {
+      if (sys.id !== sysId) return sys;
+      const fields = [...(sys.fields || [])];
+      const toIdx = fromIdx + direction;
+      if (toIdx < 0 || toIdx >= fields.length) return sys;
+      [fields[fromIdx], fields[toIdx]] = [fields[toIdx], fields[fromIdx]];
+      return { ...sys, fields };
+    });
+    persistSystems(next);
+  };
 
   const [f, setF] = useState({
     kategori: 'Genel',
@@ -334,6 +401,98 @@ export default function CatalogScreen() {
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* System Configurator — the star of the show */}
+        <Text style={s.sectionH}>🎯 HİZMET / ÜRÜN YAPILANDIRICI</Text>
+        <Text style={s.hint}>{"Her hizmeti veya ürünü bir kere tanımlayın (Örn: Cam Balkon → Cam Tipi, Profil Rengi, Ölçü, Motor). Teklif oluştururken sadece seçenekleri tıklayarak ilerleyeceksiniz. Alanları sürükleme tutamağıyla yeniden sıralayabilirsiniz — bu sıra hem form hem PDF'de birebir kullanılır."}</Text>
+
+        {sistemTipleri.map((sys) => {
+          const isExpanded = expandedSystem === sys.id;
+          return (
+            <View key={sys.id} style={s.systemCard} testID={`system-${sys.id}`}>
+              <TouchableOpacity style={s.systemHdr} onPress={() => setExpandedSystem(isExpanded ? null : sys.id)}>
+                <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.systemName}>{sys.name || '(Adsız Hizmet / Ürün)'}</Text>
+                  <Text style={s.systemMeta}>{(sys.fields || []).length} alan tanımlı</Text>
+                </View>
+                <TouchableOpacity onPress={() => removeSystemType(sys.id)}>
+                  <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
+                </TouchableOpacity>
+              </TouchableOpacity>
+
+              {isExpanded && (
+                <View style={s.systemBody}>
+                  <FieldGroup label="Hizmet / Ürün Adı">
+                    <TextInput
+                      style={s.input}
+                      value={sys.name}
+                      onChangeText={(v) => updateSystemName(sys.id, v)}
+                      onEndEditing={commitSystemName}
+                      onBlur={commitSystemName}
+                      placeholder="Örn: Cam Balkon"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </FieldGroup>
+                  <Text style={s.subLabel}>ALT ALANLAR ({(sys.fields || []).length})</Text>
+                  {(sys.fields || []).length === 0 && <Text style={s.hintMuted}>Henüz alan eklenmedi</Text>}
+                  {(sys.fields || []).map((f, fi) => {
+                    const typeMeta = FIELD_TYPES.find((t) => t.value === f.type);
+                    const isFirst = fi === 0;
+                    const isLast = fi === (sys.fields || []).length - 1;
+                    return (
+                      <View key={f.id} style={s.fieldRow} testID={`field-${f.id}`}>
+                        <View style={s.dragHandle} accessibilityLabel="Sıralama tutamağı">
+                          <Ionicons name="reorder-two" size={18} color={theme.colors.textMuted} />
+                        </View>
+                        <Ionicons name={(typeMeta?.icon as any) || 'square-outline'} size={14} color={theme.colors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
+                          <Text style={s.fieldType}>
+                            {typeMeta?.label}{f.type === 'select' && f.options.length ? ` • ${f.options.length} seçenek` : ''}
+                          </Text>
+                        </View>
+                        <View style={s.reorderCol}>
+                          <TouchableOpacity
+                            disabled={isFirst}
+                            onPress={() => moveField(sys.id, fi, -1)}
+                            style={[s.reorderBtn, isFirst && s.reorderBtnDisabled]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            testID={`field-${f.id}-up`}
+                          >
+                            <Ionicons name="chevron-up" size={16} color={isFirst ? theme.colors.line : theme.colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            disabled={isLast}
+                            onPress={() => moveField(sys.id, fi, 1)}
+                            style={[s.reorderBtn, isLast && s.reorderBtnDisabled]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            testID={`field-${f.id}-down`}
+                          >
+                            <Ionicons name="chevron-down" size={16} color={isLast ? theme.colors.line : theme.colors.primary} />
+                          </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity onPress={() => removeField(sys.id, f.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle" size={18} color={theme.colors.red} />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                  <TouchableOpacity style={s.addFieldBtn} onPress={() => openAddField(sys.id)} testID={`add-field-${sys.id}`}>
+                    <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
+                    <Text style={s.addFieldText}>+ Alt Alan Ekle</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        })}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 }}>
+          <TextInput style={[s.input, { flex: 1 }]} placeholder="Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)" placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
+          <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
+        </View>
+
+        {/* Flat product/service list */}
+        <Text style={[s.sectionH, { marginTop: 20 }]}>DÜZ ÜRÜN / HİZMET LİSTESİ</Text>
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="cube-outline" size={30} color={theme.colors.textMuted} />
@@ -450,6 +609,65 @@ export default function CatalogScreen() {
               <Ionicons name="cloud-upload" size={18} color="#fff" />
               <Text style={s.btnAccText}>Yapıştırılan Metni Ekle</Text>
             </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add Field Modal (Yapılandırıcı) */}
+      <Modal visible={!!showAddField} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHdr}>
+              <Text style={s.modalTitle}>Yeni Alan Ekle</Text>
+              <TouchableOpacity onPress={() => setShowAddField(null)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <FieldGroup label="Alan Adı">
+                <TextInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder="Örn: Cam Tipi, Motor Çeşidi" placeholderTextColor="#94a3b8" testID="field-label-input" />
+              </FieldGroup>
+              <FieldGroup label="Alan Tipi">
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {FIELD_TYPES.map((t) => {
+                    const active = newField.type === t.value;
+                    return (
+                      <TouchableOpacity key={t.value} testID={`field-type-${t.value}`} style={[s.typeChip, active && s.typeChipActive]} onPress={() => setNewField({ ...newField, type: t.value })}>
+                        <Ionicons name={t.icon} size={14} color={active ? '#fff' : theme.colors.textMuted} />
+                        <Text style={[s.typeChipText, active && s.typeChipTextActive]}>{t.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </FieldGroup>
+              {newField.type === 'select' && (
+                <>
+                  <FieldGroup label="Seçenekler">
+                    <View style={s.chipList}>
+                      {newField.options.map((op) => (
+                        <View key={op} style={s.emChip}>
+                          <Text style={s.chipTxt}>{op}</Text>
+                          <TouchableOpacity onPress={() => setNewField({ ...newField, options: newField.options.filter((o) => o !== op) })}>
+                            <Ionicons name="close" size={13} color={theme.colors.red} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      {newField.options.length === 0 && <Text style={s.hintMuted}>En az bir seçenek ekleyin</Text>}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                      <TextInput style={[s.input, { flex: 1 }]} placeholder="örn: Isıcam" placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
+                      <TouchableOpacity style={s.addPlusBtn} testID="add-option-btn" onPress={() => {
+                        const v = newField.optionInput.trim();
+                        if (!v || newField.options.includes(v)) return;
+                        setNewField({ ...newField, options: [...newField.options, v], optionInput: '' });
+                      }}><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
+                    </View>
+                  </FieldGroup>
+                </>
+              )}
+              <TouchableOpacity style={s.btnAccBig} onPress={commitAddField} testID="save-field-btn">
+                <Ionicons name="checkmark" size={18} color="#fff" />
+                <Text style={s.btnAccText}>Alanı Ekle</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -577,4 +795,29 @@ const s = StyleSheet.create({
   chipTA: { color: '#fff' },
   hint: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8, lineHeight: 18 },
   hintCode: { color: theme.colors.text, fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) },
+  hintMuted: { fontSize: 11.5, color: theme.colors.textMuted, fontStyle: 'italic' },
+  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary, letterSpacing: 0.5 },
+  subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  chipList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  emChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
+  chipTxt: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary, maxWidth: 200 },
+  addPlusBtn: { width: 48, backgroundColor: theme.colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  systemCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, overflow: 'hidden', ...theme.shadow.sm },
+  systemHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
+  systemName: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
+  systemMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+  systemBody: { padding: 12, borderTopWidth: 1, borderTopColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 6 },
+  fieldLabel: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
+  fieldType: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
+  dragHandle: { width: 20, alignItems: 'center', justifyContent: 'center', opacity: 0.65 },
+  reorderCol: { flexDirection: 'column', alignItems: 'center', gap: 2, marginRight: 2 },
+  reorderBtn: { width: 26, height: 20, alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: theme.colors.primarySoft },
+  reorderBtnDisabled: { backgroundColor: theme.colors.surfaceSoft, opacity: 0.5 },
+  addFieldBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft, marginTop: 4 },
+  addFieldText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff' },
+  typeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  typeChipText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
+  typeChipTextActive: { color: '#fff' },
 });

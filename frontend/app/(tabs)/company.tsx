@@ -19,14 +19,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { BankAccountT, CompanyT, SystemField, SystemTypeDefT } from '@/src/lib/api';
-
-const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
-  { value: 'text', label: 'Metin', icon: 'text-outline' },
-  { value: 'number', label: 'Sayı', icon: 'calculator-outline' },
-  { value: 'select', label: 'Liste', icon: 'list-outline' },
-  { value: 'checkbox', label: 'Onay', icon: 'checkbox-outline' },
-];
+import { BankAccountT, CompanyT } from '@/src/lib/api';
 
 const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
@@ -37,10 +30,6 @@ export default function CompanyScreen() {
   const [form, setForm] = useState<CompanyT | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
-  const [newSystemName, setNewSystemName] = useState('');
-  const [showAddField, setShowAddField] = useState<string | null>(null); // system id
-  const [newField, setNewField] = useState<{ label: string; type: SystemField['type']; options: string[]; optionInput: string }>({ label: '', type: 'text', options: [], optionInput: '' });
 
   useEffect(() => { if (activeCompany) setForm({ ...activeCompany }); }, [activeCompany]);
 
@@ -78,57 +67,6 @@ export default function CompanyScreen() {
   };
   const updateBank = (id: string, patch: Partial<BankAccountT>) => form && setForm({ ...form, banklar: (form.banklar || []).map((b) => (b.id === id ? { ...b, ...patch } : b)) });
   const removeBank = (id: string) => form && setForm({ ...form, banklar: (form.banklar || []).filter((b) => b.id !== id) });
-
-  // System Configurator
-  const addSystemType = () => {
-    if (!form || !newSystemName.trim()) return;
-    const s: SystemTypeDefT = { id: uid(), name: newSystemName.trim(), fields: [] };
-    setForm({ ...form, sistemTipleri: [...(form.sistemTipleri || []), s] });
-    setNewSystemName('');
-    setExpandedSystem(s.id);
-  };
-  const updateSystemName = (id: string, name: string) => form && setForm({ ...form, sistemTipleri: (form.sistemTipleri || []).map((s) => (s.id === id ? { ...s, name } : s)) });
-  const removeSystemType = (id: string) => form && setForm({ ...form, sistemTipleri: (form.sistemTipleri || []).filter((s) => s.id !== id) });
-
-  const openAddField = (sysId: string) => {
-    setShowAddField(sysId);
-    setNewField({ label: '', type: 'text', options: [], optionInput: '' });
-  };
-  const commitAddField = () => {
-    if (!form || !showAddField || !newField.label.trim()) { showToast('Alan adı zorunlu'); return; }
-    const field: SystemField = {
-      id: uid(),
-      label: newField.label.trim(),
-      type: newField.type,
-      options: newField.type === 'select' ? newField.options : [],
-    };
-    if (newField.type === 'select' && field.options.length === 0) { showToast('Liste tipi için en az bir seçenek ekleyin'); return; }
-    setForm({
-      ...form,
-      sistemTipleri: (form.sistemTipleri || []).map((s) => (s.id === showAddField ? { ...s, fields: [...(s.fields || []), field] } : s)),
-    });
-    setShowAddField(null);
-  };
-  const removeField = (sysId: string, fieldId: string) => form && setForm({
-    ...form,
-    sistemTipleri: (form.sistemTipleri || []).map((s) => (s.id === sysId ? { ...s, fields: (s.fields || []).filter((f) => f.id !== fieldId) } : s)),
-  });
-
-  // Reorder a field within its parent system type by swapping positions.
-  const moveField = (sysId: string, fromIdx: number, direction: -1 | 1) => {
-    if (!form) return;
-    setForm({
-      ...form,
-      sistemTipleri: (form.sistemTipleri || []).map((sys) => {
-        if (sys.id !== sysId) return sys;
-        const fields = [...(sys.fields || [])];
-        const toIdx = fromIdx + direction;
-        if (toIdx < 0 || toIdx >= fields.length) return sys;
-        [fields[fromIdx], fields[toIdx]] = [fields[toIdx], fields[fromIdx]];
-        return { ...sys, fields };
-      }),
-    });
-  };
 
   const createNewCompany = async () => {
     try { const c = await createCompany({ sirketAdi: 'Yeni Firma' }); await setActiveCompanyId(c.id); showToast('Yeni firma oluşturuldu'); }
@@ -276,87 +214,14 @@ export default function CompanyScreen() {
             <TouchableOpacity style={s.addPlusBtn} onPress={addEmail} testID="hzr-add-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
           </View>
 
-          {/* System Configurator — the star of the show */}
+          {/* System Configurator moved to Katalog tab */}
           <SectionHeader title="🎯 HİZMET / ÜRÜN YAPILANDIRICI" />
-          <Text style={s.hint}>{"Her hizmeti veya ürünü bir kere tanımlayın (Örn: Cam Balkon → Cam Tipi, Profil Rengi, Ölçü, Motor). Teklif oluştururken sadece seçenekleri tıklayarak ilerleyeceksiniz. Alanları sürükleme tutamağıyla yeniden sıralayabilirsiniz — bu sıra hem form hem PDF'de birebir kullanılır."}</Text>
-
-          {(form.sistemTipleri || []).map((sys) => {
-            const isExpanded = expandedSystem === sys.id;
-            return (
-              <View key={sys.id} style={s.systemCard} testID={`system-${sys.id}`}>
-                <TouchableOpacity style={s.systemHdr} onPress={() => setExpandedSystem(isExpanded ? null : sys.id)}>
-                  <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.colors.primary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.systemName}>{sys.name || '(Adsız Hizmet / Ürün)'}</Text>
-                    <Text style={s.systemMeta}>{(sys.fields || []).length} alan tanımlı</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => removeSystemType(sys.id)}>
-                    <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-
-                {isExpanded && (
-                  <View style={s.systemBody}>
-                    <Field label="Hizmet / Ürün Adı">
-                      <TextInput style={s.input} value={sys.name} onChangeText={(v) => updateSystemName(sys.id, v)} placeholder="Örn: Cam Balkon" placeholderTextColor="#94a3b8" />
-                    </Field>
-                    <Text style={s.subLabel}>ALT ALANLAR ({(sys.fields || []).length})</Text>
-                    {(sys.fields || []).length === 0 && <Text style={s.hintMuted}>Henüz alan eklenmedi</Text>}
-                    {(sys.fields || []).map((f, fi) => {
-                      const typeMeta = FIELD_TYPES.find((t) => t.value === f.type);
-                      const isFirst = fi === 0;
-                      const isLast = fi === (sys.fields || []).length - 1;
-                      return (
-                        <View key={f.id} style={s.fieldRow} testID={`field-${f.id}`}>
-                          <View style={s.dragHandle} accessibilityLabel="Sıralama tutamağı">
-                            <Ionicons name="reorder-two" size={18} color={theme.colors.textMuted} />
-                          </View>
-                          <Ionicons name={(typeMeta?.icon as any) || 'square-outline'} size={14} color={theme.colors.primary} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
-                            <Text style={s.fieldType}>
-                              {typeMeta?.label}{f.type === 'select' && f.options.length ? ` • ${f.options.length} seçenek` : ''}
-                            </Text>
-                          </View>
-                          <View style={s.reorderCol}>
-                            <TouchableOpacity
-                              disabled={isFirst}
-                              onPress={() => moveField(sys.id, fi, -1)}
-                              style={[s.reorderBtn, isFirst && s.reorderBtnDisabled]}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              testID={`field-${f.id}-up`}
-                            >
-                              <Ionicons name="chevron-up" size={16} color={isFirst ? theme.colors.line : theme.colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              disabled={isLast}
-                              onPress={() => moveField(sys.id, fi, 1)}
-                              style={[s.reorderBtn, isLast && s.reorderBtnDisabled]}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                              testID={`field-${f.id}-down`}
-                            >
-                              <Ionicons name="chevron-down" size={16} color={isLast ? theme.colors.line : theme.colors.primary} />
-                            </TouchableOpacity>
-                          </View>
-                          <TouchableOpacity onPress={() => removeField(sys.id, f.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <Ionicons name="close-circle" size={18} color={theme.colors.red} />
-                          </TouchableOpacity>
-                        </View>
-                      );
-                    })}
-                    <TouchableOpacity style={s.addFieldBtn} onPress={() => openAddField(sys.id)} testID={`add-field-${sys.id}`}>
-                      <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
-                      <Text style={s.addFieldText}>+ Alt Alan Ekle</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            );
-          })}
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <TextInput style={[s.input, { flex: 1 }]} placeholder="Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)" placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
-            <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
-          </View>
+          <TouchableOpacity style={s.goCatalogBtn} onPress={() => router.push('/(tabs)/catalog')} testID="go-catalog-configurator-btn">
+            <Ionicons name="cube-outline" size={18} color="#fff" />
+            <Text style={s.goCatalogBtnText}>Katalog Sekmesinden Yapılandır</Text>
+            <Ionicons name="arrow-forward" size={16} color="#fff" />
+          </TouchableOpacity>
+          <Text style={s.hint}>Hizmet / ürün seçenekli alanları artık Katalog sekmesinden tanımlıyorsunuz.</Text>
 
           <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
             <Ionicons name="checkmark-done" size={18} color="#fff" />
@@ -371,65 +236,6 @@ export default function CompanyScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Add Field Modal */}
-      <Modal visible={!!showAddField} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.overlayBottom}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Yeni Alan Ekle</Text>
-              <TouchableOpacity onPress={() => setShowAddField(null)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
-            </View>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <Field label="Alan Adı">
-                <TextInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder="Örn: Cam Tipi, Motor Çeşidi" placeholderTextColor="#94a3b8" testID="field-label-input" />
-              </Field>
-              <Field label="Alan Tipi">
-                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                  {FIELD_TYPES.map((t) => {
-                    const active = newField.type === t.value;
-                    return (
-                      <TouchableOpacity key={t.value} testID={`field-type-${t.value}`} style={[s.typeChip, active && s.typeChipActive]} onPress={() => setNewField({ ...newField, type: t.value })}>
-                        <Ionicons name={t.icon} size={14} color={active ? '#fff' : theme.colors.textMuted} />
-                        <Text style={[s.typeChipText, active && s.typeChipTextActive]}>{t.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </Field>
-              {newField.type === 'select' && (
-                <>
-                  <Field label="Seçenekler">
-                    <View style={s.chipList}>
-                      {newField.options.map((op) => (
-                        <View key={op} style={s.emChip}>
-                          <Text style={s.chipTxt}>{op}</Text>
-                          <TouchableOpacity onPress={() => setNewField({ ...newField, options: newField.options.filter((o) => o !== op) })}>
-                            <Ionicons name="close" size={13} color={theme.colors.red} />
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                      {newField.options.length === 0 && <Text style={s.hintMuted}>En az bir seçenek ekleyin</Text>}
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                      <TextInput style={[s.input, { flex: 1 }]} placeholder="örn: Isıcam" placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
-                      <TouchableOpacity style={s.addPlusBtn} testID="add-option-btn" onPress={() => {
-                        const v = newField.optionInput.trim();
-                        if (!v || newField.options.includes(v)) return;
-                        setNewField({ ...newField, options: [...newField.options, v], optionInput: '' });
-                      }}><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
-                    </View>
-                  </Field>
-                </>
-              )}
-              <TouchableOpacity style={s.saveBtn} onPress={commitAddField} testID="save-field-btn">
-                <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={s.saveBtnText}>Alanı Ekle</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Delete Confirm */}
       <Modal visible={showConfirmDelete} transparent animationType="fade">
@@ -506,6 +312,8 @@ const s = StyleSheet.create({
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.3 },
   deleteCompanyBtn: { marginTop: 12, borderWidth: 1, borderColor: theme.colors.red, borderStyle: 'dashed', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   deleteCompanyText: { color: theme.colors.red, fontWeight: '800', fontSize: 12 },
+  goCatalogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: 14, ...theme.shadow.sm },
+  goCatalogBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },
   overlayBottom: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', padding: 30 },
   modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '90%' },

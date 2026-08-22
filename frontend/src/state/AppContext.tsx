@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, QuoteT, ServiceT } from '@/src/lib/api';
+import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, QuoteT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -21,6 +21,14 @@ type Ctx = {
   updateCatalogItem: (id: string, data: Partial<CatalogItemT>) => Promise<void>;
   deleteCatalogItem: (id: string) => Promise<void>;
   bulkAddCatalog: (items: Partial<CatalogItemT>[]) => Promise<void>;
+  kasa: KasaEntryT[];
+  reloadKasa: () => Promise<void>;
+  addKasaEntry: (data: Partial<KasaEntryT>) => Promise<void>;
+  deleteKasaEntry: (id: string) => Promise<void>;
+  tahsilat: TahsilatEntryT[];
+  reloadTahsilat: () => Promise<void>;
+  addTahsilatEntry: (data: Partial<TahsilatEntryT>) => Promise<void>;
+  deleteTahsilatEntry: (id: string) => Promise<void>;
   customers: CustomerT[];
   reloadCustomers: () => Promise<void>;
   deleteCustomer: (id: string) => Promise<void>;
@@ -83,6 +91,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [companies, setCompanies] = useState<CompanyT[]>([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CatalogItemT[]>([]);
+  const [kasa, setKasa] = useState<KasaEntryT[]>([]);
+  const [tahsilat, setTahsilat] = useState<TahsilatEntryT[]>([]);
   const [customers, setCustomers] = useState<CustomerT[]>([]);
   const [services, setServices] = useState<ServiceT[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignT[]>([]);
@@ -122,6 +132,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const list = await api.listCatalog(activeCompanyId);
     setCatalog(list);
+  }, [activeCompanyId]);
+
+  const reloadKasa = useCallback(async () => {
+    if (!activeCompanyId) {
+      setKasa([]);
+      return;
+    }
+    const list = await api.listKasa(activeCompanyId);
+    setKasa(list);
+  }, [activeCompanyId]);
+
+  const reloadTahsilat = useCallback(async () => {
+    if (!activeCompanyId) {
+      setTahsilat([]);
+      return;
+    }
+    const list = await api.listTahsilat(activeCompanyId);
+    setTahsilat(list);
   }, [activeCompanyId]);
 
   const reloadCustomers = useCallback(async () => {
@@ -249,6 +277,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await api.deleteCatalogItem(id);
     await reloadCatalog();
   }, [reloadCatalog]);
+
+  const addKasaEntry = useCallback(async (data: Partial<KasaEntryT>) => {
+    if (!activeCompanyId) return;
+    await api.createKasaEntry({
+      companyId: activeCompanyId,
+      tur: data.tur || 'gelir',
+      kategori: data.kategori || '',
+      tutar: Number(data.tutar) || 0,
+      paraBirimi: data.paraBirimi || 'TRY',
+      yontem: data.yontem || 'Nakit',
+      notlar: data.notlar || '',
+      tarih: data.tarih || new Date().toISOString().split('T')[0],
+    });
+    await reloadKasa();
+  }, [activeCompanyId, reloadKasa]);
+
+  const deleteKasaEntry = useCallback(async (id: string) => {
+    await api.deleteKasaEntry(id);
+    await reloadKasa();
+  }, [reloadKasa]);
+
+  const addTahsilatEntry = useCallback(async (data: Partial<TahsilatEntryT>) => {
+    if (!activeCompanyId) return;
+    await api.createTahsilatEntry({
+      companyId: activeCompanyId,
+      customerId: data.customerId || '',
+      musteriAdi: data.musteriAdi || '',
+      musteriTelefon: data.musteriTelefon || '',
+      tur: data.tur || 'tahsilat',
+      tutar: Number(data.tutar) || 0,
+      paraBirimi: data.paraBirimi || 'TRY',
+      yontem: data.yontem || 'Nakit',
+      vadeTarihi: data.vadeTarihi || '',
+      notlar: data.notlar || '',
+      tarih: data.tarih || new Date().toISOString().split('T')[0],
+    });
+    await reloadTahsilat();
+  }, [activeCompanyId, reloadTahsilat]);
+
+  const deleteTahsilatEntry = useCallback(async (id: string) => {
+    await api.deleteTahsilatEntry(id);
+    await reloadTahsilat();
+  }, [reloadTahsilat]);
 
   const bulkAddCatalog = useCallback(async (items: Partial<CatalogItemT>[]) => {
     if (!activeCompanyId) return;
@@ -402,6 +473,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setServices([]);
       setCampaigns([]);
       setQuotes([]);
+      setKasa([]);
+      setTahsilat([]);
       setLoading(false);
       return;
     }
@@ -457,7 +530,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reloadServices();
     reloadCampaigns();
     reloadQuotes();
-  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadQuotes]);
+    reloadKasa();
+    reloadTahsilat();
+  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadQuotes, reloadKasa, reloadTahsilat]);
 
   return (
     <AppContext.Provider
@@ -476,6 +551,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateCatalogItem,
         deleteCatalogItem,
         bulkAddCatalog,
+        kasa,
+        reloadKasa,
+        addKasaEntry,
+        deleteKasaEntry,
+        tahsilat,
+        reloadTahsilat,
+        addTahsilatEntry,
+        deleteTahsilatEntry,
         customers,
         reloadCustomers,
         deleteCustomer,

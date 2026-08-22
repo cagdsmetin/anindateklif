@@ -147,6 +147,16 @@ export const api = {
   updateCatalogItem: (id: string, data: any) => req(`/catalog/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCatalogItem: (id: string) => req(`/catalog/${id}`, { method: 'DELETE' }),
 
+  // Kasa (Gelir/Gider)
+  listKasa: (companyId: string) => req(`/kasa/${companyId}`),
+  createKasaEntry: (data: any) => req('/kasa', { method: 'POST', body: JSON.stringify(data) }),
+  deleteKasaEntry: (id: string) => req(`/kasa/${id}`, { method: 'DELETE' }),
+
+  // Tahsilat (Alacak/Borç)
+  listTahsilat: (companyId: string) => req(`/tahsilat/${companyId}`),
+  createTahsilatEntry: (data: any) => req('/tahsilat', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTahsilatEntry: (id: string) => req(`/tahsilat/${id}`, { method: 'DELETE' }),
+
   // Customers
   listCustomers: (companyId: string) => req(`/customers/${companyId}`),
   createCustomer: (data: any) => req('/customers', { method: 'POST', body: JSON.stringify(data) }),
@@ -233,6 +243,33 @@ export type CatalogItemT = {
   birim: string;
   birimFiyat: number;
   paraBirimi: string;
+};
+
+export type KasaEntryT = {
+  id: string;
+  companyId: string;
+  tur: 'gelir' | 'gider';
+  kategori: string;
+  tutar: number;
+  paraBirimi: string;
+  yontem: string;
+  notlar: string;
+  tarih: string;
+};
+
+export type TahsilatEntryT = {
+  id: string;
+  companyId: string;
+  customerId: string;
+  musteriAdi: string;
+  musteriTelefon: string;
+  tur: 'borc' | 'tahsilat';
+  tutar: number;
+  paraBirimi: string;
+  yontem: string;
+  vadeTarihi: string;
+  notlar: string;
+  tarih: string;
 };
 
 export type CustomerT = {

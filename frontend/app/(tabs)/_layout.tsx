@@ -29,7 +29,7 @@ function tabLabel() {
   );
 }
 
-type NavItem = { name: string; title: string; icon: string; color: string };
+type NavItem = { name: string; title: string; icon: string; color: string; path?: string };
 
 // Sidebar shown instead of the bottom tab bar on wide desktop web windows —
 // same 9 destinations, same colors, just laid out as a left rail like a
@@ -38,9 +38,9 @@ function Sidebar({ items }: { items: NavItem[] }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isActive = (name: string) => {
-    if (name === 'index') return pathname === '/' || pathname === '/index' || pathname === '/(tabs)';
-    return pathname === `/${name}` || pathname.startsWith(`/${name}/`);
+  const isActive = (item: NavItem) => {
+    if (item.name === 'index') return pathname === '/' || pathname === '/index' || pathname === '/(tabs)';
+    return pathname === `/${item.name}` || pathname.startsWith(`/${item.name}/`);
   };
 
   return (
@@ -53,12 +53,12 @@ function Sidebar({ items }: { items: NavItem[] }) {
       </TouchableOpacity>
       <ScrollView style={sb.navList} showsVerticalScrollIndicator={false}>
         {items.map((it) => {
-          const active = isActive(it.name);
+          const active = isActive(it);
           return (
             <TouchableOpacity
               key={it.name}
               style={[sb.navItem, active && { backgroundColor: it.color }]}
-              onPress={() => router.push(it.name === 'index' ? '/(tabs)' : (`/(tabs)/${it.name}` as any))}
+              onPress={() => router.push((it.name === 'index' ? '/(tabs)' : (it.path || `/(tabs)/${it.name}`)) as any)}
               testID={`sidebar-${it.name}`}
             >
               <Ionicons name={(active ? it.icon : `${it.icon}-outline`) as any} size={18} color={active ? '#fff' : theme.colors.textOnDark} />
@@ -89,6 +89,8 @@ export default function TabsLayout() {
     { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
     { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
     { name: 'reminders', title: 'Hatırlat.', icon: 'notifications', color: m.hatirlatma },
+    { name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa, path: '/kasa' },
+    { name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat, path: '/tahsilat' },
     { name: 'company', title: 'Firma', icon: 'business', color: m.firma },
   ];
 

@@ -46,6 +46,8 @@ export const theme = {
       kampanya: '#DB2777',
       hatirlatma: '#D97706',
       raporlar: '#0891B2',
+      kasa: '#0D9488',
+      tahsilat: '#0369A1',
       firma: '#475569',
     },
   },

@@ -602,6 +602,62 @@ class CatalogBulkCreate(BaseModel):
     items: List[CatalogItemCreate]
 
 
+class KasaEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    tur: str  # "gelir" | "gider"
+    kategori: str
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = "Nakit"  # Nakit | Kart | Havale/EFT | Diğer
+    notlar: str = ""
+    tarih: str  # YYYY-MM-DD
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class KasaEntryCreate(BaseModel):
+    companyId: str
+    tur: str
+    kategori: str
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = "Nakit"
+    notlar: str = ""
+    tarih: str
+
+
+class TahsilatEntry(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    customerId: str = ""
+    musteriAdi: str
+    musteriTelefon: str = ""
+    tur: str  # "borc" | "tahsilat"
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = "Nakit"  # Nakit | Kart | Havale/EFT | Diğer (tahsilat için)
+    vadeTarihi: str = ""   # YYYY-MM-DD (borc için, opsiyonel)
+    notlar: str = ""
+    tarih: str  # YYYY-MM-DD
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class TahsilatEntryCreate(BaseModel):
+    companyId: str
+    customerId: str = ""
+    musteriAdi: str
+    musteriTelefon: str = ""
+    tur: str
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = "Nakit"
+    vadeTarihi: str = ""
+    notlar: str = ""
+    tarih: str
+
+
 class Customer(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     userId: str
@@ -823,6 +879,8 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     await db.quotes.delete_many({"companyId": company_id, "userId": uid})
     await db.services.delete_many({"companyId": company_id, "userId": uid})
     await db.campaigns.delete_many({"companyId": company_id, "userId": uid})
+    await db.kasa.delete_many({"companyId": company_id, "userId": uid})
+    await db.tahsilat.delete_many({"companyId": company_id, "userId": uid})
     return {"ok": True}
 
 
@@ -868,6 +926,50 @@ async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Dep
 @api_router.delete("/catalog/{item_id}")
 async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     await db.catalog.delete_one({"id": item_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ KASA (GELİR/GİDER) ROUTES ============
+@api_router.get("/kasa/{company_id}", response_model=List[KasaEntry])
+async def list_kasa(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], company_id)
+    docs = await db.kasa.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+    return [KasaEntry(**d) for d in docs]
+
+
+@api_router.post("/kasa", response_model=KasaEntry)
+async def create_kasa_entry(payload: KasaEntryCreate, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], payload.companyId)
+    obj = KasaEntry(userId=user["user_id"], **payload.dict())
+    await db.kasa.insert_one(obj.dict())
+    return obj
+
+
+@api_router.delete("/kasa/{entry_id}")
+async def delete_kasa_entry(entry_id: str, user=Depends(get_current_user)):
+    await db.kasa.delete_one({"id": entry_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ TAHSILAT (ALACAK/BORÇ) ROUTES ============
+@api_router.get("/tahsilat/{company_id}", response_model=List[TahsilatEntry])
+async def list_tahsilat(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], company_id)
+    docs = await db.tahsilat.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+    return [TahsilatEntry(**d) for d in docs]
+
+
+@api_router.post("/tahsilat", response_model=TahsilatEntry)
+async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_current_user)):
+    await _own_company(user["user_id"], payload.companyId)
+    obj = TahsilatEntry(userId=user["user_id"], **payload.dict())
+    await db.tahsilat.insert_one(obj.dict())
+    return obj
+
+
+@api_router.delete("/tahsilat/{entry_id}")
+async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
+    await db.tahsilat.delete_one({"id": entry_id, "userId": user["user_id"]})
     return {"ok": True}
 
 

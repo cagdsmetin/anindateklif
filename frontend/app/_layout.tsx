@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, View } from 'react-native';
+import { ActivityIndicator, LogBox, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
@@ -62,11 +62,33 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppProvider>
-          <RouteGuard>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
-          </RouteGuard>
+          <WebFrame>
+            <RouteGuard>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
+            </RouteGuard>
+          </WebFrame>
         </AppProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
+
+// On a wide desktop browser, letting a phone-shaped UI stretch edge-to-edge
+// leaves everything (cards, buttons, the bottom tab bar) spread too thin.
+// Keep it simple: cap the content at a comfortable reading width and center
+// it — no boxed/framed look (no background color change, no shadow), it
+// just quietly stops stretching past a sane width. Mobile browsers are
+// already narrower than the cap, so nothing changes for them.
+function WebFrame({ children }: { children: React.ReactNode }) {
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return <View style={webStyles.center}>{children}</View>;
+}
+
+const webStyles = StyleSheet.create({
+  center: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
+  },
+});

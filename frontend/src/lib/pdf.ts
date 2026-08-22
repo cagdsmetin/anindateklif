@@ -96,7 +96,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Helvetica','Arial',sans-serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; }
+  body { font-family: 'Georgia','Cambria','Times New Roman',serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; }
   .sheet { padding: 12mm; }
 
   /* HEADER — table-layout:fixed pins both columns to their declared % width
@@ -115,9 +115,9 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
-  .logo { max-width:180px; max-height:70px; object-fit:contain; margin:0 0 10px 0; display:block; }
+  .logo { max-width:230px; max-height:96px; object-fit:contain; margin:0 0 10px 0; display:block; }
   .logo-fallback { padding:8px 14px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 10px 0; display:inline-block; font-size:12.5px; }
-  .cname { font-weight:800; font-size:16px; color:#1E293B; margin:0 0 6px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
+  .cname { font-weight:700; font-size:13.5px; color:#1E293B; margin:0 0 6px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:12.5px; color:#0f172a; line-height:1.6; margin:0 0 2px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
   .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; word-wrap:break-word; overflow-wrap:break-word; }
@@ -156,7 +156,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
 
   /* BANNERS */
   .warn { background:#dc2626; color:#fff; text-align:center; font-size:10.5px; font-weight:800; padding:6px; }
-  .kdv { background:#0f172a; color:#fff; text-align:center; font-size:12.5px; font-weight:800; padding:6px; letter-spacing:0.05em; }
+  .app-credit { text-align:center; font-size:8.5px; color:#94a3b8; padding-top:16px; margin-top:16px; border-top:1px solid #e2e8f0; letter-spacing:0.02em; }
 
   /* BOTTOM GRID */
   .bottom { display:table; width:100%; margin-top:12px; }
@@ -260,7 +260,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   </table>
 
   <div class="warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
-  <div class="kdv">KDV HARİÇ FİYATTIR</div>
 
   <!-- BOTTOM GRID -->
   <div class="bottom">
@@ -271,7 +270,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     <div class="bt-right">
       <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
       ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">İSKONTO (%${quote.iskonto})</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
-      <div class="tot-row grand"><div class="l">GENEL TOPLAM</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
+      ${quote.kdvOrani > 0 ? `<div class="tot-row"><div class="l">KDV (%${quote.kdvOrani})</div><div class="v">+${fmt(quote.kdvTutar || 0, cur)}</div></div>` : ''}
+      <div class="tot-row grand"><div class="l">GENEL TOPLAM${quote.kdvOrani > 0 ? ' (KDV DAHİL)' : ''}</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
       <div class="sign-box">Onay / İmza :${company.imzaMetni ? `\n${esc(company.imzaMetni)}` : ''}</div>
     </div>
   </div>
@@ -282,6 +282,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <table class="bank-table">${bankRows}</table>
   <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
   ` : ''}
+
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
 
   <!-- ATTACHMENT PAGES -->
   ${eklerHtml}
@@ -324,6 +326,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
 
   const showIskonto = !!quote.iskonto && quote.iskonto > 0;
   const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
 
   const bankSection = banklar.length > 0 ? `
     <section class="bank-card">
@@ -368,12 +371,12 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:2.5px solid #1c1c1e; margin-bottom:16px; }
   .company-block { max-width:56%; }
-  .company-name { font-size:15pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 6px; }
+  .company-name { font-size:12.5pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 6px; }
   .company-meta { font-size:8pt; color:#6b6b6b; line-height:1.7; }
   .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .logo-img { height:44px; max-width:130px; object-fit:contain; }
-  .logo-fallback { width:44px; height:44px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13pt; border-radius:4px; }
+  .logo-img { height:60px; max-width:170px; object-fit:contain; }
+  .logo-fallback { width:56px; height:56px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15pt; border-radius:4px; }
   .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
   .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
   .meta-table { border-collapse:collapse; margin-top:8px; }
@@ -406,7 +409,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   /* Banners */
   .banner { padding:8px 12px; font-size:8pt; font-weight:700; margin-bottom:9px; border-left:3px solid; }
   .banner-warn { background:#fff1d6; color:#7a4a00; border-left-color:#c98a00; }
-  .banner-kdv { background:#eef0fb; color:#4338ca; border-left-color:#4338ca; margin-bottom:16px; }
+  .app-credit { text-align:center; font-size:7.3pt; color:#9a998f; padding-top:12px; margin-top:14px; border-top:1px solid #e4e1d8; }
 
   /* Bottom */
   .bottom { display:flex; gap:14px; align-items:stretch; }
@@ -459,7 +462,6 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
             ? `<img class="logo-img" src="${logoSrc}" />`
             : `<div class="logo-fallback">${esc(monogram)}</div>`}
         </div>
-        <div class="doc-tag">ANINDA TEKLİF</div>
         <div class="doc-title">TEKLİF FORMU</div>
         <table class="meta-table">
           <tr><td><span class="meta-label">Teklif No</span><span class="meta-value">${v(quote.teklifNo)}</span></td></tr>
@@ -505,7 +507,6 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     </table>
 
     <div class="banner banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLI KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
-    <div class="banner banner-kdv">KDV HARİÇ FİYATTIR</div>
 
     <div class="bottom">
       <div class="notes-card">
@@ -519,16 +520,17 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
         </div>
       </div>
       <div class="totals-card">
-        <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(quote.araToplam, cur)}</div></div>
+        <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
         ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+        ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">+ ${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
         <div class="totals-div"></div>
-        <div class="grand-label">Genel Toplam</div>
+        <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
         <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
-        ${showKdv ? `<div class="kdv-note">KDV (%${esc(String(quote.kdvOrani))}) dahil değildir &middot; + ${fmt(quote.kdvTutar, cur)}</div>` : ''}
       </div>
     </div>
 
     ${bankSection}
+    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
   </div>
   ${ekPages}
 </body>
@@ -570,6 +572,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 
   const showIskonto = !!quote.iskonto && quote.iskonto > 0;
   const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
 
   const bankSection = banklar.length > 0 ? `
     <section class="bank-card">
@@ -615,13 +618,14 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   /* Header */
   .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
   .brand-mark { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-  .logo-img { height:38px; max-width:120px; object-fit:contain; }
-  .logo-fallback { width:38px; height:38px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11pt; font-family:'Helvetica Neue', Arial, sans-serif; }
-  .brand-name { font-size:12.5pt; letter-spacing:.4px; font-weight:700; }
+  .logo-img { height:54px; max-width:160px; object-fit:contain; }
+  .logo-fallback { width:50px; height:50px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13pt; font-family:'Helvetica Neue', Arial, sans-serif; }
+  .brand-name { font-size:11pt; letter-spacing:.4px; font-weight:700; }
   .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.6pt; color:#8a8478; margin-top:7px; line-height:1.85; }
   .doc-id { text-align:right; }
   .doc-title { font-size:27pt; letter-spacing:5px; font-weight:400; color:#2b2926; }
   .doc-sub { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }
+  .app-credit { text-align:center; font-family:'Helvetica Neue', Arial, sans-serif; font-size:7pt; color:#8a8478; padding-top:14px; margin-top:16px; border-top:1px solid #e4ded2; }
   .meta-list { margin-top:16px; }
   .meta-list-row { display:table; width:230px; margin-left:auto; margin-bottom:5px; }
   .meta-list-k { display:table-cell; font-family:'Helvetica Neue', Arial, sans-serif; font-size:6.8pt; letter-spacing:1.1px; text-transform:uppercase; color:#8a8478; }
@@ -652,7 +656,6 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   /* Banners */
   .banner { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; letter-spacing:1px; text-transform:uppercase; padding:9px 0; border-top:1px solid #2b2926; border-bottom:1px solid #2b2926; margin-bottom:11px; text-align:center; color:#5b5850; }
   .banner-warn { color:#b5502e; font-weight:700; }
-  .banner-kdv { margin-bottom:22px; }
 
   /* Bottom */
   .bottom { display:flex; gap:44px; margin-top:12px; }
@@ -707,7 +710,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
       </div>
       <div class="doc-id">
         <div class="doc-title">TEKLİF</div>
-        <div class="doc-sub">Anında Teklif &middot; Form No ${v(quote.teklifNo)}</div>
+        <div class="doc-sub">Form No ${v(quote.teklifNo)}</div>
         <div class="meta-list">
           <div class="meta-list-row"><div class="meta-list-k">Teklif No</div><div class="meta-list-v">${v(quote.teklifNo)}</div></div>
           <div class="meta-list-row"><div class="meta-list-k">Tarih</div><div class="meta-list-v">${trDate(quote.tarih)}</div></div>
@@ -754,7 +757,6 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   </table>
 
   <div class="banner banner-warn">Ölçü ve Özellikleri Dikkatli Kontrol Ediniz. Olası Hatalardan Firmamız Sorumlu Değildir.</div>
-  <div class="banner banner-kdv">KDV Hariç Fiyattır</div>
 
   <div class="bottom">
     <div class="notes-col">
@@ -768,17 +770,18 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
       </div>
     </div>
     <div class="totals-col">
-      <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(quote.araToplam, cur)}</div></div>
+      <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
       ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+      ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">+ ${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
       <div class="grand-wrap">
-        <div class="grand-label">Genel Toplam</div>
+        <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
         <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
-        ${showKdv ? `<div class="kdv-note">KDV (%${esc(String(quote.kdvOrani))}) dahil değildir &middot; + ${fmt(quote.kdvTutar, cur)}</div>` : ''}
       </div>
     </div>
   </div>
 
   ${bankSection}
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
   ${ekPages}
 </body>
 </html>`;

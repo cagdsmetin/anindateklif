@@ -257,8 +257,8 @@ export default function PanelScreen() {
           <ModuleTile icon="megaphone" label="Kampanya" color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
           <ModuleTile icon="notifications" label="Hatırlatmalar" color={theme.colors.modules.hatirlatma} onPress={() => router.push('/reminders' as any)} />
           <ModuleTile icon="bar-chart" label="Raporlar" color={theme.colors.modules.raporlar} onPress={() => router.push('/reports' as any)} />
-          <ModuleTile icon="wallet" label="Kasa" color={theme.colors.modules.kasa} onPress={() => router.push('/kasa' as any)} />
-          <ModuleTile icon="cash" label="Tahsilat" color={theme.colors.modules.tahsilat} onPress={() => router.push('/tahsilat' as any)} />
+          <ModuleTile icon="wallet" label="Kasa" color={theme.colors.modules.kasa} onPress={() => router.push('/(tabs)/kasa')} />
+          <ModuleTile icon="cash" label="Tahsilat" color={theme.colors.modules.tahsilat} onPress={() => router.push('/(tabs)/tahsilat')} />
           <ModuleTile icon="business" label="Firma" color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
         </View>
       </ScrollView>

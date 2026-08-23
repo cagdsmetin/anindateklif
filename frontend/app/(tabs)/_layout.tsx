@@ -103,6 +103,12 @@ export default function TabsLayout() {
       <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis), tabBarLabel: tabLabel() }} />
       <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya), tabBarLabel: tabLabel() }} />
       <Tabs.Screen name="reminders" options={{ title: 'Hatırlat.', tabBarIcon: tabIcon('notifications', m.hatirlatma), tabBarLabel: tabLabel() }} />
+      {/* Kasa & Tahsilat live inside the (tabs) group so the desktop sidebar
+          wrapper stays visible on them too — they're just hidden from the
+          mobile bottom bar (tabBarButton: null) since that's already full;
+          reachable via the Panel module cards and the mobile drawer instead. */}
+      <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarButton: () => null }} />
+      <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarButton: () => null }} />
       <Tabs.Screen name="company" options={{ title: 'Firma', tabBarIcon: tabIcon('business', m.firma), tabBarLabel: tabLabel() }} />
     </Tabs>
   );

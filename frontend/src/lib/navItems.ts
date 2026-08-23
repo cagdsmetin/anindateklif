@@ -17,8 +17,8 @@ export function buildNavItems(): NavItem[] {
     { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
     { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
     { name: 'reminders', title: 'Hatırlat.', icon: 'notifications', color: m.hatirlatma },
-    { name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa, path: '/kasa' },
-    { name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat, path: '/tahsilat' },
+    { name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa },
+    { name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat },
     { name: 'company', title: 'Firma', icon: 'business', color: m.firma },
   ];
 }

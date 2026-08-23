@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.appgenesis.p6b8pb",
+      "bundleIdentifier": "com.anindateklif.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi"
       }
@@ -22,7 +22,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.emergent.appgenesis.p6b8pb",
+      "package": "com.anindateklif.app",
       "versionCode": 1
     },
     "web": {

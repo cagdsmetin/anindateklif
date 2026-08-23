@@ -187,7 +187,7 @@ export default function HistoryScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
         {['Tümü', ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]}>{st}</Text>
+            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -305,9 +305,9 @@ const s = StyleSheet.create({
   statSubLabel: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 2 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  filterRowOuter: { flexGrow: 0, height: 52 },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
-  filterChip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  filterRowOuter: { flexGrow: 0, height: 56 },
+  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center' },
+  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },

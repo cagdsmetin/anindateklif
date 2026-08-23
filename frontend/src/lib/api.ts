@@ -194,7 +194,7 @@ export const api = {
     req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
   // AI Assistant
-  assistantChat: (data: { message: string; quote_context?: any }) =>
+  assistantChat: (data: { message: string; quote_context?: any }): Promise<AssistantChatResponseT> =>
     req('/assistant/chat', { method: 'POST', body: JSON.stringify(data) }),
 };
 
@@ -211,6 +211,10 @@ export type UserT = {
 };
 
 export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
+
+export type AssistantSystemFieldT = { label: string; type: 'text' | 'number' | 'select' | 'checkbox'; options: string[] };
+export type AssistantActionT = { action: 'add_system_type'; name: string; fields: AssistantSystemFieldT[] };
+export type AssistantChatResponseT = { reply: string; action?: AssistantActionT | null };
 
 export type SystemField = { id: string; label: string; type: 'text' | 'select' | 'number' | 'checkbox'; options: string[] };
 export type SystemTypeDefT = { id: string; name: string; fields: SystemField[] };

@@ -15,8 +15,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
+import type { AssistantActionT, SystemTypeDefT } from '@/src/lib/api';
+import { useApp } from '@/src/state/AppContext';
 
-type ChatMsg = { id: string; role: 'user' | 'assistant'; text: string };
+type ChatMsg = {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  action?: AssistantActionT | null;
+  actionApplied?: boolean;
+  actionDismissed?: boolean;
+};
 
 const SUGGESTIONS = [
   'Bu uygulamayı nasıl kullanırım?',
@@ -25,18 +34,28 @@ const SUGGESTIONS = [
   'Fiyatlandırma notu nasıl yazılır?',
 ];
 
+const FIELD_TYPE_LABEL: Record<string, string> = {
+  text: 'Metin',
+  number: 'Sayı',
+  select: 'Liste',
+  checkbox: 'Onay',
+};
+
 function newId() {
   return 'm-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
+const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
 export default function AssistantScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const { activeCompany, updateCompany, showToast } = useApp();
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   const send = async (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
@@ -49,7 +68,7 @@ export default function AssistantScreen() {
     try {
       const res = await api.assistantChat({ message: text });
       const reply = (res && res.reply) || 'Üzgünüm, şu anda bir yanıt oluşturamadım.';
-      setMessages((prev) => [...prev, { id: newId(), role: 'assistant', text: reply }]);
+      setMessages((prev) => [...prev, { id: newId(), role: 'assistant', text: reply, action: res?.action || null }]);
     } catch (e: any) {
       let msg = 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.';
       if (e?.status === 503) msg = 'Yapay zeka asistanı henüz yapılandırılmadı.';
@@ -66,6 +85,30 @@ export default function AssistantScreen() {
     }
   };
 
+  const applyAction = async (msgId: string, action: AssistantActionT) => {
+    if (!activeCompany) { showToast('Önce firma seçiniz'); return; }
+    setApplyingId(msgId);
+    try {
+      const sys: SystemTypeDefT = {
+        id: uid(),
+        name: action.name,
+        fields: action.fields.map((f) => ({ id: uid(), label: f.label, type: f.type, options: f.options || [] })),
+      };
+      const next = [...(activeCompany.sistemTipleri || []), sys];
+      await updateCompany(activeCompany.id, { sistemTipleri: next });
+      setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, actionApplied: true } : m)));
+      showToast(`'${action.name}' Katalog'a eklendi`);
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || ''));
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
+  const dismissAction = (msgId: string) => {
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, actionDismissed: true } : m)));
+  };
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.header}>
@@ -80,7 +123,7 @@ export default function AssistantScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, width: '100%' }}
           showsVerticalScrollIndicator={false}
         >
           {messages.length === 0 ? (
@@ -90,7 +133,7 @@ export default function AssistantScreen() {
               </View>
               <Text style={s.emptyTitle}>Size nasıl yardımcı olabilirim?</Text>
               <Text style={s.emptyText}>
-                Uygulamayı kullanma konusunda soru sorabilir, ya da bir teklif hazırlarken ürün açıklaması, fiyatlandırma notu veya teklif notu taslağı isteyebilirsiniz.
+                Uygulamayı kullanma konusunda soru sorabilir, ya da bir teklif hazırlarken ürün açıklaması, fiyatlandırma notu veya teklif notu taslağı isteyebilirsiniz. Sattığınız ürün/hizmeti ve hangi alanları (ölçü, marka, renk vb.) girdiğinizi anlatırsanız, Katalog yapılandırıcısını sizin için otomatik hazırlayabilirim.
               </Text>
               <View style={s.suggestWrap}>
                 {SUGGESTIONS.map((sug) => (
@@ -102,10 +145,67 @@ export default function AssistantScreen() {
             </View>
           ) : (
             messages.map((m) => (
-              <View key={m.id} style={[s.bubbleRow, m.role === 'user' ? s.bubbleRowUser : s.bubbleRowAssistant]}>
-                <View style={[s.bubble, m.role === 'user' ? s.bubbleUser : s.bubbleAssistant]}>
-                  <Text style={[s.bubbleText, m.role === 'user' && s.bubbleTextUser]}>{m.text}</Text>
+              <View key={m.id}>
+                <View style={[s.bubbleRow, m.role === 'user' ? s.bubbleRowUser : s.bubbleRowAssistant]}>
+                  <View style={[s.bubble, m.role === 'user' ? s.bubbleUser : s.bubbleAssistant]}>
+                    <Text style={[s.bubbleText, m.role === 'user' && s.bubbleTextUser]}>{m.text}</Text>
+                  </View>
                 </View>
+                {m.action && !m.actionDismissed ? (
+                  <View style={s.actionCard} testID={`assistant-action-${m.id}`}>
+                    {m.actionApplied ? (
+                      <View style={s.actionAppliedRow}>
+                        <Ionicons name="checkmark-circle" size={18} color={theme.colors.green} />
+                        <Text style={s.actionAppliedText} numberOfLines={2}>
+                          '{m.action.name}' Katalog'a eklendi
+                        </Text>
+                        <TouchableOpacity onPress={() => router.push('/(tabs)/catalog')} testID={`assistant-goto-catalog-${m.id}`}>
+                          <Text style={s.actionGotoLink}>Katalog'u Aç</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={s.actionHeaderRow}>
+                          <Ionicons name="cube-outline" size={16} color={theme.colors.modules.katalog} />
+                          <Text style={s.actionTitle} numberOfLines={2}>Katalog Önerisi: {m.action.name}</Text>
+                        </View>
+                        <View style={s.actionFieldList}>
+                          {m.action.fields.map((f, i) => (
+                            <View key={`${m.id}-f-${i}`} style={s.actionFieldRow}>
+                              <Text style={s.actionFieldLabel} numberOfLines={1}>{f.label}</Text>
+                              <View style={s.actionFieldTypeBadge}>
+                                <Text style={s.actionFieldTypeText}>{FIELD_TYPE_LABEL[f.type] || f.type}</Text>
+                              </View>
+                              {f.type === 'select' && f.options.length > 0 ? (
+                                <Text style={s.actionFieldOptions} numberOfLines={1}>{f.options.join(', ')}</Text>
+                              ) : null}
+                            </View>
+                          ))}
+                        </View>
+                        <View style={s.actionBtnRow}>
+                          <TouchableOpacity
+                            style={s.actionApplyBtn}
+                            onPress={() => applyAction(m.id, m.action!)}
+                            disabled={applyingId === m.id}
+                            testID={`assistant-apply-action-${m.id}`}
+                          >
+                            {applyingId === m.id ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Ionicons name="add-circle" size={16} color="#fff" />
+                                <Text style={s.actionApplyBtnText}>Katalog'a Ekle</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                          <TouchableOpacity style={s.actionDismissBtn} onPress={() => dismissAction(m.id)} testID={`assistant-dismiss-action-${m.id}`}>
+                            <Text style={s.actionDismissBtnText}>Hayır</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                ) : null}
               </View>
             ))
           )}
@@ -178,14 +278,49 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
   },
   suggestChipText: { color: theme.colors.primary, fontWeight: '700', fontSize: 13.5 },
-  bubbleRow: { flexDirection: 'row', marginBottom: 12 },
+  bubbleRow: { flexDirection: 'row', marginBottom: 12, width: '100%' },
   bubbleRowUser: { justifyContent: 'flex-end' },
   bubbleRowAssistant: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '82%', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: { maxWidth: '82%', flexShrink: 1, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
   bubbleUser: { backgroundColor: theme.colors.primary, borderBottomRightRadius: 4 },
   bubbleAssistant: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 14.5, color: theme.colors.text, lineHeight: 20 },
+  bubbleText: { fontSize: 14.5, color: theme.colors.text, lineHeight: 20, flexShrink: 1 },
   bubbleTextUser: { color: '#fff' },
+  actionCard: {
+    width: '100%',
+    marginTop: -4,
+    marginBottom: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: 14,
+    padding: 12,
+  },
+  actionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  actionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, flexShrink: 1 },
+  actionFieldList: { gap: 6, marginBottom: 10 },
+  actionFieldRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  actionFieldLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text, flexShrink: 1 },
+  actionFieldTypeBadge: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  actionFieldTypeText: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
+  actionFieldOptions: { fontSize: 11, color: theme.colors.textMuted, flexShrink: 1 },
+  actionBtnRow: { flexDirection: 'row', gap: 8 },
+  actionApplyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.modules.katalog,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  actionApplyBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
+  actionDismissBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark },
+  actionDismissBtnText: { color: theme.colors.textMuted, fontWeight: '700', fontSize: 12.5 },
+  actionAppliedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actionAppliedText: { flex: 1, fontSize: 12.5, fontWeight: '700', color: theme.colors.text },
+  actionGotoLink: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -93,7 +93,20 @@ ASSISTANT_SYSTEM_PROMPT = (
     "Kullanıcılara uygulamayı nasıl kullanacaklarını anlatır VE teklif (fiyat teklifi/proforma) hazırlamalarına "
     "yardımcı olursun: ürün/hizmet açıklamasından teklif kalemi metni önerirsin, fiyatlandırma notu ve genel "
     "teklif notları için taslak yazarsın. Kısa, net ve profesyonel bir Türkçe kullan. Kullanıcı adına gerçek "
-    "bir işlem (kayıt, ödeme, silme vb.) yapamazsın; sadece metin önerisi/taslak üretirsin."
+    "bir işlem (kayıt, ödeme, silme vb.) yapamazsın; sadece metin önerisi/taslak üretirsin.\n\n"
+    "EK YETENEK — Katalog Yapılandırıcı önerisi: Uygulamada 'Katalog' sekmesinde kullanıcılar sattıkları "
+    "ürün/hizmet için tekrar kullanılabilir bir alan seti (ör. ölçü, motor markası, renk) tanımlayabilir. "
+    "Kullanıcı hangi ürün/hizmeti sattığını VE teklif hazırlarken hangi değişken alanları (ölçü, tip, marka, "
+    "renk, seçenek vb.) girmesi gerektiğini yeterince açık anlattıysa, normal cevabının en sonuna, ayrı bir "
+    "satırda SADECE şu formatta bir JSON bloğu ekle (kullanıcı bunu görmeyecek, arka planda ayıklanacak):\n"
+    "```json\n"
+    "{\"action\": \"add_system_type\", \"name\": \"<ürün/hizmet tipi adı>\", \"fields\": ["
+    "{\"label\": \"<alan adı>\", \"type\": \"text|number|select|checkbox\", "
+    "\"options\": [\"...\"]}]}\n"
+    "```\n"
+    "Kurallar: 'options' sadece type=select ise ve en az 2 seçenekle doldurulur, diğer tiplerde boş dizi olur. "
+    "Kullanıcı yeterince bilgi vermediyse veya sadece genel bir soru soruyorsa bu JSON bloğunu KESİNLİKLE EKLEME, "
+    "bunun yerine hangi bilgilere ihtiyacın olduğunu sor. En fazla 8 alan öner."
 )
 
 # Dummy hash for timing-safe login (mitigates account enumeration)
@@ -1331,8 +1344,62 @@ class AssistantChatRequest(BaseModel):
     quote_context: Optional[Dict[str, Any]] = None
 
 
+class AssistantSystemField(BaseModel):
+    label: str
+    type: str = "text"
+    options: List[str] = []
+
+
+class AssistantAction(BaseModel):
+    action: str
+    name: str
+    fields: List[AssistantSystemField] = []
+
+
 class AssistantChatResponse(BaseModel):
     reply: str
+    action: Optional[AssistantAction] = None
+
+
+_ASSISTANT_JSON_BLOCK_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
+_ALLOWED_FIELD_TYPES = {"text", "number", "select", "checkbox"}
+
+
+def _extract_assistant_action(reply_text: str):
+    """Pulls a trailing ```json {...}``` block (if any) out of the assistant's
+    reply, validates/sanitizes it against the add_system_type schema, and
+    returns (clean_reply_text, action_or_None). Any malformed block is
+    silently dropped from the reply rather than surfaced as an error — the
+    user still gets the rest of the conversational answer."""
+    m = _ASSISTANT_JSON_BLOCK_RE.search(reply_text)
+    if not m:
+        return reply_text.strip(), None
+    clean_text = (reply_text[: m.start()] + reply_text[m.end():]).strip()
+    try:
+        data = json.loads(m.group(1))
+    except Exception:
+        return clean_text, None
+    if not isinstance(data, dict) or data.get("action") != "add_system_type":
+        return clean_text, None
+    name = str(data.get("name") or "").strip()
+    if not name:
+        return clean_text, None
+    raw_fields = data.get("fields") or []
+    fields = []
+    for f in raw_fields[:12]:
+        if not isinstance(f, dict):
+            continue
+        label = str(f.get("label") or "").strip()
+        ftype = str(f.get("type") or "text").strip().lower()
+        if not label or ftype not in _ALLOWED_FIELD_TYPES:
+            continue
+        options = [str(o).strip() for o in (f.get("options") or []) if str(o).strip()] if ftype == "select" else []
+        if ftype == "select" and len(options) < 2:
+            continue
+        fields.append(AssistantSystemField(label=label, type=ftype, options=options))
+    if not fields:
+        return clean_text, None
+    return clean_text, AssistantAction(action="add_system_type", name=name, fields=fields)
 
 
 @api_router.post("/assistant/chat", response_model=AssistantChatResponse)
@@ -1362,7 +1429,9 @@ async def assistant_chat(payload: AssistantChatRequest, user=Depends(get_current
     except Exception as e:
         logger.error(f"Assistant chat error: {e}")
         raise HTTPException(status_code=502, detail="Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin")
-    return AssistantChatResponse(reply=reply_text or "Üzgünüm, şu anda bir yanıt oluşturamadım.")
+    reply_text = reply_text or "Üzgünüm, şu anda bir yanıt oluşturamadım."
+    clean_reply, action = _extract_assistant_action(reply_text)
+    return AssistantChatResponse(reply=clean_reply or reply_text, action=action)
 
 
 app.include_router(api_router)

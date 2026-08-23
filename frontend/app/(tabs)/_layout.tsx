@@ -6,7 +6,7 @@ import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute, NavItem } from '@/src/lib/navItems';
 
 function tabIcon(name: string, color: string) {
-  return ({ focused, size }: { focused: boolean; size: number }) => (
+  return ({ focused }: { focused: boolean }) => (
     <View
       style={{
         width: 30,
@@ -17,16 +17,8 @@ function tabIcon(name: string, color: string) {
         backgroundColor: focused ? color : 'transparent',
       }}
     >
-      <Ionicons name={(focused ? name : `${name}-outline`) as any} size={size - 4} color={focused ? '#fff' : theme.colors.textOnDark} />
+      <Ionicons name={(focused ? name : `${name}-outline`) as any} size={19} color={focused ? '#fff' : theme.colors.textOnDark} />
     </View>
-  );
-}
-
-function tabLabel() {
-  return ({ focused, children }: { focused: boolean; children: string }) => (
-    <Text style={{ fontSize: 9, fontWeight: '800', letterSpacing: 0, color: focused ? '#fff' : theme.colors.textOnDark, marginTop: -2 }}>
-      {children}
-    </Text>
   );
 }
 
@@ -85,31 +77,28 @@ export default function TabsLayout() {
         tabBarStyle: isDesktopWeb
           ? { display: 'none' }
           : {
-              height: 60 + insets.bottom,
-              paddingTop: 6,
+              height: 52 + insets.bottom,
+              paddingTop: 8,
               paddingBottom: insets.bottom + 6,
               borderTopWidth: 0,
               backgroundColor: theme.colors.navyDark,
               elevation: 8,
             },
-        tabBarItemStyle: { paddingHorizontal: 1 },
+        tabBarShowLabel: false,
+        tabBarItemStyle: { paddingHorizontal: 0 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Panel', tabBarIcon: tabIcon('grid', theme.colors.primary), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="teklif" options={{ title: 'Teklif', tabBarIcon: tabIcon('create', m.teklif), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="catalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('library', m.katalog), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="history" options={{ title: 'Geçmiş', tabBarIcon: tabIcon('time', m.gecmis), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="customers" options={{ title: 'Müşteri', tabBarIcon: tabIcon('people', m.musteri), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya), tabBarLabel: tabLabel() }} />
-      <Tabs.Screen name="reminders" options={{ title: 'Hatırlat.', tabBarIcon: tabIcon('notifications', m.hatirlatma), tabBarLabel: tabLabel() }} />
-      {/* Kasa & Tahsilat live inside the (tabs) group so the desktop sidebar
-          wrapper stays visible on them too — they're just hidden from the
-          mobile bottom bar (tabBarButton: null) since that's already full;
-          reachable via the Panel module cards and the mobile drawer instead. */}
-      <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarButton: () => null }} />
-      <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarButton: () => null }} />
-      <Tabs.Screen name="company" options={{ title: 'Firma', tabBarIcon: tabIcon('business', m.firma), tabBarLabel: tabLabel() }} />
+      <Tabs.Screen name="index" options={{ title: 'Panel', tabBarIcon: tabIcon('grid', theme.colors.primary) }} />
+      <Tabs.Screen name="teklif" options={{ title: 'Teklif', tabBarIcon: tabIcon('create', m.teklif) }} />
+      <Tabs.Screen name="catalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('library', m.katalog) }} />
+      <Tabs.Screen name="history" options={{ title: 'Geçmiş', tabBarIcon: tabIcon('time', m.gecmis) }} />
+      <Tabs.Screen name="customers" options={{ title: 'Müşteri', tabBarIcon: tabIcon('people', m.musteri) }} />
+      <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis) }} />
+      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya) }} />
+      <Tabs.Screen name="reminders" options={{ title: 'Hatırlatmalar', tabBarIcon: tabIcon('notifications', m.hatirlatma) }} />
+      <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa) }} />
+      <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat) }} />
+      <Tabs.Screen name="company" options={{ title: 'Firma', tabBarIcon: tabIcon('business', m.firma) }} />
     </Tabs>
   );
 

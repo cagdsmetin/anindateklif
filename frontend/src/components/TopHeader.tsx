@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView, Image, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useRouter } from 'expo-router';
+import NavDrawer from '@/src/components/NavDrawer';
 
 export default function TopHeader({ title }: { title?: string }) {
   const { activeCompany, companies, setActiveCompanyId, toast } = useApp();
   const { user, signOut } = useAuth();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  // The desktop sidebar (app/(tabs)/_layout.tsx) already gives full navigation
+  // on wide web windows, so the hamburger/drawer is only needed everywhere else
+  // (native mobile app + narrow mobile web).
+  const showHamburger = !(Platform.OS === 'web' && width >= 900);
 
   return (
     <>
@@ -22,6 +29,16 @@ export default function TopHeader({ title }: { title?: string }) {
         </View>
       )}
       <View style={s.header}>
+        {showHamburger ? (
+          <TouchableOpacity
+            style={s.hamburgerBtn}
+            onPress={() => setDrawerVisible(true)}
+            testID="hamburger-btn"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="menu" size={22} color={theme.colors.navy} />
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={s.brand}
           activeOpacity={0.7}
@@ -137,6 +154,8 @@ export default function TopHeader({ title }: { title?: string }) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <NavDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
     </>
   );
 }
@@ -167,6 +186,15 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.line,
+  },
+  hamburgerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surfaceSoft,
+    marginRight: 8,
   },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
   brandIcon: {

@@ -3,6 +3,7 @@ import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDime
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
+import { buildNavItems, isNavItemActive, navItemRoute, NavItem } from '@/src/lib/navItems';
 
 function tabIcon(name: string, color: string) {
   return ({ focused, size }: { focused: boolean; size: number }) => (
@@ -29,19 +30,13 @@ function tabLabel() {
   );
 }
 
-type NavItem = { name: string; title: string; icon: string; color: string; path?: string };
-
 // Sidebar shown instead of the bottom tab bar on wide desktop web windows —
-// same 9 destinations, same colors, just laid out as a left rail like a
-// typical desktop dashboard instead of a phone-style bottom bar.
+// same destinations, same colors, just laid out as a left rail like a
+// typical desktop dashboard instead of a phone-style bottom bar. The same
+// item list also powers the mobile slide-in drawer (src/components/NavDrawer.tsx).
 function Sidebar({ items }: { items: NavItem[] }) {
   const router = useRouter();
   const pathname = usePathname();
-
-  const isActive = (item: NavItem) => {
-    if (item.name === 'index') return pathname === '/' || pathname === '/index' || pathname === '/(tabs)';
-    return pathname === `/${item.name}` || pathname.startsWith(`/${item.name}/`);
-  };
 
   return (
     <View style={sb.container}>
@@ -53,12 +48,12 @@ function Sidebar({ items }: { items: NavItem[] }) {
       </TouchableOpacity>
       <ScrollView style={sb.navList} showsVerticalScrollIndicator={false}>
         {items.map((it) => {
-          const active = isActive(it);
+          const active = isNavItemActive(it, pathname);
           return (
             <TouchableOpacity
               key={it.name}
               style={[sb.navItem, active && { backgroundColor: it.color }]}
-              onPress={() => router.push((it.name === 'index' ? '/(tabs)' : (it.path || `/(tabs)/${it.name}`)) as any)}
+              onPress={() => router.push(navItemRoute(it) as any)}
               testID={`sidebar-${it.name}`}
             >
               <Ionicons name={(active ? it.icon : `${it.icon}-outline`) as any} size={18} color={active ? '#fff' : theme.colors.textOnDark} />
@@ -80,19 +75,7 @@ export default function TabsLayout() {
   // desktop business dashboards are laid out.
   const isDesktopWeb = Platform.OS === 'web' && width >= 900;
 
-  const navItems: NavItem[] = [
-    { name: 'index', title: 'Panel', icon: 'grid', color: theme.colors.primary },
-    { name: 'teklif', title: 'Teklif', icon: 'create', color: m.teklif },
-    { name: 'catalog', title: 'Katalog', icon: 'library', color: m.katalog },
-    { name: 'history', title: 'Geçmiş', icon: 'time', color: m.gecmis },
-    { name: 'customers', title: 'Müşteri', icon: 'people', color: m.musteri },
-    { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
-    { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
-    { name: 'reminders', title: 'Hatırlat.', icon: 'notifications', color: m.hatirlatma },
-    { name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa, path: '/kasa' },
-    { name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat, path: '/tahsilat' },
-    { name: 'company', title: 'Firma', icon: 'business', color: m.firma },
-  ];
+  const navItems: NavItem[] = buildNavItems();
 
   const tabs = (
     <Tabs

@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
+import { storage } from '@/src/utils/storage';
 
 type PlanT = {
   id: string;
@@ -30,6 +31,8 @@ type StatusT = {
   subscription_active: boolean;
   subscription_expires_at?: string | null;
   subscription_plan?: string | null;
+  days_left?: number | null;
+  renewal_due_soon?: boolean;
   plan_price_try: number;
   plans: PlanT[];
   period: string;
@@ -37,6 +40,8 @@ type StatusT = {
   free_limit: number;
   remaining_free?: number | null;
 };
+
+const BILLING_INFO_KEY = 'sub_billing_info_v1';
 
 const FALLBACK_PLANS: PlanT[] = [
   { id: 'weekly', label: 'Haftalık Abonelik', price_try: 50, duration_days: 7 },
@@ -70,15 +75,29 @@ export default function SubscriptionScreen() {
     (async () => {
       try {
         const res = await api.subscriptionStatus();
-        setStatus(res as StatusT);
-        const plans = (res as StatusT)?.plans;
-        if (plans && plans.length > 0 && !plans.some((p) => p.id === 'yearly')) {
-          setSelectedPlan(plans[0].id);
+        const st = res as StatusT;
+        setStatus(st);
+        if (st.subscription_plan) {
+          setSelectedPlan(st.subscription_plan);
+        } else if (st.plans && st.plans.length > 0 && !st.plans.some((p) => p.id === 'yearly')) {
+          setSelectedPlan(st.plans[0].id);
         }
       } catch (e: any) {
         setError('Abonelik bilgisi alınamadı');
       } finally {
         setLoading(false);
+      }
+    })();
+    (async () => {
+      const saved = await storage.getItem<string>(BILLING_INFO_KEY, '');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed?.kimlikNo) setKimlikNo(parsed.kimlikNo);
+          if (parsed?.adres) setAdres(parsed.adres);
+          if (parsed?.sehir) setSehir(parsed.sehir);
+          if (parsed?.posta) setPosta(parsed.posta);
+        } catch {}
       }
     })();
   }, []);
@@ -115,6 +134,12 @@ export default function SubscriptionScreen() {
       });
       const url = res?.payment_page_url;
       if (url) {
+        // Fatura bilgilerini yerelde sakla — bir sonraki yenilemede (haftalık/yıllık
+        // dönem bitince) kullanıcı formu tekrar doldurmasın, tek tıkla yenileyebilsin.
+        await storage.setItem(
+          BILLING_INFO_KEY,
+          JSON.stringify({ kimlikNo: kimlikNo.trim(), adres: adres.trim(), sehir: sehir.trim(), posta: posta.trim() })
+        );
         await Linking.openURL(url);
       } else {
         setError('Ödeme sayfası oluşturulamadı');
@@ -135,6 +160,8 @@ export default function SubscriptionScreen() {
 
   const remaining = status?.subscription_active ? null : status?.remaining_free ?? 0;
   const usedUp = !status?.subscription_active && (status?.remaining_free ?? 0) <= 0;
+  const dueSoon = !!(status?.subscription_active && status?.renewal_due_soon);
+  const showPlanSection = !status?.subscription_active || dueSoon;
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -155,18 +182,27 @@ export default function SubscriptionScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
             {/* Status card */}
-            <View style={[s.statusCard, status?.subscription_active ? s.statusCardActive : usedUp ? s.statusCardDanger : s.statusCardInfo]}>
+            <View style={[s.statusCard, status?.subscription_active ? (dueSoon ? s.statusCardWarn : s.statusCardActive) : usedUp ? s.statusCardDanger : s.statusCardInfo]}>
               <Ionicons
-                name={status?.subscription_active ? 'checkmark-circle' : usedUp ? 'alert-circle' : 'information-circle'}
+                name={status?.subscription_active ? (dueSoon ? 'time-outline' : 'checkmark-circle') : usedUp ? 'alert-circle' : 'information-circle'}
                 size={26}
-                color={status?.subscription_active ? theme.colors.green : usedUp ? theme.colors.red : theme.colors.primary}
+                color={status?.subscription_active ? (dueSoon ? theme.colors.goldDark : theme.colors.green) : usedUp ? theme.colors.red : theme.colors.primary}
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 {status?.subscription_active ? (
-                  <>
-                    <Text style={s.statusTitle}>Aboneliğiniz aktif</Text>
-                    <Text style={s.statusText}>Sınırsız teklif oluşturabilirsiniz.</Text>
-                  </>
+                  dueSoon ? (
+                    <>
+                      <Text style={s.statusTitle}>
+                        Aboneliğiniz {Math.max(status.days_left ?? 0, 0)} gün sonra sona eriyor
+                      </Text>
+                      <Text style={s.statusText}>Otomatik çekim yapılmaz — kesintisiz devam etmek için aşağıdan yenileyin.</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={s.statusTitle}>Aboneliğiniz aktif</Text>
+                      <Text style={s.statusText}>Sınırsız teklif oluşturabilirsiniz.</Text>
+                    </>
+                  )
                 ) : (
                   <>
                     <Text style={s.statusTitle}>
@@ -182,7 +218,7 @@ export default function SubscriptionScreen() {
               </View>
             </View>
 
-            {!status?.subscription_active && (
+            {showPlanSection && (
               <>
                 {/* Plan picker */}
                 <Text style={s.formLabel}>Plan Seç</Text>
@@ -243,7 +279,7 @@ export default function SubscriptionScreen() {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={s.ctaText}>
-                      Abone Ol — ₺{(activePlan?.price_try ?? 0).toFixed(0)}{activePlan ? planUnitLabel(activePlan.duration_days) : ''}
+                      {dueSoon ? 'Yenile' : 'Abone Ol'} — ₺{(activePlan?.price_try ?? 0).toFixed(0)}{activePlan ? planUnitLabel(activePlan.duration_days) : ''}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -317,6 +353,7 @@ const s = StyleSheet.create({
   },
   statusCardInfo: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primaryBorder },
   statusCardActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
+  statusCardWarn: { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.goldBorder },
   statusCardDanger: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
   statusTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text, marginBottom: 4 },
   statusText: { fontSize: 13, color: theme.colors.textMuted, lineHeight: 18 },

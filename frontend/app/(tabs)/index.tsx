@@ -74,7 +74,7 @@ export default function PanelScreen() {
   const insets = useSafeAreaInsets();
   const { activeCompany, quotes, customers, services, campaigns, kasa } = useApp();
 
-  const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number } | null>(null);
+  const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number; days_left?: number | null; renewal_due_soon?: boolean } | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -237,6 +237,18 @@ export default function PanelScreen() {
               <Text style={{ fontWeight: '900' }}>{Math.max(subStatus.remaining_free ?? 0, 0)} ücretsiz teklif hakkınız</Text> kaldı. Devamı için abone olun.
             </Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.primaryDark} />
+          </TouchableOpacity>
+        )}
+
+        {subStatus?.subscription_active && subStatus.renewal_due_soon && (
+          <TouchableOpacity style={s.alertBanner} onPress={() => router.push('/subscription' as any)} activeOpacity={0.85}>
+            <Ionicons name="time-outline" size={18} color={theme.colors.goldDark} />
+            <Text style={s.alertText}>
+              <Text style={{ fontWeight: '900' }}>
+                Aboneliğiniz {Math.max(subStatus.days_left ?? 0, 0)} gün sonra sona eriyor.
+              </Text> Kesintisiz devam etmek için yenileyin.
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.goldDark} />
           </TouchableOpacity>
         )}
 

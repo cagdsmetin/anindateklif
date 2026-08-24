@@ -387,6 +387,39 @@ def _is_subscription_active(user: Dict[str, Any]) -> bool:
     return exp > _utc()
 
 
+def _renewal_days_left(user: Dict[str, Any]) -> Optional[int]:
+    """Returns whole days left until subscription_expires_at, or None if there's
+    no expiry (no active paid subscription / unlimited free-access account)."""
+    exp = user.get("subscription_expires_at")
+    if not exp:
+        return None
+    if isinstance(exp, str):
+        try:
+            exp = datetime.fromisoformat(exp)
+        except Exception:
+            return None
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    delta = exp - _utc()
+    return max(0, delta.days)
+
+
+def _renewal_due_soon(user: Dict[str, Any], days_left: Optional[int]) -> bool:
+    """A plan-aware reminder threshold: weekly plans warn with 2 days left,
+    yearly plans warn with 14 days left, anything else defaults to 3 days."""
+    if days_left is None:
+        return False
+    plan_id = user.get("subscription_plan")
+    plan_cfg = SUBSCRIPTION_PLANS.get(plan_id)
+    if plan_cfg and plan_cfg["duration_days"] <= 7:
+        threshold = 2
+    elif plan_cfg and plan_cfg["duration_days"] >= 365:
+        threshold = 14
+    else:
+        threshold = 3
+    return days_left <= threshold
+
+
 async def _get_quota_state(user: Dict[str, Any]) -> Dict[str, Any]:
     period = _current_period_key()
     stored_period = user.get("monthly_quote_period")
@@ -1488,6 +1521,8 @@ class SubscriptionStatus(BaseModel):
     subscription_active: bool
     subscription_expires_at: Optional[str] = None
     subscription_plan: Optional[str] = None
+    days_left: Optional[int] = None
+    renewal_due_soon: bool = False
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
     plans: List[PlanOut] = []
     period: str
@@ -1512,10 +1547,13 @@ def _plans_out() -> List[PlanOut]:
 @api_router.get("/subscription/status", response_model=SubscriptionStatus)
 async def subscription_status(user=Depends(get_current_user)):
     state = await _get_quota_state(user)
+    days_left = _renewal_days_left(user)
     return SubscriptionStatus(
         subscription_active=state["subscription_active"],
         subscription_expires_at=user.get("subscription_expires_at"),
         subscription_plan=user.get("subscription_plan"),
+        days_left=days_left,
+        renewal_due_soon=state["subscription_active"] and _renewal_due_soon(user, days_left),
         plan_price_try=SUBSCRIPTION_PRICE_TRY,
         plans=_plans_out(),
         period=state["period"],

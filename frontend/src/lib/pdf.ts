@@ -115,8 +115,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
-  .logo { max-width:300px; max-height:130px; object-fit:contain; margin:0 0 12px 0; display:block; }
-  .logo-fallback { padding:10px 16px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 12px 0; display:inline-block; font-size:14px; }
+  .logo { max-width:380px; max-height:170px; object-fit:contain; margin:0 0 14px 0; display:block; }
+  .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 14px 0; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.6; margin:0 0 3px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
@@ -370,13 +370,13 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
 
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:2.5px solid #1c1c1e; margin-bottom:16px; }
-  .company-block { max-width:56%; }
+  .company-block { max-width:60%; }
   .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 7px; }
   .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.7; }
   .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
-  .logo-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .logo-img { height:84px; max-width:210px; object-fit:contain; }
-  .logo-fallback { width:76px; height:76px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19pt; border-radius:4px; }
+  .logo-row { margin-bottom:12px; }
+  .logo-img { height:110px; max-width:270px; object-fit:contain; display:block; }
+  .logo-fallback { width:100px; height:100px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24pt; border-radius:4px; }
   .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
   .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
   .meta-table { border-collapse:collapse; margin-top:8px; }
@@ -449,19 +449,19 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   <div class="sheet">
     <div class="header">
       <div class="company-block">
-        <div class="company-name">${v(company.sirketAdi)}</div>
-        <div class="company-meta">
-          ${v(company.adres)}<br/>
-          Tel: ${phoneLine}<br/>
-          E-Mail: ${v(company.email)} &nbsp;&middot;&nbsp; ${v(company.website)}
-        </div>
-      </div>
-      <div class="head-right">
         <div class="logo-row">
           ${logoSrc
             ? `<img class="logo-img" src="${logoSrc}" />`
             : `<div class="logo-fallback">${esc(monogram)}</div>`}
         </div>
+        <div class="company-name">${v(company.sirketAdi)}</div>
+        ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="company-meta">
+          ${company.adres ? `${esc(company.adres)}<br/>` : ''}
+          ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
+          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
+        </div>` : ''}
+      </div>
+      <div class="head-right">
         <div class="doc-title">TEKLİF FORMU</div>
         <table class="meta-table">
           <tr><td><span class="meta-label">Teklif No</span><span class="meta-value">${v(quote.teklifNo)}</span></td></tr>
@@ -617,9 +617,10 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 
   /* Header */
   .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
-  .brand-mark { margin-bottom:14px; }
-  .logo-img { height:92px; max-width:170px; object-fit:contain; margin-bottom:12px; }
-  .logo-fallback { width:80px; height:80px; border:1px solid #b5502e; color:#b5502e; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:20pt; font-family:'Helvetica Neue', Arial, sans-serif; margin-bottom:12px; }
+  .brand { max-width:56%; }
+  .logo-row { margin-bottom:14px; }
+  .logo-img { height:130px; max-width:240px; object-fit:contain; display:block; }
+  .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Helvetica Neue', Arial, sans-serif; }
   .brand-name { font-size:22pt; letter-spacing:.4px; font-weight:700; }
   .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
   .doc-id { text-align:right; }
@@ -696,19 +697,19 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   <div class="header">
     <div class="top-row">
       <div class="brand">
-        <div class="brand-mark">
-          <div class="brand-name">${v(company.sirketAdi)}</div>
+        <div class="logo-row">
+          ${logoSrc
+            ? `<img class="logo-img" src="${logoSrc}" />`
+            : `<div class="logo-fallback">${esc(monogram)}</div>`}
         </div>
-        <div class="brand-meta">
-          ${v(company.adres)}<br/>
-          Tel: ${phoneLine}<br/>
-          E-Mail: ${v(company.email)} &nbsp;&middot;&nbsp; ${v(company.website)}
-        </div>
+        <div class="brand-name">${v(company.sirketAdi)}</div>
+        ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="brand-meta">
+          ${company.adres ? `${esc(company.adres)}<br/>` : ''}
+          ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
+          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
+        </div>` : ''}
       </div>
       <div class="doc-id">
-        ${logoSrc
-          ? `<img class="logo-img" src="${logoSrc}" />`
-          : `<div class="logo-fallback">${esc(monogram)}</div>`}
         <div class="doc-title">TEKLİF</div>
         <div class="doc-sub">Form No ${v(quote.teklifNo)}</div>
         <div class="meta-list">

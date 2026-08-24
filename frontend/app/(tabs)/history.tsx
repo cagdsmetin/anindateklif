@@ -121,11 +121,18 @@ export default function HistoryScreen() {
     try {
       const result = await generatePdf(quote);
       if (!result) return;
+      // Web: blob: PDFs aren't a valid navigator.share() target (throws
+      // "Invalid URL" even though Sharing.isAvailableAsync() reports true) —
+      // always go straight to a real download there.
+      if (Platform.OS === 'web') {
+        await downloadFileWeb(result.uri, result.fileName);
+        showToast('PDF indirildi');
+        return;
+      }
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
         await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.', UTI: 'com.adobe.pdf' });
       } else {
-        // Web: no native share sheet — trigger a real browser download instead.
         await downloadFileWeb(result.uri, result.fileName);
         showToast('PDF indirildi');
       }
@@ -134,11 +141,20 @@ export default function HistoryScreen() {
 
   const doWhatsApp = async (quote: QuoteT, message?: string) => {
     if (!activeCompany) return;
+    // Open the tab synchronously, still inside this click's user-gesture
+    // window — PDF generation below takes long enough that window.open()
+    // after it gets silently blocked as a popup. See preview.tsx for the
+    // same pattern.
+    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
     try {
       const result = await generatePdf(quote);
-      if (!result) return;
-      await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi, message });
-    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
+      if (!result) { if (waWindow) { try { waWindow.close(); } catch {} } return; }
+      const r = await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi, message, waWindow });
+      if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+    } catch (e: any) {
+      if (waWindow) { try { waWindow.close(); } catch {} }
+      showToast('WhatsApp hatası: ' + (e?.message || ''));
+    }
   };
 
   const waMenuQuote = waMenuFor ? quotes.find((x) => x.id === waMenuFor) : null;

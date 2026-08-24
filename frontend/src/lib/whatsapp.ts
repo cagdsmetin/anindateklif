@@ -175,8 +175,18 @@ export async function shareQuoteViaWhatsApp(opts: {
   companyName?: string;
   fileName?: string;
   message?: string;
+  /**
+   * Web only: a tab already opened synchronously (inside the triggering
+   * click handler, before any `await`) via `window.open('', '_blank')`. We
+   * navigate this tab to the wa.me URL instead of calling `window.open()`
+   * ourselves down here — by this point we're well past the original click's
+   * user-gesture window (PDF generation alone can take a second or more),
+   * so a fresh `window.open()` call here gets silently blocked by the
+   * browser's popup blocker. Navigating an already-open tab is not blocked.
+   */
+  waWindow?: Window | null;
 }): Promise<WhatsAppShareResult> {
-  const { pdfUri, quote, companyName, fileName } = opts;
+  const { pdfUri, quote, companyName, fileName, waWindow } = opts;
   const message = opts.message || composeQuoteWhatsAppMessage(quote, companyName);
 
   // ---------- WEB ----------
@@ -211,7 +221,11 @@ export async function shareQuoteViaWhatsApp(opts: {
     // PDF and open the chat with the note pre-filled — the user just drags the
     // downloaded file into the chat that opens.
     await downloadFileWeb(pdfUri, desiredName);
-    window.open(waUrl, '_blank');
+    if (waWindow) {
+      try { waWindow.location.href = waUrl; } catch { window.open(waUrl, '_blank'); }
+    } else {
+      window.open(waUrl, '_blank');
+    }
     return { attached: false, downloaded: true };
   }
 

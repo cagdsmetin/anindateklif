@@ -96,7 +96,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Georgia','Cambria','Times New Roman',serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; }
+  body { font-family: 'Georgia','Cambria','Times New Roman',serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; background:#ffffff; }
   .sheet { padding: 12mm; }
 
   /* HEADER — table-layout:fixed pins both columns to their declared % width
@@ -115,7 +115,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
-  .logo { max-width:380px; max-height:170px; object-fit:contain; margin:0 0 14px 0; display:block; }
+  .logo { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; margin:0 0 14px 0; display:block; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 14px 0; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.6; margin:0 0 3px 0; word-wrap:break-word; overflow-wrap:break-word; }
@@ -375,7 +375,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.7; }
   .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { margin-bottom:12px; }
-  .logo-img { height:110px; max-width:270px; object-fit:contain; display:block; }
+  .logo-img { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; display:block; }
   .logo-fallback { width:100px; height:100px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24pt; border-radius:4px; }
   .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
   .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
@@ -619,9 +619,9 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
   .brand { max-width:56%; }
   .logo-row { margin-bottom:14px; }
-  .logo-img { height:130px; max-width:240px; object-fit:contain; display:block; }
+  .logo-img { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; display:block; }
   .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Helvetica Neue', Arial, sans-serif; }
-  .brand-name { font-size:22pt; letter-spacing:.4px; font-weight:700; }
+  .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; }
   .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
   .doc-id { text-align:right; }
   .doc-title { font-size:27pt; letter-spacing:5px; font-weight:400; color:#2b2926; }

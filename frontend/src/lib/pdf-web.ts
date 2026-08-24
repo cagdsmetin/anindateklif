@@ -100,10 +100,59 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
     const pageHeightPt = pdf.internal.pageSize.getHeight();
     const pxPerPage = Math.floor((pageHeightPt * canvas.width) / pageWidthPt);
 
+    // Naive fixed-height slicing cuts straight through whatever happens to sit
+    // at the page boundary — a table row, a line of text — right down the
+    // middle. To avoid that we snap each cut up to a nearby "blank" row (a
+    // strip that's uniformly the page's own background color, i.e. an actual
+    // gap between rows/paragraphs) instead of the exact naive pixel line.
+    // Sampled against the ACTUAL rendered background (read from a corner
+    // that's always inside the sheet's own padding, so this works for every
+    // template regardless of its background color) rather than a hardcoded
+    // white, and bounded to a search window near each boundary so it stays
+    // fast even on long multi-page documents.
+    const srcCtx = canvas.getContext('2d')!;
+    let bgRef: Uint8ClampedArray | null = null;
+    try { bgRef = srcCtx.getImageData(4, 4, 1, 1).data; } catch {}
+
+    const rowIsBackground = (y: number): boolean => {
+      if (!bgRef || y < 0 || y >= canvas.height) return false;
+      const row = srcCtx.getImageData(0, y, canvas.width, 1).data;
+      const tol = 12;
+      const step = 16; // sample every 4th pixel (4 bytes/px) — plenty dense, keeps it fast
+      let samples = 0;
+      let mismatches = 0;
+      for (let i = 0; i < row.length; i += step) {
+        samples++;
+        if (
+          Math.abs(row[i] - bgRef[0]) > tol ||
+          Math.abs(row[i + 1] - bgRef[1]) > tol ||
+          Math.abs(row[i + 2] - bgRef[2]) > tol
+        ) {
+          mismatches++;
+          if (mismatches / samples > 0.03) return false; // clearly not blank — bail early
+        }
+      }
+      return samples > 0;
+    };
+
+    // Search backward from the naive boundary for the nearest safe (blank) row,
+    // within a bounded window. Falls back to the naive cut if nothing is found
+    // (e.g. a single block taller than one full page — can't be helped).
+    const findSafeCut = (naiveEnd: number): number => {
+      if (naiveEnd >= canvas.height) return naiveEnd;
+      const maxBack = Math.floor(pxPerPage * 0.25);
+      for (let y = naiveEnd; y > naiveEnd - maxBack && y > 0; y--) {
+        if (rowIsBackground(y)) return y;
+      }
+      return naiveEnd;
+    };
+
     let renderedPx = 0;
     let pageIndex = 0;
     while (renderedPx < canvas.height) {
-      const sliceHeight = Math.min(pxPerPage, canvas.height - renderedPx);
+      const naiveEnd = Math.min(renderedPx + pxPerPage, canvas.height);
+      const cutY = findSafeCut(naiveEnd);
+      const sliceHeight = Math.max(1, cutY - renderedPx);
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width = canvas.width;
       pageCanvas.height = sliceHeight;

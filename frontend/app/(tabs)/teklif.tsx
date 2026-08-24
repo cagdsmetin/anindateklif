@@ -282,11 +282,18 @@ export default function EditorScreen() {
     const saved = await handleSave(); if (!saved) return;
     try {
       const { uri, fileName } = await generatePdfUri(saved);
+      // Web: blob: PDFs aren't a valid navigator.share() target (throws
+      // "Invalid URL" even though Sharing.isAvailableAsync() reports true) —
+      // always go straight to a real download there.
+      if (Platform.OS === 'web') {
+        await downloadFileWeb(uri, fileName);
+        showToast('PDF indirildi');
+        return;
+      }
       const available = await Sharing.isAvailableAsync();
       if (available) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        // Web: no native share sheet — trigger a real browser download instead.
         await downloadFileWeb(uri, fileName);
         showToast('PDF indirildi');
       }
@@ -297,15 +304,24 @@ export default function EditorScreen() {
   // so the user can attach the PDF into that same chat with one tap.
   const handleWhatsAppShare = async () => {
     const saved = await handleSave(); if (!saved) return;
+    // Open the tab synchronously, still inside this click's user-gesture
+    // window — PDF generation below takes long enough that window.open()
+    // after it gets silently blocked as a popup.
+    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
     try {
       const { uri, fileName } = await generatePdfUri(saved);
-      await shareQuoteViaWhatsApp({
+      const r = await shareQuoteViaWhatsApp({
         pdfUri: uri,
         fileName,
         quote: saved,
         companyName: activeCompany?.sirketAdi,
+        waWindow,
       });
-    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
+      if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+    } catch (e: any) {
+      if (waWindow) { try { waWindow.close(); } catch {} }
+      showToast('WhatsApp hatası: ' + (e?.message || ''));
+    }
   };
 
   const handlePreview = async () => {

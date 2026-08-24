@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   StyleSheet,
   Text,
@@ -55,20 +56,21 @@ export default function PreviewScreen() {
   const quote = useMemo(() => quotes.find((q) => q.id === params.quoteId), [quotes, params.quoteId]);
   const [template, setTemplate] = useState<PdfTemplateId>('classic');
 
-  if (!quote || !activeCompany) {
-    return (
-      <SafeAreaView style={s.container} edges={['top', 'bottom']}>
-        <View style={s.topBar}>
-          <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={theme.colors.text} /></TouchableOpacity>
-          <Text style={s.topTitle}>Önizleme</Text>
-          <View style={{ width: 22 }} />
-        </View>
-        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadı</Text></View>
-      </SafeAreaView>
-    );
-  }
+  // Web only: the on-screen preview renders the REAL exported PDF (same
+  // generatePdf() pipeline used by "PDF Paylaş"/"WhatsApp" below, attachments
+  // merged in) instead of raw HTML — so uploaded attachments actually show up
+  // here, and the preview can never drift from what actually gets shared.
+  // Re-generated whenever the template or the quote changes.
+  const [webPreviewUri, setWebPreviewUri] = useState<string | null>(null);
+  const [webPreviewLoading, setWebPreviewLoading] = useState(false);
+  const [webPreviewError, setWebPreviewError] = useState<string | null>(null);
 
+  // Guarded internally (throws if the quote/company aren't loaded yet) so
+  // this can be defined — and referenced by the effect below — before the
+  // early "not found" return, keeping every hook call unconditional as
+  // React's rules require.
   const generatePdf = async () => {
+    if (!quote || !activeCompany) throw new Error('Teklif veya firma bulunamadı');
     const html = buildQuotePdfHtml(activeCompany, quote, template);
     const desired = buildQuoteFileName(new Date()) + '.pdf';
     let finalUri: string;
@@ -94,14 +96,56 @@ export default function PreviewScreen() {
     return { uri: finalUri, fileName: desired };
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !quote || !activeCompany) return;
+    let cancelled = false;
+    setWebPreviewLoading(true);
+    setWebPreviewError(null);
+    (async () => {
+      try {
+        const { uri } = await generatePdf();
+        if (!cancelled) setWebPreviewUri(uri);
+      } catch (e: any) {
+        if (!cancelled) setWebPreviewError(e?.message || 'Önizleme oluşturulamadı');
+      } finally {
+        if (!cancelled) setWebPreviewLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template, quote?.id]);
+
+  if (!quote || !activeCompany) {
+    return (
+      <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+        <View style={s.topBar}>
+          <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={22} color={theme.colors.text} /></TouchableOpacity>
+          <Text style={s.topTitle}>Önizleme</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={s.empty}><Text style={{ color: theme.colors.textMuted }}>Teklif bulunamadı</Text></View>
+      </SafeAreaView>
+    );
+  }
+
   const doShare = async () => {
     try {
       const { uri, fileName } = await generatePdf();
+      // Web: browsers don't reliably support handing a blob: PDF to
+      // navigator.share (Sharing.isAvailableAsync() can report `true` just
+      // because the Web Share API exists, then shareAsync() throws
+      // "Invalid URL" because blob: URIs aren't a valid share target) — so
+      // on web we always go straight to a real file download, which is also
+      // what "PDF Paylaş" is supposed to do here per the button's own label.
+      if (Platform.OS === 'web') {
+        await downloadFileWeb(uri, fileName);
+        showToast('PDF indirildi');
+        return;
+      }
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
         await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: SHARE_MESSAGE, UTI: 'com.adobe.pdf' });
       } else {
-        // Web: no native share sheet — trigger a real browser download instead.
         await downloadFileWeb(uri, fileName);
         showToast('PDF indirildi');
       }
@@ -109,16 +153,27 @@ export default function PreviewScreen() {
   };
 
   const doWhatsAppShare = async () => {
+    // On web, open a blank tab synchronously — right here, still inside the
+    // click handler's user-gesture window — before any `await`. PDF
+    // generation below can take a second or more; calling window.open()
+    // only after that delay is what was silently getting blocked by the
+    // browser's popup blocker (no error, WhatsApp just never opened). We
+    // navigate this already-open tab to the real wa.me URL once it's ready.
+    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
     try {
       const { uri, fileName } = await generatePdf();
-      const result = await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi });
+      const result = await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi, waWindow });
       // WhatsApp's web/deep-link URLs can never carry a file — when the native
       // share sheet isn't available we download the PDF and open the chat, so
       // let the user know the one manual step they still need to do.
       if (result.downloaded) {
         showToast('PDF indirildi — WhatsApp’ta açılan sohbete dosyayı sürükleyip bırakın');
       }
-    } catch (e: any) { showToast('WhatsApp hatası: ' + (e?.message || '')); }
+      if (result.attached && waWindow) { try { waWindow.close(); } catch {} }
+    } catch (e: any) {
+      if (waWindow) { try { waWindow.close(); } catch {} }
+      showToast('WhatsApp hatası: ' + (e?.message || ''));
+    }
   };
 
   return (
@@ -153,13 +208,29 @@ export default function PreviewScreen() {
           implementation, so on web we fall back to a plain iframe. */}
       <View style={s.webviewWrap} testID="preview-webview-wrap">
         {Platform.OS === 'web' ? (
-          React.createElement('iframe', {
-            key: template,
-            'data-testid': 'preview-webview',
-            srcDoc: withFixedPreviewWidth(buildQuotePdfHtml(activeCompany, quote, template)),
-            style: { flex: 1, width: '100%', height: '100%', border: 'none' },
-            title: 'PDF Önizleme',
-          })
+          webPreviewUri ? (
+            // Real PDF blob URL — the browser's own PDF viewer renders it,
+            // so pagination, backgrounds and any merged attachment pages are
+            // exactly what "PDF Paylaş"/"WhatsApp" will actually send.
+            React.createElement('iframe', {
+              key: webPreviewUri,
+              'data-testid': 'preview-webview',
+              src: webPreviewUri,
+              style: { flex: 1, width: '100%', height: '100%', border: 'none' },
+              title: 'PDF Önizleme',
+            })
+          ) : (
+            <View style={s.previewStatus}>
+              {webPreviewError ? (
+                <Text style={s.previewStatusText}>{webPreviewError}</Text>
+              ) : (
+                <>
+                  <ActivityIndicator color={theme.colors.primary} />
+                  <Text style={s.previewStatusText}>Önizleme hazırlanıyor…</Text>
+                </>
+              )}
+            </View>
+          )
         ) : (
           <WebView
             key={template}
@@ -203,6 +274,8 @@ const s = StyleSheet.create({
   templateChipTextActive: { color: theme.colors.primary },
   webviewWrap: { flex: 1, backgroundColor: '#e9edf2' },
   webview: { flex: 1, backgroundColor: 'transparent' },
+  previewStatus: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  previewStatusText: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   actionBar: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8,

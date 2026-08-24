@@ -36,8 +36,27 @@ RESET_TOKEN_MINUTES = 30
 
 # ============ MONETIZATION CONFIG ============
 FREE_MONTHLY_QUOTE_LIMIT = 5
-SUBSCRIPTION_PRICE_TRY = 149.0
-SUBSCRIPTION_DURATION_DAYS = 30
+
+# Weekly / yearly subscription tiers (monthly plan retired — weekly gives a low-
+# commitment entry point, yearly is the discounted "taahhütlü" option).
+SUBSCRIPTION_PLANS = {
+    "weekly": {
+        "price_try": 50.0,
+        "duration_days": 7,
+        "label": "Haftalık Abonelik",
+        "iyzico_item_id": "anindateklif_weekly",
+    },
+    "yearly": {
+        "price_try": 2000.0,
+        "list_price_try": 2400.0,
+        "duration_days": 365,
+        "label": "Yıllık Abonelik",
+        "iyzico_item_id": "anindateklif_yearly",
+    },
+}
+DEFAULT_SUBSCRIPTION_PLAN = "yearly"
+# Backward-compat alias for any stray reference to the old single-tier price.
+SUBSCRIPTION_PRICE_TRY = SUBSCRIPTION_PLANS[DEFAULT_SUBSCRIPTION_PLAN]["price_try"]
 
 # Comma-separated list of emails that always get unlimited free access, no
 # subscription required. Managed entirely via the FREE_ACCESS_EMAILS env var
@@ -1334,6 +1353,9 @@ class AppConfig(BaseModel):
     whatsapp_number: str = ""
     ai_assistant_enabled: bool = False
     subscription_price_try: float = SUBSCRIPTION_PRICE_TRY
+    subscription_weekly_price_try: float = SUBSCRIPTION_PLANS["weekly"]["price_try"]
+    subscription_yearly_price_try: float = SUBSCRIPTION_PLANS["yearly"]["price_try"]
+    subscription_yearly_list_price_try: float = SUBSCRIPTION_PLANS["yearly"]["list_price_try"]
     payment_enabled: bool = False
 
 
@@ -1343,6 +1365,9 @@ async def get_app_config():
         whatsapp_number=WHATSAPP_SUPPORT_NUMBER,
         ai_assistant_enabled=bool(_anthropic_client),
         subscription_price_try=SUBSCRIPTION_PRICE_TRY,
+        subscription_weekly_price_try=SUBSCRIPTION_PLANS["weekly"]["price_try"],
+        subscription_yearly_price_try=SUBSCRIPTION_PLANS["yearly"]["price_try"],
+        subscription_yearly_list_price_try=SUBSCRIPTION_PLANS["yearly"]["list_price_try"],
         payment_enabled=bool(IYZICO_API_KEY and IYZICO_SECRET_KEY),
     )
 
@@ -1451,14 +1476,37 @@ async def get_rates():
 
 
 # ============ SUBSCRIPTION / QUOTA ============
+class PlanOut(BaseModel):
+    id: str
+    label: str
+    price_try: float
+    list_price_try: Optional[float] = None
+    duration_days: int
+
+
 class SubscriptionStatus(BaseModel):
     subscription_active: bool
     subscription_expires_at: Optional[str] = None
+    subscription_plan: Optional[str] = None
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
+    plans: List[PlanOut] = []
     period: str
     quotes_used_this_month: int
     free_limit: int
     remaining_free: Optional[int] = None
+
+
+def _plans_out() -> List[PlanOut]:
+    return [
+        PlanOut(
+            id=plan_id,
+            label=cfg["label"],
+            price_try=cfg["price_try"],
+            list_price_try=cfg.get("list_price_try"),
+            duration_days=cfg["duration_days"],
+        )
+        for plan_id, cfg in SUBSCRIPTION_PLANS.items()
+    ]
 
 
 @api_router.get("/subscription/status", response_model=SubscriptionStatus)
@@ -1467,7 +1515,9 @@ async def subscription_status(user=Depends(get_current_user)):
     return SubscriptionStatus(
         subscription_active=state["subscription_active"],
         subscription_expires_at=user.get("subscription_expires_at"),
+        subscription_plan=user.get("subscription_plan"),
         plan_price_try=SUBSCRIPTION_PRICE_TRY,
+        plans=_plans_out(),
         period=state["period"],
         quotes_used_this_month=state["count"],
         free_limit=state["free_limit"],
@@ -1476,6 +1526,7 @@ async def subscription_status(user=Depends(get_current_user)):
 
 
 class SubscriptionCheckoutRequest(BaseModel):
+    plan: str
     buyer_identity_number: str
     billing_address: str
     billing_city: str
@@ -1492,6 +1543,9 @@ class SubscriptionCheckoutResponse(BaseModel):
 async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, user=Depends(get_current_user)):
     if not IYZICO_API_KEY or not IYZICO_SECRET_KEY:
         raise HTTPException(status_code=503, detail="Ödeme sistemi henüz yapılandırılmadı")
+    plan_id = payload.plan if payload.plan in SUBSCRIPTION_PLANS else DEFAULT_SUBSCRIPTION_PLAN
+    plan_cfg = SUBSCRIPTION_PLANS[plan_id]
+    plan_price = plan_cfg["price_try"]
     import iyzipay
 
     name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
@@ -1505,10 +1559,10 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     request = {
         "locale": "tr",
         "conversationId": conversation_id,
-        "price": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
-        "paidPrice": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
+        "price": f"{plan_price:.2f}",
+        "paidPrice": f"{plan_price:.2f}",
         "currency": "TRY",
-        "basketId": f"sub_{user['user_id']}_{utc_now().strftime('%Y%m')}",
+        "basketId": f"sub_{user['user_id']}_{plan_id}_{uuid.uuid4().hex[:8]}",
         "paymentGroup": "SUBSCRIPTION",
         "callbackUrl": f"{BACKEND_BASE_URL.rstrip('/')}/api/subscription/callback",
         "buyer": {
@@ -1539,11 +1593,11 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
             "zipCode": zip_code,
         },
         "basketItems": [{
-            "id": "anindateklif_monthly",
-            "name": "Anında Teklif Aylık Abonelik",
+            "id": plan_cfg["iyzico_item_id"],
+            "name": f"Anında Teklif {plan_cfg['label']}",
             "category1": "Yazılım",
             "itemType": "VIRTUAL",
-            "price": f"{SUBSCRIPTION_PRICE_TRY:.2f}",
+            "price": f"{plan_price:.2f}",
         }],
     }
     cf = iyzipay.CheckoutFormInitialize()
@@ -1555,6 +1609,7 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
         "user_id": user["user_id"],
         "token": response["token"],
         "conversation_id": conversation_id,
+        "plan": plan_id,
         "status": "pending",
         "created_at": utc_now_iso(),
     })
@@ -1579,10 +1634,33 @@ async def subscription_callback(token: str = Form(...)):
     success = response.get("status") == "success" and response.get("paymentStatus") == "SUCCESS"
 
     if success and user_id:
-        new_expiry = utc_now() + timedelta(days=SUBSCRIPTION_DURATION_DAYS)
+        plan_id = (pending or {}).get("plan")
+        plan_cfg = SUBSCRIPTION_PLANS.get(plan_id) or SUBSCRIPTION_PLANS[DEFAULT_SUBSCRIPTION_PLAN]
+        duration_days = plan_cfg["duration_days"]
+        # Extend from current expiry if the user still has active time left
+        # (renewal before expiry), otherwise from now.
+        current_expiry_raw = None
+        current_user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "subscription_expires_at": 1})
+        if current_user:
+            current_expiry_raw = current_user.get("subscription_expires_at")
+        base = utc_now()
+        if current_expiry_raw:
+            try:
+                existing = datetime.fromisoformat(current_expiry_raw)
+                if existing.tzinfo is None:
+                    existing = existing.replace(tzinfo=timezone.utc)
+                if existing > base:
+                    base = existing
+            except Exception:
+                pass
+        new_expiry = base + timedelta(days=duration_days)
         await db.users.update_one(
             {"user_id": user_id},
-            {"$set": {"subscription_status": "active", "subscription_expires_at": new_expiry.isoformat()}},
+            {"$set": {
+                "subscription_status": "active",
+                "subscription_expires_at": new_expiry.isoformat(),
+                "subscription_plan": plan_id or DEFAULT_SUBSCRIPTION_PLAN,
+            }},
         )
         if pending:
             await db.subscription_payments.update_one(

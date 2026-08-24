@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,15 +18,37 @@ import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 
+type PlanT = {
+  id: string;
+  label: string;
+  price_try: number;
+  list_price_try?: number | null;
+  duration_days: number;
+};
+
 type StatusT = {
   subscription_active: boolean;
   subscription_expires_at?: string | null;
+  subscription_plan?: string | null;
   plan_price_try: number;
+  plans: PlanT[];
   period: string;
   quotes_used_this_month: number;
   free_limit: number;
   remaining_free?: number | null;
 };
+
+const FALLBACK_PLANS: PlanT[] = [
+  { id: 'weekly', label: 'Haftalık Abonelik', price_try: 50, duration_days: 7 },
+  { id: 'yearly', label: 'Yıllık Abonelik', price_try: 2000, list_price_try: 2400, duration_days: 365 },
+];
+
+function planUnitLabel(durationDays: number): string {
+  if (durationDays === 7) return '/ hafta';
+  if (durationDays === 365) return '/ yıl';
+  if (durationDays === 30) return '/ ay';
+  return `/ ${durationDays} gün`;
+}
 
 export default function SubscriptionScreen() {
   const router = useRouter();
@@ -38,6 +60,7 @@ export default function SubscriptionScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  const [selectedPlan, setSelectedPlan] = useState<string>('yearly');
   const [kimlikNo, setKimlikNo] = useState('');
   const [adres, setAdres] = useState('');
   const [sehir, setSehir] = useState('İstanbul');
@@ -48,6 +71,10 @@ export default function SubscriptionScreen() {
       try {
         const res = await api.subscriptionStatus();
         setStatus(res as StatusT);
+        const plans = (res as StatusT)?.plans;
+        if (plans && plans.length > 0 && !plans.some((p) => p.id === 'yearly')) {
+          setSelectedPlan(plans[0].id);
+        }
       } catch (e: any) {
         setError('Abonelik bilgisi alınamadı');
       } finally {
@@ -56,8 +83,18 @@ export default function SubscriptionScreen() {
     })();
   }, []);
 
+  const plans: PlanT[] = useMemo(
+    () => (status?.plans && status.plans.length > 0 ? status.plans : FALLBACK_PLANS),
+    [status]
+  );
+
+  const activePlan = useMemo(
+    () => plans.find((p) => p.id === selectedPlan) || plans[0],
+    [plans, selectedPlan]
+  );
+
   const onSubscribe = async () => {
-    if (busy) return;
+    if (busy || !activePlan) return;
     if (kimlikNo.trim().length < 5) {
       setError('TC Kimlik / Vergi No zorunlu');
       return;
@@ -70,6 +107,7 @@ export default function SubscriptionScreen() {
     setBusy(true);
     try {
       const res = await api.subscriptionCheckout({
+        plan: activePlan.id,
         buyer_identity_number: kimlikNo.trim(),
         billing_address: adres.trim(),
         billing_city: sehir.trim(),
@@ -146,22 +184,47 @@ export default function SubscriptionScreen() {
 
             {!status?.subscription_active && (
               <>
-                {/* Plan card */}
-                <View style={s.planCard}>
-                  <View style={s.planHeaderRow}>
-                    <Text style={s.planName}>Aylık Abonelik</Text>
-                    <View style={s.planBadge}>
-                      <Text style={s.planBadgeText}>Önerilen</Text>
-                    </View>
-                  </View>
-                  <Text style={s.planPrice}>
-                    ₺{(status?.plan_price_try ?? 149).toFixed(0)} <Text style={s.planPriceUnit}>/ ay</Text>
-                  </Text>
-                  <View style={{ marginTop: 12, gap: 8 }}>
-                    <PlanBullet text="Sınırsız teklif oluşturma" />
-                    <PlanBullet text="Aylık otomatik yenileme" />
-                    <PlanBullet text="Dilediğiniz zaman iptal" />
-                  </View>
+                {/* Plan picker */}
+                <Text style={s.formLabel}>Plan Seç</Text>
+                <View style={{ gap: 12, marginBottom: 22 }}>
+                  {plans.map((plan) => {
+                    const selected = plan.id === selectedPlan;
+                    const isYearly = plan.duration_days >= 365;
+                    return (
+                      <TouchableOpacity
+                        key={plan.id}
+                        activeOpacity={0.9}
+                        onPress={() => setSelectedPlan(plan.id)}
+                        style={[s.planCard, selected && s.planCardSelected]}
+                        testID={`sub-plan-${plan.id}`}
+                      >
+                        <View style={s.planHeaderRow}>
+                          <Text style={s.planName}>{plan.label}</Text>
+                          {isYearly && (
+                            <View style={s.planBadge}>
+                              <Text style={s.planBadgeText}>Önerilen</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                          {plan.list_price_try ? (
+                            <Text style={s.planListPrice}>₺{plan.list_price_try.toFixed(0)}</Text>
+                          ) : null}
+                          <Text style={s.planPrice}>
+                            ₺{plan.price_try.toFixed(0)} <Text style={s.planPriceUnit}>{planUnitLabel(plan.duration_days)}</Text>
+                          </Text>
+                        </View>
+                        <View style={{ marginTop: 12, gap: 8 }}>
+                          <PlanBullet text="Sınırsız teklif oluşturma" />
+                          <PlanBullet text={isYearly ? 'Yıllık otomatik yenileme' : 'Haftalık otomatik yenileme'} />
+                          <PlanBullet text="Dilediğiniz zaman iptal" />
+                        </View>
+                        <View style={[s.radioOuter, selected && s.radioOuterSelected]}>
+                          {selected && <View style={s.radioInner} />}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 {/* Billing form */}
@@ -176,7 +239,13 @@ export default function SubscriptionScreen() {
                 {error ? <Text style={s.errorText}>{error}</Text> : null}
 
                 <TouchableOpacity style={[s.cta, busy && s.ctaDisabled]} onPress={onSubscribe} disabled={busy} activeOpacity={0.9} testID="sub-subscribe">
-                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Abone Ol — ₺{(status?.plan_price_try ?? 149).toFixed(0)}/ay</Text>}
+                  {busy ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={s.ctaText}>
+                      Abone Ol — ₺{(activePlan?.price_try ?? 0).toFixed(0)}{activePlan ? planUnitLabel(activePlan.duration_days) : ''}
+                    </Text>
+                  )}
                 </TouchableOpacity>
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>
@@ -254,18 +323,37 @@ const s = StyleSheet.create({
   planCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.primaryBorder,
+    borderWidth: 1.5,
+    borderColor: theme.colors.line,
     padding: 18,
-    marginBottom: 22,
+    position: 'relative',
     ...theme.shadow.sm,
   },
-  planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  planCardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, paddingRight: 28 },
   planName: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
   planBadge: { backgroundColor: theme.colors.primary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   planBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  planListPrice: { fontSize: 15, fontWeight: '700', color: theme.colors.textMuted, textDecorationLine: 'line-through' },
   planPrice: { fontSize: 30, fontWeight: '900', color: theme.colors.primary },
   planPriceUnit: { fontSize: 14, fontWeight: '700', color: theme.colors.textMuted },
+  radioOuter: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOuterSelected: { borderColor: theme.colors.primary },
+  radioInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.primary },
   formLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
   card: {
     backgroundColor: '#FFFFFF',

@@ -193,7 +193,7 @@ export const api = {
   rates: (): Promise<RatesT> => req('/rates'),
   sendPhoneCode: (phone: string) => req('/auth/phone/send-code', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyPhoneCode: (phone: string, code: string) => req('/auth/phone/verify-code', { method: 'POST', body: JSON.stringify({ phone, code }) }),
-  subscriptionCheckout: (data: { buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
+  subscriptionCheckout: (data: { plan: string; buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
     req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
   // AI Assistant

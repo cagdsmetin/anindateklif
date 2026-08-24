@@ -20,6 +20,9 @@ export function buildNavItems(): NavItem[] {
     { name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa },
     { name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat },
     { name: 'company', title: 'Firma', icon: 'business', color: m.firma },
+    // assistant.tsx (tabs) grubunun dışında, üst seviye bir route — sidebar/drawer'dan
+    // buraya girişi sağlıyoruz ama bu ekranın kendi başlığı/geri tuşu var.
+    { name: 'assistant', title: 'AI Asistan', icon: 'sparkles', color: theme.colors.primary, path: '/assistant' },
   ];
 }
 

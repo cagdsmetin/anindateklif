@@ -75,8 +75,11 @@ export default function KasaScreen() {
     return list.filter((k) => k.kategori.toLowerCase().includes(qq) || (k.notlar || '').toLowerCase().includes(qq));
   }, [kasa, q]);
 
+  const isDiger = kategori.startsWith('Diğer') || yontem === 'Diğer';
+
   const save = async () => {
     if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
+    if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
     setSaving(true);
     try {
       await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso() });
@@ -176,8 +179,15 @@ export default function KasaScreen() {
               ))}
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>NOT (opsiyonel)</Text>
-            <TextInput style={s.input} value={notlar} onChangeText={setNotlar} placeholder="Açıklama..." placeholderTextColor="#94a3b8" testID="kasa-not-input" />
+            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? "NOT (zorunlu — 'Diğer' seçtiniz)" : 'NOT (opsiyonel)'}</Text>
+            <TextInput
+              style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
+              value={notlar}
+              onChangeText={setNotlar}
+              placeholder={isDiger ? "Ne için olduğunu açıklayın..." : 'Açıklama...'}
+              placeholderTextColor="#94a3b8"
+              testID="kasa-not-input"
+            />
 
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="kasa-save-btn">
               <Ionicons name="checkmark-done" size={18} color="#fff" />
@@ -260,6 +270,7 @@ const s = StyleSheet.create({
   curChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   curChipTextActive: { color: '#fff' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
+  inputRequired: { borderColor: theme.colors.red, borderWidth: 1.5 },
   saveBtn: { marginTop: 16, backgroundColor: theme.colors.modules.kasa, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },
   katLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },

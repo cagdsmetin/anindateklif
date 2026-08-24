@@ -190,6 +190,9 @@ export const api = {
 
   // Subscription / quota
   subscriptionStatus: () => req('/subscription/status'),
+  rates: (): Promise<RatesT> => req('/rates'),
+  sendPhoneCode: (phone: string) => req('/auth/phone/send-code', { method: 'POST', body: JSON.stringify({ phone }) }),
+  verifyPhoneCode: (phone: string, code: string) => req('/auth/phone/verify-code', { method: 'POST', body: JSON.stringify({ phone, code }) }),
   subscriptionCheckout: (data: { buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
     req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -203,6 +206,7 @@ export type UserT = {
   email: string;
   name: string;
   phone: string;
+  phone_verified?: boolean;
   picture: string;
   country: string;
   currency: string;
@@ -215,6 +219,17 @@ export type BankAccountT = { id: string; banka: string; turu: string; hesapSahib
 export type AssistantSystemFieldT = { label: string; type: 'text' | 'number' | 'select' | 'checkbox'; options: string[] };
 export type AssistantActionT = { action: 'add_system_type'; name: string; fields: AssistantSystemFieldT[] };
 export type AssistantChatResponseT = { reply: string; action?: AssistantActionT | null };
+
+export type RatesT = {
+  usd_try?: number | null;
+  eur_try?: number | null;
+  btc_try?: number | null;
+  btc_usd?: number | null;
+  eth_try?: number | null;
+  eth_usd?: number | null;
+  updatedAt?: string;
+  stale?: boolean;
+};
 
 export type SystemField = { id: string; label: string; type: 'text' | 'select' | 'number' | 'checkbox'; options: string[] };
 export type SystemTypeDefT = { id: string; name: string; fields: SystemField[] };
@@ -274,6 +289,7 @@ export type TahsilatEntryT = {
   vadeTarihi: string;
   notlar: string;
   tarih: string;
+  quoteId?: string; // dolu ise: teklif "Onaylandı" durumuna geçtiğinde otomatik oluşturuldu
 };
 
 export type CustomerT = {

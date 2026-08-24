@@ -18,16 +18,54 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { BankAccountT, CompanyT } from '@/src/lib/api';
+import { api, BankAccountT, CompanyT } from '@/src/lib/api';
 
 const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
 export default function CompanyScreen() {
   const router = useRouter();
   const { companies, activeCompany, setActiveCompanyId, createCompany, updateCompany, deleteCompany, showToast } = useApp();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<CompanyT | null>(null);
+
+  // Telefon doğrulama (WhatsApp OTP)
+  const [phoneInput, setPhoneInput] = useState(user?.phone || '');
+  const [otpStep, setOtpStep] = useState<'idle' | 'code_sent'>('idle');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
+
+  const sendOtp = async () => {
+    if (!phoneInput.trim()) { showToast('Telefon numarası giriniz'); return; }
+    setOtpBusy(true);
+    try {
+      await api.sendPhoneCode(phoneInput.trim());
+      setOtpStep('code_sent');
+      showToast('WhatsApp\'tan doğrulama kodu gönderildi');
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || 'Kod gönderilemedi'));
+    } finally {
+      setOtpBusy(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otpCode.trim()) { showToast('Kodu giriniz'); return; }
+    setOtpBusy(true);
+    try {
+      await api.verifyPhoneCode(phoneInput.trim(), otpCode.trim());
+      await refreshUser();
+      setOtpStep('idle');
+      setOtpCode('');
+      showToast('Telefon numarası doğrulandı ✓');
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || 'Kod hatalı'));
+    } finally {
+      setOtpBusy(false);
+    }
+  };
   const [newEmail, setNewEmail] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
@@ -113,6 +151,51 @@ export default function CompanyScreen() {
               );
             })}
           </View>
+          {/* Hesabım — telefon doğrulama */}
+          <SectionHeader title="HESABIM" />
+          <View style={s.supportBox}>
+            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name={user?.phone_verified ? 'checkmark-circle' : 'alert-circle-outline'} size={16} color={user?.phone_verified ? theme.colors.green : theme.colors.textMuted} />
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>
+                  {user?.phone_verified ? 'Telefon numarası doğrulandı' : 'Telefon numarası doğrulanmadı'}
+                </Text>
+              </View>
+              <TextInput
+                value={phoneInput}
+                onChangeText={setPhoneInput}
+                placeholder="+90 5XX XXX XX XX"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="phone-pad"
+                style={s.input}
+                testID="phone-verify-input"
+              />
+              {otpStep === 'idle' ? (
+                <TouchableOpacity style={[s.subscriptionBtn, { marginTop: 8 }, otpBusy && { opacity: 0.6 }]} disabled={otpBusy} onPress={sendOtp} testID="phone-send-code-btn">
+                  <Ionicons name="logo-whatsapp" size={18} color={theme.colors.primary} />
+                  <Text style={s.subscriptionBtnText}>{otpBusy ? 'Gönderiliyor...' : "WhatsApp'tan Kod Gönder"}</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TextInput
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    placeholder="6 haneli kod"
+                    placeholderTextColor={theme.colors.textMuted}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={[s.input, { marginTop: 8 }]}
+                    testID="phone-otp-input"
+                  />
+                  <TouchableOpacity style={[s.subscriptionBtn, { marginTop: 8 }, otpBusy && { opacity: 0.6 }]} disabled={otpBusy} onPress={verifyOtp} testID="phone-verify-code-btn">
+                    <Ionicons name="checkmark-done" size={18} color={theme.colors.primary} />
+                    <Text style={s.subscriptionBtnText}>{otpBusy ? 'Doğrulanıyor...' : 'Kodu Doğrula'}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+
           {/* Support */}
           <SectionHeader title="DESTEK" />
           <View style={s.supportBox}>

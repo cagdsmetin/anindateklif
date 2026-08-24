@@ -1,12 +1,26 @@
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { QuoteT, ServiceT } from '@/src/lib/api';
+import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
+
+const QUOTE_STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'] as const;
+const QUOTE_STATUS_COLORS: Record<string, string> = {
+  Beklemede: theme.colors.textMuted,
+  Görüldü: theme.colors.gold,
+  Onaylandı: theme.colors.green,
+  Reddedildi: theme.colors.red,
+};
+
+function fmtTRY(n?: number | null): string {
+  if (n === null || n === undefined) return '—';
+  const digits = n >= 1000 ? 0 : 2;
+  return '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
+}
 
 const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
@@ -53,7 +67,18 @@ function urgency(days: number) {
 export default function PanelScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, quotes, customers, services, campaigns } = useApp();
+  const { activeCompany, quotes, customers, services, campaigns, kasa } = useApp();
+
+  const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number } | null>(null);
+  const [rates, setRates] = useState<RatesT | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+
+  useEffect(() => {
+    api.subscriptionStatus().then((r: any) => setSubStatus(r)).catch(() => {});
+    api.rates().then((r) => setRates(r)).catch(() => {});
+    api.getAppConfig().then((r: any) => setWhatsappNumber(r?.whatsapp_number || '905415858988')).catch(() => setWhatsappNumber('905415858988'));
+  }, []);
 
   const now = new Date();
 
@@ -137,6 +162,26 @@ export default function PanelScreen() {
       .slice(0, 5);
   }, [quotes]);
 
+  // "Genel Bakış" grafikleri — Paraşüt'ün Güncel Durum sayfasından ilhamla:
+  // bu ayki kasa gelir/gider oranı + teklif durum dağılımı, basit yığın çubuklarla.
+  const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const kasaThisMonth = useMemo(
+    () => kasa.filter((k) => (k.tarih || '').slice(0, 7) === thisMonthKey && (k.paraBirimi || 'TRY') === 'TRY'),
+    [kasa, thisMonthKey]
+  );
+  const gelirBuAy2 = useMemo(() => kasaThisMonth.filter((k) => k.tur === 'gelir').reduce((a, k) => a + k.tutar, 0), [kasaThisMonth]);
+  const giderBuAy2 = useMemo(() => kasaThisMonth.filter((k) => k.tur === 'gider').reduce((a, k) => a + k.tutar, 0), [kasaThisMonth]);
+  const kasaHacim = gelirBuAy2 + giderBuAy2;
+  const gelirPct = kasaHacim > 0 ? Math.round((gelirBuAy2 / kasaHacim) * 100) : 0;
+
+  const quoteStatusCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    QUOTE_STATUSES.forEach((st) => { map[st] = 0; });
+    quotes.forEach((q) => { if (map[q.durum] !== undefined) map[q.durum] += 1; });
+    return map;
+  }, [quotes]);
+  const quoteStatusTotal = quotes.length;
+
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -154,6 +199,25 @@ export default function PanelScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <Text style={s.dateLabel}>{todayLabel()}</Text>
+
+        {rates && (rates.usd_try || rates.btc_try) && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.ratesScroll} contentContainerStyle={s.ratesRow}>
+            <RatePill label="USD" value={rates.usd_try} />
+            <RatePill label="EUR" value={rates.eur_try} />
+            <RatePill label="BTC" value={rates.btc_try} icon="logo-bitcoin" />
+            <RatePill label="ETH" value={rates.eth_try} icon="diamond-outline" />
+          </ScrollView>
+        )}
+
+        {subStatus && !subStatus.subscription_active && (
+          <TouchableOpacity style={s.trialBanner} onPress={() => router.push('/subscription' as any)} activeOpacity={0.85}>
+            <Ionicons name="gift-outline" size={18} color={theme.colors.primaryDark} />
+            <Text style={s.trialText}>
+              <Text style={{ fontWeight: '900' }}>{Math.max(subStatus.remaining_free ?? 0, 0)} ücretsiz teklif hakkınız</Text> kaldı. Devamı için abone olun.
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.primaryDark} />
+          </TouchableOpacity>
+        )}
 
         {overdueCount > 0 && (
           <TouchableOpacity style={s.alertBanner} onPress={() => router.push('/reminders' as any)} activeOpacity={0.85}>
@@ -185,6 +249,51 @@ export default function PanelScreen() {
           <StatCard icon="construct" label="Aktif Servis" value={String(aktifServis)} color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
           <StatCard icon="shield-checkmark" label="Garanti Aktif" value={String(garantiAktif)} color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/services')} />
           <StatCard icon="megaphone" label="Kampanya" value={String(campaigns.length)} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
+        </View>
+
+        {/* Genel Bakış — nakit durumu + teklif durumları */}
+        <SectionHeader icon="pie-chart-outline" title="Genel Bakış" />
+        <View style={s.overviewRow}>
+          <View style={[s.card, s.overviewCard]}>
+            <Text style={s.overviewTitle}>NAKİT DURUMU (BU AY)</Text>
+            {kasaHacim > 0 ? (
+              <>
+                <View style={s.stackBar}>
+                  <View style={[s.stackSeg, { width: `${gelirPct}%`, backgroundColor: theme.colors.green }]} />
+                  <View style={[s.stackSeg, { width: `${100 - gelirPct}%`, backgroundColor: theme.colors.red }]} />
+                </View>
+                <View style={s.legendRow}>
+                  <LegendDot color={theme.colors.green} label="Gelir" value={fmtTRY(gelirBuAy2)} />
+                  <LegendDot color={theme.colors.red} label="Gider" value={fmtTRY(giderBuAy2)} />
+                </View>
+              </>
+            ) : (
+              <Text style={s.emptyLineText}>Bu ay kasa hareketi yok.</Text>
+            )}
+          </View>
+
+          <View style={[s.card, s.overviewCard]}>
+            <Text style={s.overviewTitle}>TEKLİF DURUMLARI</Text>
+            {quoteStatusTotal > 0 ? (
+              <>
+                <View style={s.stackBar}>
+                  {QUOTE_STATUSES.map((st) => {
+                    const cnt = quoteStatusCounts[st] || 0;
+                    if (!cnt) return null;
+                    const pct = (cnt / quoteStatusTotal) * 100;
+                    return <View key={st} style={[s.stackSeg, { width: `${pct}%`, backgroundColor: QUOTE_STATUS_COLORS[st] }]} />;
+                  })}
+                </View>
+                <View style={s.legendRow}>
+                  {QUOTE_STATUSES.map((st) => (
+                    <LegendDot key={st} color={QUOTE_STATUS_COLORS[st]} label={st} value={String(quoteStatusCounts[st] || 0)} />
+                  ))}
+                </View>
+              </>
+            ) : (
+              <Text style={s.emptyLineText}>Henüz teklif oluşturulmadı.</Text>
+            )}
+          </View>
         </View>
 
         {/* Hızlı işlemler */}
@@ -262,7 +371,89 @@ export default function PanelScreen() {
           <ModuleTile icon="business" label="Firma" color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
         </View>
       </ScrollView>
+
+      {/* Destek baloncuğu — sağ altta sabit, AI Asistan + e-posta/WhatsApp desteğine hızlı erişim */}
+      <TouchableOpacity
+        style={[s.supportBubble, { bottom: insets.bottom + 20 }]}
+        onPress={() => setSupportOpen(true)}
+        activeOpacity={0.85}
+        testID="support-bubble"
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      <Modal visible={supportOpen} transparent animationType="fade" onRequestClose={() => setSupportOpen(false)}>
+        <TouchableOpacity style={s.supportOverlay} activeOpacity={1} onPress={() => setSupportOpen(false)}>
+          <View style={[s.supportSheet, { marginBottom: insets.bottom + 88 }]}>
+            <Text style={s.supportTitle}>Nasıl yardımcı olabiliriz?</Text>
+            <TouchableOpacity
+              style={s.supportOption}
+              onPress={() => { setSupportOpen(false); router.push('/assistant' as any); }}
+              testID="support-ai"
+            >
+              <View style={[s.supportIcon, { backgroundColor: theme.colors.primarySoft }]}>
+                <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.supportOptionTitle}>AI Asistan'a Sor</Text>
+                <Text style={s.supportOptionSub}>Kullanım soruları, teklif metni önerisi</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+            {!!whatsappNumber && (
+              <TouchableOpacity
+                style={s.supportOption}
+                onPress={() => { setSupportOpen(false); Linking.openURL(`https://wa.me/${whatsappNumber.replace(/\D/g, '')}`); }}
+                testID="support-whatsapp"
+              >
+                <View style={[s.supportIcon, { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.supportOptionTitle}>WhatsApp ile Destek</Text>
+                  <Text style={s.supportOptionSub}>{whatsappNumber}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={s.supportOption}
+              onPress={() => { setSupportOpen(false); Linking.openURL('mailto:ncagdasm@gmail.com?subject=Anında%20Teklif%20Destek'); }}
+              testID="support-email"
+            >
+              <View style={[s.supportIcon, { backgroundColor: theme.colors.surfaceSoft }]}>
+                <Ionicons name="mail-outline" size={18} color={theme.colors.textSoft} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.supportOptionTitle}>E-posta ile Destek</Text>
+                <Text style={s.supportOptionSub}>ncagdasm@gmail.com</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function RatePill({ label, value, icon }: { label: string; value?: number | null; icon?: any }) {
+  return (
+    <View style={s.ratePill}>
+      {icon ? <Ionicons name={icon} size={13} color={theme.colors.primary} style={{ marginRight: 4 }} /> : null}
+      <Text style={s.ratePillLabel}>{label}</Text>
+      <Text style={s.ratePillValue}>{fmtTRY(value)}</Text>
+    </View>
+  );
+}
+
+function LegendDot({ color, label, value }: { color: string; label: string; value: string }) {
+  return (
+    <View style={s.legendItem}>
+      <View style={[s.legendDot, { backgroundColor: color }]} />
+      <Text style={s.legendLabel} numberOfLines={1}>{label}</Text>
+      <Text style={s.legendValue} numberOfLines={1}>{value}</Text>
+    </View>
   );
 }
 
@@ -329,6 +520,65 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   dateLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textMuted, marginBottom: 12, marginTop: 2 },
+
+  ratesScroll: { marginBottom: 12 },
+  ratesRow: { flexDirection: 'row', gap: 8 },
+  ratePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 5,
+  },
+  ratePillLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted },
+  ratePillValue: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text },
+
+  trialBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  trialText: { flex: 1, fontSize: 12, color: theme.colors.primaryDark, lineHeight: 16 },
+
+  overviewRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
+  overviewCard: { flex: 1, padding: 14 },
+  overviewTitle: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.4, marginBottom: 12 },
+  stackBar: { flexDirection: 'row', height: 10, borderRadius: 6, overflow: 'hidden', backgroundColor: theme.colors.surfaceSoft, marginBottom: 12 },
+  stackSeg: { height: '100%' },
+  legendRow: { gap: 8 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
+  legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
+
+  supportBubble: {
+    position: 'absolute',
+    right: 18,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadow.lg,
+  },
+  supportOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 16 },
+  supportSheet: { backgroundColor: '#fff', borderRadius: 16, padding: 14, width: 280, ...theme.shadow.lg },
+  supportTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
+  supportOption: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  supportIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  supportOptionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  supportOptionSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
 
   alertBanner: {
     flexDirection: 'row',

@@ -87,9 +87,12 @@ export default function TahsilatScreen() {
     setTutar(''); setVadeTarihi(''); setNotlar('');
   };
 
+  const isDiger = yontem === 'Diğer';
+
   const save = async () => {
     if (!musteriAdi.trim()) { showToast('Müşteri adı giriniz'); return; }
     if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
+    if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
     setSaving(true);
     try {
       await addTahsilatEntry({
@@ -221,8 +224,15 @@ export default function TahsilatScreen() {
               </View>
             )}
 
-            <Text style={[s.label, { marginTop: 10 }]}>NOT (opsiyonel)</Text>
-            <TextInput style={s.input} value={notlar} onChangeText={setNotlar} placeholder="Açıklama..." placeholderTextColor="#94a3b8" testID="tahsilat-not-input" />
+            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? "NOT (zorunlu — 'Diğer' seçtiniz)" : 'NOT (opsiyonel)'}</Text>
+            <TextInput
+              style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
+              value={notlar}
+              onChangeText={setNotlar}
+              placeholder={isDiger ? "Ne için olduğunu açıklayın..." : 'Açıklama...'}
+              placeholderTextColor="#94a3b8"
+              testID="tahsilat-not-input"
+            />
 
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="tahsilat-save-btn">
               <Ionicons name="checkmark-done" size={18} color="#fff" />
@@ -310,6 +320,7 @@ const s = StyleSheet.create({
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
+  inputRequired: { borderColor: theme.colors.red, borderWidth: 1.5 },
   suggestBox: { position: 'absolute', top: 44, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md, maxHeight: 220, overflow: 'hidden' },
   suggestRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   suggestName: { fontSize: 13, fontWeight: '700', color: theme.colors.text },

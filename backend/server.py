@@ -74,6 +74,12 @@ IYZICO_BASE_URL = os.environ.get("IYZICO_BASE_URL", "https://sandbox-api.iyzipay
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "Anında Teklif <onboarding@resend.dev>")
 
+# WhatsApp OTP telefon doğrulama (Twilio). Hesap/API anahtarı olmadan bu
+# özellik sessizce devre dışı kalır — /auth/phone/send-code net bir hata döner.
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # örn: "whatsapp:+14155238886"
+
 
 def _iyzico_options():
     return {"api_key": IYZICO_API_KEY, "secret_key": IYZICO_SECRET_KEY, "base_url": IYZICO_BASE_URL}
@@ -273,6 +279,7 @@ class UserOut(BaseModel):
     email: str
     name: str = ""
     phone: str = ""
+    phone_verified: bool = False
     picture: str = ""
     country: str = ""
     currency: str = ""
@@ -329,6 +336,7 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         email=u["email"],
         name=u.get("name", ""),
         phone=u.get("phone", ""),
+        phone_verified=bool(u.get("phone_verified", False)),
         picture=u.get("picture", ""),
         country=u.get("country", ""),
         currency=u.get("currency", ""),
@@ -489,6 +497,103 @@ async def update_me(payload: UserProfileUpdate, user=Depends(get_current_user)):
     updates = {k: v for k, v in payload.dict(exclude_unset=True).items() if v is not None}
     if updates:
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
+    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return _user_out(doc)
+
+
+# ============ PHONE VERIFICATION (WhatsApp OTP via Twilio) ============
+# In-memory store is fine here: codes are short-lived (5 dk) and this endpoint
+# is per-user/per-IP rate limited, so losing state on a restart just means the
+# user asks for a new code — no data-loss risk.
+_phone_otp_store: Dict[str, Dict[str, Any]] = {}
+_OTP_TTL_SECONDS = 300
+
+
+class PhoneSendCodeRequest(BaseModel):
+    phone: str
+
+
+class PhoneVerifyCodeRequest(BaseModel):
+    phone: str
+    code: str
+
+
+def _normalize_phone(raw: str) -> str:
+    digits = re.sub(r"[^\d+]", "", raw or "")
+    if digits and not digits.startswith("+"):
+        # Varsayılan TR: 0 ile başlıyorsa +90 ile değiştir, yoksa +90 ekle
+        digits = digits.lstrip("0")
+        digits = "+90" + digits
+    return digits
+
+
+@api_router.post("/auth/phone/send-code")
+async def phone_send_code(payload: PhoneSendCodeRequest, request: Request, user=Depends(get_current_user)):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM):
+        raise HTTPException(
+            status_code=503,
+            detail="Telefon doğrulama şu an yapılandırılmadı (Twilio bilgileri eksik). Lütfen daha sonra tekrar deneyin.",
+        )
+    phone = _normalize_phone(payload.phone)
+    if len(phone) < 8:
+        raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası giriniz")
+
+    _rate_limit(f"otp-send:user:{user['user_id']}", 5, 3600)
+    _rate_limit(f"otp-send:ip:{_client_ip(request)}", 10, 3600)
+
+    code = f"{py_secrets.randbelow(1000000):06d}"
+    _phone_otp_store[f"{user['user_id']}:{phone}"] = {
+        "code": code,
+        "expires_at": _time.time() + _OTP_TTL_SECONDS,
+        "attempts": 0,
+    }
+
+    try:
+        resp = await asyncio.to_thread(
+            requests.post,
+            f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json",
+            auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
+            data={
+                "From": TWILIO_WHATSAPP_FROM,
+                "To": f"whatsapp:{phone}",
+                "Body": f"Anında Teklif doğrulama kodunuz: {code} (5 dakika geçerlidir)",
+            },
+            timeout=10,
+        )
+        if resp.status_code >= 300:
+            logging.error(f"[phone-otp] Twilio send failed: {resp.status_code} {resp.text[:300]}")
+            raise HTTPException(status_code=502, detail="Kod gönderilemedi, lütfen daha sonra tekrar deneyin")
+    except HTTPException:
+        raise
+    except Exception:
+        logging.exception("[phone-otp] Twilio send exception")
+        raise HTTPException(status_code=502, detail="Kod gönderilemedi, lütfen daha sonra tekrar deneyin")
+
+    return {"ok": True, "phone": phone}
+
+
+@api_router.post("/auth/phone/verify-code")
+async def phone_verify_code(payload: PhoneVerifyCodeRequest, user=Depends(get_current_user)):
+    phone = _normalize_phone(payload.phone)
+    key = f"{user['user_id']}:{phone}"
+    entry = _phone_otp_store.get(key)
+    if not entry:
+        raise HTTPException(status_code=400, detail="Önce doğrulama kodu isteyin")
+    if _time.time() > entry["expires_at"]:
+        _phone_otp_store.pop(key, None)
+        raise HTTPException(status_code=400, detail="Kodun süresi doldu, yeni kod isteyin")
+    entry["attempts"] += 1
+    if entry["attempts"] > 5:
+        _phone_otp_store.pop(key, None)
+        raise HTTPException(status_code=429, detail="Çok fazla hatalı deneme, yeni kod isteyin")
+    if payload.code.strip() != entry["code"]:
+        raise HTTPException(status_code=400, detail="Kod hatalı")
+
+    _phone_otp_store.pop(key, None)
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"phone": phone, "phone_verified": True}},
+    )
     doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return _user_out(doc)
 
@@ -654,6 +759,7 @@ class TahsilatEntry(BaseModel):
     vadeTarihi: str = ""   # YYYY-MM-DD (borc için, opsiyonel)
     notlar: str = ""
     tarih: str  # YYYY-MM-DD
+    quoteId: str = ""  # dolu ise: bu borç bir teklifin "Onaylandı" durumuna geçmesiyle otomatik oluşturuldu
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -669,6 +775,7 @@ class TahsilatEntryCreate(BaseModel):
     vadeTarihi: str = ""
     notlar: str = ""
     tarih: str
+    quoteId: str = ""
 
 
 class Customer(BaseModel):
@@ -1161,9 +1268,58 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
+    previous_durum = doc.get("durum")
     doc["durum"] = payload.durum
     doc["updatedAt"] = utc_now_iso()
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+
+    # Teklif "Onaylandı" durumuna ilk kez geçtiğinde, müşteri için otomatik bir
+    # tahsilat borcu oluştur — kullanıcı bunu manuel eklemek zorunda kalmasın.
+    # Mükerrer önleme: bu quote_id için zaten bir "borc" kaydı varsa tekrar oluşturma.
+    if payload.durum == "Onaylandı" and previous_durum != "Onaylandı":
+        existing = await db.tahsilat.find_one({
+            "userId": user["user_id"],
+            "quoteId": quote_id,
+            "tur": "borc",
+        })
+        if not existing and float(doc.get("genelToplam") or 0) > 0:
+            matched_customer_id = ""
+            mus_firma = (doc.get("musFirma") or "").strip()
+            mus_telefon = (doc.get("musTelefon") or "").strip()
+            if mus_telefon:
+                cust = await db.customers.find_one({
+                    "userId": user["user_id"],
+                    "companyId": doc.get("companyId"),
+                    "telefon": mus_telefon,
+                })
+                if cust:
+                    matched_customer_id = cust.get("id", "")
+            if not matched_customer_id and mus_firma:
+                cust = await db.customers.find_one({
+                    "userId": user["user_id"],
+                    "companyId": doc.get("companyId"),
+                    "firma": {"$regex": f"^{re.escape(mus_firma)}$", "$options": "i"},
+                })
+                if cust:
+                    matched_customer_id = cust.get("id", "")
+
+            tahsilat_doc = TahsilatEntry(
+                userId=user["user_id"],
+                companyId=doc.get("companyId"),
+                customerId=matched_customer_id,
+                musteriAdi=mus_firma or doc.get("musYetkili") or "Müşteri",
+                musteriTelefon=mus_telefon,
+                tur="borc",
+                tutar=float(doc.get("genelToplam") or 0),
+                paraBirimi=doc.get("paraBirimi") or "TRY",
+                yontem="Diğer",
+                vadeTarihi="",
+                notlar=f"Teklif {doc.get('teklifNo', '')} onaylandı (otomatik oluşturuldu)",
+                tarih=utc_now_iso()[:10],
+                quoteId=quote_id,
+            )
+            await db.tahsilat.insert_one(tahsilat_doc.model_dump())
+
     return Quote(**doc)
 
 
@@ -1189,6 +1345,69 @@ async def get_app_config():
         subscription_price_try=SUBSCRIPTION_PRICE_TRY,
         payment_enabled=bool(IYZICO_API_KEY and IYZICO_SECRET_KEY),
     )
+
+
+# ============ LIVE RATES (USD/EUR/BTC/ETH -> TRY) ============
+# Small in-memory cache so the Panel's rate strip doesn't hammer the upstream
+# free APIs on every page load — a few minutes of staleness is fine for this.
+_rates_cache: dict = {"data": None, "ts": 0.0}
+_RATES_TTL_SECONDS = 300
+
+
+class RatesResponse(BaseModel):
+    usd_try: Optional[float] = None
+    eur_try: Optional[float] = None
+    btc_try: Optional[float] = None
+    btc_usd: Optional[float] = None
+    eth_try: Optional[float] = None
+    eth_usd: Optional[float] = None
+    updatedAt: str = ""
+    stale: bool = False
+
+
+@api_router.get("/rates", response_model=RatesResponse)
+async def get_rates():
+    now = _time.time()
+    cached = _rates_cache["data"]
+    if cached and (now - _rates_cache["ts"]) < _RATES_TTL_SECONDS:
+        return RatesResponse(**cached)
+
+    result = dict(cached) if cached else {}
+    try:
+        fx_resp = await asyncio.to_thread(
+            requests.get, "https://api.frankfurter.app/latest",
+            params={"from": "USD", "to": "TRY,EUR"}, timeout=6,
+        )
+        fx = fx_resp.json()
+        usd_try = fx.get("rates", {}).get("TRY")
+        usd_eur = fx.get("rates", {}).get("EUR")
+        if usd_try:
+            result["usd_try"] = usd_try
+            if usd_eur:
+                result["eur_try"] = usd_try / usd_eur
+    except Exception:
+        logging.warning("[rates] frankfurter.app fetch failed", exc_info=True)
+
+    try:
+        cg_resp = await asyncio.to_thread(
+            requests.get, "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": "bitcoin,ethereum", "vs_currencies": "try,usd"}, timeout=6,
+        )
+        cg = cg_resp.json()
+        if "bitcoin" in cg:
+            result["btc_try"] = cg["bitcoin"].get("try")
+            result["btc_usd"] = cg["bitcoin"].get("usd")
+        if "ethereum" in cg:
+            result["eth_try"] = cg["ethereum"].get("try")
+            result["eth_usd"] = cg["ethereum"].get("usd")
+    except Exception:
+        logging.warning("[rates] coingecko fetch failed", exc_info=True)
+
+    result["updatedAt"] = utc_now_iso()
+    result["stale"] = not result.get("usd_try") and not result.get("btc_try")
+    _rates_cache["data"] = result
+    _rates_cache["ts"] = now
+    return RatesResponse(**result)
 
 
 # ============ SUBSCRIPTION / QUOTA ============

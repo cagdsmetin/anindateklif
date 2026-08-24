@@ -115,10 +115,10 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
-  .logo { max-width:230px; max-height:96px; object-fit:contain; margin:0 0 10px 0; display:block; }
-  .logo-fallback { padding:8px 14px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 10px 0; display:inline-block; font-size:12.5px; }
-  .cname { font-weight:700; font-size:13.5px; color:#1E293B; margin:0 0 6px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
-  .cline { font-size:12.5px; color:#0f172a; line-height:1.6; margin:0 0 2px 0; word-wrap:break-word; overflow-wrap:break-word; }
+  .logo { max-width:300px; max-height:130px; object-fit:contain; margin:0 0 12px 0; display:block; }
+  .logo-fallback { padding:10px 16px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 12px 0; display:inline-block; font-size:14px; }
+  .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
+  .cline { font-size:14px; color:#0f172a; line-height:1.6; margin:0 0 3px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
   .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; word-wrap:break-word; overflow-wrap:break-word; }
   .meta-table { border-collapse:collapse; margin:0 0 0 auto; max-width:100%; }
@@ -371,12 +371,12 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:12px; border-bottom:2.5px solid #1c1c1e; margin-bottom:16px; }
   .company-block { max-width:56%; }
-  .company-name { font-size:12.5pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 6px; }
-  .company-meta { font-size:8pt; color:#6b6b6b; line-height:1.7; }
+  .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 7px; }
+  .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.7; }
   .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .logo-img { height:60px; max-width:170px; object-fit:contain; }
-  .logo-fallback { width:56px; height:56px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15pt; border-radius:4px; }
+  .logo-img { height:84px; max-width:210px; object-fit:contain; }
+  .logo-fallback { width:76px; height:76px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19pt; border-radius:4px; }
   .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
   .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
   .meta-table { border-collapse:collapse; margin-top:8px; }
@@ -617,11 +617,11 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 
   /* Header */
   .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
-  .brand-mark { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-  .logo-img { height:54px; max-width:160px; object-fit:contain; }
-  .logo-fallback { width:50px; height:50px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13pt; font-family:'Helvetica Neue', Arial, sans-serif; }
-  .brand-name { font-size:11pt; letter-spacing:.4px; font-weight:700; }
-  .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7.6pt; color:#8a8478; margin-top:7px; line-height:1.85; }
+  .brand-mark { margin-bottom:14px; }
+  .logo-img { height:92px; max-width:170px; object-fit:contain; margin-bottom:12px; }
+  .logo-fallback { width:80px; height:80px; border:1px solid #b5502e; color:#b5502e; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:20pt; font-family:'Helvetica Neue', Arial, sans-serif; margin-bottom:12px; }
+  .brand-name { font-size:22pt; letter-spacing:.4px; font-weight:700; }
+  .brand-meta { font-family:'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
   .doc-id { text-align:right; }
   .doc-title { font-size:27pt; letter-spacing:5px; font-weight:400; color:#2b2926; }
   .doc-sub { font-family:'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }
@@ -697,9 +697,6 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     <div class="top-row">
       <div class="brand">
         <div class="brand-mark">
-          ${logoSrc
-            ? `<img class="logo-img" src="${logoSrc}" />`
-            : `<div class="logo-fallback">${esc(monogram)}</div>`}
           <div class="brand-name">${v(company.sirketAdi)}</div>
         </div>
         <div class="brand-meta">
@@ -709,6 +706,9 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
         </div>
       </div>
       <div class="doc-id">
+        ${logoSrc
+          ? `<img class="logo-img" src="${logoSrc}" />`
+          : `<div class="logo-fallback">${esc(monogram)}</div>`}
         <div class="doc-title">TEKLİF</div>
         <div class="doc-sub">Form No ${v(quote.teklifNo)}</div>
         <div class="meta-list">

@@ -124,6 +124,6 @@ const sb = StyleSheet.create({
   navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10, marginBottom: 4 },
   navText: { fontSize: 13, fontWeight: '700', color: theme.colors.textOnDark },
   navTextActive: { color: '#fff', fontWeight: '900' },
-  contentOuter: { flex: 1, alignItems: 'center', backgroundColor: '#F5F7FA' },
-  contentInner: { flex: 1, width: '100%', maxWidth: 900 },
+  contentOuter: { flex: 1, backgroundColor: '#F5F7FA' },
+  contentInner: { flex: 1, width: '100%' },
 });

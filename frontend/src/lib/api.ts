@@ -227,6 +227,9 @@ export type RatesT = {
   btc_usd?: number | null;
   eth_try?: number | null;
   eth_usd?: number | null;
+  bist100?: number | null;
+  bist50?: number | null;
+  bist30?: number | null;
   updatedAt?: string;
   stale?: boolean;
 };

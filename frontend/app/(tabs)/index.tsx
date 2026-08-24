@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,6 +20,11 @@ function fmtTRY(n?: number | null): string {
   if (n === null || n === undefined) return '—';
   const digits = n >= 1000 ? 0 : 2;
   return '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
+}
+
+function fmtIndex(n?: number | null): string {
+  if (n === null || n === undefined) return '—';
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
 
 const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -76,8 +81,15 @@ export default function PanelScreen() {
 
   useEffect(() => {
     api.subscriptionStatus().then((r: any) => setSubStatus(r)).catch(() => {});
-    api.rates().then((r) => setRates(r)).catch(() => {});
     api.getAppConfig().then((r: any) => setWhatsappNumber(r?.whatsapp_number || '905415858988')).catch(() => setWhatsappNumber('905415858988'));
+
+    // Kur/kripto/BIST şeridi "anlık" hissettirsin diye periyodik olarak yeniliyoruz
+    // (backend tarafında da 30sn'lik kısa bir cache var, yani bu istekler ucuz).
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   const now = new Date();
@@ -201,12 +213,21 @@ export default function PanelScreen() {
         <Text style={s.dateLabel}>{todayLabel()}</Text>
 
         {rates && (rates.usd_try || rates.btc_try) && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.ratesScroll} contentContainerStyle={s.ratesRow}>
-            <RatePill label="USD" value={rates.usd_try} />
-            <RatePill label="EUR" value={rates.eur_try} />
-            <RatePill label="BTC" value={rates.btc_try} icon="logo-bitcoin" />
-            <RatePill label="ETH" value={rates.eth_try} icon="diamond-outline" />
-          </ScrollView>
+          <View style={s.ratesBlock}>
+            <View style={s.ratesHeader}>
+              <LiveDot />
+              <Text style={s.ratesHeaderText}>CANLI PİYASA</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.ratesRow}>
+              <RatePill label="USD" value={rates.usd_try} icon="cash-outline" accent={theme.colors.primary} />
+              <RatePill label="EUR" value={rates.eur_try} icon="cash-outline" accent={theme.colors.primary} />
+              <RatePill label="BTC" value={rates.btc_try} icon="logo-bitcoin" accent={theme.colors.gold} />
+              <RatePill label="ETH" value={rates.eth_try} icon="diamond-outline" accent={theme.colors.gold} />
+              {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+            </ScrollView>
+          </View>
         )}
 
         {subStatus && !subStatus.subscription_active && (
@@ -437,13 +458,63 @@ export default function PanelScreen() {
   );
 }
 
-function RatePill({ label, value, icon }: { label: string; value?: number | null; icon?: any }) {
+// Bir önceki değere göre yukarı/aşağı hareket algılayıp kısa bir yeşil/kırmızı
+// flaş + ok ikonu tetikleyen küçük bir hook — her poll'da (30sn) tetiklenir.
+function useFlashDirection(value?: number | null) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const prevRef = useRef<number | null | undefined>(undefined);
+  const [dir, setDir] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    if (value === null || value === undefined) return;
+    if (prevRef.current !== undefined && prevRef.current !== null && value !== prevRef.current) {
+      const d: 'up' | 'down' = value > prevRef.current ? 'up' : 'down';
+      setDir(d);
+      anim.stopAnimation();
+      anim.setValue(1);
+      Animated.timing(anim, { toValue: 0, duration: 1600, useNativeDriver: false }).start();
+    }
+    prevRef.current = value;
+  }, [value]);
+
+  return { anim, dir };
+}
+
+function LiveDot() {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.25, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  return <Animated.View style={[s.liveDot, { opacity: pulse }]} />;
+}
+
+function RatePill({ label, value, icon, accent, isIndex }: { label: string; value?: number | null; icon?: any; accent?: string; isIndex?: boolean }) {
+  const { anim, dir } = useFlashDirection(value);
+  const flashBg = dir === 'down' ? '#FEE2E2' : '#DCFCE7';
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['#fff', flashBg] });
+  const borderColor = anim.interpolate({ inputRange: [0, 1], outputRange: [theme.colors.line, dir === 'down' ? theme.colors.red : theme.colors.green] });
+  const dirColor = dir === 'down' ? theme.colors.red : theme.colors.green;
+
   return (
-    <View style={s.ratePill}>
-      {icon ? <Ionicons name={icon} size={13} color={theme.colors.primary} style={{ marginRight: 4 }} /> : null}
-      <Text style={s.ratePillLabel}>{label}</Text>
-      <Text style={s.ratePillValue}>{fmtTRY(value)}</Text>
-    </View>
+    <Animated.View style={[s.ratePill, { backgroundColor: bgColor, borderColor }]}>
+      <View style={[s.ratePillIconWrap, { backgroundColor: (accent || theme.colors.primary) + '1A' }]}>
+        <Ionicons name={icon || 'trending-up'} size={13} color={accent || theme.colors.primary} />
+      </View>
+      <View>
+        <Text style={s.ratePillLabel}>{label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          <Text style={s.ratePillValue}>{isIndex ? fmtIndex(value) : fmtTRY(value)}</Text>
+          {dir && <Ionicons name={dir === 'up' ? 'caret-up' : 'caret-down'} size={11} color={dirColor} />}
+        </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -521,21 +592,24 @@ const s = StyleSheet.create({
   emptyText: { color: theme.colors.textMuted },
   dateLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textMuted, marginBottom: 12, marginTop: 2 },
 
-  ratesScroll: { marginBottom: 12 },
-  ratesRow: { flexDirection: 'row', gap: 8 },
+  ratesBlock: { marginBottom: 14 },
+  ratesHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  ratesHeaderText: { fontSize: 10.5, fontWeight: '900', color: theme.colors.textMuted, letterSpacing: 0.6 },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: theme.colors.green },
+  ratesRow: { flexDirection: 'row', gap: 10 },
   ratePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.line,
-    borderRadius: 20,
+    borderWidth: 1.5,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    gap: 5,
+    paddingVertical: 8,
+    gap: 8,
+    ...theme.shadow.sm,
   },
-  ratePillLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted },
-  ratePillValue: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text },
+  ratePillIconWrap: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  ratePillLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
+  ratePillValue: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
 
   trialBanner: {
     flexDirection: 'row',

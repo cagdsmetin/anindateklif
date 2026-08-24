@@ -1351,7 +1351,7 @@ async def get_app_config():
 # Small in-memory cache so the Panel's rate strip doesn't hammer the upstream
 # free APIs on every page load — a few minutes of staleness is fine for this.
 _rates_cache: dict = {"data": None, "ts": 0.0}
-_RATES_TTL_SECONDS = 300
+_RATES_TTL_SECONDS = 30  # kısa cache — panel şeridi "anlık" hissettirsin diye
 
 
 class RatesResponse(BaseModel):
@@ -1361,8 +1361,33 @@ class RatesResponse(BaseModel):
     btc_usd: Optional[float] = None
     eth_try: Optional[float] = None
     eth_usd: Optional[float] = None
+    bist100: Optional[float] = None
+    bist50: Optional[float] = None
+    bist30: Optional[float] = None
     updatedAt: str = ""
     stale: bool = False
+
+
+async def _fetch_yahoo_index(symbol: str) -> Optional[float]:
+    """Borsa İstanbul endeksleri için resmi/ücretsiz bir API yok — Yahoo Finance'in
+    genel (anahtarsız) chart endpoint'ini kullanıyoruz. Herhangi bir hata durumunda
+    sessizce None döner, panel şeridinde o pill görünmez olur."""
+    try:
+        resp = await asyncio.to_thread(
+            requests.get,
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+            params={"interval": "1m", "range": "1d"},
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=6,
+        )
+        data = resp.json()
+        result = (data.get("chart") or {}).get("result") or []
+        if not result:
+            return None
+        price = (result[0].get("meta") or {}).get("regularMarketPrice")
+        return float(price) if price is not None else None
+    except Exception:
+        return None
 
 
 @api_router.get("/rates", response_model=RatesResponse)
@@ -1402,6 +1427,21 @@ async def get_rates():
             result["eth_usd"] = cg["ethereum"].get("usd")
     except Exception:
         logging.warning("[rates] coingecko fetch failed", exc_info=True)
+
+    try:
+        b100, b50, b30 = await asyncio.gather(
+            _fetch_yahoo_index("XU100.IS"),
+            _fetch_yahoo_index("XU050.IS"),
+            _fetch_yahoo_index("XU030.IS"),
+        )
+        if b100 is not None:
+            result["bist100"] = b100
+        if b50 is not None:
+            result["bist50"] = b50
+        if b30 is not None:
+            result["bist30"] = b30
+    except Exception:
+        logging.warning("[rates] BIST fetch failed", exc_info=True)
 
     result["updatedAt"] = utc_now_iso()
     result["stale"] = not result.get("usd_try") and not result.get("btc_try")

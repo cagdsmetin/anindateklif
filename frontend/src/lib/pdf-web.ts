@@ -79,8 +79,17 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
     if (!doc || !doc.body) throw new Error('PDF içeriği oluşturulamadı');
 
     // Let images (logo) and web fonts settle, then size the iframe to the
-    // full rendered content height.
-    await new Promise((r) => setTimeout(r, 200));
+    // full rendered content height. Templates can @import a Google Font
+    // (Montserrat) — that's a real network fetch, not something a fixed
+    // short timeout reliably covers, so wait on the iframe's own
+    // `document.fonts.ready` first (capped so a slow/offline font host can
+    // never hang PDF generation) and only then fall back to the short
+    // settle delay for anything fonts.ready doesn't account for (images).
+    const fontsReady = (doc as any).fonts?.ready;
+    if (fontsReady) {
+      await Promise.race([fontsReady, new Promise((r) => setTimeout(r, 2000))]);
+    }
+    await new Promise((r) => setTimeout(r, 150));
     const totalHeight = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight, 100);
     iframe.style.height = `${totalHeight}px`;
     await new Promise((r) => setTimeout(r, 60));

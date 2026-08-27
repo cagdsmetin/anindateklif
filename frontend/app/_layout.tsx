@@ -22,7 +22,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
     const g = segments[0] as string | undefined;
     const inAuth = g === '(auth)';
     const inSetup = g === '(setup)';
-    const isPublic = g === 'privacy'; // Play/App Store review + Data Safety form must load without login
+    const isPublic = g === 'privacy' || g === 'join'; // Play/App Store review + Data Safety form, and the staff-invite join page, must load without login
 
     if (isPublic) return;
 

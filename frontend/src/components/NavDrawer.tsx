@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute } from '@/src/lib/navItems';
+import { useAuth } from '@/src/state/AuthContext';
 
 // Mobile counterpart to the desktop left sidebar (app/(tabs)/_layout.tsx) —
 // same destinations, same colors, opened from the hamburger button in
@@ -15,7 +16,11 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const items = buildNavItems();
+  const { user } = useAuth();
+  const items = buildNavItems({
+    restricted: !!user?.is_staff && user?.staff_role !== 'admin',
+    isOwner: !user?.is_staff,
+  });
 
   const go = (route: string) => {
     onClose();

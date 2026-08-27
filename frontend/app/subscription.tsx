@@ -35,6 +35,7 @@ type StatusT = {
   renewal_due_soon?: boolean;
   plan_price_try: number;
   plans: PlanT[];
+  seat_count?: number;
   period: string;
   quotes_used_this_month: number;
   free_limit: number;
@@ -222,6 +223,14 @@ export default function SubscriptionScreen() {
               <>
                 {/* Plan picker */}
                 <Text style={s.formLabel}>Plan Seç</Text>
+                {status && (status.seat_count ?? 1) > 1 && (
+                  <View style={s.seatNote} testID="sub-seat-note">
+                    <Ionicons name="people-outline" size={14} color={theme.colors.primary} />
+                    <Text style={s.seatNoteText}>
+                      {status.seat_count} kişilik ekibiniz için fiyatlandırma (siz dahil)
+                    </Text>
+                  </View>
+                )}
                 <View style={{ gap: 12, marginBottom: 22 }}>
                   {plans.map((plan) => {
                     const selected = plan.id === selectedPlan;
@@ -357,6 +366,18 @@ const s = StyleSheet.create({
   statusCardDanger: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
   statusTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text, marginBottom: 4 },
   statusText: { fontSize: 13, color: theme.colors.textMuted, lineHeight: 18 },
+  seatNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+    marginTop: -6,
+  },
+  seatNoteText: {
+    fontSize: 13,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
   planCard: {
     backgroundColor: '#fff',
     borderRadius: 16,

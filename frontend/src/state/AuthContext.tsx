@@ -9,6 +9,7 @@ type AuthState = {
   user: UserT | null;
   login: (args: LoginArgs) => Promise<void>;
   register: (args: RegisterArgs) => Promise<void>;
+  acceptInvite: (token: string, name: string, password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
   updateUser: (patch: Partial<UserT>) => Promise<UserT>;
@@ -73,6 +74,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.user);
   }, []);
 
+  const acceptInvite = useCallback(async (token: string, name: string, password: string) => {
+    const res: { access_token: string; user: UserT } = await api.acceptInvite(token, { name, password });
+    try {
+      await setSessionToken(res.access_token);
+    } catch (e) {
+      console.warn('[auth] token storage failed, using in-memory session', e);
+    }
+    setUser(res.user);
+  }, []);
+
   const forgotPassword = useCallback(async (email: string) => {
     await api.forgotPassword(email);
   }, []);
@@ -103,8 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ loading, user, login, register, forgotPassword, resetPassword, updateUser, refreshUser, signOut }),
-    [loading, user, login, register, forgotPassword, resetPassword, updateUser, refreshUser, signOut]
+    () => ({ loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut }),
+    [loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -106,6 +106,39 @@ export default function PanelScreen() {
     [quotesThisMonth]
   );
 
+  // Bu ay hacim, artık tek bir para biriminde toplanıyor (TRY) — bir esnaf USD,
+  // biri EUR, biri TL teklif veriyor olabilir; bunları olduğu gibi toplamak
+  // yanlış bir rakam üretir. Canlı kurla hepsini TRY'ye çevirip topluyoruz,
+  // altında da o TRY toplamın USD/EUR karşılığını gösteriyoruz.
+  const hacimTRY = useMemo(() => {
+    if (!rates || (!rates.usd_try && !rates.eur_try)) return null;
+    let missingRate = false;
+    const total = quotesThisMonth.reduce((a, q) => {
+      const val = q.genelToplam || 0;
+      const cur = (q.paraBirimi || 'USD').toUpperCase();
+      if (cur === 'TRY' || cur === 'TL') return a + val;
+      if (cur === 'USD') {
+        if (!rates.usd_try) { missingRate = true; return a; }
+        return a + val * rates.usd_try;
+      }
+      if (cur === 'EUR') {
+        if (!rates.eur_try) { missingRate = true; return a; }
+        return a + val * rates.eur_try;
+      }
+      return a;
+    }, 0);
+    return missingRate ? null : total;
+  }, [quotesThisMonth, rates]);
+
+  const hacimUSDEquiv = useMemo(
+    () => (hacimTRY != null && rates?.usd_try ? hacimTRY / rates.usd_try : null),
+    [hacimTRY, rates]
+  );
+  const hacimEURequiv = useMemo(
+    () => (hacimTRY != null && rates?.eur_try ? hacimTRY / rates.eur_try : null),
+    [hacimTRY, rates]
+  );
+
   const yanitBekleyen = useMemo(
     () => quotes.filter((q) => q.durum === 'Beklemede' || q.durum === 'Görüldü').length,
     [quotes]
@@ -262,18 +295,35 @@ export default function PanelScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Öne çıkan iki metrik */}
+        {/* Öne çıkan iki metrik — ikisi de ilgili Geçmiş görünümüne gider */}
         <View style={s.heroRow}>
-          <View style={s.heroCard}>
-            <Text style={s.heroLabel}>BU AY HACİM (USD)</Text>
-            <Text style={s.heroValue} numberOfLines={1}>{fmt(hacimBuAy, 'USD')}</Text>
+          <TouchableOpacity
+            style={s.heroCard}
+            activeOpacity={0.85}
+            onPress={() => router.push('/(tabs)/history')}
+            testID="hero-hacim-card"
+          >
+            <Text style={s.heroLabel}>BU AY HACİM{hacimTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={s.heroValue} numberOfLines={1}>
+              {hacimTRY != null ? fmt(hacimTRY, 'TRY') : fmt(hacimBuAy, 'USD')}
+            </Text>
+            {hacimTRY != null && (hacimUSDEquiv != null || hacimEURequiv != null) ? (
+              <Text style={s.heroSub} numberOfLines={1}>
+                ≈ {hacimUSDEquiv != null ? fmt(hacimUSDEquiv, 'USD') : ''}{hacimUSDEquiv != null && hacimEURequiv != null ? ' · ' : ''}{hacimEURequiv != null ? fmt(hacimEURequiv, 'EUR') : ''}
+              </Text>
+            ) : null}
             <Text style={s.heroSub}>{quotesThisMonth.length} teklif</Text>
-          </View>
-          <View style={[s.heroCard, s.heroCardWarn]}>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.heroCard, s.heroCardWarn]}
+            activeOpacity={0.85}
+            onPress={() => router.push({ pathname: '/(tabs)/history', params: { filter: 'bekleyen' } } as any)}
+            testID="hero-bekleyen-card"
+          >
             <Text style={[s.heroLabel, { color: theme.colors.gold }]}>YANIT BEKLEYEN</Text>
             <Text style={[s.heroValue, { color: '#fff' }]}>{yanitBekleyen}</Text>
             <Text style={[s.heroSub, { color: theme.colors.textOnDark }]}>teklif</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* İkincil istatistikler */}

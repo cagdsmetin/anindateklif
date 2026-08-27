@@ -132,6 +132,18 @@ export const api = {
     req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),
 
+  // Personel (ekip) yönetimi — sadece firma sahibi görebilir/yönetebilir
+  inviteStaff: (companyId: string, data: { email: string; role: string }) =>
+    req(`/company/${companyId}/members/invite`, { method: 'POST', body: JSON.stringify(data) }),
+  listStaff: (companyId: string): Promise<StaffMemberT[]> => req(`/company/${companyId}/members`),
+  removeStaff: (companyId: string, memberUserId: string) =>
+    req(`/company/${companyId}/members/${memberUserId}`, { method: 'DELETE' }),
+  revokeInvite: (companyId: string, inviteId: string) =>
+    req(`/company/${companyId}/invites/${inviteId}`, { method: 'DELETE' }),
+  getInviteInfo: (token: string): Promise<StaffInviteInfoT> => req(`/company/invites/${token}`),
+  acceptInvite: (token: string, data: { name: string; password: string }) =>
+    req(`/company/invites/${token}/accept`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Companies
   listCompanies: () => req('/companies'),
   createCompany: (data: any) => req('/companies', { method: 'POST', body: JSON.stringify(data) }),
@@ -184,6 +196,8 @@ export const api = {
   updateQuoteStatus: (id: string, durum: string) =>
     req(`/quotes/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
+  listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
+  restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
 
   // App config (public)
   getAppConfig: () => req('/config'),
@@ -212,6 +226,26 @@ export type UserT = {
   currency: string;
   tax_label: string;
   onboarding_completed: boolean;
+  is_staff?: boolean;
+  staff_role?: string | null;
+  staff_company_id?: string | null;
+};
+
+export type StaffMemberT = {
+  type: 'active' | 'pending';
+  id: string;
+  email: string;
+  role: string;
+  name?: string;
+  createdAt?: string;
+};
+
+export type StaffInviteInfoT = {
+  valid: boolean;
+  reason?: string | null;
+  company_name?: string | null;
+  email?: string | null;
+  role?: string | null;
 };
 
 export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
@@ -376,6 +410,7 @@ export type QuoteT = {
   items: QuoteItemT[];
   ekler: QuoteEkT[];
   durum: string;
+  deletedAt?: string | null;
   araToplam: number;
   iskontoTutar: number;
   kdvTutar: number;

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute, NavItem } from '@/src/lib/navItems';
+import { useAuth } from '@/src/state/AuthContext';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -66,8 +67,11 @@ export default function TabsLayout() {
   // web view) — swap the bottom tab bar for a left sidebar, the way most
   // desktop business dashboards are laid out.
   const isDesktopWeb = Platform.OS === 'web' && width >= 900;
+  const { user } = useAuth();
+  const restricted = !!user?.is_staff && user?.staff_role !== 'admin';
+  const isOwner = !user?.is_staff;
 
-  const navItems: NavItem[] = buildNavItems();
+  const navItems: NavItem[] = buildNavItems({ restricted, isOwner });
 
   const tabs = (
     <Tabs
@@ -96,8 +100,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis) }} />
       <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya) }} />
       <Tabs.Screen name="reminders" options={{ title: 'Hatırlatmalar', tabBarIcon: tabIcon('notifications', m.hatirlatma) }} />
-      <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa) }} />
-      <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat) }} />
+      <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa), href: restricted ? null : undefined }} />
+      <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat), href: restricted ? null : undefined }} />
       <Tabs.Screen name="company" options={{ title: 'Firma', tabBarIcon: tabIcon('business', m.firma) }} />
     </Tabs>
   );

@@ -56,14 +56,16 @@ export default function TopHeader({ title }: { title?: string }) {
           </View>
         </TouchableOpacity>
         <View style={s.rightActions}>
-          <TouchableOpacity
-            testID="company-picker-btn"
-            style={s.pickerBtn}
-            onPress={() => setPickerVisible(true)}
-          >
-            <Ionicons name="business-outline" size={13} color={theme.colors.primary} />
-            <Ionicons name="chevron-down" size={11} color={theme.colors.primary} />
-          </TouchableOpacity>
+          {!user?.is_staff && (
+            <TouchableOpacity
+              testID="company-picker-btn"
+              style={s.pickerBtn}
+              onPress={() => setPickerVisible(true)}
+            >
+              <Ionicons name="business-outline" size={13} color={theme.colors.primary} />
+              <Ionicons name="chevron-down" size={11} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             testID="user-menu-btn"
             style={s.avatarBtn}

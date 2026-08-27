@@ -37,25 +37,59 @@ RESET_TOKEN_MINUTES = 30
 # ============ MONETIZATION CONFIG ============
 FREE_MONTHLY_QUOTE_LIMIT = 5
 
+# Soft-deleted quotes stay recoverable in the trash for this many days before
+# being permanently purged (lazily, the next time the trash is listed).
+QUOTE_TRASH_RETENTION_DAYS = 30
+
 # Weekly / yearly subscription tiers (monthly plan retired — weekly gives a low-
-# commitment entry point, yearly is the discounted "taahhütlü" option).
-SUBSCRIPTION_PLANS = {
-    "weekly": {
-        "price_try": 50.0,
-        "duration_days": 7,
-        "label": "Haftalık Abonelik",
-        "iyzico_item_id": "anindateklif_weekly",
-    },
-    "yearly": {
-        "price_try": 2000.0,
-        "list_price_try": 2400.0,
-        "duration_days": 365,
-        "label": "Yıllık Abonelik",
-        "iyzico_item_id": "anindateklif_yearly",
-    },
-}
+# commitment entry point, yearly is the discounted "taahhütlü" option). Price
+# scales with team size (owner + staff, see _seat_count) — a whole team shares
+# one subscription under the owner's account, so the price has to account for
+# how many people are actually using it.
+SEAT_TIERS = [
+    {"max_seats": 5, "weekly_price": 50.0, "yearly_price": 2000.0, "yearly_list_price": 2400.0},
+    {"max_seats": 10, "weekly_price": 70.0, "yearly_price": 2800.0, "yearly_list_price": 3400.0},
+    {"max_seats": 30, "weekly_price": 80.0, "yearly_price": 3200.0, "yearly_list_price": 3900.0},
+    {"max_seats": None, "weekly_price": 110.0, "yearly_price": 4400.0, "yearly_list_price": 5300.0},  # 31+
+]
 DEFAULT_SUBSCRIPTION_PLAN = "yearly"
-# Backward-compat alias for any stray reference to the old single-tier price.
+
+
+def _seat_tier(seats: int) -> Dict[str, Any]:
+    for tier in SEAT_TIERS:
+        if tier["max_seats"] is None or seats <= tier["max_seats"]:
+            return tier
+    return SEAT_TIERS[-1]
+
+
+async def _seat_count(owner_user_id: str) -> int:
+    """1 (owner) + however many staff accounts are currently active under them."""
+    staff_count = await db.users.count_documents({"staff_owner_user_id": owner_user_id})
+    return 1 + staff_count
+
+
+def _plans_for_tier(tier: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    return {
+        "weekly": {
+            "price_try": tier["weekly_price"],
+            "duration_days": 7,
+            "label": "Haftalık Abonelik",
+            "iyzico_item_id": "anindateklif_weekly",
+        },
+        "yearly": {
+            "price_try": tier["yearly_price"],
+            "list_price_try": tier["yearly_list_price"],
+            "duration_days": 365,
+            "label": "Yıllık Abonelik",
+            "iyzico_item_id": "anindateklif_yearly",
+        },
+    }
+
+
+# Base (1-5 seat) tier — used wherever a seat count isn't known yet (e.g. the
+# public /config endpoint, shown to visitors before they've signed up/added
+# any staff) and as a backward-compat alias for any stray old reference.
+SUBSCRIPTION_PLANS = _plans_for_tier(SEAT_TIERS[0])
 SUBSCRIPTION_PRICE_TRY = SUBSCRIPTION_PLANS[DEFAULT_SUBSCRIPTION_PLAN]["price_try"]
 
 # Comma-separated list of emails that always get unlimited free access, no
@@ -304,6 +338,9 @@ class UserOut(BaseModel):
     currency: str = ""
     tax_label: str = ""
     onboarding_completed: bool = False
+    is_staff: bool = False
+    staff_role: Optional[str] = None
+    staff_company_id: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
@@ -343,10 +380,39 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         raise HTTPException(status_code=401, detail="Invalid token")
     if payload.get("jti") and await db.revoked_tokens.find_one({"jti": payload["jti"]}):
         raise HTTPException(status_code=401, detail="Session expired")
-    user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
-    if not user:
+    account = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
+    if not account:
         raise HTTPException(status_code=401, detail="User not found")
-    return user
+
+    owner_id = account.get("staff_owner_user_id")
+    if owner_id:
+        # Staff account — every company-scoped query (quotes/customers/kasa/
+        # tahsilat/catalog/services/campaigns/company/subscription) keys off
+        # user["user_id"], so resolving straight to the OWNER's record here
+        # makes the whole team share one company's data and one subscription
+        # with zero changes to any of those endpoints. `actual_user_id` is
+        # kept so identity-only endpoints (auth/me, phone OTP) can still act
+        # on the real logged-in person instead of the owner.
+        owner = await db.users.find_one({"user_id": owner_id}, {"_id": 0})
+        if not owner:
+            raise HTTPException(status_code=401, detail="Bağlı olduğunuz firma hesabı artık mevcut değil")
+        resolved = dict(owner)
+        resolved["is_staff"] = True
+        resolved["staff_role"] = account.get("staff_role", "staff")
+        resolved["staff_of_company_id"] = account.get("staff_of_company_id", "")
+        resolved["actual_user_id"] = account["user_id"]
+        return resolved
+
+    account["is_staff"] = False
+    return account
+
+
+def _self_id(user: Dict[str, Any]) -> str:
+    """The REAL logged-in person's user_id — same as user["user_id"] for a
+    normal/owner account, but for a resolved staff account (see
+    get_current_user) user["user_id"] has been swapped to the OWNER's id, so
+    identity-only endpoints (auth/me, phone OTP) must use this instead."""
+    return user.get("actual_user_id") or user["user_id"]
 
 
 def _user_out(u: Dict[str, Any]) -> UserOut:
@@ -361,6 +427,9 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         currency=u.get("currency", ""),
         tax_label=u.get("tax_label", ""),
         onboarding_completed=bool(u.get("onboarding_completed", False)),
+        is_staff=bool(u.get("staff_owner_user_id")),
+        staff_role=u.get("staff_role"),
+        staff_company_id=u.get("staff_of_company_id"),
     )
 
 
@@ -541,15 +610,18 @@ async def reset_password(payload: ResetPasswordRequest, request: Request):
 
 @api_router.get("/auth/me", response_model=UserOut)
 async def auth_me(user=Depends(get_current_user)):
-    return _user_out(user)
+    self_id = _self_id(user)
+    doc = await db.users.find_one({"user_id": self_id}, {"_id": 0}) if user.get("is_staff") else user
+    return _user_out(doc or user)
 
 
 @api_router.patch("/auth/me", response_model=UserOut)
 async def update_me(payload: UserProfileUpdate, user=Depends(get_current_user)):
+    self_id = _self_id(user)
     updates = {k: v for k, v in payload.dict(exclude_unset=True).items() if v is not None}
     if updates:
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": updates})
-    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        await db.users.update_one({"user_id": self_id}, {"$set": updates})
+    doc = await db.users.find_one({"user_id": self_id}, {"_id": 0})
     return _user_out(doc)
 
 
@@ -590,11 +662,12 @@ async def phone_send_code(payload: PhoneSendCodeRequest, request: Request, user=
     if len(phone) < 8:
         raise HTTPException(status_code=400, detail="Geçerli bir telefon numarası giriniz")
 
-    _rate_limit(f"otp-send:user:{user['user_id']}", 5, 3600)
+    self_id = _self_id(user)
+    _rate_limit(f"otp-send:user:{self_id}", 5, 3600)
     _rate_limit(f"otp-send:ip:{_client_ip(request)}", 10, 3600)
 
     code = f"{py_secrets.randbelow(1000000):06d}"
-    _phone_otp_store[f"{user['user_id']}:{phone}"] = {
+    _phone_otp_store[f"{self_id}:{phone}"] = {
         "code": code,
         "expires_at": _time.time() + _OTP_TTL_SECONDS,
         "attempts": 0,
@@ -627,7 +700,8 @@ async def phone_send_code(payload: PhoneSendCodeRequest, request: Request, user=
 @api_router.post("/auth/phone/verify-code")
 async def phone_verify_code(payload: PhoneVerifyCodeRequest, user=Depends(get_current_user)):
     phone = _normalize_phone(payload.phone)
-    key = f"{user['user_id']}:{phone}"
+    self_id = _self_id(user)
+    key = f"{self_id}:{phone}"
     entry = _phone_otp_store.get(key)
     if not entry:
         raise HTTPException(status_code=400, detail="Önce doğrulama kodu isteyin")
@@ -643,10 +717,10 @@ async def phone_verify_code(payload: PhoneVerifyCodeRequest, user=Depends(get_cu
 
     _phone_otp_store.pop(key, None)
     await db.users.update_one(
-        {"user_id": user["user_id"]},
+        {"user_id": self_id},
         {"$set": {"phone": phone, "phone_verified": True}},
     )
-    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    doc = await db.users.find_one({"user_id": self_id}, {"_id": 0})
     return _user_out(doc)
 
 
@@ -934,6 +1008,7 @@ class Quote(BaseModel):
     genelToplam: float = 0
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
+    deletedAt: Optional[str] = None
 
 
 class QuoteCreate(BaseModel):
@@ -1001,10 +1076,17 @@ def compute_totals(items: List[QuoteItem], iskonto: float, kdvOrani: float):
     return subtotal, iskontoTutar, kdvTutar, genelToplam
 
 
-async def _own_company(user_id: str, company_id: str):
-    doc = await db.companies.find_one({"id": company_id, "userId": user_id}, {"_id": 0})
+async def _own_company(user: Dict[str, Any], company_id: str):
+    doc = await db.companies.find_one({"id": company_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Company not found or not yours")
+    # A staff account is only ever meant to touch the ONE company they were
+    # invited into — without this, staff could reach any OTHER company the
+    # same owner also happens to run, just because both resolve to the same
+    # owner user_id for data-scoping purposes.
+    staff_company = user.get("staff_of_company_id")
+    if user.get("is_staff") and staff_company and staff_company != company_id:
+        raise HTTPException(status_code=403, detail="Bu firmaya erişim izniniz yok")
     return doc
 
 
@@ -1029,13 +1111,13 @@ async def create_company(payload: CompanyCreate, user=Depends(get_current_user))
 
 @api_router.get("/companies/{company_id}", response_model=Company)
 async def get_company(company_id: str, user=Depends(get_current_user)):
-    doc = await _own_company(user["user_id"], company_id)
+    doc = await _own_company(user, company_id)
     return Company(**doc)
 
 
 @api_router.put("/companies/{company_id}", response_model=Company)
 async def update_company(company_id: str, payload: CompanyCreate, user=Depends(get_current_user)):
-    doc = await _own_company(user["user_id"], company_id)
+    doc = await _own_company(user, company_id)
     updated = {**doc, **payload.dict(), "userId": user["user_id"], "updatedAt": utc_now_iso()}
     await db.companies.replace_one({"id": company_id, "userId": user["user_id"]}, updated)
     return Company(**updated)
@@ -1043,7 +1125,7 @@ async def update_company(company_id: str, payload: CompanyCreate, user=Depends(g
 
 @api_router.delete("/companies/{company_id}")
 async def delete_company(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    await _own_company(user, company_id)
     uid = user["user_id"]
     await db.companies.delete_one({"id": company_id, "userId": uid})
     await db.catalog.delete_many({"companyId": company_id, "userId": uid})
@@ -1056,17 +1138,266 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ============ TEAM / STAFF MEMBERS ============
+# A company can have staff accounts besides the owner. Staff log in with
+# their own email/password but get_current_user() resolves them straight to
+# the owner's user_id for every company-scoped query (quotes, customers,
+# kasa, tahsilat, catalog, services, campaigns, subscription) — see the
+# resolution logic there. This section only covers inviting/listing/removing
+# staff; the "share the owner's data" part needs no changes anywhere else.
+
+STAFF_INVITE_EXPIRY_DAYS = 7
+STAFF_ROLES = ("admin", "staff")  # "staff" is blocked from Kasa/Tahsilat
+
+
+class StaffInviteRequest(BaseModel):
+    email: EmailStr
+    role: str = "staff"
+
+    @field_validator("role")
+    @classmethod
+    def _role(cls, v: str) -> str:
+        if v not in STAFF_ROLES:
+            raise ValueError("Geçersiz rol")
+        return v
+
+
+class StaffInviteResponse(BaseModel):
+    invite_id: str
+    email: str
+    role: str
+    invite_link: str
+    expires_at: str
+
+
+class StaffInviteInfo(BaseModel):
+    valid: bool
+    reason: Optional[str] = None
+    company_name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+
+
+class StaffAcceptRequest(BaseModel):
+    name: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _pw(cls, v: str) -> str:
+        try:
+            return _validate_password(v)
+        except ValueError as e:
+            raise ValueError(str(e))
+
+
+class StaffMemberOut(BaseModel):
+    type: str  # "active" | "pending"
+    id: str  # user_id for active, invite_id for pending
+    email: str
+    role: str
+    name: str = ""
+    createdAt: str = ""
+
+
+async def _send_staff_invite_email(to_email: str, company_name: str, invite_link: str):
+    """Best-effort — same Resend setup as password-reset email. If
+    RESEND_API_KEY isn't configured, this silently no-ops: the invite link
+    returned in the API response (for the owner to share manually) is always
+    the primary path regardless of whether this succeeds."""
+    if not RESEND_API_KEY:
+        return
+    try:
+        await asyncio.to_thread(
+            requests.post,
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": f"{company_name} sizi Anında Teklif'e davet etti",
+                "html": (
+                    "<div style=\"font-family:sans-serif;max-width:480px;margin:0 auto;\">"
+                    f"<p><b>{esc(company_name)}</b> sizi Anında Teklif ekibine davet etti.</p>"
+                    "<p>Katılmak için aşağıdaki bağlantıya tıklayıp bir şifre belirleyin.</p>"
+                    f"<p><a href=\"{invite_link}\" style=\"display:inline-block;background:#2563eb;color:#fff;"
+                    "padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;\">Daveti Kabul Et</a></p>"
+                    "</div>"
+                ),
+            },
+            timeout=10,
+        )
+    except Exception:
+        logging.warning("[StaffInvite] resend send exception", exc_info=True)
+
+
+@api_router.post("/company/{company_id}/members/invite", response_model=StaffInviteResponse)
+async def invite_staff_member(company_id: str, payload: StaffInviteRequest, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi personel davet edebilir")
+    company = await _own_company(user, company_id)
+    email = _normalize_email(payload.email)
+
+    existing_user = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing_user and not existing_user.get("staff_owner_user_id"):
+        raise HTTPException(status_code=409, detail="Bu e-posta zaten başka bir hesapla kayıtlı")
+    if existing_user and existing_user.get("staff_of_company_id") == company_id:
+        raise HTTPException(status_code=409, detail="Bu kişi zaten ekibinizde")
+
+    token = py_secrets.token_urlsafe(24)
+    invite_id = str(uuid.uuid4())
+    expires_at = utc_now() + timedelta(days=STAFF_INVITE_EXPIRY_DAYS)
+    await db.company_invites.insert_one({
+        "id": invite_id,
+        "companyId": company_id,
+        "ownerUserId": user["user_id"],
+        "email": email,
+        "role": payload.role,
+        "token": token,
+        "status": "pending",
+        "createdAt": utc_now_iso(),
+        "expiresAt": expires_at.isoformat(),
+    })
+    invite_link = f"{FRONTEND_BASE_URL.rstrip('/')}/join?token={token}"
+    await _send_staff_invite_email(email, company.get("sirketAdi") or "Firma", invite_link)
+    return StaffInviteResponse(
+        invite_id=invite_id, email=email, role=payload.role, invite_link=invite_link,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@api_router.get("/company/invites/{token}", response_model=StaffInviteInfo)
+async def get_staff_invite(token: str):
+    invite = await db.company_invites.find_one({"token": token}, {"_id": 0})
+    if not invite:
+        return StaffInviteInfo(valid=False, reason="Davet bulunamadı")
+    if invite.get("status") != "pending":
+        return StaffInviteInfo(valid=False, reason="Bu davet artık geçerli değil")
+    exp = invite.get("expiresAt")
+    try:
+        exp_dt = datetime.fromisoformat(exp) if exp else None
+        if exp_dt and exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        exp_dt = None
+    if exp_dt and exp_dt < utc_now():
+        return StaffInviteInfo(valid=False, reason="Davetin süresi dolmuş")
+    company = await db.companies.find_one({"id": invite["companyId"]}, {"_id": 0})
+    return StaffInviteInfo(
+        valid=True, company_name=(company or {}).get("sirketAdi") or "Firma",
+        email=invite["email"], role=invite["role"],
+    )
+
+
+@api_router.post("/company/invites/{token}/accept", response_model=AuthResponse)
+async def accept_staff_invite(token: str, payload: StaffAcceptRequest, request: Request):
+    _rate_limit(f"invite-accept:ip:{_client_ip(request)}", 10, 3600)
+    invite = await db.company_invites.find_one({"token": token}, {"_id": 0})
+    if not invite or invite.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Geçersiz veya kullanılmış davet")
+    exp = invite.get("expiresAt")
+    try:
+        exp_dt = datetime.fromisoformat(exp) if exp else None
+        if exp_dt and exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        exp_dt = None
+    if exp_dt and exp_dt < utc_now():
+        raise HTTPException(status_code=400, detail="Davetin süresi dolmuş")
+
+    email = invite["email"]
+    if await db.users.find_one({"email": email}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı")
+
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    new_user = {
+        "user_id": user_id,
+        "email": email,
+        "hashed_password": _hash_password(payload.password),
+        "name": (payload.name or "").strip(),
+        "phone": "",
+        "picture": "",
+        "country": "",
+        "currency": "",
+        "tax_label": "",
+        "onboarding_completed": True,  # staff joins an already-set-up company, skip onboarding
+        "staff_of_company_id": invite["companyId"],
+        "staff_owner_user_id": invite["ownerUserId"],
+        "staff_role": invite["role"],
+        "createdAt": utc_now().isoformat(),
+    }
+    await db.users.insert_one(new_user)
+    await db.company_invites.update_one(
+        {"id": invite["id"]}, {"$set": {"status": "accepted", "acceptedByUserId": user_id}}
+    )
+    access = _make_access_token(new_user)
+    return AuthResponse(access_token=access, user=_user_out(new_user))
+
+
+@api_router.get("/company/{company_id}/members", response_model=List[StaffMemberOut])
+async def list_staff_members(company_id: str, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi ekibi görebilir")
+    await _own_company(user, company_id)
+    out: List[StaffMemberOut] = []
+    active = await db.users.find(
+        {"staff_of_company_id": company_id, "staff_owner_user_id": user["user_id"]}, {"_id": 0}
+    ).to_list(500)
+    for u in active:
+        out.append(StaffMemberOut(
+            type="active", id=u["user_id"], email=u["email"], role=u.get("staff_role", "staff"),
+            name=u.get("name", ""), createdAt=u.get("createdAt", ""),
+        ))
+    pending = await db.company_invites.find(
+        {"companyId": company_id, "ownerUserId": user["user_id"], "status": "pending"}, {"_id": 0}
+    ).to_list(500)
+    for inv in pending:
+        out.append(StaffMemberOut(
+            type="pending", id=inv["id"], email=inv["email"], role=inv.get("role", "staff"),
+            createdAt=inv.get("createdAt", ""),
+        ))
+    return out
+
+
+@api_router.delete("/company/{company_id}/members/{member_user_id}")
+async def remove_staff_member(company_id: str, member_user_id: str, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi personeli çıkarabilir")
+    await _own_company(user, company_id)
+    result = await db.users.update_one(
+        {"user_id": member_user_id, "staff_of_company_id": company_id, "staff_owner_user_id": user["user_id"]},
+        {"$unset": {"staff_owner_user_id": "", "staff_of_company_id": "", "staff_role": ""}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Personel bulunamadı")
+    return {"ok": True}
+
+
+@api_router.delete("/company/{company_id}/invites/{invite_id}")
+async def revoke_staff_invite(company_id: str, invite_id: str, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi daveti iptal edebilir")
+    await _own_company(user, company_id)
+    result = await db.company_invites.update_one(
+        {"id": invite_id, "companyId": company_id, "ownerUserId": user["user_id"], "status": "pending"},
+        {"$set": {"status": "revoked"}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Davet bulunamadı")
+    return {"ok": True}
+
+
 # ============ CATALOG ROUTES ============
 @api_router.get("/catalog/{company_id}", response_model=List[CatalogItem])
 async def list_catalog(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    await _own_company(user, company_id)
     docs = await db.catalog.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(2000)
     return [CatalogItem(**d) for d in docs]
 
 
 @api_router.post("/catalog", response_model=CatalogItem)
 async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     obj = CatalogItem(userId=user["user_id"], **payload.dict())
     await db.catalog.insert_one(obj.dict())
     return obj
@@ -1074,7 +1405,7 @@ async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_curre
 
 @api_router.post("/catalog/bulk", response_model=List[CatalogItem])
 async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     created = []
     for it in payload.items:
         d = it.dict()
@@ -1101,17 +1432,26 @@ async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+def _require_kasa_access(user: Dict[str, Any]):
+    """Restricted staff (role 'staff', not 'admin') never see Kasa/Tahsilat —
+    enforced here server-side, not just by hiding the tabs in the app."""
+    if user.get("is_staff") and user.get("staff_role") != "admin":
+        raise HTTPException(status_code=403, detail="Bu bölüme erişim izniniz yok")
+
+
 # ============ KASA (GELİR/GİDER) ROUTES ============
 @api_router.get("/kasa/{company_id}", response_model=List[KasaEntry])
 async def list_kasa(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
     docs = await db.kasa.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
     return [KasaEntry(**d) for d in docs]
 
 
 @api_router.post("/kasa", response_model=KasaEntry)
 async def create_kasa_entry(payload: KasaEntryCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
     obj = KasaEntry(userId=user["user_id"], **payload.dict())
     await db.kasa.insert_one(obj.dict())
     return obj
@@ -1119,6 +1459,7 @@ async def create_kasa_entry(payload: KasaEntryCreate, user=Depends(get_current_u
 
 @api_router.delete("/kasa/{entry_id}")
 async def delete_kasa_entry(entry_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
     await db.kasa.delete_one({"id": entry_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -1126,14 +1467,16 @@ async def delete_kasa_entry(entry_id: str, user=Depends(get_current_user)):
 # ============ TAHSILAT (ALACAK/BORÇ) ROUTES ============
 @api_router.get("/tahsilat/{company_id}", response_model=List[TahsilatEntry])
 async def list_tahsilat(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
     docs = await db.tahsilat.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
     return [TahsilatEntry(**d) for d in docs]
 
 
 @api_router.post("/tahsilat", response_model=TahsilatEntry)
 async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
     obj = TahsilatEntry(userId=user["user_id"], **payload.dict())
     await db.tahsilat.insert_one(obj.dict())
     return obj
@@ -1141,6 +1484,7 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
 
 @api_router.delete("/tahsilat/{entry_id}")
 async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
     await db.tahsilat.delete_one({"id": entry_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -1148,14 +1492,14 @@ async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
 # ============ CUSTOMER ROUTES ============
 @api_router.get("/customers/{company_id}", response_model=List[Customer])
 async def list_customers(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    await _own_company(user, company_id)
     docs = await db.customers.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(2000)
     return [Customer(**d) for d in docs]
 
 
 @api_router.post("/customers", response_model=Customer)
 async def create_customer(payload: CustomerCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     existing = await db.customers.find_one(
         {"companyId": payload.companyId, "firma": payload.firma, "userId": user["user_id"]}, {"_id": 0}
     )
@@ -1177,14 +1521,14 @@ async def delete_customer(customer_id: str, user=Depends(get_current_user)):
 # ============ SERVICE ROUTES (Servis & Garanti) ============
 @api_router.get("/services/{company_id}", response_model=List[Service])
 async def list_services(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    await _own_company(user, company_id)
     docs = await db.services.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
     return [Service(**d) for d in docs]
 
 
 @api_router.post("/services", response_model=Service)
 async def create_service(payload: ServiceCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     obj = Service(userId=user["user_id"], **payload.dict())
     await db.services.insert_one(obj.dict())
     return obj
@@ -1220,14 +1564,14 @@ async def delete_service(service_id: str, user=Depends(get_current_user)):
 # ============ CAMPAIGN ROUTES (Kampanya) ============
 @api_router.get("/campaigns/{company_id}", response_model=List[Campaign])
 async def list_campaigns(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
+    await _own_company(user, company_id)
     docs = await db.campaigns.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
     return [Campaign(**d) for d in docs]
 
 
 @api_router.post("/campaigns", response_model=Campaign)
 async def create_campaign(payload: CampaignCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     obj = Campaign(userId=user["user_id"], **payload.dict())
     await db.campaigns.insert_one(obj.dict())
     return obj
@@ -1255,14 +1599,16 @@ async def delete_campaign(campaign_id: str, user=Depends(get_current_user)):
 # ============ QUOTE ROUTES ============
 @api_router.get("/quotes/{company_id}", response_model=List[Quote])
 async def list_quotes(company_id: str, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], company_id)
-    docs = await db.quotes.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    await _own_company(user, company_id)
+    docs = await db.quotes.find(
+        {"companyId": company_id, "userId": user["user_id"], "deletedAt": {"$exists": False}}, {"_id": 0}
+    ).sort("createdAt", -1).to_list(2000)
     return [Quote(**d) for d in docs]
 
 
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
-    await _own_company(user["user_id"], payload.companyId)
+    await _own_company(user, payload.companyId)
     await _enforce_and_increment_quota(user)
     data = payload.dict()
     items = [QuoteItem(**it) if isinstance(it, dict) else it for it in data.get("items", [])]
@@ -1377,8 +1723,56 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
 
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, user=Depends(get_current_user)):
-    await db.quotes.delete_one({"id": quote_id, "userId": user["user_id"]})
+    """Soft delete — moves the quote to the trash instead of erasing it, so an
+    accidental delete can be undone within QUOTE_TRASH_RETENTION_DAYS days."""
+    result = await db.quotes.update_one(
+        {"id": quote_id, "userId": user["user_id"], "deletedAt": {"$exists": False}},
+        {"$set": {"deletedAt": utc_now_iso()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Teklif bulunamadı")
     return {"ok": True}
+
+
+async def _purge_expired_quote_trash(user_id: str):
+    cutoff = utc_now() - timedelta(days=QUOTE_TRASH_RETENTION_DAYS)
+    trashed = await db.quotes.find(
+        {"userId": user_id, "deletedAt": {"$exists": True, "$ne": None}}, {"_id": 0, "id": 1, "deletedAt": 1}
+    ).to_list(2000)
+    expired_ids = []
+    for d in trashed:
+        try:
+            da = datetime.fromisoformat(d["deletedAt"])
+            if da.tzinfo is None:
+                da = da.replace(tzinfo=timezone.utc)
+            if da < cutoff:
+                expired_ids.append(d["id"])
+        except Exception:
+            continue
+    if expired_ids:
+        await db.quotes.delete_many({"userId": user_id, "id": {"$in": expired_ids}})
+
+
+@api_router.get("/quotes/{company_id}/trash", response_model=List[Quote])
+async def list_trashed_quotes(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    await _purge_expired_quote_trash(user["user_id"])
+    docs = await db.quotes.find(
+        {"companyId": company_id, "userId": user["user_id"], "deletedAt": {"$exists": True, "$ne": None}}, {"_id": 0}
+    ).sort("deletedAt", -1).to_list(2000)
+    return [Quote(**d) for d in docs]
+
+
+@api_router.post("/quotes/{quote_id}/restore", response_model=Quote)
+async def restore_quote(quote_id: str, user=Depends(get_current_user)):
+    result = await db.quotes.update_one(
+        {"id": quote_id, "userId": user["user_id"], "deletedAt": {"$exists": True, "$ne": None}},
+        {"$unset": {"deletedAt": ""}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Silinen teklif bulunamadı (süresi dolmuş olabilir)")
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    return Quote(**doc)
 
 
 # ============ APP CONFIG (public) ============
@@ -1525,13 +1919,14 @@ class SubscriptionStatus(BaseModel):
     renewal_due_soon: bool = False
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
     plans: List[PlanOut] = []
+    seat_count: int = 1
     period: str
     quotes_used_this_month: int
     free_limit: int
     remaining_free: Optional[int] = None
 
 
-def _plans_out() -> List[PlanOut]:
+def _plans_out(plans: Dict[str, Dict[str, Any]]) -> List[PlanOut]:
     return [
         PlanOut(
             id=plan_id,
@@ -1540,7 +1935,7 @@ def _plans_out() -> List[PlanOut]:
             list_price_try=cfg.get("list_price_try"),
             duration_days=cfg["duration_days"],
         )
-        for plan_id, cfg in SUBSCRIPTION_PLANS.items()
+        for plan_id, cfg in plans.items()
     ]
 
 
@@ -1548,14 +1943,18 @@ def _plans_out() -> List[PlanOut]:
 async def subscription_status(user=Depends(get_current_user)):
     state = await _get_quota_state(user)
     days_left = _renewal_days_left(user)
+    seats = await _seat_count(user["user_id"])
+    tier = _seat_tier(seats)
+    plans = _plans_for_tier(tier)
     return SubscriptionStatus(
         subscription_active=state["subscription_active"],
         subscription_expires_at=user.get("subscription_expires_at"),
         subscription_plan=user.get("subscription_plan"),
         days_left=days_left,
         renewal_due_soon=state["subscription_active"] and _renewal_due_soon(user, days_left),
-        plan_price_try=SUBSCRIPTION_PRICE_TRY,
-        plans=_plans_out(),
+        plan_price_try=plans[DEFAULT_SUBSCRIPTION_PLAN]["price_try"],
+        plans=_plans_out(plans),
+        seat_count=seats,
         period=state["period"],
         quotes_used_this_month=state["count"],
         free_limit=state["free_limit"],
@@ -1579,10 +1978,14 @@ class SubscriptionCheckoutResponse(BaseModel):
 
 @api_router.post("/subscription/checkout", response_model=SubscriptionCheckoutResponse)
 async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Abonelik işlemlerini sadece firma sahibi yapabilir")
     if not IYZICO_API_KEY or not IYZICO_SECRET_KEY:
         raise HTTPException(status_code=503, detail="Ödeme sistemi henüz yapılandırılmadı")
-    plan_id = payload.plan if payload.plan in SUBSCRIPTION_PLANS else DEFAULT_SUBSCRIPTION_PLAN
-    plan_cfg = SUBSCRIPTION_PLANS[plan_id]
+    seats = await _seat_count(user["user_id"])
+    plans = _plans_for_tier(_seat_tier(seats))
+    plan_id = payload.plan if payload.plan in plans else DEFAULT_SUBSCRIPTION_PLAN
+    plan_cfg = plans[plan_id]
     plan_price = plan_cfg["price_try"]
     import iyzipay
 

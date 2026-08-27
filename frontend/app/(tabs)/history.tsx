@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -43,19 +43,24 @@ function monthKey(d: Date) {
 }
 
 const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
+// Panel'deki 'Yanıt Bekleyen' kartından gelen özel filtre — tek bir duruma değil,
+// iki duruma birden (Beklemede + Görüldü) karşılık geldiği için STATUSES listesinden ayrı tutuluyor.
+const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string>('Tümü');
+  const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : 'Tümü');
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = quotes;
-    if (filter !== 'Tümü') list = list.filter((qq) => qq.durum === filter);
+    if (filter === PENDING_FILTER) list = list.filter((qq) => qq.durum === 'Beklemede' || qq.durum === 'Görüldü');
+    else if (filter !== 'Tümü') list = list.filter((qq) => qq.durum === filter);
     if (q) {
       const qq = q.toLowerCase();
       list = list.filter((x) => x.musFirma.toLowerCase().includes(qq) || x.teklifNo.toLowerCase().includes(qq) || x.projeAdi.toLowerCase().includes(qq));
@@ -195,9 +200,19 @@ export default function HistoryScreen() {
             {monthOtherCurrenciesLine ? <Text style={s.statSubLabel} numberOfLines={1}>+ {monthOtherCurrenciesLine}</Text> : null}
           </View>
         </View>
-        <View style={s.searchWrap}>
-          <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-          <TextInput testID="history-search" style={s.searchInput} placeholder="Firma, teklif no, proje ara..." placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={[s.searchWrap, { flex: 1 }]}>
+            <Ionicons name="search" size={16} color={theme.colors.textMuted} />
+            <TextInput testID="history-search" style={s.searchInput} placeholder="Firma, teklif no, proje ara..." placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
+          </View>
+          <TouchableOpacity
+            style={s.trashEntryBtn}
+            onPress={() => router.push('/trash' as any)}
+            testID="trash-entry-btn"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
+          </TouchableOpacity>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
@@ -320,6 +335,7 @@ const s = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
   statSubLabel: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 2 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
+  trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
   filterRowOuter: { flexGrow: 0, height: 56 },
   filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center' },

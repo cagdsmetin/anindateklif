@@ -28,7 +28,13 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me-please-not-secure')
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    # No usable default here on purpose -- signing tokens with a value that's
+    # sitting in source control would let anyone who reads this file forge a
+    # valid login for any account, including admin. Fail loudly at startup
+    # instead of silently running insecure.
+    raise RuntimeError("JWT_SECRET environment variable is not set. Refusing to start.")
 JWT_ISSUER = os.environ.get('JWT_ISSUER', 'anindateklif-api')
 JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'anindateklif-client')
 JWT_ALGORITHM = 'HS256'

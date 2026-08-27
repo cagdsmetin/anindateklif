@@ -26,6 +26,11 @@ function fmtIndex(n?: number | null): string {
   if (n === null || n === undefined) return '—';
   return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
+function fmtUSD(n?: number | null): string {
+  if (n === null || n === undefined) return '—';
+  const digits = n >= 1000 ? 0 : 2;
+  return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(n);
+}
 
 const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
@@ -254,8 +259,8 @@ export default function PanelScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.ratesRow}>
               <RatePill label="USD" value={rates.usd_try} icon="cash-outline" accent={theme.colors.primary} />
               <RatePill label="EUR" value={rates.eur_try} icon="cash-outline" accent={theme.colors.primary} />
-              <RatePill label="BTC" value={rates.btc_try} icon="logo-bitcoin" accent={theme.colors.gold} />
-              <RatePill label="ETH" value={rates.eth_try} icon="diamond-outline" accent={theme.colors.gold} />
+              <RatePill label="BTC" value={rates.btc_usd} format="usd" subValue={rates.btc_try != null ? fmtTRY(rates.btc_try) : null} icon="logo-bitcoin" accent={theme.colors.gold} />
+              <RatePill label="ETH" value={rates.eth_usd} format="usd" subValue={rates.eth_try != null ? fmtTRY(rates.eth_try) : null} icon="diamond-outline" accent={theme.colors.gold} />
               {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
               {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
               {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
@@ -557,12 +562,14 @@ function LiveDot() {
   return <Animated.View style={[s.liveDot, { opacity: pulse }]} />;
 }
 
-function RatePill({ label, value, icon, accent, isIndex }: { label: string; value?: number | null; icon?: any; accent?: string; isIndex?: boolean }) {
+function RatePill({ label, value, icon, accent, isIndex, format, subValue }: { label: string; value?: number | null; icon?: any; accent?: string; isIndex?: boolean; format?: 'try' | 'usd' | 'index'; subValue?: string | null }) {
   const { anim, dir } = useFlashDirection(value);
   const flashBg = dir === 'down' ? '#FEE2E2' : '#DCFCE7';
   const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['#fff', flashBg] });
   const borderColor = anim.interpolate({ inputRange: [0, 1], outputRange: [theme.colors.line, dir === 'down' ? theme.colors.red : theme.colors.green] });
   const dirColor = dir === 'down' ? theme.colors.red : theme.colors.green;
+  const resolvedFormat = format || (isIndex ? 'index' : 'try');
+  const primaryText = resolvedFormat === 'index' ? fmtIndex(value) : resolvedFormat === 'usd' ? fmtUSD(value) : fmtTRY(value);
 
   return (
     <Animated.View style={[s.ratePill, { backgroundColor: bgColor, borderColor }]}>
@@ -572,9 +579,10 @@ function RatePill({ label, value, icon, accent, isIndex }: { label: string; valu
       <View>
         <Text style={s.ratePillLabel}>{label}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Text style={s.ratePillValue}>{isIndex ? fmtIndex(value) : fmtTRY(value)}</Text>
+          <Text style={s.ratePillValue}>{primaryText}</Text>
           {dir && <Ionicons name={dir === 'up' ? 'caret-up' : 'caret-down'} size={11} color={dirColor} />}
         </View>
+        {subValue ? <Text style={s.ratePillSubValue} numberOfLines={1}>≈ {subValue}</Text> : null}
       </View>
     </Animated.View>
   );
@@ -672,6 +680,7 @@ const s = StyleSheet.create({
   ratePillIconWrap: { width: 26, height: 26, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   ratePillLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
   ratePillValue: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
+  ratePillSubValue: { fontSize: 9, color: theme.colors.textMuted, marginTop: 1 },
 
   trialBanner: {
     flexDirection: 'row',

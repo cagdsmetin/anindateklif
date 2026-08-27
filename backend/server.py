@@ -1868,7 +1868,8 @@ async def get_rates():
     try:
         cg_resp = await asyncio.to_thread(
             requests.get, "https://api.coingecko.com/api/v3/simple/price",
-            params={"ids": "bitcoin,ethereum", "vs_currencies": "try,usd"}, timeout=6,
+            params={"ids": "bitcoin,ethereum", "vs_currencies": "try,usd"},
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=6,
         )
         cg = cg_resp.json()
         if "bitcoin" in cg:
@@ -1879,6 +1880,32 @@ async def get_rates():
             result["eth_usd"] = cg["ethereum"].get("usd")
     except Exception:
         logging.warning("[rates] coingecko fetch failed", exc_info=True)
+
+    # CoinGecko'nun ücretsiz API'si paylaşımlı bulut IP'lerini (Railway dahil)
+    # sık sık rate-limitliyor/engelliyor. Yukarıdaki çağrı boş dönerse Binance'in
+    # anahtarsız public ticker uç noktasından USD fiyatını alıp, zaten elimizde
+    # olan usd_try kuruyla kendimiz TL'ye çeviriyoruz — tek bir sağlayıcıya bağımlı
+    # kalmamak için.
+    if not result.get("btc_usd") or not result.get("eth_usd"):
+        try:
+            binance_resp = await asyncio.to_thread(
+                requests.get, "https://api.binance.com/api/v3/ticker/price",
+                params={"symbols": '["BTCUSDT","ETHUSDT"]'}, timeout=6,
+            )
+            for row in binance_resp.json():
+                price = float(row.get("price"))
+                if row.get("symbol") == "BTCUSDT" and not result.get("btc_usd"):
+                    result["btc_usd"] = price
+                elif row.get("symbol") == "ETHUSDT" and not result.get("eth_usd"):
+                    result["eth_usd"] = price
+        except Exception:
+            logging.warning("[rates] binance fallback fetch failed", exc_info=True)
+
+    usd_try_rate = result.get("usd_try")
+    if not result.get("btc_try") and result.get("btc_usd") and usd_try_rate:
+        result["btc_try"] = result["btc_usd"] * usd_try_rate
+    if not result.get("eth_try") and result.get("eth_usd") and usd_try_rate:
+        result["eth_try"] = result["eth_usd"] * usd_try_rate
 
     try:
         b100, b50, b30 = await asyncio.gather(

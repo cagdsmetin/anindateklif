@@ -21,7 +21,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
-import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -191,7 +191,7 @@ export default function HistoryScreen() {
     // window — PDF generation below takes long enough that window.open()
     // after it gets silently blocked as a popup. See preview.tsx for the
     // same pattern.
-    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+    const waWindow = Platform.OS === 'web' && !canShareFilesWeb() ? window.open('', '_blank') : null;
     try {
       const result = await generatePdf(quote);
       if (!result) { if (waWindow) { try { waWindow.close(); } catch {} } return; }

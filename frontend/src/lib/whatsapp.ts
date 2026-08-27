@@ -115,6 +115,21 @@ export function renderWhatsAppTemplate(body: string, quote: QuoteT, companyName?
  * Kept for the web download-companion tab; NOT used in the primary native flow
  * because deep links can't attach files (they'd only send text).
  */
+// Feature detection only (no File instance needed yet) -- lets callers decide
+// UP FRONT, synchronously, whether the browser can hand a file to WhatsApp via
+// the native share sheet. Browsers that expose `canShare` alongside `share`
+// are, in practice, exactly the ones that also support the `files` option
+// (mobile Chrome/Safari) -- desktop browsers almost universally lack
+// `canShare` entirely. Knowing this before any `await` matters because it
+// lets us skip the "pre-open a blank tab" popup-blocker workaround entirely
+// on capable browsers, where it's not just unnecessary but visibly opens and
+// closes an empty tab for no reason.
+export function canShareFilesWeb(): boolean {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
+  const nav: any = navigator;
+  return typeof nav.share === 'function' && typeof nav.canShare === 'function';
+}
+
 export async function openWhatsAppChat(phone: string, message: string): Promise<boolean> {
   const cleaned = normalizePhoneForWhatsApp(phone);
   const text = encodeURIComponent(message || '');

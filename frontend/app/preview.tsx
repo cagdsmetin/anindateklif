@@ -18,7 +18,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml, PdfTemplateId } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
-import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, canShareFilesWeb } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -159,7 +159,7 @@ export default function PreviewScreen() {
     // only after that delay is what was silently getting blocked by the
     // browser's popup blocker (no error, WhatsApp just never opened). We
     // navigate this already-open tab to the real wa.me URL once it's ready.
-    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+    const waWindow = Platform.OS === 'web' && !canShareFilesWeb() ? window.open('', '_blank') : null;
     try {
       const { uri, fileName } = await generatePdf();
       const result = await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi, waWindow });

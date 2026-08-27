@@ -103,6 +103,11 @@ export default function TabsLayout() {
       <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa), href: restricted ? null : undefined }} />
       <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat), href: restricted ? null : undefined }} />
       <Tabs.Screen name="company" options={{ title: 'Firma', tabBarIcon: tabIcon('business', m.firma) }} />
+      {/* assistant/personel: kendi başlığı ve geri tuşu olan sayfalar -- bottom
+          tab bar'da ikon olarak görünmesinler, ama artık (tabs) grubunun içinde
+          oldukları için masaüstünde sol sidebar'la birlikte render edilirler. */}
+      <Tabs.Screen name="assistant" options={{ href: null }} />
+      <Tabs.Screen name="personel" options={{ href: null }} />
     </Tabs>
   );
 

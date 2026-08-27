@@ -25,12 +25,13 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean }
     items.push({ name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat });
   }
   items.push({ name: 'company', title: 'Firma', icon: 'business', color: m.firma });
-  // assistant.tsx (tabs) grubunun dışında, üst seviye bir route — sidebar/drawer'dan
-  // buraya girişi sağlıyoruz ama bu ekranın kendi başlığı/geri tuşu var.
-  items.push({ name: 'assistant', title: 'AI Asistan', icon: 'sparkles', color: theme.colors.primary, path: '/assistant' });
+  // assistant/personel artık (tabs) grubunun içinde yaşıyor (bottom tab bar'da
+  // href:null ile gizli) — böylece masaüstü sol sidebar bu sayfalarda da
+  // görünmeye devam ediyor, tıpkı Kasa/Tahsilat gibi.
+  items.push({ name: 'assistant', title: 'AI Asistan', icon: 'sparkles', color: theme.colors.primary });
   // Personel ekranı sadece firma sahibine gösterilir.
   if (opts?.isOwner) {
-    items.push({ name: 'personel', title: 'Personel', icon: 'person-add', color: theme.colors.gold, path: '/personel' });
+    items.push({ name: 'personel', title: 'Personel', icon: 'person-add', color: theme.colors.gold });
   }
   return items;
 }

@@ -210,7 +210,7 @@ export default function CompanyScreen() {
             <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
             <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/assistant')} testID="ai-assistant-btn">
+            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/(tabs)/assistant')} testID="ai-assistant-btn">
               <Ionicons name="sparkles" size={18} color="#fff" />
               <Text style={s.assistantBtnText}>AI Asistan ile Konuş</Text>
             </TouchableOpacity>

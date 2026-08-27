@@ -476,7 +476,7 @@ export default function PanelScreen() {
             <Text style={s.supportTitle}>Nasıl yardımcı olabiliriz?</Text>
             <TouchableOpacity
               style={s.supportOption}
-              onPress={() => { setSupportOpen(false); router.push('/assistant' as any); }}
+              onPress={() => { setSupportOpen(false); router.push('/(tabs)/assistant' as any); }}
               testID="support-ai"
             >
               <View style={[s.supportIcon, { backgroundColor: theme.colors.primarySoft }]}>

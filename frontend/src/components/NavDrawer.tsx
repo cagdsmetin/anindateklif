@@ -22,8 +22,11 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
     isOwner: !user?.is_staff,
   });
 
+  // Navigating no longer auto-closes the drawer -- it stays open (like a
+  // persistent side menu) across page changes. The user only closes it
+  // explicitly via the X button, tapping the overlay, or the hardware
+  // back button (onRequestClose), then reopens it with the hamburger.
   const go = (route: string) => {
-    onClose();
     router.push(route as any);
   };
 

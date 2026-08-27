@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -18,7 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { QuoteT } from '@/src/lib/api';
+import { api, QuoteT, RatesT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate } from '@/src/lib/whatsapp';
@@ -56,6 +56,18 @@ export default function HistoryScreen() {
   const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : 'Tümü');
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [rates, setRates] = useState<RatesT | null>(null);
+
+  useEffect(() => {
+    // Panel'deki kur şeridiyle aynı mantık: TL karşılıkları "canlı" hissettirsin
+    // diye kurları periyodik yeniliyoruz (backend'de zaten 30sn'lik cache var).
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const filtered = useMemo(() => {
     let list = quotes;
@@ -68,8 +80,39 @@ export default function HistoryScreen() {
     return list;
   }, [quotes, filter, q]);
 
-  // USD-first: approved total only counts USD-denominated quotes (mixed currencies aren't summed together).
-  const totalValue = quotes.reduce((a, x) => a + (x.durum === 'Onaylandı' && (x.paraBirimi || 'USD') === 'USD' ? x.genelToplam : 0), 0);
+  // Müşteriler USD, EUR ya da TL üzerinden teklif veriyor olabilir — bunları
+  // olduğu gibi toplamak yanlış bir rakam üretir. Canlı kurla hepsini TRY'ye
+  // çevirip topluyoruz, altında da o TRY toplamın USD/EUR karşılığını
+  // gösteriyoruz (Panel'deki 'Bu Ay Hacim' kartıyla aynı mantık).
+  const toTRY = (list: QuoteT[]): number | null => {
+    if (!rates || (!rates.usd_try && !rates.eur_try)) return null;
+    let missingRate = false;
+    const total = list.reduce((a, x) => {
+      const val = x.genelToplam || 0;
+      const cur = (x.paraBirimi || 'USD').toUpperCase();
+      if (cur === 'TRY' || cur === 'TL') return a + val;
+      if (cur === 'USD') {
+        if (!rates.usd_try) { missingRate = true; return a; }
+        return a + val * rates.usd_try;
+      }
+      if (cur === 'EUR') {
+        if (!rates.eur_try) { missingRate = true; return a; }
+        return a + val * rates.eur_try;
+      }
+      return a;
+    }, 0);
+    return missingRate ? null : total;
+  };
+  const equivFromTRY = (try_: number | null) => ({
+    usd: try_ != null && rates?.usd_try ? try_ / rates.usd_try : null,
+    eur: try_ != null && rates?.eur_try ? try_ / rates.eur_try : null,
+  });
+
+  // USD-first fallback (kur verisi henüz gelmediyse eski davranış).
+  const totalValueUSDOnly = quotes.reduce((a, x) => a + (x.durum === 'Onaylandı' && (x.paraBirimi || 'USD') === 'USD' ? x.genelToplam : 0), 0);
+  const approvedQuotes = useMemo(() => quotes.filter((x) => x.durum === 'Onaylandı'), [quotes]);
+  const approvedTRY = useMemo(() => toTRY(approvedQuotes), [approvedQuotes, rates]);
+  const approvedEquiv = equivFromTRY(approvedTRY);
 
   const pendingCount = quotes.filter((x) => x.durum === 'Beklemede' || x.durum === 'Görüldü').length;
 
@@ -87,10 +130,8 @@ export default function HistoryScreen() {
     return acc;
   }, {});
   const monthVolumeUSD = monthTotalsByCurrency['USD'] || 0;
-  const monthOtherCurrenciesLine = Object.keys(monthTotalsByCurrency)
-    .filter((c) => c !== 'USD' && monthTotalsByCurrency[c] > 0)
-    .map((c) => fmt(monthTotalsByCurrency[c], c))
-    .join(', ');
+  const monthVolumeTRY = useMemo(() => toTRY(thisMonthQuotes), [thisMonthQuotes, rates]);
+  const monthVolumeEquiv = equivFromTRY(monthVolumeTRY);
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: id } });
 
@@ -187,17 +228,30 @@ export default function HistoryScreen() {
             <Text style={s.statValue}>{pendingCount}</Text>
           </View>
           <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-            <Text style={[s.statLabel, { color: '#166534' }]}>Onaylanan (USD)</Text>
-            <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>{fmt(totalValue, 'USD')}</Text>
+            <Text style={[s.statLabel, { color: '#166534' }]}>Onaylanan{approvedTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>
+              {approvedTRY != null ? fmt(approvedTRY, 'TRY') : fmt(totalValueUSDOnly, 'USD')}
+            </Text>
+            {approvedTRY != null && (approvedEquiv.usd != null || approvedEquiv.eur != null) ? (
+              <Text style={[s.statSubLabel, { color: '#166534' }]} numberOfLines={1}>
+                ≈ {approvedEquiv.usd != null ? fmt(approvedEquiv.usd, 'USD') : ''}{approvedEquiv.usd != null && approvedEquiv.eur != null ? ' · ' : ''}{approvedEquiv.eur != null ? fmt(approvedEquiv.eur, 'EUR') : ''}
+              </Text>
+            ) : null}
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Bu Ay Oluşturulan</Text>
             <Text style={s.statValue}>{thisMonthCount}</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Bu Ay Toplam Hacim</Text>
-            <Text style={s.statValue} numberOfLines={1}>{fmt(monthVolumeUSD, 'USD')}</Text>
-            {monthOtherCurrenciesLine ? <Text style={s.statSubLabel} numberOfLines={1}>+ {monthOtherCurrenciesLine}</Text> : null}
+            <Text style={s.statLabel}>Bu Ay Toplam Hacim{monthVolumeTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={s.statValue} numberOfLines={1}>
+              {monthVolumeTRY != null ? fmt(monthVolumeTRY, 'TRY') : fmt(monthVolumeUSD, 'USD')}
+            </Text>
+            {monthVolumeTRY != null && (monthVolumeEquiv.usd != null || monthVolumeEquiv.eur != null) ? (
+              <Text style={s.statSubLabel} numberOfLines={1}>
+                ≈ {monthVolumeEquiv.usd != null ? fmt(monthVolumeEquiv.usd, 'USD') : ''}{monthVolumeEquiv.usd != null && monthVolumeEquiv.eur != null ? ' · ' : ''}{monthVolumeEquiv.eur != null ? fmt(monthVolumeEquiv.eur, 'EUR') : ''}
+              </Text>
+            ) : null}
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -260,7 +314,7 @@ export default function HistoryScreen() {
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
                   <Text style={[s.actText, { color: '#16a34a' }]}>WA</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.actBtnIcon} onPress={() => deleteQuote(quote.id)} testID={`delete-quote-${quote.id}`}>
+                <TouchableOpacity style={s.actBtnIcon} onPress={() => setDeleteTarget(quote.id)} testID={`delete-quote-${quote.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
                 </TouchableOpacity>
               </View>
@@ -268,6 +322,43 @@ export default function HistoryScreen() {
           );
         })}
       </ScrollView>
+
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setDeleteTarget(null)}>
+          <TouchableOpacity activeOpacity={1} style={s.confirmBox}>
+            <View style={s.confirmIconWrap}>
+              <Ionicons name="trash-outline" size={22} color={theme.colors.red} />
+            </View>
+            <Text style={s.menuTitle}>Teklifi sil</Text>
+            <Text style={s.confirmBody}>
+              Bu teklifi silmek istediğinize emin misiniz? Silinen teklifler 30 gün boyunca
+              Çöp Kutusu'ndan geri alınabilir.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnGhost]}
+                onPress={() => setDeleteTarget(null)}
+                testID="delete-quote-cancel"
+              >
+                <Text style={s.confirmBtnGhostText}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnDanger]}
+                onPress={async () => {
+                  if (deleteTarget) {
+                    await deleteQuote(deleteTarget);
+                    showToast('Teklif silindi');
+                  }
+                  setDeleteTarget(null);
+                }}
+                testID="delete-quote-confirm"
+              >
+                <Text style={s.confirmBtnDangerText}>Sil</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal visible={!!statusMenuFor} transparent animationType="fade">
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setStatusMenuFor(null)}>
@@ -359,6 +450,14 @@ const s = StyleSheet.create({
   actBtnIcon: { width: 40, paddingVertical: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   actText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary, letterSpacing: 0.2 },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 30 },
+  confirmBox: { backgroundColor: '#fff', padding: 20, borderRadius: 18, alignItems: 'center', ...theme.shadow.lg },
+  confirmIconWrap: { width: 46, height: 46, borderRadius: 23, backgroundColor: theme.colors.redSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  confirmBody: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 19, marginBottom: 4 },
+  confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  confirmBtnGhost: { backgroundColor: theme.colors.surfaceSoft },
+  confirmBtnGhostText: { color: theme.colors.navy, fontWeight: '800', fontSize: 13 },
+  confirmBtnDanger: { backgroundColor: theme.colors.red },
+  confirmBtnDangerText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   menu: { backgroundColor: '#fff', padding: 16, borderRadius: 16, gap: 8, ...theme.shadow.lg },
   menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, textAlign: 'center' },
   menuItem: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },

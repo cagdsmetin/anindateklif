@@ -40,9 +40,11 @@ export default function RegisterScreen() {
   const pwStatus = useMemo(() => evaluatePassword(password), [password]);
   const pwValid = useMemo(() => isPasswordValid(password), [password]);
 
+  const phoneDigits = phone.replace(/\D/g, '');
   const canSubmit =
     name.trim().length >= 2 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    phoneDigits.length >= 10 &&
     pwValid &&
     acceptedTerms;
 
@@ -52,6 +54,7 @@ export default function RegisterScreen() {
     if (!canSubmit) {
       if (!acceptedTerms) setError('Devam etmek için Gizlilik İlkesi ve Hizmet Şartlarını kabul edin');
       else if (!pwValid) setError('Şifre gereksinimlerini karşılamalıdır');
+      else if (phoneDigits.length < 10) setError('Geçerli bir telefon numarası giriniz');
       else setError('Lütfen tüm alanları doğru doldurun');
       return;
     }
@@ -74,7 +77,11 @@ export default function RegisterScreen() {
         } else if (e.kind === 'timeout') {
           setError('Sunucu yanıt vermedi. Lütfen tekrar deneyin.');
         } else if (e.status === 409) {
-          setError('Bu e-posta zaten kayıtlı');
+          const bodyMsg409 = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
+          setError(bodyMsg409 || 'Bu e-posta zaten kayıtlı');
+        } else if (e.status === 400) {
+          const bodyMsg400 = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
+          setError(bodyMsg400 || 'Bilgileri kontrol edin');
         } else if (e.status === 422) {
           // Backend validation — try to surface the reason (password rules etc.)
           const bodyMsg = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
@@ -117,7 +124,7 @@ export default function RegisterScreen() {
           <InputRow icon="person-outline" placeholder="Ad Soyad" value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
           <InputRow
             icon="call-outline"
-            placeholder="Telefon Numarası (İsteğe bağlı)"
+            placeholder="Telefon Numarası"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"

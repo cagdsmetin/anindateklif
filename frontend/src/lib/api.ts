@@ -119,8 +119,10 @@ async function req(path: string, opts: RequestInit = {}) {
 
 export const api = {
   // Auth
-  register: (data: { email: string; password: string; name: string; phone?: string }) =>
+  register: (data: { email: string; password: string; name: string; phone: string }) =>
     req('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  verifyEmail: (token: string) => req('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
+  resendVerificationEmail: () => req('/auth/resend-verification', { method: 'POST' }),
   login: (data: { email: string; password: string }) =>
     req('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   forgotPassword: (email: string) =>
@@ -225,6 +227,7 @@ export const api = {
 export type UserT = {
   user_id: string;
   email: string;
+  email_verified?: boolean;
   name: string;
   phone: string;
   phone_verified?: boolean;

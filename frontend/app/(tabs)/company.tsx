@@ -36,6 +36,20 @@ export default function CompanyScreen() {
   const [otpStep, setOtpStep] = useState<'idle' | 'code_sent'>('idle');
   const [otpCode, setOtpCode] = useState('');
   const [otpBusy, setOtpBusy] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+
+  const onResendVerification = async () => {
+    if (resendBusy) return;
+    setResendBusy(true);
+    try {
+      await api.resendVerificationEmail();
+      showToast('Doğrulama bağlantısı e-postana tekrar gönderildi');
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || 'Gönderilemedi'));
+    } finally {
+      setResendBusy(false);
+    }
+  };
 
   const sendOtp = async () => {
     if (!phoneInput.trim()) { showToast('Telefon numarası giriniz'); return; }
@@ -151,8 +165,25 @@ export default function CompanyScreen() {
               );
             })}
           </View>
-          {/* Hesabım — telefon doğrulama */}
+          {/* Hesabım — e-posta + telefon doğrulama */}
           <SectionHeader title="HESABIM" />
+          {user?.email_verified === false && (
+            <View style={[s.supportBox, { marginBottom: 10 }]}>
+              <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="alert-circle-outline" size={16} color={theme.colors.gold} />
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>E-posta adresi doğrulanmadı</Text>
+                </View>
+                <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
+                  {user.email} adresine gönderdiğimiz bağlantıya tıklayarak hesabını doğrula. Göremediysen tekrar gönderebilirsin.
+                </Text>
+                <TouchableOpacity style={[s.subscriptionBtn, resendBusy && { opacity: 0.6 }]} disabled={resendBusy} onPress={onResendVerification} testID="resend-email-verify-btn">
+                  <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
+                  <Text style={s.subscriptionBtnText}>{resendBusy ? 'Gönderiliyor...' : 'Doğrulama Bağlantısını Tekrar Gönder'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           <View style={s.supportBox}>
             <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>

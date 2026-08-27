@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { api, getSessionToken, setSessionToken, UserT } from '@/src/lib/api';
 
 type LoginArgs = { email: string; password: string };
-type RegisterArgs = { email: string; password: string; name: string; phone?: string };
+type RegisterArgs = { email: string; password: string; name: string; phone: string };
 
 type AuthState = {
   loading: boolean;

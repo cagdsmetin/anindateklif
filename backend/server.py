@@ -33,6 +33,27 @@ JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'anindateklif-client')
 JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_MINUTES = 60 * 24 * 7  # 7 days for MVP
 RESET_TOKEN_MINUTES = 30
+EMAIL_VERIFY_TOKEN_MINUTES = 60 * 24  # doğrulama linki 24 saat geçerli
+
+# Sık kullanılan tek-kullanımlık/geçici e-posta servisleri -- kayıt formunda
+# "fake mail ile ikinci hesap açma" senaryosunu engellemek için domain bazlı
+# reddediyoruz (gerçek bir servise/anahtara ihtiyaç duymayan, anında etkili
+# bir önlem). ADDITIONAL_BLOCKED_EMAIL_DOMAINS env var'ıyla virgülle ayrılmış
+# ek domain eklenebilir, kod değişikliği/redeploy gerekmeden.
+_DISPOSABLE_EMAIL_DOMAINS = {
+    "mailinator.com", "10minutemail.com", "guerrillamail.com", "guerrillamail.net",
+    "tempmail.com", "temp-mail.org", "yopmail.com", "throwawaymail.com",
+    "trashmail.com", "sharklasers.com", "getnada.com", "dispostable.com",
+    "fakeinbox.com", "maildrop.cc", "tempr.email", "mohmal.com", "moakt.com",
+    "emailondeck.com", "mintemail.com", "mailnesia.com", "mailcatch.com",
+    "spamgourmet.com", "33mail.com", "fakemailgenerator.com", "moakt.cc",
+    "emailtemporario.com.br", "tempmailo.com", "tempinbox.com", "burnermail.io",
+    "mailtemp.info", "1secmail.com", "1secmail.net", "1secmail.org",
+    "crazymailing.com", "correotemporal.org", "mytemp.email", "tempmail.dev",
+}
+_BLOCKED_EMAIL_DOMAINS = _DISPOSABLE_EMAIL_DOMAINS | set(
+    d.strip().lower() for d in os.environ.get("ADDITIONAL_BLOCKED_EMAIL_DOMAINS", "").split(",") if d.strip()
+)
 
 # ============ MONETIZATION CONFIG ============
 FREE_MONTHLY_QUOTE_LIMIT = 5
@@ -292,6 +313,54 @@ async def _send_password_reset_email(to_email: str, reset_link: str):
         logging.warning(f"[PasswordReset] resend send exception: {e}")
 
 
+async def _send_verification_email(to_email: str, verify_link: str):
+    """Same Resend-or-log-fallback pattern as password reset. While
+    RESEND_API_KEY isn't configured, register() marks accounts as already
+    verified (see below) so this never actually gets called in that state --
+    it only starts mattering once a real Resend key is added."""
+    if not RESEND_API_KEY:
+        logging.info(f"[EmailVerify] RESEND_API_KEY not set, link={verify_link}")
+        return
+    try:
+        resp = await asyncio.to_thread(
+            requests.post,
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": "E-postanı Doğrula - Anında Teklif",
+                "html": (
+                    "<div style=\"font-family: sans-serif; max-width: 480px; margin: 0 auto;\">"
+                    "<h2>Hoş geldin!</h2>"
+                    "<p>Anında Teklif hesabını aktifleştirmek için e-posta adresini doğrulaman gerekiyor. "
+                    "Aşağıdaki bağlantıya tıkla. Bu bağlantı 24 saat geçerlidir.</p>"
+                    f"<p><a href=\"{verify_link}\" style=\"display:inline-block;background:#2563eb;color:#fff;"
+                    "padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold;\">E-postamı Doğrula</a></p>"
+                    "<p>Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin.</p>"
+                    "</div>"
+                ),
+            },
+            timeout=10,
+        )
+        if resp.status_code >= 300:
+            logging.warning(f"[EmailVerify] resend send failed status={resp.status_code} body={resp.text[:300]}")
+    except Exception as e:
+        logging.warning(f"[EmailVerify] resend send exception: {e}")
+
+
+async def _issue_email_verification(user_id: str, email: str):
+    raw = py_secrets.token_urlsafe(32)
+    await db.email_verifications.insert_one({
+        "token_hash": _sha256(raw),
+        "user_id": user_id,
+        "expires_at": _utc() + timedelta(minutes=EMAIL_VERIFY_TOKEN_MINUTES),
+        "used_at": None,
+    })
+    verify_link = f"{FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={raw}"
+    await _send_verification_email(email, verify_link)
+
+
 def _make_access_token(user: Dict[str, Any]) -> str:
     now = _utc()
     payload = {
@@ -311,7 +380,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
-    phone: Optional[str] = ""
+    phone: str
 
     @field_validator("password")
     @classmethod
@@ -320,6 +389,14 @@ class RegisterRequest(BaseModel):
             return _validate_password(v)
         except ValueError as e:
             raise ValueError(str(e))
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_required(cls, v: str) -> str:
+        digits = re.sub(r"[^\d]", "", v or "")
+        if len(digits) < 10:
+            raise ValueError("Geçerli bir telefon numarası giriniz")
+        return v
 
 
 class LoginRequest(BaseModel):
@@ -339,6 +416,7 @@ class ResetPasswordRequest(BaseModel):
 class UserOut(BaseModel):
     user_id: str
     email: str
+    email_verified: bool = True
     name: str = ""
     phone: str = ""
     phone_verified: bool = False
@@ -428,6 +506,7 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
     return UserOut(
         user_id=u["user_id"],
         email=u["email"],
+        email_verified=bool(u.get("email_verified", True)),
         name=u.get("name", ""),
         phone=u.get("phone", ""),
         phone_verified=bool(u.get("phone_verified", False)),
@@ -535,15 +614,34 @@ async def _enforce_and_increment_quota(user: Dict[str, Any]):
 async def register(payload: RegisterRequest, request: Request):
     _rate_limit(f"register:ip:{_client_ip(request)}", 8, 3600)
     email = _normalize_email(payload.email)
+    domain = email.split("@")[-1].lower() if "@" in email else ""
+    if domain in _BLOCKED_EMAIL_DOMAINS:
+        raise HTTPException(status_code=400, detail="Geçici/tek kullanımlık e-posta adresleriyle kayıt olunamaz. Lütfen gerçek bir e-posta adresi kullanın.")
     if await db.users.find_one({"email": email}, {"_id": 0}):
         raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı")
+
+    # Aynı telefon numarasıyla birden fazla hesap açılmasını engelle -- format
+    # farklı yazılmış olsa bile (0532..., +90532..., 90532... hepsi aynı
+    # numaraya normalize edilip öyle karşılaştırılıyor).
+    phone_normalized = _normalize_phone(payload.phone)
+    if await db.users.find_one({"phone_normalized": phone_normalized}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Bu telefon numarasıyla zaten bir hesap mevcut")
+
     user_id = f"user_{uuid.uuid4().hex[:12]}"
+    # RESEND_API_KEY ayarlı değilken e-posta doğrulaması hiç zorunlu kılınmıyor
+    # (henüz gönderim altyapısı yok) -- bu, telefon OTP altyapısıyla aynı
+    # "kodu hazır ama pasif" desenidir. Anahtar eklenince yeni kayıtlar
+    # otomatik olarak doğrulama gerektirmeye başlar, mevcut kodda değişiklik
+    # gerekmeden.
+    email_verified = not bool(RESEND_API_KEY)
     user = {
         "user_id": user_id,
         "email": email,
+        "email_verified": email_verified,
         "hashed_password": _hash_password(payload.password),
         "name": (payload.name or "").strip(),
         "phone": (payload.phone or "").strip(),
+        "phone_normalized": phone_normalized,
         "picture": "",
         "country": "",
         "currency": "",
@@ -552,8 +650,46 @@ async def register(payload: RegisterRequest, request: Request):
         "createdAt": _utc().isoformat(),
     }
     await db.users.insert_one(user)
+    if not email_verified:
+        await _issue_email_verification(user_id, email)
     access = _make_access_token(user)
     return AuthResponse(access_token=access, user=_user_out(user))
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@api_router.post("/auth/verify-email")
+async def verify_email(payload: VerifyEmailRequest, request: Request):
+    _rate_limit(f"verify-email:ip:{_client_ip(request)}", 20, 900)
+    doc = await db.email_verifications.find_one({"token_hash": _sha256(payload.token), "used_at": None}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=400, detail="Geçersiz veya kullanılmış doğrulama bağlantısı")
+    exp = doc.get("expires_at")
+    if isinstance(exp, str):
+        try: exp = datetime.fromisoformat(exp)
+        except Exception: exp = None
+    if not exp or (exp.tzinfo and exp < _utc()) or (not exp.tzinfo and exp.replace(tzinfo=timezone.utc) < _utc()):
+        raise HTTPException(status_code=400, detail="Doğrulama bağlantısının süresi dolmuş, yeni bir tane isteyin")
+    await db.users.update_one({"user_id": doc["user_id"]}, {"$set": {"email_verified": True}})
+    await db.email_verifications.update_one(
+        {"token_hash": _sha256(payload.token)}, {"$set": {"used_at": utc_now_iso()}}
+    )
+    return {"message": "E-posta doğrulandı"}
+
+
+@api_router.post("/auth/resend-verification")
+async def resend_verification(request: Request, user=Depends(get_current_user)):
+    self_id = _self_id(user)
+    _rate_limit(f"resend-verify:user:{self_id}", 5, 3600)
+    u = await db.users.find_one({"user_id": self_id}, {"_id": 0})
+    if not u:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    if u.get("email_verified", True):
+        return {"message": "E-posta zaten doğrulanmış"}
+    await _issue_email_verification(self_id, u["email"])
+    return {"message": "Doğrulama bağlantısı tekrar gönderildi"}
 
 
 @api_router.post("/auth/login", response_model=AuthResponse)

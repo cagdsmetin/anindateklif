@@ -87,8 +87,11 @@ export default function EditorScreen() {
   // instead of retyping them for a returning customer.
   const firmaSuggestions = useMemo(() => {
     const q = musFirma.trim().toLowerCase();
-    if (!q) return [];
-    return customers.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 6);
+    // Empty query (field just focused/tapped, nothing typed yet) -> show the
+    // saved customer list itself so tapping the field alone is enough to pick
+    // one, instead of requiring the person to start typing first.
+    if (!q) return customers.slice(0, 8);
+    return customers.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 8);
   }, [musFirma, customers]);
 
   useEffect(() => {

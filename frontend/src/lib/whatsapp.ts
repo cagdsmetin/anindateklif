@@ -207,9 +207,15 @@ export async function shareQuoteViaWhatsApp(opts: {
   // ---------- WEB ----------
   if (Platform.OS === 'web') {
     const desiredName = fileName || `${(quote.teklifNo || 'teklif').replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`;
-    const cleaned = normalizePhoneForWhatsApp(quote.musTelefon || '');
-    const text = encodeURIComponent(message);
-    const waUrl = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
+    // Deliberately NOT pre-filling a specific customer's number here. wa.me/<number>
+    // jumps straight into one chat, but the desktop fallback below can only ever
+    // hand WhatsApp a pre-filled *message* -- the PDF still has to be dragged in by
+    // hand regardless of which chat we land on. Given that manual step is
+    // unavoidable anyway, it's simpler and more flexible to open WhatsApp Web's
+    // own chat list and let the person pick the recipient themselves (they may
+    // want to send it to someone other than the number saved on the quote, or the
+    // quote may not have a number on file at all).
+    const waUrl = 'https://web.whatsapp.com/';
 
     // Preferred: the OS-native share sheet (Web Share API, files supported on
     // HTTPS in current Chrome/Edge/Safari where a share target is registered).

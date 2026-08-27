@@ -167,7 +167,7 @@ export default function PreviewScreen() {
       // share sheet isn't available we download the PDF and open the chat, so
       // let the user know the one manual step they still need to do.
       if (result.downloaded) {
-        showToast('PDF indirildi — WhatsApp’ta açılan sohbete dosyayı sürükleyip bırakın');
+        showToast('PDF indirildi — WhatsApp Web açıldı, sohbeti seçip dosyayı sürükleyip bırakın');
       }
       if (result.attached && waWindow) { try { waWindow.close(); } catch {} }
     } catch (e: any) {

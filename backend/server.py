@@ -3,6 +3,7 @@ from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 import os
 import re
 import json
@@ -221,6 +222,26 @@ def _normalize_email(e: str) -> str:
     return (e or "").strip().lower()
 
 
+_ALIAS_INSENSITIVE_DOMAINS = {"gmail.com", "googlemail.com"}
+
+
+def _canonical_email_key(email: str) -> str:
+    """Collapses provider-level address aliasing (Gmail dot-insensitivity and
+    +tag subaddressing) into one key, purely for duplicate-account detection
+    at registration time. The user's real, original email is still what's
+    stored/displayed/logged into everywhere else -- this key only feeds the
+    "have we seen this inbox before" check, so one person can't spin up
+    unlimited free-tier accounts as a+1@gmail.com, a+2@gmail.com, a.b@gmail.com..."""
+    email = _normalize_email(email)
+    if "@" not in email:
+        return email
+    local, _, domain = email.partition("@")
+    local = local.split("+", 1)[0]
+    if domain in _ALIAS_INSENSITIVE_DOMAINS:
+        local = local.replace(".", "")
+    return f"{local}@{domain}"
+
+
 def _validate_password(p: str) -> str:
     if not p or len(p) < 8:
         raise ValueError("Şifre en az 8 karakter olmalıdır")
@@ -272,9 +293,15 @@ def _rate_limit(key: str, max_requests: int, window_seconds: int) -> None:
 
 
 def _client_ip(request: Request) -> str:
+    # X-Forwarded-For is a comma-separated hop chain; the client can put
+    # anything it wants at the front of it. Only the LAST entry is the one
+    # appended by our own trusted edge proxy (Railway), so that's the only
+    # part of this header safe to use for rate-limiting/abuse tracking.
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
-        return fwd.split(",")[0].strip()
+        parts = [p.strip() for p in fwd.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     return request.client.host if request.client else "unknown"
 
 
@@ -604,10 +631,34 @@ async def _enforce_and_increment_quota(user: Dict[str, Any]):
             status_code=402,
             detail="Bu ay için 5 ücretsiz teklif hakkınızı kullandınız. Devam etmek için aboneliği başlatın.",
         )
-    await db.users.update_one(
-        {"user_id": user["user_id"]},
-        {"$set": {"monthly_quote_period": period, "monthly_quote_count": count + 1}},
-    )
+    if stored_period == period:
+        # Atomic check-and-increment: only succeeds if the count is still what
+        # we just read, so two simultaneous requests can't both slip past the
+        # limit check above and both increment (closes a TOCTOU race).
+        result = await db.users.update_one(
+            {"user_id": user["user_id"], "monthly_quote_period": period, "monthly_quote_count": count},
+            {"$set": {"monthly_quote_count": count + 1}},
+        )
+        if result.modified_count == 0 and not active:
+            # Someone else's concurrent request won the race and pushed the
+            # counter past the limit -- re-check for real rather than silently
+            # letting this request through.
+            fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+            fresh_count = fresh.get("monthly_quote_count", 0) if fresh and fresh.get("monthly_quote_period") == period else 0
+            if fresh_count >= FREE_MONTHLY_QUOTE_LIMIT:
+                raise HTTPException(
+                    status_code=402,
+                    detail="Bu ay için 5 ücretsiz teklif hakkınızı kullandınız. Devam etmek için aboneliği başlatın.",
+                )
+            await db.users.update_one(
+                {"user_id": user["user_id"]},
+                {"$set": {"monthly_quote_period": period, "monthly_quote_count": fresh_count + 1}},
+            )
+    else:
+        await db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"monthly_quote_period": period, "monthly_quote_count": 1}},
+        )
 
 
 @api_router.post("/auth/register", response_model=AuthResponse, status_code=201)
@@ -615,10 +666,15 @@ async def register(payload: RegisterRequest, request: Request):
     _rate_limit(f"register:ip:{_client_ip(request)}", 8, 3600)
     email = _normalize_email(payload.email)
     domain = email.split("@")[-1].lower() if "@" in email else ""
-    if domain in _BLOCKED_EMAIL_DOMAINS:
+    if domain in _BLOCKED_EMAIL_DOMAINS or any(
+        domain == d or domain.endswith("." + d) for d in _BLOCKED_EMAIL_DOMAINS
+    ):
         raise HTTPException(status_code=400, detail="Geçici/tek kullanımlık e-posta adresleriyle kayıt olunamaz. Lütfen gerçek bir e-posta adresi kullanın.")
     if await db.users.find_one({"email": email}, {"_id": 0}):
         raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı")
+    email_canonical = _canonical_email_key(email)
+    if await db.users.find_one({"email_canonical": email_canonical}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Bu e-posta adresiyle (veya bir varyasyonuyla) zaten bir hesap mevcut")
 
     # Aynı telefon numarasıyla birden fazla hesap açılmasını engelle -- format
     # farklı yazılmış olsa bile (0532..., +90532..., 90532... hepsi aynı
@@ -637,6 +693,7 @@ async def register(payload: RegisterRequest, request: Request):
     user = {
         "user_id": user_id,
         "email": email,
+        "email_canonical": email_canonical,
         "email_verified": email_verified,
         "hashed_password": _hash_password(payload.password),
         "name": (payload.name or "").strip(),
@@ -649,7 +706,13 @@ async def register(payload: RegisterRequest, request: Request):
         "onboarding_completed": False,
         "createdAt": _utc().isoformat(),
     }
-    await db.users.insert_one(user)
+    try:
+        await db.users.insert_one(user)
+    except DuplicateKeyError:
+        # Two simultaneous registrations raced past the find_one checks above
+        # (same email/phone/canonical-email); the unique index is the real
+        # backstop here, we just turn it into a clean error instead of a 500.
+        raise HTTPException(status_code=409, detail="Bu bilgilerle zaten bir hesap mevcut")
     if not email_verified:
         await _issue_email_verification(user_id, email)
     access = _make_access_token(user)
@@ -958,8 +1021,15 @@ class CompanyCreate(BaseModel):
     @field_validator("logoBase64")
     @classmethod
     def _logo_size(cls, v: str) -> str:
-        if v and len(v) > MAX_LOGO_BASE64_CHARS:
+        if not v:
+            return v
+        if len(v) > MAX_LOGO_BASE64_CHARS:
             raise ValueError("Logo dosyası çok büyük (maksimum ~2MB)")
+        # Only accept an actual base64 image data-URI here. This field gets
+        # dropped into an <img src="..."> attribute when building PDFs, so
+        # anything else (e.g. `x" onerror="...`) would be a stored-XSS vector.
+        if not re.match(r'^data:image/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+=*$', v):
+            raise ValueError("Logo geçerli bir resim (PNG/JPG/WEBP/GIF) verisi değil")
         return v
 
 
@@ -1243,7 +1313,12 @@ async def root():
 
 @api_router.get("/companies", response_model=List[Company])
 async def list_companies(user=Depends(get_current_user)):
-    docs = await db.companies.find({"userId": user["user_id"]}, {"_id": 0}).to_list(1000)
+    if user.get("is_staff") and user.get("staff_of_company_id"):
+        docs = await db.companies.find(
+            {"userId": user["user_id"], "id": user["staff_of_company_id"]}, {"_id": 0}
+        ).to_list(1000)
+    else:
+        docs = await db.companies.find({"userId": user["user_id"]}, {"_id": 0}).to_list(1000)
     return [Company(**d) for d in docs]
 
 
@@ -2364,6 +2439,7 @@ class PromoRedeemRequest(BaseModel):
 
 @api_router.post("/promo/redeem")
 async def redeem_promo_code(payload: PromoRedeemRequest, user=Depends(get_current_user)):
+    _rate_limit(f"promo-redeem:user:{user['user_id']}", 10, 3600)
     if user.get("is_staff"):
         raise HTTPException(status_code=403, detail="Hediye kodunu sadece firma sahibi kullanabilir")
     code = (payload.code or "").strip().upper()
@@ -2542,6 +2618,8 @@ async def on_startup():
     try:
         await db.users.create_index("email", unique=True)
         await db.users.create_index("user_id", unique=True)
+        await db.users.create_index("phone_normalized", unique=True, sparse=True)
+        await db.users.create_index("email_canonical", unique=True, sparse=True)
         await db.password_resets.create_index("token_hash", unique=True)
         await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
         await db.revoked_tokens.create_index("jti", unique=True)

@@ -59,7 +59,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     .join('');
 
   const logo = company.logoBase64
-    ? `<img src="${company.logoBase64}" class="logo"/>`
+    ? `<img src="${esc(company.logoBase64)}" class="logo"/>`
     : `<div class="logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
 
   const bankRows = (company.banklar || [])
@@ -307,7 +307,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
 
   const logoSrc = company.logoBase64
-    ? (company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    ? esc(company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
     : '';
 
   const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '-';
@@ -555,7 +555,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
 
   const logoSrc = company.logoBase64
-    ? (company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    ? esc(company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
     : '';
 
   const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '-';

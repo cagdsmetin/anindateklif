@@ -71,6 +71,11 @@ export default function SubscriptionScreen() {
   const [adres, setAdres] = useState('');
   const [sehir, setSehir] = useState('İstanbul');
   const [posta, setPosta] = useState('34000');
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -112,6 +117,36 @@ export default function SubscriptionScreen() {
     () => plans.find((p) => p.id === selectedPlan) || plans[0],
     [plans, selectedPlan]
   );
+
+  const onRedeemPromo = async () => {
+    if (promoBusy) return;
+    const code = promoCode.trim().toUpperCase();
+    if (!code) { setPromoError('Kod giriniz'); return; }
+    setPromoError('');
+    setPromoSuccess('');
+    setPromoBusy(true);
+    try {
+      const res: any = await api.redeemPromoCode(code);
+      const days = res?.duration_days ?? 0;
+      setPromoSuccess(`Kod uygulandı! ${days} gün sınırsız teklif hakkı tanımlandı.`);
+      setPromoCode('');
+      try {
+        const st = await api.subscriptionStatus();
+        setStatus(st as StatusT);
+      } catch {}
+    } catch (e: any) {
+      let msg = 'Kod uygulanamadı';
+      if (e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          if (parsed?.detail) msg = parsed.detail;
+        } catch {}
+      }
+      setPromoError(msg);
+    } finally {
+      setPromoBusy(false);
+    }
+  };
 
   const onSubscribe = async () => {
     if (busy || !activePlan) return;
@@ -295,6 +330,41 @@ export default function SubscriptionScreen() {
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>
             )}
+
+            <TouchableOpacity
+              style={s.promoToggle}
+              onPress={() => setPromoOpen((v) => !v)}
+              testID="promo-toggle"
+            >
+              <Ionicons name="gift-outline" size={16} color={theme.colors.gold} />
+              <Text style={s.promoToggleText}>Hediye kodunuz mu var?</Text>
+              <Ionicons name={promoOpen ? 'chevron-up' : 'chevron-down'} size={14} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+            {promoOpen && (
+              <View style={s.promoBox}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[s.input, { flex: 1, textTransform: 'uppercase' }]}
+                    placeholder="Örn. AB12CD34"
+                    placeholderTextColor="#94a3b8"
+                    value={promoCode}
+                    onChangeText={setPromoCode}
+                    autoCapitalize="characters"
+                    testID="promo-code-input"
+                  />
+                  <TouchableOpacity
+                    style={[s.promoBtn, promoBusy && s.ctaDisabled]}
+                    onPress={onRedeemPromo}
+                    disabled={promoBusy}
+                    testID="promo-redeem-submit"
+                  >
+                    {promoBusy ? <ActivityIndicator color="#fff" /> : <Text style={s.promoBtnText}>Uygula</Text>}
+                  </TouchableOpacity>
+                </View>
+                {promoError ? <Text style={s.errorText}>{promoError}</Text> : null}
+                {promoSuccess ? <Text style={s.promoSuccess}>{promoSuccess}</Text> : null}
+              </View>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -455,4 +525,10 @@ const s = StyleSheet.create({
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
   footNote: { fontSize: 11.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 10 },
+  promoToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18, paddingVertical: 8 },
+  promoToggleText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSoft },
+  promoBox: { marginTop: 4, backgroundColor: theme.colors.goldSoft, borderRadius: 14, padding: 12, gap: 8 },
+  promoBtn: { backgroundColor: theme.colors.gold, borderRadius: 12, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
+  promoBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
+  promoSuccess: { color: '#166534', fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

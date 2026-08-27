@@ -101,6 +101,15 @@ FREE_ACCESS_EMAILS = set(
     e.strip().lower() for e in os.environ.get("FREE_ACCESS_EMAILS", "").split(",") if e.strip()
 )
 
+# Uygulamayı işleten kişi(ler) — hediye/promosyon kodu üretme gibi admin-only
+# işlemler bu e-postalarla sınırlı. Varsayılan olarak hesap sahibinin e-postası
+# tanımlı geliyor, ekstra bir Railway env-var ayarlamaya gerek kalmadan çalışsın
+# diye; başka admin eklemek istenirse ADMIN_EMAILS env var'ı virgülle ayrılmış
+# olarak override edebilir.
+ADMIN_EMAILS = set(
+    e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "ncagdasm@gmail.com").split(",") if e.strip()
+)
+
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "https://anindateklif-production.up.railway.app")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://just-mercy-production.up.railway.app")
 WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
@@ -2141,6 +2150,133 @@ async def subscription_callback(token: str = Form(...)):
         redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed"
 
     return RedirectResponse(url=redirect_url, status_code=302)
+
+
+# ============ HEDİYE / PROMOSYON KODU ============
+# cagdas'ın hediye etmek istediği müşteri adaylarına verebileceği tek kullanımlık
+# kodlar: kodu giren kullanıcı, kaydırma tuşuna basar basmaz belirlenen süre
+# boyunca (varsayılan 90 gün) sınırsız teklif hakkına sahip olur (tıpkı ücretli
+# bir abonelik gibi -- subscription_expires_at ileri atılır). Kod üretme/listeleme
+# sadece ADMIN_EMAILS'teki hesaplara açık; kullanma (redeem) herhangi bir giriş
+# yapmış firma sahibine açık.
+def _require_admin(user: Dict[str, Any]):
+    email = (user.get("email") or "").strip().lower()
+    if email not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Bu işlem için yetkiniz yok")
+
+
+def _generate_promo_code() -> str:
+    # Karışmasın diye 0/O, 1/I gibi belirsiz karakterler hariç tutulmuş bir alfabe.
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(py_secrets.choice(alphabet) for _ in range(8))
+
+
+class PromoCodeCreateRequest(BaseModel):
+    count: int = 1
+    duration_days: int = 90
+    note: Optional[str] = None
+
+
+class PromoCodeOut(BaseModel):
+    code: str
+    duration_days: int
+    note: Optional[str] = None
+    created_at: str
+    used: bool
+    used_by_email: Optional[str] = None
+    used_at: Optional[str] = None
+
+
+@api_router.post("/admin/promo-codes", response_model=List[PromoCodeOut])
+async def create_promo_codes(payload: PromoCodeCreateRequest, user=Depends(get_current_user)):
+    _require_admin(user)
+    count = max(1, min(payload.count, 100))
+    duration_days = max(1, min(payload.duration_days, 3650))
+    docs = []
+    for _ in range(count):
+        for _attempt in range(5):
+            code = _generate_promo_code()
+            if not await db.promo_codes.find_one({"code": code}, {"_id": 1}):
+                break
+        doc = {
+            "code": code,
+            "duration_days": duration_days,
+            "note": (payload.note or "").strip() or None,
+            "created_by": user["user_id"],
+            "created_at": utc_now_iso(),
+            "used": False,
+            "used_by_user_id": None,
+            "used_by_email": None,
+            "used_at": None,
+        }
+        await db.promo_codes.insert_one(dict(doc))
+        docs.append(doc)
+    return [PromoCodeOut(**{k: v for k, v in d.items() if k in PromoCodeOut.model_fields}) for d in docs]
+
+
+@api_router.get("/admin/promo-codes", response_model=List[PromoCodeOut])
+async def list_promo_codes(user=Depends(get_current_user)):
+    _require_admin(user)
+    cursor = db.promo_codes.find({}, {"_id": 0}).sort("created_at", -1).limit(500)
+    docs = await cursor.to_list(500)
+    return [PromoCodeOut(**{k: v for k, v in d.items() if k in PromoCodeOut.model_fields}) for d in docs]
+
+
+class PromoRedeemRequest(BaseModel):
+    code: str
+
+
+@api_router.post("/promo/redeem")
+async def redeem_promo_code(payload: PromoRedeemRequest, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Hediye kodunu sadece firma sahibi kullanabilir")
+    code = (payload.code or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Kod giriniz")
+    doc = await db.promo_codes.find_one({"code": code})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kod geçersiz")
+    if doc.get("used"):
+        raise HTTPException(status_code=400, detail="Bu kod daha önce kullanılmış")
+
+    duration_days = doc.get("duration_days", 90)
+    # Zaten aktif bir aboneliği varsa süresini kısaltmamak için mevcut bitiş
+    # tarihinden, yoksa şu andan itibaren ekliyoruz (checkout'taki mantıkla aynı).
+    base = utc_now()
+    current_expiry_raw = user.get("subscription_expires_at")
+    if current_expiry_raw:
+        try:
+            existing = datetime.fromisoformat(current_expiry_raw)
+            if existing.tzinfo is None:
+                existing = existing.replace(tzinfo=timezone.utc)
+            if existing > base:
+                base = existing
+        except Exception:
+            pass
+    new_expiry = base + timedelta(days=duration_days)
+
+    result = await db.promo_codes.update_one(
+        {"code": code, "used": False},
+        {"$set": {
+            "used": True,
+            "used_by_user_id": user["user_id"],
+            "used_by_email": user.get("email"),
+            "used_at": utc_now_iso(),
+        }},
+    )
+    if result.modified_count == 0:
+        # Aynı anda başka bir istek kodu kullanmış olabilir (yarış durumu).
+        raise HTTPException(status_code=400, detail="Bu kod daha önce kullanılmış")
+
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "subscription_status": "active",
+            "subscription_expires_at": new_expiry.isoformat(),
+            "subscription_plan": "promo",
+        }},
+    )
+    return {"ok": True, "subscription_expires_at": new_expiry.isoformat(), "duration_days": duration_days}
 
 
 # ============ AI ASSISTANT ============

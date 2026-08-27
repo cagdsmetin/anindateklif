@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -81,12 +81,10 @@ export default function PanelScreen() {
 
   const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number; days_left?: number | null; renewal_due_soon?: boolean } | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
-  const [supportOpen, setSupportOpen] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+
 
   useEffect(() => {
     api.subscriptionStatus().then((r: any) => setSubStatus(r)).catch(() => {});
-    api.getAppConfig().then((r: any) => setWhatsappNumber(r?.whatsapp_number || '905415858988')).catch(() => setWhatsappNumber('905415858988'));
 
     // Kur/kripto/BIST şeridi "anlık" hissettirsin diye periyodik olarak yeniliyoruz
     // (backend tarafında da 30sn'lik kısa bir cache var, yani bu istekler ucuz).
@@ -460,67 +458,6 @@ export default function PanelScreen() {
         </View>
       </ScrollView>
 
-      {/* Destek baloncuğu — sağ altta sabit, AI Asistan + e-posta/WhatsApp desteğine hızlı erişim */}
-      <TouchableOpacity
-        style={[s.supportBubble, { bottom: insets.bottom + 20 }]}
-        onPress={() => setSupportOpen(true)}
-        activeOpacity={0.85}
-        testID="support-bubble"
-      >
-        <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      <Modal visible={supportOpen} transparent animationType="fade" onRequestClose={() => setSupportOpen(false)}>
-        <TouchableOpacity style={s.supportOverlay} activeOpacity={1} onPress={() => setSupportOpen(false)}>
-          <View style={[s.supportSheet, { marginBottom: insets.bottom + 88 }]}>
-            <Text style={s.supportTitle}>Nasıl yardımcı olabiliriz?</Text>
-            <TouchableOpacity
-              style={s.supportOption}
-              onPress={() => { setSupportOpen(false); router.push('/(tabs)/assistant' as any); }}
-              testID="support-ai"
-            >
-              <View style={[s.supportIcon, { backgroundColor: theme.colors.primarySoft }]}>
-                <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.supportOptionTitle}>AI Asistan'a Sor</Text>
-                <Text style={s.supportOptionSub}>Kullanım soruları, teklif metni önerisi</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-            </TouchableOpacity>
-            {!!whatsappNumber && (
-              <TouchableOpacity
-                style={s.supportOption}
-                onPress={() => { setSupportOpen(false); Linking.openURL(`https://wa.me/${whatsappNumber.replace(/\D/g, '')}`); }}
-                testID="support-whatsapp"
-              >
-                <View style={[s.supportIcon, { backgroundColor: '#DCFCE7' }]}>
-                  <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.supportOptionTitle}>WhatsApp ile Destek</Text>
-                  <Text style={s.supportOptionSub}>{whatsappNumber}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={s.supportOption}
-              onPress={() => { setSupportOpen(false); Linking.openURL('mailto:ncagdasm@gmail.com?subject=Anında%20Teklif%20Destek'); }}
-              testID="support-email"
-            >
-              <View style={[s.supportIcon, { backgroundColor: theme.colors.surfaceSoft }]}>
-                <Ionicons name="mail-outline" size={18} color={theme.colors.textSoft} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.supportOptionTitle}>E-posta ile Destek</Text>
-                <Text style={s.supportOptionSub}>ncagdasm@gmail.com</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -706,24 +643,6 @@ const s = StyleSheet.create({
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
   legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
 
-  supportBubble: {
-    position: 'absolute',
-    right: 18,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadow.lg,
-  },
-  supportOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 16 },
-  supportSheet: { backgroundColor: '#fff', borderRadius: 16, padding: 14, width: 280, ...theme.shadow.lg },
-  supportTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
-  supportOption: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
-  supportIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  supportOptionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
-  supportOptionSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
 
   alertBanner: {
     flexDirection: 'row',

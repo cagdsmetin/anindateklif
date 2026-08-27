@@ -6,7 +6,7 @@ export type NavItem = { name: string; title: string; icon: string; color: string
 // used by the desktop left sidebar (app/(tabs)/_layout.tsx) and by the
 // mobile slide-in drawer (src/components/NavDrawer.tsx) so both stay in
 // sync automatically.
-export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean }): NavItem[] {
+export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; isAdmin?: boolean }): NavItem[] {
   const m = theme.colors.modules;
   const items: NavItem[] = [
     { name: 'index', title: 'Panel', icon: 'grid', color: theme.colors.primary },
@@ -32,6 +32,10 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean }
   // Personel ekranı sadece firma sahibine gösterilir.
   if (opts?.isOwner) {
     items.push({ name: 'personel', title: 'Personel', icon: 'person-add', color: theme.colors.gold });
+  }
+  // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.
+  if (opts?.isAdmin) {
+    items.push({ name: 'promo-admin', title: 'Hediye Kodu', icon: 'gift', color: theme.colors.gold });
   }
   return items;
 }

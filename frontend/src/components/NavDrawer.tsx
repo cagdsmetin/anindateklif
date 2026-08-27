@@ -20,6 +20,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
   const items = buildNavItems({
     restricted: !!user?.is_staff && user?.staff_role !== 'admin',
     isOwner: !user?.is_staff,
+    isAdmin: (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com',
   });
 
   // Navigating no longer auto-closes the drawer -- it stays open (like a

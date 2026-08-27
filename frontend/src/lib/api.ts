@@ -144,6 +144,13 @@ export const api = {
   acceptInvite: (token: string, data: { name: string; password: string }) =>
     req(`/company/invites/${token}/accept`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // Hediye/promosyon kodu — üretme/listeleme sadece admin hesabına açık,
+  // kullanma (redeem) herhangi bir firma sahibine açık.
+  createPromoCodes: (data: { count: number; duration_days: number; note?: string }): Promise<PromoCodeT[]> =>
+    req('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) }),
+  listPromoCodes: (): Promise<PromoCodeT[]> => req('/admin/promo-codes'),
+  redeemPromoCode: (code: string) => req('/promo/redeem', { method: 'POST', body: JSON.stringify({ code }) }),
+
   // Companies
   listCompanies: () => req('/companies'),
   createCompany: (data: any) => req('/companies', { method: 'POST', body: JSON.stringify(data) }),
@@ -249,6 +256,16 @@ export type StaffInviteInfoT = {
 };
 
 export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
+
+export type PromoCodeT = {
+  code: string;
+  duration_days: number;
+  note?: string | null;
+  created_at: string;
+  used: boolean;
+  used_by_email?: string | null;
+  used_at?: string | null;
+};
 
 export type AssistantSystemFieldT = { label: string; type: 'text' | 'number' | 'select' | 'checkbox'; options: string[] };
 export type AssistantActionT = { action: 'add_system_type'; name: string; fields: AssistantSystemFieldT[] };

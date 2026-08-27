@@ -70,8 +70,9 @@ export default function TabsLayout() {
   const { user } = useAuth();
   const restricted = !!user?.is_staff && user?.staff_role !== 'admin';
   const isOwner = !user?.is_staff;
+  const isAdmin = (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com';
 
-  const navItems: NavItem[] = buildNavItems({ restricted, isOwner });
+  const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin });
 
   const tabs = (
     <Tabs
@@ -108,6 +109,7 @@ export default function TabsLayout() {
           oldukları için masaüstünde sol sidebar'la birlikte render edilirler. */}
       <Tabs.Screen name="assistant" options={{ href: null }} />
       <Tabs.Screen name="personel" options={{ href: null }} />
+      <Tabs.Screen name="promo-admin" options={{ href: null }} />
     </Tabs>
   );
 

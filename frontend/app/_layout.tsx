@@ -8,6 +8,7 @@ import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { AuthProvider, useAuth } from '@/src/state/AuthContext';
 import { AppProvider } from '@/src/state/AppContext';
 import { authTheme } from '@/src/lib/auth-theme';
+import SupportBubble from '@/src/components/SupportBubble';
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -49,7 +50,16 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
-  return <>{children}</>;
+  // Destek baloncuğu tek bir yerden, tüm ekranların üstünde render edilir --
+  // sadece giriş yapmış ve kurulumu tamamlamış kullanıcılar için (splash,
+  // giriş, kurulum sihirbazı, gizlilik/davet sayfalarında gösterilmez).
+  const showSupportBubble = !!user && user.onboarding_completed;
+  return (
+    <>
+      {children}
+      {showSupportBubble && <SupportBubble />}
+    </>
+  );
 }
 
 export default function RootLayout() {

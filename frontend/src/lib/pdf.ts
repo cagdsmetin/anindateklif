@@ -357,7 +357,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
 <meta charset="UTF-8" />
 <style>
   @page { size: A4; margin: 14mm 13mm 16mm 13mm; }
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=block');
 
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
@@ -605,7 +605,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 <meta charset="UTF-8" />
 <style>
   @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
-  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=block');
 
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }

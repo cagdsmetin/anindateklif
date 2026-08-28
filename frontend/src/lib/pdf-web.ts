@@ -79,15 +79,24 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
     if (!doc || !doc.body) throw new Error('PDF içeriği oluşturulamadı');
 
     // Let images (logo) and web fonts settle, then size the iframe to the
-    // full rendered content height. Templates can @import a Google Font
-    // (Montserrat) — that's a real network fetch, not something a fixed
-    // short timeout reliably covers, so wait on the iframe's own
-    // `document.fonts.ready` first (capped so a slow/offline font host can
-    // never hang PDF generation) and only then fall back to the short
-    // settle delay for anything fonts.ready doesn't account for (images).
-    const fontsReady = (doc as any).fonts?.ready;
-    if (fontsReady) {
-      await Promise.race([fontsReady, new Promise((r) => setTimeout(r, 2000))]);
+    // full rendered content height. Templates @import Montserrat from Google
+    // Fonts -- a real network fetch, not something a fixed short timeout
+    // reliably covers. `document.fonts.ready` only resolves once every font
+    // the page *requested* has settled, but a font is only "requested" once
+    // the browser lays out text that needs it -- so explicitly `.load()`
+    // each weight the templates actually use first. That fires the fetch
+    // immediately (rather than waiting on layout to discover it's needed)
+    // and gives a much more reliable, generous window for it to land before
+    // html2canvas takes its snapshot; every PDF renders in a brand-new
+    // throwaway iframe with no warm font cache, so this really does need to
+    // be a real network round trip every single time, not just a formality.
+    const fontSet: any = (doc as any).fonts;
+    if (fontSet) {
+      const weights = [400, 500, 600, 700, 800, 900];
+      try {
+        await Promise.all(weights.map((w) => fontSet.load(`${w} 16px Montserrat`).catch(() => {})));
+      } catch {}
+      await Promise.race([fontSet.ready, new Promise((r) => setTimeout(r, 4000))]);
     }
     await new Promise((r) => setTimeout(r, 150));
     const totalHeight = Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight, 100);

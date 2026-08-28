@@ -124,10 +124,57 @@ export function renderWhatsAppTemplate(body: string, quote: QuoteT, companyName?
 // lets us skip the "pre-open a blank tab" popup-blocker workaround entirely
 // on capable browsers, where it's not just unnecessary but visibly opens and
 // closes an empty tab for no reason.
+// The Web Share API's `canShare({files})` check reports `true` on desktop
+// Chrome/Edge/Safari too (they DO implement the API), but the actual share
+// sheet it opens there is the OS's generic "Share" panel -- AirDrop, Mail,
+// Notes, etc. WhatsApp Desktop doesn't register itself as a target in that
+// panel on macOS or Windows, so picking anything from it never reaches
+// WhatsApp; at best the person ends up sharing to some other app by mistake.
+// On an actual mobile browser (opening this site in mobile Chrome/Safari,
+// not the compiled app), that same share sheet DOES list WhatsApp and DOES
+// hand it the file correctly -- that's the one case worth using it for.
+function isMobileWebBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+}
+
+// Reported to callers so they know whether to skip pre-opening a blank tab:
+// true only for the one path that hands WhatsApp the file synchronously
+// enough to need no fallback window at all (mobile native share). Desktop
+// always needs the pre-opened tab -- it ends up going through the Save-As
+// dialog + WhatsApp Web fallback below, which happens well after the
+// original click's popup-blocker-exempt window.
 export function canShareFilesWeb(): boolean {
   if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
+  if (!isMobileWebBrowser()) return false;
   const nav: any = navigator;
   return typeof nav.share === 'function' && typeof nav.canShare === 'function';
+}
+
+// Chrome/Edge desktop support letting the person pick exactly where to save
+// via a native Save-As dialog (File System Access API) instead of a silent
+// drop into the Downloads folder. Returns true if the person actually saved
+// a file, false if they cancelled the dialog, and null if the browser
+// doesn't support this API at all (Safari, Firefox) so the caller can fall
+// back to a plain auto-download.
+async function trySaveFilePickerWeb(pdfUri: string, fileName: string): Promise<boolean | null> {
+  const w: any = window;
+  if (typeof w.showSaveFilePicker !== 'function') return null;
+  try {
+    const res = await fetch(pdfUri);
+    const blob = await res.blob();
+    const handle = await w.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return true;
+  } catch (e: any) {
+    if (e && e.name === 'AbortError') return false; // person cancelled the dialog
+    return null; // some other failure -- fall back to auto-download
+  }
 }
 
 export async function openWhatsAppChat(phone: string, message: string): Promise<boolean> {
@@ -217,31 +264,47 @@ export async function shareQuoteViaWhatsApp(opts: {
     // quote may not have a number on file at all).
     const waUrl = 'https://web.whatsapp.com/';
 
-    // Preferred: the OS-native share sheet (Web Share API, files supported on
-    // HTTPS in current Chrome/Edge/Safari where a share target is registered).
-    // This lets the user tap WhatsApp directly with the PDF already attached —
-    // no separate save/download step at all.
-    try {
-      const res = await fetch(pdfUri);
-      const blob = await res.blob();
-      const file = new File([blob], desiredName, { type: 'application/pdf' });
-      const nav: any = navigator;
-      if (nav.canShare && nav.canShare({ files: [file] })) {
-        await nav.share({ files: [file], text: message, title: desiredName });
-        return { attached: true, downloaded: false };
+    // Preferred, mobile browsers ONLY: the OS-native share sheet actually lists
+    // WhatsApp and hands it the file directly there — no separate save/attach
+    // step at all. Desktop browsers implement the same API but WhatsApp
+    // Desktop isn't a registered target in their share panel, so trying this
+    // on desktop just leads to a dead end (see isMobileWebBrowser() above).
+    if (isMobileWebBrowser()) {
+      try {
+        const res = await fetch(pdfUri);
+        const blob = await res.blob();
+        const file = new File([blob], desiredName, { type: 'application/pdf' });
+        const nav: any = navigator;
+        if (nav.canShare && nav.canShare({ files: [file] })) {
+          await nav.share({ files: [file], text: message, title: desiredName });
+          return { attached: true, downloaded: false };
+        }
+      } catch (e: any) {
+        if (e && e.name === 'AbortError') return { attached: false, downloaded: false };
+        // Falls through to the save/download + open fallback below.
       }
-    } catch (e: any) {
-      // AbortError = user closed the share sheet without picking anything —
-      // treat that as "done", don't also force a download on top of it.
-      if (e && e.name === 'AbortError') return { attached: false, downloaded: false };
-      // Any other failure (file sharing unsupported, share target rejected the
-      // file, etc.) falls through to the download+open fallback below.
     }
 
-    // Fallback: there is no way to hand WhatsApp a file via URL, so download the
-    // PDF and open the chat with the note pre-filled — the user just drags the
-    // downloaded file into the chat that opens.
-    await downloadFileWeb(pdfUri, desiredName);
+    // Desktop (and any mobile browser where the share attempt above didn't
+    // apply/fall through): there is no way to hand WhatsApp a file via URL, so
+    // get the PDF onto disk and open WhatsApp Web — the user drags the file
+    // from wherever they just saved it into the chat they pick.
+    //
+    // Prefer an explicit Save-As dialog (Chrome/Edge) over a silent auto-drop
+    // into Downloads: the person sees exactly where the file is going and
+    // picks the spot themselves, rather than having to go hunting for it
+    // afterward.
+    const saved = await trySaveFilePickerWeb(pdfUri, desiredName);
+    if (saved === false) {
+      // Person explicitly cancelled the save dialog — don't force a download
+      // or open WhatsApp on top of that.
+      return { attached: false, downloaded: false };
+    }
+    if (saved === null) {
+      // Browser doesn't support the Save-As picker (Safari/Firefox) — fall
+      // back to the old silent auto-download.
+      await downloadFileWeb(pdfUri, desiredName);
+    }
     if (waWindow) {
       try { waWindow.location.href = waUrl; } catch { window.open(waUrl, '_blank'); }
     } else {

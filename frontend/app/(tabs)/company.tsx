@@ -192,38 +192,9 @@ export default function CompanyScreen() {
                   {user?.phone_verified ? 'Telefon numarası doğrulandı' : 'Telefon numarası doğrulanmadı'}
                 </Text>
               </View>
-              <TextInput
-                value={phoneInput}
-                onChangeText={setPhoneInput}
-                placeholder="+90 5XX XXX XX XX"
-                placeholderTextColor={theme.colors.textMuted}
-                keyboardType="phone-pad"
-                style={s.input}
-                testID="phone-verify-input"
-              />
-              {otpStep === 'idle' ? (
-                <TouchableOpacity style={[s.subscriptionBtn, { marginTop: 8 }, otpBusy && { opacity: 0.6 }]} disabled={otpBusy} onPress={sendOtp} testID="phone-send-code-btn">
-                  <Ionicons name="logo-whatsapp" size={18} color={theme.colors.primary} />
-                  <Text style={s.subscriptionBtnText}>{otpBusy ? 'Gönderiliyor...' : "WhatsApp'tan Kod Gönder"}</Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TextInput
-                    value={otpCode}
-                    onChangeText={setOtpCode}
-                    placeholder="6 haneli kod"
-                    placeholderTextColor={theme.colors.textMuted}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    style={[s.input, { marginTop: 8 }]}
-                    testID="phone-otp-input"
-                  />
-                  <TouchableOpacity style={[s.subscriptionBtn, { marginTop: 8 }, otpBusy && { opacity: 0.6 }]} disabled={otpBusy} onPress={verifyOtp} testID="phone-verify-code-btn">
-                    <Ionicons name="checkmark-done" size={18} color={theme.colors.primary} />
-                    <Text style={s.subscriptionBtnText}>{otpBusy ? 'Doğrulanıyor...' : 'Kodu Doğrula'}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16 }}>
+                Telefon doğrulama özelliği şu an bakımda, yakında tekrar aktif olacak.
+              </Text>
             </View>
           </View>
 

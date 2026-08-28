@@ -865,12 +865,17 @@ def _normalize_phone(raw: str) -> str:
     return digits
 
 
+# Twilio hesabı yükseltilip WhatsApp içerik şablonu (Content Template) onaylanana kadar
+# bu özellik kapalı tutuluyor (bkz. ContentSid Required / trial hesap kısıtı).
+PHONE_OTP_ENABLED = os.environ.get("PHONE_OTP_ENABLED", "false").lower() == "true"
+
+
 @api_router.post("/auth/phone/send-code")
 async def phone_send_code(payload: PhoneSendCodeRequest, request: Request, user=Depends(get_current_user)):
-    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM):
+    if not PHONE_OTP_ENABLED or not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM):
         raise HTTPException(
             status_code=503,
-            detail="Telefon doğrulama şu an yapılandırılmadı (Twilio bilgileri eksik). Lütfen daha sonra tekrar deneyin.",
+            detail="Telefon doğrulama şu an yapılandırılmadı. Lütfen daha sonra tekrar deneyin.",
         )
     phone = _normalize_phone(payload.phone)
     if len(phone) < 8:

@@ -133,6 +133,7 @@ export const api = {
   updateMe: (data: Partial<Pick<UserT, 'name' | 'phone' | 'country' | 'currency' | 'tax_label' | 'onboarding_completed'>>) =>
     req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),
+  deleteAccount: () => req('/auth/account', { method: 'DELETE' }),
 
   // Personel (ekip) yönetimi — sadece firma sahibi görebilir/yönetebilir
   inviteStaff: (companyId: string, data: { email: string; role: string }) =>

@@ -27,7 +27,7 @@ const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 export default function CompanyScreen() {
   const router = useRouter();
   const { companies, activeCompany, setActiveCompanyId, createCompany, updateCompany, deleteCompany, showToast } = useApp();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<CompanyT | null>(null);
 
@@ -82,6 +82,8 @@ export default function CompanyScreen() {
   };
   const [newEmail, setNewEmail] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showConfirmDeleteAccount, setShowConfirmDeleteAccount] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
 
   useEffect(() => { if (activeCompany) setForm({ ...activeCompany }); }, [activeCompany]);
 
@@ -128,6 +130,21 @@ export default function CompanyScreen() {
     if (!form) return;
     try { await deleteCompany(form.id); setShowConfirmDelete(false); showToast('Firma silindi'); }
     catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
+  };
+
+  const doDeleteAccount = async () => {
+    if (deleteAccountBusy) return;
+    setDeleteAccountBusy(true);
+    try {
+      await api.deleteAccount();
+      setShowConfirmDeleteAccount(false);
+      await signOut();
+      router.replace('/login');
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || 'Hesap silinemedi'));
+    } finally {
+      setDeleteAccountBusy(false);
+    }
   };
 
   if (!form) {
@@ -195,6 +212,20 @@ export default function CompanyScreen() {
               <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16 }}>
                 Telefon doğrulama özelliği şu an bakımda, yakında tekrar aktif olacak.
               </Text>
+            </View>
+          </View>
+
+          {/* Hesap silme (Google Play / App Store zorunlu) */}
+          <View style={[s.supportBox, { marginTop: 10 }]}>
+            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+              <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.red, marginBottom: 6 }}>Hesabımı Sil</Text>
+              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
+                Hesabını ve tüm firma verilerini (teklifler, müşteriler, katalog, kasa/tahsilat kayıtları) kalıcı olarak siler. Bu işlem geri alınamaz.
+              </Text>
+              <TouchableOpacity style={[s.subscriptionBtn, { borderColor: theme.colors.red }]} onPress={() => setShowConfirmDeleteAccount(true)} testID="delete-account-btn">
+                <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
+                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>Hesabımı Kalıcı Olarak Sil</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -332,6 +363,21 @@ export default function CompanyScreen() {
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
               <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDelete(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text></TouchableOpacity>
               <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }]} onPress={doDelete} testID="confirm-delete-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>Evet, Sil</Text></TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Delete Account Confirm */}
+      <Modal visible={showConfirmDeleteAccount} transparent animationType="fade">
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowConfirmDeleteAccount(false)}>
+          <View style={s.confirmBox}>
+            <Ionicons name="warning" size={30} color={theme.colors.red} />
+            <Text style={s.confirmTitle}>Hesabını Kalıcı Olarak Sil?</Text>
+            <Text style={s.confirmText}>Hesabın ve tüm firma verilerin (teklifler, müşteriler, katalog, kasa/tahsilat) kalıcı olarak silinecek. Bu işlem geri alınamaz.</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDeleteAccount(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }, deleteAccountBusy && { opacity: 0.6 }]} disabled={deleteAccountBusy} onPress={doDeleteAccount} testID="confirm-delete-account-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>{deleteAccountBusy ? 'Siliniyor...' : 'Evet, Hesabımı Sil'}</Text></TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>

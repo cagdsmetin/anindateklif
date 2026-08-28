@@ -943,6 +943,42 @@ async def phone_verify_code(payload: PhoneVerifyCodeRequest, user=Depends(get_cu
     return _user_out(doc)
 
 
+@api_router.delete("/auth/account")
+async def delete_account(user=Depends(get_current_user)):
+    """Google Play / App Store hesap silme politikası gereği: kullanıcı
+    hesabını ve (owner ise) sahip olduğu tüm iş verilerini kalıcı olarak
+    siler. Personel (staff) hesabı için sadece kendi girişini siler, sahibin
+    firma verilerine dokunmaz."""
+    self_id = _self_id(user)
+    own_doc = await db.users.find_one({"user_id": self_id}, {"_id": 0})
+    if not own_doc:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+    if own_doc.get("staff_owner_user_id"):
+        # Personel hesabı: sadece kendi girişini ve bekleyen davetini sil.
+        await db.users.delete_one({"user_id": self_id})
+        await db.company_invites.delete_many({"email": own_doc.get("email")})
+        return {"ok": True}
+
+    # Firma sahibi hesabı: tüm firma verilerini ve bağlı personel girişlerini sil.
+    uid = self_id
+    await db.companies.delete_many({"userId": uid})
+    await db.catalog.delete_many({"userId": uid})
+    await db.customers.delete_many({"userId": uid})
+    await db.quotes.delete_many({"userId": uid})
+    await db.services.delete_many({"userId": uid})
+    await db.campaigns.delete_many({"userId": uid})
+    await db.kasa.delete_many({"userId": uid})
+    await db.tahsilat.delete_many({"userId": uid})
+    await db.company_invites.delete_many({"ownerUserId": uid})
+    await db.subscription_payments.delete_many({"user_id": uid})
+    await db.email_verifications.delete_many({"user_id": uid})
+    await db.password_resets.delete_many({"user_id": uid})
+    await db.users.delete_many({"staff_owner_user_id": uid})
+    await db.users.delete_one({"user_id": uid})
+    return {"ok": True}
+
+
 @api_router.post("/auth/logout")
 async def auth_logout(authorization: Optional[str] = Header(None)):
     # Revoke this specific token server-side (by jti) so a stolen/leaked

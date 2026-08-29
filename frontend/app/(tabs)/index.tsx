@@ -257,11 +257,6 @@ export default function PanelScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.ratesRow}>
               <RatePill label="USD" value={rates.usd_try} icon="cash-outline" accent={theme.colors.primary} />
               <RatePill label="EUR" value={rates.eur_try} icon="cash-outline" accent={theme.colors.primary} />
-              <RatePill label="BTC" value={rates.btc_usd} format="usd" subValue={rates.btc_try != null ? fmtTRY(rates.btc_try) : null} icon="logo-bitcoin" accent={theme.colors.gold} />
-              <RatePill label="ETH" value={rates.eth_usd} format="usd" subValue={rates.eth_try != null ? fmtTRY(rates.eth_try) : null} icon="diamond-outline" accent={theme.colors.gold} />
-              {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
-              {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
-              {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
               {rates.altin_gram_try != null && (
                 <RatePill
                   label="Gram Altın"
@@ -280,6 +275,11 @@ export default function PanelScreen() {
                   accent={theme.colors.textMuted}
                 />
               )}
+              <RatePill label="BTC" value={rates.btc_usd} format="usd" subValue={rates.btc_try != null ? fmtTRY(rates.btc_try) : null} icon="logo-bitcoin" accent={theme.colors.gold} />
+              <RatePill label="ETH" value={rates.eth_usd} format="usd" subValue={rates.eth_try != null ? fmtTRY(rates.eth_try) : null} icon="diamond-outline" accent={theme.colors.gold} />
+              {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
             </ScrollView>
           </View>
         )}

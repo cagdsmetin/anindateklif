@@ -42,8 +42,21 @@ function newItemId() { return 'it-' + Date.now() + '-' + Math.random().toString(
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
 export default function EditorScreen() {
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
   const { user } = useAuth();
+  const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
+  const saveNotesAsDefault = async () => {
+    if (!activeCompany) return;
+    setSavingDefaultNotes(true);
+    try {
+      await updateCompany(activeCompany.id, { ...activeCompany, ozelNotlar: notlar });
+      showToast('Varsayılan not olarak kaydedildi');
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || 'Kaydedilemedi'));
+    } finally {
+      setSavingDefaultNotes(false);
+    }
+  };
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ quoteId?: string }>();
@@ -476,6 +489,19 @@ export default function EditorScreen() {
           <SectionHeader title="ÖZEL NOTLAR" />
           <FGroup>
             <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder="Notlar, garanti, koşullar..." placeholderTextColor="#94a3b8" />
+            {!user?.is_staff && (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, opacity: savingDefaultNotes ? 0.6 : 1 }}
+                disabled={savingDefaultNotes}
+                onPress={saveNotesAsDefault}
+                testID="save-default-notes-btn"
+              >
+                <Ionicons name="bookmark-outline" size={14} color={theme.colors.primary} />
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: theme.colors.primary }}>
+                  {savingDefaultNotes ? 'Kaydediliyor...' : 'Bu notu her yeni teklifte varsayılan yap'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </FGroup>
 
           {/* EKLER — Additional attachment pages (References, Katalog, etc.) */}

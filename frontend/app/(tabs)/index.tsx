@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
 
@@ -78,6 +79,7 @@ export default function PanelScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, quotes, customers, services, campaigns, kasa } = useApp();
+  const { user } = useAuth();
 
   const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number; days_left?: number | null; renewal_due_soon?: boolean } | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
@@ -230,6 +232,19 @@ export default function PanelScreen() {
   }, [quotes]);
   const quoteStatusTotal = quotes.length;
 
+  // Personel için Nakit Durumu yerine: kendi bu ayki tekliflerinin özeti
+  const myQuotesThisMonth = useMemo(() => {
+    if (!user?.is_staff) return [];
+    return quotes.filter((q) => q.hazirlayanEmail === user?.email && (q.tarih || '').slice(0, 7) === thisMonthKey);
+  }, [quotes, user, thisMonthKey]);
+  const myQuoteStatusCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    QUOTE_STATUSES.forEach((st) => { map[st] = 0; });
+    myQuotesThisMonth.forEach((q) => { if (map[q.durum] !== undefined) map[q.durum] += 1; });
+    return map;
+  }, [myQuotesThisMonth]);
+  const myQuoteStatusTotal = myQuotesThisMonth.length;
+
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -358,23 +373,48 @@ export default function PanelScreen() {
         {/* Genel Bakış — nakit durumu + teklif durumları */}
         <SectionHeader icon="pie-chart-outline" title="Genel Bakış" />
         <View style={s.overviewRow}>
-          <View style={[s.card, s.overviewCard]}>
-            <Text style={s.overviewTitle}>NAKİT DURUMU (BU AY)</Text>
-            {kasaHacim > 0 ? (
-              <>
-                <View style={s.stackBar}>
-                  <View style={[s.stackSeg, { width: `${gelirPct}%`, backgroundColor: theme.colors.green }]} />
-                  <View style={[s.stackSeg, { width: `${100 - gelirPct}%`, backgroundColor: theme.colors.red }]} />
-                </View>
-                <View style={s.legendRow}>
-                  <LegendDot color={theme.colors.green} label="Gelir" value={fmtTRY(gelirBuAy2)} />
-                  <LegendDot color={theme.colors.red} label="Gider" value={fmtTRY(giderBuAy2)} />
-                </View>
-              </>
-            ) : (
-              <Text style={s.emptyLineText}>Bu ay kasa hareketi yok.</Text>
-            )}
-          </View>
+          {user?.is_staff ? (
+            <View style={[s.card, s.overviewCard]}>
+              <Text style={s.overviewTitle}>TEKLİFLERİM (BU AY)</Text>
+              {myQuoteStatusTotal > 0 ? (
+                <>
+                  <View style={s.stackBar}>
+                    {QUOTE_STATUSES.map((st) => {
+                      const cnt = myQuoteStatusCounts[st] || 0;
+                      if (!cnt) return null;
+                      const pct = (cnt / myQuoteStatusTotal) * 100;
+                      return <View key={st} style={[s.stackSeg, { width: `${pct}%`, backgroundColor: QUOTE_STATUS_COLORS[st] }]} />;
+                    })}
+                  </View>
+                  <View style={s.legendRow}>
+                    {QUOTE_STATUSES.map((st) => (
+                      <LegendDot key={st} color={QUOTE_STATUS_COLORS[st]} label={st} value={String(myQuoteStatusCounts[st] || 0)} />
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <Text style={s.emptyLineText}>Bu ay henüz teklif oluşturmadın.</Text>
+              )}
+            </View>
+          ) : (
+            <View style={[s.card, s.overviewCard]}>
+              <Text style={s.overviewTitle}>NAKİT DURUMU (BU AY)</Text>
+              {kasaHacim > 0 ? (
+                <>
+                  <View style={s.stackBar}>
+                    <View style={[s.stackSeg, { width: `${gelirPct}%`, backgroundColor: theme.colors.green }]} />
+                    <View style={[s.stackSeg, { width: `${100 - gelirPct}%`, backgroundColor: theme.colors.red }]} />
+                  </View>
+                  <View style={s.legendRow}>
+                    <LegendDot color={theme.colors.green} label="Gelir" value={fmtTRY(gelirBuAy2)} />
+                    <LegendDot color={theme.colors.red} label="Gider" value={fmtTRY(giderBuAy2)} />
+                  </View>
+                </>
+              ) : (
+                <Text style={s.emptyLineText}>Bu ay kasa hareketi yok.</Text>
+              )}
+            </View>
+          )}
 
           <View style={[s.card, s.overviewCard]}>
             <Text style={s.overviewTitle}>TEKLİF DURUMLARI</Text>

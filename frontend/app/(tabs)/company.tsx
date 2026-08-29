@@ -152,98 +152,111 @@ export default function CompanyScreen() {
       <TopHeader title="Firma Yönetimi" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled">
-          {/* Companies list */}
-          <View style={s.companyListBox}>
-            <View style={s.compHdr}>
-              <Text style={s.sectionH2}>KAYITLI FİRMALARIM ({companies.length})</Text>
-              <TouchableOpacity onPress={createNewCompany} testID="add-company-btn"><Ionicons name="add-circle" size={22} color={theme.colors.primary} /></TouchableOpacity>
-            </View>
-            {companies.map((c) => {
-              const active = c.id === activeCompany?.id;
-              return (
-                <TouchableOpacity key={c.id} testID={`switch-company-${c.id}`} style={[s.compItem, active && s.compItemActive]} onPress={() => setActiveCompanyId(c.id)}>
-                  {c.logoBase64 ? <Image source={{ uri: c.logoBase64 }} style={s.compLogo} /> : (
-                    <View style={[s.compLogo, { backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }]}>
-                      <Ionicons name="business-outline" size={16} color={theme.colors.primary} />
-                    </View>
-                  )}
-                  <Text style={[s.compName, active && s.compNameActive]} numberOfLines={1}>{c.sirketAdi}</Text>
-                  <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={18} color={active ? theme.colors.primary : theme.colors.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {/* Logo */}
-          <SectionHeader title="ŞİRKET LOGOSU" />
-          <View style={s.logoBox}>
-            {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
-              <View style={s.logoPlaceholder}>
-                <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
-                <Text style={s.logoHint}>Logo yüklenmedi</Text>
+          {!user?.is_staff && (
+            <>
+            {/* Companies list */}
+            <View style={s.companyListBox}>
+              <View style={s.compHdr}>
+                <Text style={s.sectionH2}>KAYITLI FİRMALARIM ({companies.length})</Text>
+                <TouchableOpacity onPress={createNewCompany} testID="add-company-btn"><Ionicons name="add-circle" size={22} color={theme.colors.primary} /></TouchableOpacity>
               </View>
-            )}
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-              <TouchableOpacity style={[s.btnPri, { flex: 1 }]} onPress={pickLogo} testID="pick-logo-btn">
-                <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                <Text style={s.btnPriText}>{form.logoBase64 ? 'Logo Değiştir' : 'Logo Yükle'}</Text>
-              </TouchableOpacity>
-              {form.logoBase64 && (
-                <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
-                  <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
-                </TouchableOpacity>
+              {companies.map((c) => {
+                const active = c.id === activeCompany?.id;
+                return (
+                  <TouchableOpacity key={c.id} testID={`switch-company-${c.id}`} style={[s.compItem, active && s.compItemActive]} onPress={() => setActiveCompanyId(c.id)}>
+                    {c.logoBase64 ? <Image source={{ uri: c.logoBase64 }} style={s.compLogo} /> : (
+                      <View style={[s.compLogo, { backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="business-outline" size={16} color={theme.colors.primary} />
+                      </View>
+                    )}
+                    <Text style={[s.compName, active && s.compNameActive]} numberOfLines={1}>{c.sirketAdi}</Text>
+                    <Ionicons name={active ? 'radio-button-on' : 'radio-button-off'} size={18} color={active ? theme.colors.primary : theme.colors.textMuted} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Logo */}
+            <SectionHeader title="ŞİRKET LOGOSU" />
+            <View style={s.logoBox}>
+              {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
+                <View style={s.logoPlaceholder}>
+                  <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
+                  <Text style={s.logoHint}>Logo yüklenmedi</Text>
+                </View>
               )}
-            </View>
-          </View>
-
-          {/* Info */}
-          <SectionHeader title="FİRMA BİLGİLERİ" />
-          <Field label="Firma Adı *"><TextInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
-          <Field label="Adres"><TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Field label="Telefon" flex={1}><TextInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
-            <Field label="Telefon 2" flex={1}><TextInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
-          </View>
-          <Field label="E-Posta"><TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
-          <Field label="Website"><TextInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Field label="Vergi Dairesi" flex={1}><TextInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
-            <Field label="Vergi No" flex={1}><TextInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
-          </View>
-
-          {/* Default Notes */}
-          <SectionHeader title="VARSAYILAN ÖZEL NOTLAR (PDF)" />
-          <Text style={s.hint}>Her yeni teklif oluşturduğunuzda bu notlar önceden dolu gelir.</Text>
-          <TextInput style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]} multiline value={form.ozelNotlar} onChangeText={(v) => setForm({ ...form, ozelNotlar: v })} placeholder="Örn: Garanti süresi 2 yıldır." placeholderTextColor="#94a3b8" testID="company-notes-input" />
-
-          {/* Bank Accounts */}
-          <SectionHeader title="BANKA HESAPLARI" />
-          <Text style={s.hint}>PDF alt kısmında görünür.</Text>
-          {(form.banklar || []).map((b) => (
-            <View key={b.id} style={s.bankCard}>
-              <View style={s.bankHdr}>
-                <Text style={s.bankNo}>BANKA</Text>
-                <TouchableOpacity onPress={() => removeBank(b.id)}><Ionicons name="close-circle" size={20} color={theme.colors.red} /></TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <TouchableOpacity style={[s.btnPri, { flex: 1 }]} onPress={pickLogo} testID="pick-logo-btn">
+                  <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                  <Text style={s.btnPriText}>{form.logoBase64 ? 'Logo Değiştir' : 'Logo Yükle'}</Text>
+                </TouchableOpacity>
+                {form.logoBase64 && (
+                  <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                  </TouchableOpacity>
+                )}
               </View>
-              <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Banka türü (örn: GARANTİ (TL))" placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
-              <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Hesap Sahibi" placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
-              <TextInput style={s.input} placeholder="IBAN (TR ...)" placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
             </View>
-          ))}
-          <TouchableOpacity style={s.addDashed} onPress={addBank} testID="add-bank-btn">
-            <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.addDashedText}>Yeni Banka Hesabı Ekle</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
-            <Ionicons name="checkmark-done" size={18} color="#fff" />
-            <Text style={s.saveBtnText}>Firma Bilgilerini Kaydet</Text>
-          </TouchableOpacity>
+            {/* Info */}
+            <SectionHeader title="FİRMA BİLGİLERİ" />
+            <Field label="Firma Adı *"><TextInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
+            <Field label="Adres"><TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Field label="Telefon" flex={1}><TextInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
+              <Field label="Telefon 2" flex={1}><TextInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
+            </View>
+            <Field label="E-Posta"><TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
+            <Field label="Website"><TextInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Field label="Vergi Dairesi" flex={1}><TextInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
+              <Field label="Vergi No" flex={1}><TextInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
+            </View>
 
-          {companies.length > 1 && (
-            <TouchableOpacity style={s.deleteCompanyBtn} onPress={() => setShowConfirmDelete(true)} testID="delete-company-btn">
-              <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
-              <Text style={s.deleteCompanyText}>Bu Firmayı Sil</Text>
+            {/* Bank Accounts */}
+            <SectionHeader title="BANKA HESAPLARI" />
+            <Text style={s.hint}>PDF alt kısmında görünür.</Text>
+            {(form.banklar || []).map((b) => (
+              <View key={b.id} style={s.bankCard}>
+                <View style={s.bankHdr}>
+                  <Text style={s.bankNo}>BANKA</Text>
+                  <TouchableOpacity onPress={() => removeBank(b.id)}><Ionicons name="close-circle" size={20} color={theme.colors.red} /></TouchableOpacity>
+                </View>
+                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Banka türü (örn: GARANTİ (TL))" placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
+                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Hesap Sahibi" placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
+                <TextInput style={s.input} placeholder="IBAN (TR ...)" placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
+              </View>
+            ))}
+            <TouchableOpacity style={s.addDashed} onPress={addBank} testID="add-bank-btn">
+              <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
+              <Text style={s.addDashedText}>Yeni Banka Hesabı Ekle</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
+              <Ionicons name="checkmark-done" size={18} color="#fff" />
+              <Text style={s.saveBtnText}>Firma Bilgilerini Kaydet</Text>
+            </TouchableOpacity>
+
+            {companies.length > 1 && (
+              <TouchableOpacity style={s.deleteCompanyBtn} onPress={() => setShowConfirmDelete(true)} testID="delete-company-btn">
+                <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                <Text style={s.deleteCompanyText}>Bu Firmayı Sil</Text>
+              </TouchableOpacity>
+            )}
+            </>
+          )}
+
+          {user?.is_staff && (
+            <>
+              <SectionHeader title="ŞİRKET LOGOSU" />
+              <View style={s.logoBox}>
+                {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
+                  <View style={s.logoPlaceholder}>
+                    <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
+                    <Text style={s.logoHint}>Logo yüklenmedi</Text>
+                  </View>
+                )}
+              </View>
+            </>
           )}
 
           {/* Hesabım — e-posta + telefon doğrulama */}

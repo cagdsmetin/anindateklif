@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form, Request, Query
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -1652,6 +1652,206 @@ async def revoke_staff_invite(company_id: str, invite_id: str, user=Depends(get_
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Davet bulunamadı")
     return {"ok": True}
+
+
+# ============ TEAM CHAT (personel içi mesajlaşma) ============
+# Aynı firmadaki firma sahibi + personelin uygulama içinden birbirine mesaj
+# atabilmesi için basit bir DM (birebir mesajlaşma) altyapısı. Firma sahibi
+# ekipteki HERKESİN kimle ne konuştuğunu görebilir (oversight); personel ise
+# sadece kendi dahil olduğu konuşmaları görür.
+class TeamMessageCreate(BaseModel):
+    companyId: str
+    recipientId: str
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _text_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Mesaj boş olamaz")
+        if len(v) > 2000:
+            raise ValueError("Mesaj çok uzun")
+        return v
+
+
+class TeamMessageOut(BaseModel):
+    id: str
+    companyId: str
+    senderId: str
+    senderName: str
+    recipientId: str
+    recipientName: str
+    text: str
+    createdAt: str
+    readAt: Optional[str] = None
+
+
+class TeamDirectoryMember(BaseModel):
+    userId: str
+    name: str
+    email: str
+    role: str  # "owner" | staff_role
+
+
+class TeamConversationOut(BaseModel):
+    otherUserId: Optional[str] = None
+    otherUserName: Optional[str] = None
+    lastText: str
+    lastAt: str
+    unreadCount: int = 0
+    participantAId: Optional[str] = None
+    participantAName: Optional[str] = None
+    participantBId: Optional[str] = None
+    participantBName: Optional[str] = None
+
+
+def _team_msg_out(m: Dict[str, Any]) -> TeamMessageOut:
+    return TeamMessageOut(
+        id=m["id"], companyId=m["companyId"], senderId=m["senderId"], senderName=m.get("senderName", ""),
+        recipientId=m["recipientId"], recipientName=m.get("recipientName", ""), text=m["text"],
+        createdAt=m["createdAt"], readAt=m.get("readAt"),
+    )
+
+
+async def _team_display_name(u: Dict[str, Any]) -> str:
+    return (u.get("name") or "").strip() or (u.get("email") or "Kullanıcı")
+
+
+@api_router.get("/team/directory", response_model=List[TeamDirectoryMember])
+async def team_directory(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    owner_id = user["user_id"]
+    owner_doc = await db.users.find_one({"user_id": owner_id}, {"_id": 0}) or {}
+    out = [TeamDirectoryMember(
+        userId=owner_id, name=await _team_display_name(owner_doc),
+        email=owner_doc.get("email", ""), role="owner",
+    )]
+    staff = await db.users.find(
+        {"staff_of_company_id": company_id, "staff_owner_user_id": owner_id}, {"_id": 0}
+    ).to_list(500)
+    for s in staff:
+        out.append(TeamDirectoryMember(
+            userId=s["user_id"], name=await _team_display_name(s),
+            email=s.get("email", ""), role=s.get("staff_role", "staff"),
+        ))
+    return out
+
+
+@api_router.post("/team/messages", response_model=TeamMessageOut)
+async def send_team_message(payload: TeamMessageCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    self_id = _self_id(user)
+    owner_id = user["user_id"]
+    if payload.recipientId == self_id:
+        raise HTTPException(status_code=400, detail="Kendinize mesaj gönderemezsiniz")
+
+    if payload.recipientId == owner_id:
+        recipient = await db.users.find_one({"user_id": owner_id}, {"_id": 0})
+    else:
+        recipient = await db.users.find_one(
+            {"user_id": payload.recipientId, "staff_of_company_id": payload.companyId, "staff_owner_user_id": owner_id},
+            {"_id": 0},
+        )
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Alıcı bu ekipte bulunamadı")
+
+    self_doc = await db.users.find_one({"user_id": self_id}, {"_id": 0}) or {}
+    msg = {
+        "id": str(uuid.uuid4()),
+        "companyId": payload.companyId,
+        "senderId": self_id,
+        "senderName": await _team_display_name(self_doc),
+        "recipientId": payload.recipientId,
+        "recipientName": await _team_display_name(recipient),
+        "text": payload.text,
+        "createdAt": utc_now_iso(),
+        "readAt": None,
+    }
+    await db.team_messages.insert_one(msg)
+    return _team_msg_out(msg)
+
+
+@api_router.get("/team/messages", response_model=List[TeamMessageOut])
+async def get_team_thread(company_id: str, with_: str = Query(..., alias="with"), user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    self_id = _self_id(user)
+    msgs = await db.team_messages.find({
+        "companyId": company_id,
+        "$or": [
+            {"senderId": self_id, "recipientId": with_},
+            {"senderId": with_, "recipientId": self_id},
+        ],
+    }, {"_id": 0}).sort("createdAt", 1).to_list(2000)
+    await db.team_messages.update_many(
+        {"companyId": company_id, "senderId": with_, "recipientId": self_id, "readAt": None},
+        {"$set": {"readAt": utc_now_iso()}},
+    )
+    return [_team_msg_out(m) for m in msgs]
+
+
+@api_router.get("/team/messages/admin", response_model=List[TeamMessageOut])
+async def get_team_thread_admin(company_id: str, a: str, b: str, user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi tüm konuşmaları görebilir")
+    await _own_company(user, company_id)
+    msgs = await db.team_messages.find({
+        "companyId": company_id,
+        "$or": [{"senderId": a, "recipientId": b}, {"senderId": b, "recipientId": a}],
+    }, {"_id": 0}).sort("createdAt", 1).to_list(2000)
+    return [_team_msg_out(m) for m in msgs]
+
+
+@api_router.get("/team/conversations", response_model=List[TeamConversationOut])
+async def list_team_conversations(company_id: str, scope: str = "mine", user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    self_id = _self_id(user)
+    is_owner = not user.get("is_staff")
+    if scope == "all" and not is_owner:
+        raise HTTPException(status_code=403, detail="Sadece firma sahibi tüm konuşmaları görebilir")
+
+    msgs = await db.team_messages.find({"companyId": company_id}, {"_id": 0}).sort("createdAt", 1).to_list(5000)
+
+    if scope == "all":
+        groups: Dict[str, Dict[str, Any]] = {}
+        for m in msgs:
+            pair = tuple(sorted([m["senderId"], m["recipientId"]]))
+            key = f"{pair[0]}|{pair[1]}"
+            g = groups.setdefault(key, {"participantAId": pair[0], "participantBId": pair[1], "_names": {}})
+            g["lastText"] = m["text"]
+            g["lastAt"] = m["createdAt"]
+            g["_names"][m["senderId"]] = m.get("senderName", "")
+            g["_names"][m["recipientId"]] = m.get("recipientName", "")
+        out = []
+        for g in groups.values():
+            names = g.pop("_names")
+            out.append(TeamConversationOut(
+                lastText=g["lastText"], lastAt=g["lastAt"],
+                participantAId=g["participantAId"], participantAName=names.get(g["participantAId"], ""),
+                participantBId=g["participantBId"], participantBName=names.get(g["participantBId"], ""),
+            ))
+        out.sort(key=lambda c: c.lastAt, reverse=True)
+        return out
+
+    groups2: Dict[str, Dict[str, Any]] = {}
+    unread: Dict[str, int] = {}
+    for m in msgs:
+        if m["senderId"] != self_id and m["recipientId"] != self_id:
+            continue
+        other_id = m["recipientId"] if m["senderId"] == self_id else m["senderId"]
+        other_name = m.get("recipientName", "") if m["senderId"] == self_id else m.get("senderName", "")
+        groups2[other_id] = {"otherUserId": other_id, "otherUserName": other_name, "lastText": m["text"], "lastAt": m["createdAt"]}
+        if m["recipientId"] == self_id and not m.get("readAt"):
+            unread[other_id] = unread.get(other_id, 0) + 1
+    out2 = [
+        TeamConversationOut(
+            otherUserId=g["otherUserId"], otherUserName=g["otherUserName"],
+            lastText=g["lastText"], lastAt=g["lastAt"], unreadCount=unread.get(other_id, 0),
+        )
+        for other_id, g in groups2.items()
+    ]
+    out2.sort(key=lambda c: c.lastAt, reverse=True)
+    return out2
 
 
 # ============ CATALOG ROUTES ============

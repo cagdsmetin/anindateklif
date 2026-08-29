@@ -108,6 +108,7 @@ export default function TabsLayout() {
           tab bar'da ikon olarak görünmesinler, ama artık (tabs) grubunun içinde
           oldukları için masaüstünde sol sidebar'la birlikte render edilirler. */}
       <Tabs.Screen name="assistant" options={{ href: null }} />
+      <Tabs.Screen name="team-chat" options={{ href: null }} />
       <Tabs.Screen name="personel" options={{ href: null }} />
       <Tabs.Screen name="promo-admin" options={{ href: null }} />
     </Tabs>

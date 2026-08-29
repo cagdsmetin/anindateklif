@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -56,6 +56,27 @@ export default function AssistantScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [kbInset, setKbInset] = useState(0);
+
+  // Web'de mobil klavye açıldığında görünür alanı (visualViewport) küçültür;
+  // bu değişikliği izleyip alt gönderim çubuğunu klavyenin üstünde tutuyoruz,
+  // aksi halde gönder butonu klavyenin arkasında kalıp görünmez oluyordu.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const vv: any = (typeof window !== 'undefined' && (window as any).visualViewport) || null;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbInset(offset);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
+    };
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+    };
+  }, []);
 
   const send = async (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
@@ -120,7 +141,7 @@ export default function AssistantScreen() {
       </View>
       <View style={s.divider} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined} keyboardVerticalOffset={8}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, width: '100%' }}
@@ -219,14 +240,16 @@ export default function AssistantScreen() {
           ) : null}
         </ScrollView>
 
-        <View style={[s.inputBar, { paddingBottom: (insets.bottom || 12) + 10 }]}>
+        <View style={[s.inputBar, { paddingBottom: (insets.bottom || 12) + 10, marginBottom: kbInset }]}>
           <TextInput
             value={input}
             onChangeText={setInput}
+            onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
             placeholder="Bir şey sorun..."
             placeholderTextColor="#94a3b8"
             style={s.input}
             multiline
+            returnKeyType="default"
             testID="assistant-input"
           />
           <TouchableOpacity

@@ -29,6 +29,9 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // href:null ile gizli) — böylece masaüstü sol sidebar bu sayfalarda da
   // görünmeye devam ediyor, tıpkı Kasa/Tahsilat gibi.
   items.push({ name: 'assistant', title: 'AI Asistan', icon: 'sparkles', color: theme.colors.primary });
+  // Ekip Sohbeti: firma sahibi + personel arasında birebir mesajlaşma —
+  // herkese açık (Kasa/Tahsilat gibi kısıtlı değil).
+  items.push({ name: 'team-chat', title: 'Ekip Sohbeti', icon: 'chatbubbles', color: theme.colors.modules.mesaj });
   // Personel ekranı sadece firma sahibine gösterilir.
   if (opts?.isOwner) {
     items.push({ name: 'personel', title: 'Personel', icon: 'person-add', color: theme.colors.gold });

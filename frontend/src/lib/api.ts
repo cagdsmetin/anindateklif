@@ -217,6 +217,18 @@ export const api = {
   rates: (): Promise<RatesT> => req('/rates'),
   sendPhoneCode: (phone: string) => req('/auth/phone/send-code', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyPhoneCode: (phone: string, code: string) => req('/auth/phone/verify-code', { method: 'POST', body: JSON.stringify({ phone, code }) }),
+
+  // ---- Ekip Sohbeti (personel içi mesajlaşma) ----
+  teamDirectory: (companyId: string): Promise<TeamDirectoryMemberT[]> =>
+    req(`/team/directory?company_id=${encodeURIComponent(companyId)}`),
+  teamConversations: (companyId: string, scope: 'mine' | 'all' = 'mine'): Promise<TeamConversationT[]> =>
+    req(`/team/conversations?company_id=${encodeURIComponent(companyId)}&scope=${scope}`),
+  teamThread: (companyId: string, withUserId: string): Promise<TeamMessageT[]> =>
+    req(`/team/messages?company_id=${encodeURIComponent(companyId)}&with=${encodeURIComponent(withUserId)}`),
+  teamThreadAdmin: (companyId: string, a: string, b: string): Promise<TeamMessageT[]> =>
+    req(`/team/messages/admin?company_id=${encodeURIComponent(companyId)}&a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
+  sendTeamMessage: (companyId: string, recipientId: string, text: string): Promise<TeamMessageT> =>
+    req('/team/messages', { method: 'POST', body: JSON.stringify({ companyId, recipientId, text }) }),
   subscriptionCheckout: (data: { plan: string; buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
     req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -260,6 +272,32 @@ export type StaffInviteInfoT = {
 };
 
 export type BankAccountT = { id: string; banka: string; turu: string; hesapSahibi: string; iban: string };
+
+export type TeamDirectoryMemberT = { userId: string; name: string; email: string; role: string };
+
+export type TeamMessageT = {
+  id: string;
+  companyId: string;
+  senderId: string;
+  senderName: string;
+  recipientId: string;
+  recipientName: string;
+  text: string;
+  createdAt: string;
+  readAt?: string | null;
+};
+
+export type TeamConversationT = {
+  otherUserId?: string | null;
+  otherUserName?: string | null;
+  lastText: string;
+  lastAt: string;
+  unreadCount: number;
+  participantAId?: string | null;
+  participantAName?: string | null;
+  participantBId?: string | null;
+  participantBName?: string | null;
+};
 
 export type PromoCodeT = {
   code: string;

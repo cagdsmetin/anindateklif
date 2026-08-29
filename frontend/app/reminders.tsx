@@ -117,7 +117,9 @@ export default function RemindersScreen() {
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Hatırlatmalar</Text>
-        <View style={s.headerBtn} />
+        <TouchableOpacity onPress={() => router.push('/calendar' as any)} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-open-calendar">
+          <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
       <View style={s.divider} />
 

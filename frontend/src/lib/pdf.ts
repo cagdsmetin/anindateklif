@@ -114,14 +114,15 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      end up different heights. */
   .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; padding-bottom:9px; margin-bottom:12px; }
   .hdr td { padding:0; vertical-align:top; }
-  .hdr td.left-col { width:55%; padding-right:16px; }
-  .hdr td.right-col { width:45%; padding-left:16px; text-align:right; }
+  .hdr td.left-col { width:34%; padding-right:10px; }
+  .hdr td.center-col { width:32%; padding:0 8px; text-align:center; vertical-align:middle; }
+  .hdr td.right-col { width:34%; padding-left:10px; text-align:right; }
 
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
-  .logo { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; margin:0 0 9px 0; display:block; }
-  .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 0 14px 0; display:inline-block; font-size:17px; }
+  .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
+  .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.6; margin:0 0 3px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
@@ -201,12 +202,14 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     <tr>
       <td class="left-col">
         <div class="cname">${esc(company.sirketAdi || '')}</div>
-        ${logo}
         ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
         ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
         ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
         ${company.email ? `<div class="cline">${esc(company.email)}</div>` : ''}
         ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
+      </td>
+      <td class="center-col">
+        ${logo}
       </td>
       <td class="right-col">
         <div class="doc-title">TEKLİF FORMU</div>
@@ -288,7 +291,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
   ` : ''}
 
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
 
   <!-- ATTACHMENT PAGES -->
   ${eklerHtml}
@@ -377,13 +380,14 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
 
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:8px; border-bottom:2.5px solid #1c1c1e; margin-bottom:11px; }
-  .company-block { max-width:60%; }
+  .company-block { flex:1; max-width:38%; }
   .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 7px; }
   .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.7; }
-  .head-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
+  .logo-center { flex:0 0 auto; max-width:24%; display:flex; align-items:flex-start; justify-content:center; padding:0 10px; }
+  .head-right { flex:1; max-width:38%; text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { margin-bottom:8px; }
-  .logo-img { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; display:block; }
-  .logo-fallback { width:100px; height:100px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24pt; border-radius:4px; }
+  .logo-img { max-width:170px; max-height:130px; object-fit:contain; object-position:center; display:block; margin:0 auto; }
+  .logo-fallback { width:100px; height:100px; background:#4338ca; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:24pt; border-radius:4px; margin:0 auto; }
   .doc-tag { font-size:7.2pt; font-weight:800; letter-spacing:2px; color:#4338ca; }
   .doc-title { font-size:19pt; font-weight:800; letter-spacing:0.5px; margin-top:1px; }
   .meta-table { border-collapse:collapse; margin-top:8px; }
@@ -457,16 +461,16 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     <div class="header">
       <div class="company-block">
         <div class="company-name">${v(company.sirketAdi)}</div>
-        <div class="logo-row">
-          ${logoSrc
-            ? `<img class="logo-img" src="${logoSrc}" />`
-            : `<div class="logo-fallback">${esc(monogram)}</div>`}
-        </div>
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="company-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
           ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
         </div>` : ''}
+      </div>
+      <div class="logo-center">
+        ${logoSrc
+          ? `<img class="logo-img" src="${logoSrc}" />`
+          : `<div class="logo-fallback">${esc(monogram)}</div>`}
       </div>
       <div class="head-right">
         <div class="doc-title">TEKLİF FORMU</div>
@@ -537,7 +541,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     </div>
 
     ${bankSection}
-    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
+    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
   </div>
   ${ekPages}
 </body>
@@ -626,13 +630,14 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 
   /* Header */
   .top-row { display:flex; justify-content:space-between; align-items:flex-start; }
-  .brand { max-width:56%; }
+  .brand { flex:1; max-width:36%; }
+  .logo-center { flex:0 0 auto; max-width:26%; display:flex; align-items:flex-start; justify-content:center; padding:0 10px; }
   .logo-row { margin-bottom:9px; }
-  .logo-img { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; display:block; }
-  .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; }
+  .logo-img { max-width:170px; max-height:130px; object-fit:contain; object-position:center; display:block; margin:0 auto; }
+  .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; margin:0 auto; }
   .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; margin:0 0 8px; }
   .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
-  .doc-id { text-align:right; }
+  .doc-id { flex:1; max-width:36%; text-align:right; }
   .doc-title { font-size:20pt; letter-spacing:3px; font-weight:400; color:#2b2926; }
   .doc-sub { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }
   .app-credit { text-align:center; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7pt; color:#8a8478; padding-top:8px; margin-top:9px; border-top:1px solid #e4ded2; }
@@ -707,16 +712,16 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     <div class="top-row">
       <div class="brand">
         <div class="brand-name">${v(company.sirketAdi)}</div>
-        <div class="logo-row">
-          ${logoSrc
-            ? `<img class="logo-img" src="${logoSrc}" />`
-            : `<div class="logo-fallback">${esc(monogram)}</div>`}
-        </div>
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="brand-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
           ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
         </div>` : ''}
+      </div>
+      <div class="logo-center">
+        ${logoSrc
+          ? `<img class="logo-img" src="${logoSrc}" />`
+          : `<div class="logo-fallback">${esc(monogram)}</div>`}
       </div>
       <div class="doc-id">
         <div class="doc-title">TEKLİF</div>
@@ -791,7 +796,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   </div>
 
   ${bankSection}
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.</div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
   ${ekPages}
 </body>
 </html>`;

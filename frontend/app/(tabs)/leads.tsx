@@ -286,7 +286,7 @@ export default function LeadsScreen() {
                 <Text style={s.emptyTextBox}>Bugün aranacak firma yok.</Text>
                 <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep">
                   <Ionicons name="add-circle" size={16} color="#fff" />
-                  <Text style={s.ctaTalepBtnText}>Yeni Talep Oluştur</Text>
+                  <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -302,7 +302,7 @@ export default function LeadsScreen() {
               <Text style={s.emptyTextBox}>Henüz firma eklenmedi.</Text>
               <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep-2">
                 <Ionicons name="add-circle" size={16} color="#fff" />
-                <Text style={s.ctaTalepBtnText}>Yeni Talep Oluştur</Text>
+                <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -312,7 +312,7 @@ export default function LeadsScreen() {
 
         {!loading && tab === 'talep' && (
           <View>
-            <Text style={s.sectionTitle}>Yeni Arama Talebi Oluştur</Text>
+            <Text style={s.sectionTitle}>Aranacak Firmaları Bul</Text>
             <Text style={s.helperTinyMuted}>
               Hangi sektörde ve hangi bölgede firma aramamızı istiyorsan yaz — araştırıp bulduğumuz firmaları listene ekleyeceğiz.
             </Text>

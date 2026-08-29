@@ -103,6 +103,15 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
     iframe.style.height = `${totalHeight}px`;
     await new Promise((r) => setTimeout(r, 60));
 
+    // Capture the website credit link's position (in CSS px, relative to
+    // the iframe body -- there's no scrolling since the iframe is sized to
+    // fit the full content) *before* rasterizing, so we can lay a real
+    // clickable jsPDF link annotation over the flattened image afterwards.
+    // html2canvas only produces pixels; without this the "www.anindateklif.co"
+    // text would just be inert text baked into the page image.
+    const creditEl = doc.getElementById('app-credit-link');
+    const creditRectCss = creditEl ? creditEl.getBoundingClientRect() : null;
+
     const canvas = await html2canvas(doc.body, {
       scale: 2,
       useCORS: true,
@@ -112,6 +121,16 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
       windowWidth: PAGE_PX_WIDTH,
       windowHeight: totalHeight,
     });
+
+    // html2canvas scale:2 above means canvas pixels = CSS px * 2.
+    const creditRectCanvas = creditRectCss
+      ? {
+          left: creditRectCss.left * 2,
+          top: creditRectCss.top * 2,
+          width: creditRectCss.width * 2,
+          height: creditRectCss.height * 2,
+        }
+      : null;
 
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageWidthPt = pdf.internal.pageSize.getWidth();
@@ -184,6 +203,25 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
 
       if (pageIndex > 0) pdf.addPage();
       pdf.addImage(pageImgData, 'JPEG', 0, 0, pageWidthPt, pageImgHeightPt);
+
+      // If the website credit line's vertical center lands on this page,
+      // overlay an invisible clickable link at its exact rasterized
+      // position so tapping "www.anindateklif.co" in the final PDF opens
+      // the site, even though the text itself is just pixels in the image.
+      if (creditRectCanvas) {
+        const centerY = creditRectCanvas.top + creditRectCanvas.height / 2;
+        if (centerY >= renderedPx && centerY < cutY) {
+          const scale = pageWidthPt / canvas.width;
+          const pad = 2;
+          pdf.link(
+            Math.max(0, creditRectCanvas.left * scale - pad),
+            Math.max(0, (creditRectCanvas.top - renderedPx) * scale - pad),
+            creditRectCanvas.width * scale + pad * 2,
+            creditRectCanvas.height * scale + pad * 2,
+            { url: 'https://www.anindateklif.co' }
+          );
+        }
+      }
 
       renderedPx += sliceHeight;
       pageIndex += 1;

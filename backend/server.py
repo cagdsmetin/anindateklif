@@ -2313,6 +2313,10 @@ class RatesResponse(BaseModel):
     bist100: Optional[float] = None
     bist50: Optional[float] = None
     bist30: Optional[float] = None
+    altin_ons_usd: Optional[float] = None
+    altin_gram_try: Optional[float] = None
+    gumus_ons_usd: Optional[float] = None
+    gumus_gram_try: Optional[float] = None
     updatedAt: str = ""
     stale: bool = False
 
@@ -2418,6 +2422,26 @@ async def get_rates():
             result["bist30"] = b30
     except Exception:
         logging.warning("[rates] BIST fetch failed", exc_info=True)
+
+    # Altın/Gümüş: ons (troy ons) fiyatı USD cinsinden Yahoo Finance spot
+    # sembolünden alınıp, zaten elimizde olan USD/TRY kuruyla gram fiyatına
+    # çeviriyoruz (1 ons = 31.1034768 gram) -- Türkiye'de kuyumcu fiyatı
+    # olarak asıl aranan değer bu.
+    try:
+        ons_altin, ons_gumus = await asyncio.gather(
+            _fetch_yahoo_index("XAUUSD=X"),
+            _fetch_yahoo_index("XAGUSD=X"),
+        )
+        if ons_altin is not None:
+            result["altin_ons_usd"] = ons_altin
+            if usd_try_rate:
+                result["altin_gram_try"] = (ons_altin / 31.1034768) * usd_try_rate
+        if ons_gumus is not None:
+            result["gumus_ons_usd"] = ons_gumus
+            if usd_try_rate:
+                result["gumus_gram_try"] = (ons_gumus / 31.1034768) * usd_try_rate
+    except Exception:
+        logging.warning("[rates] Altin/Gumus fetch failed", exc_info=True)
 
     result["updatedAt"] = utc_now_iso()
     result["stale"] = not result.get("usd_try") and not result.get("btc_try")

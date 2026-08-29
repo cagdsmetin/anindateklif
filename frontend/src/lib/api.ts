@@ -325,6 +325,10 @@ export type RatesT = {
   bist100?: number | null;
   bist50?: number | null;
   bist30?: number | null;
+  altin_ons_usd?: number | null;
+  altin_gram_try?: number | null;
+  gumus_ons_usd?: number | null;
+  gumus_gram_try?: number | null;
   updatedAt?: string;
   stale?: boolean;
 };

@@ -262,6 +262,24 @@ export default function PanelScreen() {
               {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
               {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
               {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.altin_gram_try != null && (
+                <RatePill
+                  label="Gram Altın"
+                  value={rates.altin_gram_try}
+                  subValue={rates.altin_ons_usd != null ? fmtUSD(rates.altin_ons_usd) + ' (ons)' : null}
+                  icon="ellipse"
+                  accent={theme.colors.gold}
+                />
+              )}
+              {rates.gumus_gram_try != null && (
+                <RatePill
+                  label="Gram Gümüş"
+                  value={rates.gumus_gram_try}
+                  subValue={rates.gumus_ons_usd != null ? fmtUSD(rates.gumus_ons_usd) + ' (ons)' : null}
+                  icon="ellipse-outline"
+                  accent={theme.colors.textMuted}
+                />
+              )}
             </ScrollView>
           </View>
         )}

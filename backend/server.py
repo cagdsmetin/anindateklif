@@ -2881,6 +2881,10 @@ class LeadCompany(BaseModel):
     telefon: str = ""
     durum: str = "Aranmadı"
     notlar: str = ""
+    # Bu firmayı ne zaman TEKRAR aramamız gerektiğini işaretlemek için
+    # (örn. "Cevap Yok" dendiğinde 3 gün sonra tekrar ara). Boşsa özel bir
+    # tarih yok demektir. "YYYY-MM-DD" formatında.
+    tekrarTarihi: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -2911,6 +2915,7 @@ class LeadBulkAddRequest(BaseModel):
 class LeadStatusUpdate(BaseModel):
     durum: Optional[str] = None
     notlar: Optional[str] = None
+    tekrarTarihi: Optional[str] = None
 
 
 class LeadDailyCountUpdate(BaseModel):
@@ -2958,13 +2963,22 @@ async def list_leads_today(company_id: str, user=Depends(get_current_user)):
     company = await _own_company(user, company_id)
     daily_count = int(company.get("leadDailyCount") or DEFAULT_LEAD_DAILY_COUNT)
     daily_count = max(1, min(daily_count, MAX_LEAD_DAILY_COUNT))
+    today_str = datetime.now(timezone.utc).date().isoformat()
     # "Bugün aranacaklar" = henüz aranmamış ya da cevap alınamamış firmalar,
     # en eski eklenenden başlayarak günlük limit kadarı. Bir firma arandı /
     # sonuçlandı olarak işaretlenince otomatik olarak bu listeden düşer ve
     # yerine bir sonraki bekleyen firma gelir — ayrı bir "gün" alanı tutmaya
     # gerek kalmadan "aranmayanlar bir sonraki güne taşınır" davranışı budur.
+    # "Tekrar arama tarihi" ileri bir güne ayarlanmışsa (örn. "3 gün sonra
+    # tekrar ara") o tarih gelene kadar bu listede tekrar görünmez — unutma
+    # riski olmadan, ama gereksiz yere de her gün karşımıza çıkmadan.
     docs = await db.leads.find(
-        {"companyId": company_id, "userId": user["user_id"], "durum": {"$in": ["Aranmadı", "Cevap Yok"]}},
+        {
+            "companyId": company_id,
+            "userId": user["user_id"],
+            "durum": {"$in": ["Aranmadı", "Cevap Yok"]},
+            "$or": [{"tekrarTarihi": {"$in": ["", None]}}, {"tekrarTarihi": {"$lte": today_str}}],
+        },
         {"_id": 0},
     ).sort("createdAt", 1).limit(daily_count).to_list(daily_count)
     return [LeadCompany(**d) for d in docs]
@@ -2990,6 +3004,11 @@ async def update_lead(lead_id: str, payload: LeadStatusUpdate, user=Depends(get_
         updates["durum"] = payload.durum
     if payload.notlar is not None:
         updates["notlar"] = payload.notlar[:2000]
+    if payload.tekrarTarihi is not None:
+        t = (payload.tekrarTarihi or "").strip()
+        if t and not re.match(r"^\d{4}-\d{2}-\d{2}$", t):
+            raise HTTPException(400, "Geçersiz tarih formatı")
+        updates["tekrarTarihi"] = t
     await db.leads.update_one({"id": lead_id, "userId": user["user_id"]}, {"$set": updates})
     doc.update(updates)
     return LeadCompany(**doc)

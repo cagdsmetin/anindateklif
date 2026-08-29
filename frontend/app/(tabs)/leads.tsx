@@ -17,6 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api, LeadCompanyT, LeadSearchRequestT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
+import { useOrderedNames } from '@/src/lib/orderPrefs';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
 const DURUM_COLORS: Record<string, string> = {
@@ -36,6 +37,11 @@ export default function LeadsScreen() {
   const { activeCompany, showToast } = useApp();
 
   const [tab, setTab] = useState<Tab>('bugun');
+  const [reorderingTabs, setReorderingTabs] = useState(false);
+  const { order: tabOrder, moveLeft: moveTabLeft, moveRight: moveTabRight } = useOrderedNames(
+    'leadsTabOrder_v1',
+    ['bugun', 'tumu', 'talep']
+  );
   const [loading, setLoading] = useState(false);
   const [todayLeads, setTodayLeads] = useState<LeadCompanyT[]>([]);
   const [allLeads, setAllLeads] = useState<LeadCompanyT[]>([]);
@@ -50,6 +56,7 @@ export default function LeadsScreen() {
 
   const [notesFor, setNotesFor] = useState<LeadCompanyT | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [reminderDate, setReminderDate] = useState('');
 
   const companyId = activeCompany?.id;
 
@@ -167,17 +174,38 @@ export default function LeadsScreen() {
   const openNotes = (lead: LeadCompanyT) => {
     setNotesFor(lead);
     setNoteText(lead.notlar || '');
+    setReminderDate(lead.tekrarTarihi || '');
+  };
+
+  const isoDatePlusDays = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  const trDateShort = (iso: string) => {
+    const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : iso;
   };
 
   const saveNote = async () => {
     if (!notesFor) return;
     try {
-      await api.updateLead(notesFor.id, { notlar: noteText });
+      await api.updateLead(notesFor.id, { notlar: noteText, tekrarTarihi: reminderDate });
       setNotesFor(null);
       await load();
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
     }
+  };
+
+  const callLead = (lead: LeadCompanyT) => {
+    const raw = (lead.telefon || '').replace(/[^0-9+]/g, '');
+    if (!raw) {
+      showToast('Telefon numarası yok');
+      return;
+    }
+    Linking.openURL(`tel:${raw}`).catch(() => showToast('Arama başlatılamadı'));
   };
 
   if (!activeCompany) {
@@ -199,9 +227,18 @@ export default function LeadsScreen() {
     <View key={lead.id} style={s.leadCard} testID={`lead-${lead.id}`}>
       <View style={{ flex: 1 }}>
         <Text style={s.leadName} numberOfLines={1}>{lead.firma}</Text>
-        <Text style={s.leadSub} numberOfLines={1}>
-          {lead.bolge || '-'} · {lead.kategori || '-'} · {lead.telefon || 'telefon yok'}
-        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+          <View style={s.tagPill}><Text style={s.tagPillText}>Bölge: {lead.bolge || '-'}</Text></View>
+          <View style={s.tagPill}><Text style={s.tagPillText}>Sektör: {lead.kategori || '-'}</Text></View>
+        </View>
+        {lead.telefon ? (
+          <TouchableOpacity style={s.phoneRow} onPress={() => callLead(lead)} testID={`lead-call-${lead.id}`}>
+            <Ionicons name="call" size={13} color={theme.colors.primary} />
+            <Text style={s.phoneRowText}>{lead.telefon}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={s.leadSub}>telefon yok</Text>
+        )}
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
           {DURUM_OPTIONS.map((d) => (
             <TouchableOpacity
@@ -213,10 +250,16 @@ export default function LeadsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {!!lead.tekrarTarihi && (
+          <View style={s.reminderBadge}>
+            <Ionicons name="alarm-outline" size={12} color="#b45309" />
+            <Text style={s.reminderBadgeText}>Tekrar ara: {trDateShort(lead.tekrarTarihi)}</Text>
+          </View>
+        )}
         {!!lead.notlar && <Text style={s.leadNote} numberOfLines={2}>📝 {lead.notlar}</Text>}
       </View>
       <View style={{ alignItems: 'flex-end', gap: 8 }}>
-        <TouchableOpacity style={s.iconBtn} onPress={() => openNotes(lead)}>
+        <TouchableOpacity style={s.iconBtn} onPress={() => openNotes(lead)} testID={`lead-notes-${lead.id}`}>
           <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={s.waBtn} onPress={() => openWhatsApp(lead)}>
@@ -248,17 +291,56 @@ export default function LeadsScreen() {
           <View style={s.statCard}><Text style={s.statValue}>{stats.kapanan}</Text><Text style={s.statLabel}>KAPANAN İŞ</Text></View>
         </View>
 
-        <View style={s.tabRow}>
-          <TouchableOpacity style={[s.tabBtn, tab === 'bugun' && s.tabBtnActive]} onPress={() => setTab('bugun')}>
-            <Text style={[s.tabText, tab === 'bugun' && s.tabTextActive]}>Bugün Aranacaklar ({todayLeads.length})</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.tabBtn, tab === 'tumu' && s.tabBtnActive]} onPress={() => setTab('tumu')}>
-            <Text style={[s.tabText, tab === 'tumu' && s.tabTextActive]}>Tüm Firmalar ({allLeads.length})</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.tabBtn, tab === 'talep' && s.tabBtnActive]} onPress={() => setTab('talep')}>
-            <Text style={[s.tabText, tab === 'talep' && s.tabTextActive]}>Yeni Talep</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: reorderingTabs ? 4 : 0 }}>
+          <View style={[s.tabRow, { marginBottom: 0, flex: 1 }]}>
+            {tabOrder.map((tName, idx) => {
+              const labelMap: Record<string, string> = {
+                bugun: `Bugün Aranacaklar (${todayLeads.length})`,
+                tumu: `Tüm Firmalar (${allLeads.length})`,
+                talep: 'Yeni Talep',
+              };
+              const t = tName as Tab;
+              return (
+                <View key={t} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <TouchableOpacity style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => (reorderingTabs ? undefined : setTab(t))} testID={`lead-tab-${t}`}>
+                    <Text style={[s.tabText, tab === t && s.tabTextActive]}>{labelMap[t]}</Text>
+                  </TouchableOpacity>
+                  {reorderingTabs && (
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
+                      <TouchableOpacity
+                        style={[s.tabReorderBtn, idx === 0 && s.tabReorderBtnDisabled]}
+                        disabled={idx === 0}
+                        onPress={() => moveTabLeft(tName)}
+                        testID={`lead-tab-move-left-${t}`}
+                      >
+                        <Ionicons name="chevron-back" size={14} color={theme.colors.text} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.tabReorderBtn, idx === tabOrder.length - 1 && s.tabReorderBtnDisabled]}
+                        disabled={idx === tabOrder.length - 1}
+                        onPress={() => moveTabRight(tName)}
+                        testID={`lead-tab-move-right-${t}`}
+                      >
+                        <Ionicons name="chevron-forward" size={14} color={theme.colors.text} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            style={[s.tabReorderToggle, reorderingTabs && s.tabReorderToggleActive]}
+            onPress={() => setReorderingTabs((v) => !v)}
+            testID="lead-tabs-reorder-toggle"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="swap-horizontal" size={16} color={reorderingTabs ? '#fff' : theme.colors.textMuted} />
           </TouchableOpacity>
         </View>
+        {reorderingTabs && (
+          <Text style={[s.helperTinyMuted, { marginBottom: 10 }]}>Oklarla sekmelerin sırasını değiştirebilirsin.</Text>
+        )}
 
         {loading && <ActivityIndicator style={{ marginVertical: 20 }} color={theme.colors.primary} />}
 
@@ -379,6 +461,29 @@ export default function LeadsScreen() {
               placeholderTextColor="#94a3b8"
               autoFocus
             />
+            <Text style={s.modalSubLabel}>Tekrar ne zaman arayalım? (unutmamak için)</Text>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+              <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(1))}>
+                <Text style={s.reminderPresetText}>Yarın</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(3))}>
+                <Text style={s.reminderPresetText}>3 gün sonra</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(7))}>
+                <Text style={s.reminderPresetText}>1 hafta sonra</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(30))}>
+                <Text style={s.reminderPresetText}>1 ay sonra</Text>
+              </TouchableOpacity>
+              {!!reminderDate && (
+                <TouchableOpacity style={[s.reminderPreset, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]} onPress={() => setReminderDate('')}>
+                  <Text style={[s.reminderPresetText, { color: '#dc2626' }]}>Temizle</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {!!reminderDate && (
+              <Text style={s.reminderChosenText}>Seçilen tarih: {trDateShort(reminderDate)} — o tarihe kadar "Bugün Aranacaklar" listesinde tekrar çıkmayacak.</Text>
+            )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setNotesFor(null)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
@@ -408,6 +513,10 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, marginTop: 4, letterSpacing: 0.3 },
   tabRow: { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
   tabBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  tabReorderToggle: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  tabReorderToggleActive: { backgroundColor: theme.colors.primary },
+  tabReorderBtn: { width: 22, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderRadius: 6 },
+  tabReorderBtnDisabled: { opacity: 0.3 },
   tabBtnActive: { backgroundColor: theme.colors.primary },
   tabText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
   tabTextActive: { color: '#fff' },
@@ -445,4 +554,14 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 12 },
   modalBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   modalBtnText: { fontSize: 13, fontWeight: '800' },
+  tagPill: { backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  tagPillText: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  phoneRowText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary, textDecorationLine: 'underline' },
+  reminderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 8 },
+  reminderBadgeText: { fontSize: 10.5, fontWeight: '800', color: '#b45309' },
+  modalSubLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
+  reminderPreset: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F8FAFC' },
+  reminderPresetText: { fontSize: 11, fontWeight: '700', color: theme.colors.text },
+  reminderChosenText: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
 });

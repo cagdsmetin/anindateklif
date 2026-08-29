@@ -80,7 +80,6 @@ export default function CompanyScreen() {
       setOtpBusy(false);
     }
   };
-  const [newEmail, setNewEmail] = useState('');
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showConfirmDeleteAccount, setShowConfirmDeleteAccount] = useState(false);
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
@@ -105,14 +104,6 @@ export default function CompanyScreen() {
     try { await updateCompany(form.id, form); showToast('Firma bilgileri kaydedildi'); }
     catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
   };
-
-  const addEmail = () => {
-    if (!form || !newEmail.trim()) return;
-    if (form.hazirlayanEmails?.includes(newEmail.trim())) { showToast('Bu email zaten var'); return; }
-    setForm({ ...form, hazirlayanEmails: [...(form.hazirlayanEmails || []), newEmail.trim()] });
-    setNewEmail('');
-  };
-  const removeEmail = (em: string) => form && setForm({ ...form, hazirlayanEmails: (form.hazirlayanEmails || []).filter((e) => e !== em) });
 
   // Bank management
   const addBank = () => {
@@ -182,76 +173,6 @@ export default function CompanyScreen() {
               );
             })}
           </View>
-          {/* Hesabım — e-posta + telefon doğrulama */}
-          <SectionHeader title="HESABIM" />
-          {user?.email_verified === false && (
-            <View style={[s.supportBox, { marginBottom: 10 }]}>
-              <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <Ionicons name="alert-circle-outline" size={16} color={theme.colors.gold} />
-                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>E-posta adresi doğrulanmadı</Text>
-                </View>
-                <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
-                  {user.email} adresine gönderdiğimiz bağlantıya tıklayarak hesabını doğrula. Göremediysen tekrar gönderebilirsin.
-                </Text>
-                <TouchableOpacity style={[s.subscriptionBtn, resendBusy && { opacity: 0.6 }]} disabled={resendBusy} onPress={onResendVerification} testID="resend-email-verify-btn">
-                  <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
-                  <Text style={s.subscriptionBtnText}>{resendBusy ? 'Gönderiliyor...' : 'Doğrulama Bağlantısını Tekrar Gönder'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-          <View style={s.supportBox}>
-            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <Ionicons name={user?.phone_verified ? 'checkmark-circle' : 'alert-circle-outline'} size={16} color={user?.phone_verified ? theme.colors.green : theme.colors.textMuted} />
-                <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>
-                  {user?.phone_verified ? 'Telefon numarası doğrulandı' : 'Telefon numarası doğrulanmadı'}
-                </Text>
-              </View>
-              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16 }}>
-                Telefon doğrulama özelliği şu an bakımda, yakında tekrar aktif olacak.
-              </Text>
-            </View>
-          </View>
-
-          {/* Hesap silme (Google Play / App Store zorunlu) */}
-          <View style={[s.supportBox, { marginTop: 10 }]}>
-            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
-              <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.red, marginBottom: 6 }}>Hesabımı Sil</Text>
-              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
-                Hesabını ve tüm firma verilerini (teklifler, müşteriler, katalog, kasa/tahsilat kayıtları) kalıcı olarak siler. Bu işlem geri alınamaz.
-              </Text>
-              <TouchableOpacity style={[s.subscriptionBtn, { borderColor: theme.colors.red }]} onPress={() => setShowConfirmDeleteAccount(true)} testID="delete-account-btn">
-                <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>Hesabımı Kalıcı Olarak Sil</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Support */}
-          <SectionHeader title="DESTEK" />
-          <View style={s.supportBox}>
-            <TouchableOpacity style={s.remindersBtn} onPress={() => router.push('/reminders')} testID="reminders-btn">
-              <Ionicons name="notifications-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.remindersBtnText}>Hatırlatmalar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.reportsBtn} onPress={() => router.push('/reports')} testID="reports-btn">
-              <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.reportsBtnText}>Raporlar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
-            <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/(tabs)/assistant')} testID="ai-assistant-btn">
-              <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={s.assistantBtnText}>AI Asistan ile Konuş</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/subscription')} testID="subscription-btn">
-              <Ionicons name="star" size={18} color={theme.colors.primary} />
-              <Text style={s.subscriptionBtnText}>Abonelik Yönetimi</Text>
-            </TouchableOpacity>
-          </View>
           {/* Logo */}
           <SectionHeader title="ŞİRKET LOGOSU" />
           <View style={s.logoBox}>
@@ -313,32 +234,6 @@ export default function CompanyScreen() {
             <Text style={s.addDashedText}>Yeni Banka Hesabı Ekle</Text>
           </TouchableOpacity>
 
-          {/* Hazırlayan Emails */}
-          <SectionHeader title="HAZIRLAYAN E-MAIL LİSTESİ" />
-          <View style={s.chipList}>
-            {(form.hazirlayanEmails || []).map((em) => (
-              <View key={em} style={s.emChip}>
-                <Ionicons name="mail-outline" size={12} color={theme.colors.primary} />
-                <Text style={s.chipTxt} numberOfLines={1}>{em}</Text>
-                <TouchableOpacity onPress={() => removeEmail(em)}><Ionicons name="close" size={13} color={theme.colors.red} /></TouchableOpacity>
-              </View>
-            ))}
-            {form.hazirlayanEmails.length === 0 && <Text style={s.hintMuted}>Henüz eklenmedi</Text>}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-            <TextInput style={[s.input, { flex: 1 }]} placeholder="yeni@firma.com" placeholderTextColor="#94a3b8" value={newEmail} onChangeText={setNewEmail} autoCapitalize="none" keyboardType="email-address" testID="hzr-input" />
-            <TouchableOpacity style={s.addPlusBtn} onPress={addEmail} testID="hzr-add-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
-          </View>
-
-          {/* System Configurator moved to Katalog tab */}
-          <SectionHeader title="🎯 HİZMET / ÜRÜN YAPILANDIRICI" />
-          <TouchableOpacity style={s.goCatalogBtn} onPress={() => router.push('/(tabs)/catalog')} testID="go-catalog-configurator-btn">
-            <Ionicons name="cube-outline" size={18} color="#fff" />
-            <Text style={s.goCatalogBtnText}>Katalog Sekmesinden Yapılandır</Text>
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
-          </TouchableOpacity>
-          <Text style={s.hint}>Hizmet / ürün seçenekli alanları artık Katalog sekmesinden tanımlıyorsunuz.</Text>
-
           <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
             <Ionicons name="checkmark-done" size={18} color="#fff" />
             <Text style={s.saveBtnText}>Firma Bilgilerini Kaydet</Text>
@@ -350,6 +245,80 @@ export default function CompanyScreen() {
               <Text style={s.deleteCompanyText}>Bu Firmayı Sil</Text>
             </TouchableOpacity>
           )}
+
+          {/* Hesabım — e-posta + telefon doğrulama */}
+          <SectionHeader title="HESABIM" />
+          {user?.email_verified === false && (
+            <View style={[s.supportBox, { marginBottom: 10 }]}>
+              <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="alert-circle-outline" size={16} color={theme.colors.gold} />
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>E-posta adresi doğrulanmadı</Text>
+                </View>
+                <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
+                  {user.email} adresine gönderdiğimiz bağlantıya tıklayarak hesabını doğrula. Göremediysen tekrar gönderebilirsin.
+                </Text>
+                <TouchableOpacity style={[s.subscriptionBtn, resendBusy && { opacity: 0.6 }]} disabled={resendBusy} onPress={onResendVerification} testID="resend-email-verify-btn">
+                  <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
+                  <Text style={s.subscriptionBtnText}>{resendBusy ? 'Gönderiliyor...' : 'Doğrulama Bağlantısını Tekrar Gönder'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          <View style={s.supportBox}>
+            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name={user?.phone_verified ? 'checkmark-circle' : 'alert-circle-outline'} size={16} color={user?.phone_verified ? theme.colors.green : theme.colors.textMuted} />
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>
+                  {user?.phone_verified ? 'Telefon numarası doğrulandı' : 'Telefon numarası doğrulanmadı'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16 }}>
+                Telefon doğrulama özelliği şu an bakımda, yakında tekrar aktif olacak.
+              </Text>
+            </View>
+          </View>
+
+          {/* Support */}
+          <SectionHeader title="DESTEK" />
+          <View style={s.supportBox}>
+            <TouchableOpacity style={s.remindersBtn} onPress={() => router.push('/reminders')} testID="reminders-btn">
+              <Ionicons name="notifications-outline" size={18} color={theme.colors.primary} />
+              <Text style={s.remindersBtnText}>Hatırlatmalar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.reportsBtn} onPress={() => router.push('/reports')} testID="reports-btn">
+              <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
+              <Text style={s.reportsBtnText}>Raporlar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
+            <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/(tabs)/assistant')} testID="ai-assistant-btn">
+              <Ionicons name="sparkles" size={18} color="#fff" />
+              <Text style={s.assistantBtnText}>AI Asistan ile Konuş</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/subscription')} testID="subscription-btn">
+              <Ionicons name="star" size={18} color={theme.colors.primary} />
+              <Text style={s.subscriptionBtnText}>Abonelik Yönetimi</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Hesap silme (Google Play / App Store zorunlu) — sayfanın en altında,
+              yanlışlıkla dokunulmasın diye ayrı ve son bölüm olarak duruyor. */}
+          <View style={[s.supportBox, { marginTop: 10, borderColor: theme.colors.red + '33' }]}>
+            <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
+              <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.red, marginBottom: 6 }}>Hesabımı Sil</Text>
+              <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
+                {user?.is_staff
+                  ? 'Sadece kendi personel girişini kalıcı olarak siler — firma sahibinin verilerine dokunmaz.'
+                  : 'Hesabını ve tüm firma verilerini (teklifler, müşteriler, katalog, kasa/tahsilat kayıtları) kalıcı olarak siler. Bu işlem geri alınamaz.'}
+              </Text>
+              <TouchableOpacity style={[s.subscriptionBtn, { borderColor: theme.colors.red }]} onPress={() => setShowConfirmDeleteAccount(true)} testID="delete-account-btn">
+                <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
+                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>Hesabımı Kalıcı Olarak Sil</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 

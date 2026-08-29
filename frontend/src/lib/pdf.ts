@@ -95,8 +95,13 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
   @page { size: A4; margin: 10mm; }
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=block');
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
-  body { font-family: 'Georgia','Cambria','Times New Roman',serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; background:#ffffff; }
+  /* Kurumsal, tek tip görünüm için üç şablon da (Klasik/Modern/Minimal) aynı
+     sans-serif aile üzerinden okunuyor — hem başlık/etiket metinleri hem de
+     rakamlar (fiyatlar, adetler) burada devralınan tek font-family'den geliyor,
+     böylece hiçbir hücre farklı bir yazı karakterinde görünmüyor. */
+  body { font-family: 'Montserrat', 'Helvetica Neue', Arial, 'Segoe UI', sans-serif; margin: 0; color:#0f172a; font-size:11px; overflow-x:hidden; background:#ffffff; }
   .sheet { padding: 10mm; }
 
   /* HEADER — table-layout:fixed pins both columns to their declared % width
@@ -178,7 +183,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .bank-table td { padding:4.5px 9px; font-size:11px; border-bottom:1px solid #e2e8f0; }
   .bank-table tr:last-child td { border-bottom:none; }
   .bank-table td.bk-name { color:#0f172a; width:35%; font-weight:700; }
-  .bank-table td.bk-iban { color:#0f172a; font-family:'Courier New',monospace; letter-spacing:0.02em; }
+  .bank-table td.bk-iban { color:#0f172a; letter-spacing:0.02em; }
   .bank-footer { font-size:9.5px; color:#64748b; padding:7px 0 0; }
 
   /* ATTACHMENTS */
@@ -195,8 +200,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <table class="hdr">
     <tr>
       <td class="left-col">
-        ${logo}
         <div class="cname">${esc(company.sirketAdi || '')}</div>
+        ${logo}
         ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
         ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
         ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
@@ -451,12 +456,12 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   <div class="sheet">
     <div class="header">
       <div class="company-block">
+        <div class="company-name">${v(company.sirketAdi)}</div>
         <div class="logo-row">
           ${logoSrc
             ? `<img class="logo-img" src="${logoSrc}" />`
             : `<div class="logo-fallback">${esc(monogram)}</div>`}
         </div>
-        <div class="company-name">${v(company.sirketAdi)}</div>
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="company-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
@@ -625,7 +630,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .logo-row { margin-bottom:9px; }
   .logo-img { max-width:380px; max-height:170px; object-fit:contain; object-position:left center; display:block; }
   .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; }
-  .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; }
+  .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; margin:0 0 8px; }
   .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
   .doc-id { text-align:right; }
   .doc-title { font-size:20pt; letter-spacing:3px; font-weight:400; color:#2b2926; }
@@ -701,12 +706,12 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   <div class="header">
     <div class="top-row">
       <div class="brand">
+        <div class="brand-name">${v(company.sirketAdi)}</div>
         <div class="logo-row">
           ${logoSrc
             ? `<img class="logo-img" src="${logoSrc}" />`
             : `<div class="logo-fallback">${esc(monogram)}</div>`}
         </div>
-        <div class="brand-name">${v(company.sirketAdi)}</div>
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="brand-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}

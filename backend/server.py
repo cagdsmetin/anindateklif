@@ -7,6 +7,7 @@ from pymongo.errors import DuplicateKeyError
 import os
 import re
 import json
+import base64
 import asyncio
 import logging
 import hashlib
@@ -152,6 +153,7 @@ ALLOWED_ORIGINS = [
 ]
 
 MAX_LOGO_BASE64_CHARS = 2_800_000  # ~2MB decoded
+MAX_CATALOG_FILE_BASE64_CHARS = 11_200_000  # ~8MB decoded (base64 is ~1.37x raw size)
 
 IYZICO_API_KEY = os.environ.get("IYZICO_API_KEY", "")
 IYZICO_SECRET_KEY = os.environ.get("IYZICO_SECRET_KEY", "")
@@ -1108,6 +1110,66 @@ class CatalogBulkCreate(BaseModel):
     items: List[CatalogItemCreate]
 
 
+ALLOWED_CATALOG_FILE_MIME_RE = re.compile(
+    r'^data:(application/pdf|image/(png|jpe?g|webp));base64,[A-Za-z0-9+/]+=*$'
+)
+
+
+class CompanyCatalogFile(BaseModel):
+    """Firmanın kendi hazırladığı katalog dosyaları (PDF/görsel) — Katalog
+    sekmesindeki yapılandırılmış ürün listesinden ayrı: burası hazır bir
+    tanıtım/katalog dosyasını olduğu gibi saklayıp müşteriyle paylaşmak için."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    name: str
+    mime: str
+    size: int  # decoded byte size, for display
+    dataBase64: str
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class CompanyCatalogFileCreate(BaseModel):
+    companyId: str
+    name: str
+    dataBase64: str
+
+    @field_validator("name")
+    @classmethod
+    def _name_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Dosya adı zorunlu")
+        if len(v) > 200:
+            v = v[:200]
+        return v
+
+    @field_validator("dataBase64")
+    @classmethod
+    def _file_valid(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Dosya verisi boş")
+        if len(v) > MAX_CATALOG_FILE_BASE64_CHARS:
+            raise ValueError("Dosya çok büyük (maksimum ~8MB)")
+        if not ALLOWED_CATALOG_FILE_MIME_RE.match(v):
+            raise ValueError("Sadece PDF, PNG, JPG veya WEBP dosyaları yüklenebilir")
+        return v
+
+
+class CompanyCatalogFileOut(BaseModel):
+    id: str
+    companyId: str
+    name: str
+    mime: str
+    size: int
+    createdAt: str
+
+
+class CatalogFileEmailShareRequest(BaseModel):
+    toEmail: EmailStr
+    message: str = ""
+
+
 class KasaEntry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     userId: str
@@ -1119,6 +1181,7 @@ class KasaEntry(BaseModel):
     yontem: str = "Nakit"  # Nakit | Kart | Havale/EFT | Diğer
     notlar: str = ""
     tarih: str  # YYYY-MM-DD
+    quoteId: Optional[str] = None  # onaylanan tekliften otomatik oluşturulduysa bağlantı (mükerrer önleme için)
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1929,6 +1992,104 @@ async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ============ COMPANY CATALOG FILES (hazır PDF/görsel katalog paylaşımı) ============
+MAX_CATALOG_FILES_PER_COMPANY = 20
+
+
+async def _send_catalog_file_email(to_email: str, from_company_name: str, file_name: str, mime: str, data_b64_content_only: str, message: str):
+    if not RESEND_API_KEY:
+        raise HTTPException(status_code=503, detail="E-posta gönderimi şu an kullanılamıyor")
+    try:
+        resp = await asyncio.to_thread(
+            requests.post,
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "from": RESEND_FROM_EMAIL,
+                "to": [to_email],
+                "subject": f"{from_company_name} — Katalog",
+                "html": (
+                    "<div style=\"font-family:sans-serif;max-width:480px;margin:0 auto;\">"
+                    f"<p><b>{esc(from_company_name)}</b> sizinle bir katalog dosyası paylaştı.</p>"
+                    + (f"<p>{esc(message)}</p>" if message.strip() else "")
+                    + "<p>Katalog dosyası bu e-postaya ek olarak iliştirilmiştir.</p>"
+                    "</div>"
+                ),
+                "attachments": [
+                    {"filename": file_name, "content": data_b64_content_only}
+                ],
+            },
+            timeout=20,
+        )
+        if resp.status_code >= 400:
+            logging.warning("[CatalogFile] resend send failed: %s %s", resp.status_code, resp.text[:300])
+            raise HTTPException(status_code=502, detail="E-posta gönderilemedi")
+    except HTTPException:
+        raise
+    except Exception:
+        logging.warning("[CatalogFile] resend send exception", exc_info=True)
+        raise HTTPException(status_code=502, detail="E-posta gönderilemedi")
+
+
+@api_router.get("/company/{company_id}/catalog-files", response_model=List[CompanyCatalogFileOut])
+async def list_catalog_files(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.catalog_files.find(
+        {"companyId": company_id, "userId": user["user_id"]},
+        {"_id": 0, "dataBase64": 0},
+    ).sort("createdAt", -1).to_list(200)
+    return [CompanyCatalogFileOut(**d) for d in docs]
+
+
+@api_router.post("/company/catalog-files", response_model=CompanyCatalogFileOut)
+async def upload_catalog_file(payload: CompanyCatalogFileCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    existing_count = await db.catalog_files.count_documents({"companyId": payload.companyId, "userId": user["user_id"]})
+    if existing_count >= MAX_CATALOG_FILES_PER_COMPANY:
+        raise HTTPException(status_code=400, detail=f"En fazla {MAX_CATALOG_FILES_PER_COMPANY} katalog dosyası yükleyebilirsiniz")
+
+    header, _, b64_content = payload.dataBase64.partition(",")
+    mime_match = re.match(r'^data:([^;]+);base64$', header)
+    mime = mime_match.group(1) if mime_match else "application/octet-stream"
+    try:
+        decoded_size = len(base64.b64decode(b64_content, validate=False))
+    except Exception:
+        decoded_size = 0
+
+    obj = CompanyCatalogFile(
+        userId=user["user_id"], companyId=payload.companyId, name=payload.name,
+        mime=mime, size=decoded_size, dataBase64=payload.dataBase64,
+    )
+    await db.catalog_files.insert_one(obj.dict())
+    return CompanyCatalogFileOut(id=obj.id, companyId=obj.companyId, name=obj.name, mime=obj.mime, size=obj.size, createdAt=obj.createdAt)
+
+
+@api_router.get("/company/catalog-files/{file_id}/download")
+async def download_catalog_file(file_id: str, user=Depends(get_current_user)):
+    doc = await db.catalog_files.find_one({"id": file_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Dosya bulunamadı")
+    return {"id": doc["id"], "name": doc["name"], "mime": doc["mime"], "dataBase64": doc["dataBase64"]}
+
+
+@api_router.delete("/company/catalog-files/{file_id}")
+async def delete_catalog_file(file_id: str, user=Depends(get_current_user)):
+    await db.catalog_files.delete_one({"id": file_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+@api_router.post("/company/catalog-files/{file_id}/share-email")
+async def share_catalog_file_email(file_id: str, payload: CatalogFileEmailShareRequest, user=Depends(get_current_user)):
+    doc = await db.catalog_files.find_one({"id": file_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Dosya bulunamadı")
+    company = await db.companies.find_one({"id": doc["companyId"], "userId": user["user_id"]}, {"_id": 0})
+    company_name = (company or {}).get("sirketAdi") or "Firma"
+    _, _, b64_content = doc["dataBase64"].partition(",")
+    await _send_catalog_file_email(str(payload.toEmail), company_name, doc["name"], doc["mime"], b64_content, payload.message)
+    return {"ok": True}
+
+
 def _require_kasa_access(user: Dict[str, Any]):
     """Restricted staff (role 'staff', not 'admin') never see Kasa/Tahsilat —
     enforced here server-side, not just by hiding the tabs in the app."""
@@ -2098,7 +2259,7 @@ async def delete_campaign(campaign_id: str, user=Depends(get_current_user)):
 async def list_quotes(company_id: str, user=Depends(get_current_user)):
     await _own_company(user, company_id)
     docs = await db.quotes.find(
-        {"companyId": company_id, "userId": user["user_id"], "deletedAt": {"$exists": False}}, {"_id": 0}
+        {"companyId": company_id, "userId": user["user_id"], "deletedAt": None}, {"_id": 0}
     ).sort("createdAt", -1).to_list(2000)
     return [Quote(**d) for d in docs]
 
@@ -2215,6 +2376,30 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
             )
             await db.tahsilat.insert_one(tahsilat_doc.model_dump())
 
+        # Kasaya da bekleyen gelir olarak işle — müşterinin carisine (Tahsilat)
+        # ek olarak, onaylanan teklifin tutarı Kasa'da "gelir" satırı olarak da
+        # görünsün (kullanıcı isteği: "kasaya ... işlemen gerekli"). Mükerrer
+        # önleme: bu quote_id için zaten bir kasa geliri varsa tekrar oluşturma.
+        existing_kasa = await db.kasa.find_one({
+            "userId": user["user_id"],
+            "quoteId": quote_id,
+            "tur": "gelir",
+        })
+        if not existing_kasa and float(doc.get("genelToplam") or 0) > 0:
+            kasa_doc = KasaEntry(
+                userId=user["user_id"],
+                companyId=doc.get("companyId"),
+                tur="gelir",
+                kategori="Teklif Onayı",
+                tutar=float(doc.get("genelToplam") or 0),
+                paraBirimi=doc.get("paraBirimi") or "TRY",
+                yontem="Diğer",
+                notlar=f"Teklif {doc.get('teklifNo', '')} onaylandı (otomatik oluşturuldu)",
+                tarih=utc_now_iso()[:10],
+                quoteId=quote_id,
+            )
+            await db.kasa.insert_one(kasa_doc.dict())
+
     return Quote(**doc)
 
 
@@ -2223,7 +2408,7 @@ async def delete_quote(quote_id: str, user=Depends(get_current_user)):
     """Soft delete — moves the quote to the trash instead of erasing it, so an
     accidental delete can be undone within QUOTE_TRASH_RETENTION_DAYS days."""
     result = await db.quotes.update_one(
-        {"id": quote_id, "userId": user["user_id"], "deletedAt": {"$exists": False}},
+        {"id": quote_id, "userId": user["user_id"], "deletedAt": None},
         {"$set": {"deletedAt": utc_now_iso()}},
     )
     if result.matched_count == 0:

@@ -1,5 +1,5 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
@@ -33,6 +33,19 @@ function Sidebar({ items }: { items: NavItem[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const { teamUnreadTotal } = useApp();
+  const { signOut } = useAuth();
+
+  const confirmSignOut = () => {
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm('Çıkış yapmak istediğinize emin misiniz?')) signOut();
+      return;
+    }
+    Alert.alert('Çıkış Yap', 'Çıkış yapmak istediğinize emin misiniz?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Çıkış Yap', style: 'destructive', onPress: () => signOut() },
+    ]);
+  };
 
   return (
     <View style={sb.container}>
@@ -59,6 +72,10 @@ function Sidebar({ items }: { items: NavItem[] }) {
           );
         })}
       </ScrollView>
+      <TouchableOpacity style={sb.signoutItem} onPress={confirmSignOut} testID="sidebar-signout">
+        <Ionicons name="log-out-outline" size={18} color={theme.colors.red} />
+        <Text style={sb.signoutText} numberOfLines={1}>Çıkış Yap</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -140,6 +157,8 @@ const sb = StyleSheet.create({
   navItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10, marginBottom: 4 },
   navText: { fontSize: 13, fontWeight: '700', color: theme.colors.textOnDark },
   navTextActive: { color: '#fff', fontWeight: '900' },
+  signoutItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10, marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  signoutText: { fontSize: 13, fontWeight: '800', color: theme.colors.red },
   contentOuter: { flex: 1, backgroundColor: '#F5F7FA' },
   contentInner: { flex: 1, width: '100%' },
 });

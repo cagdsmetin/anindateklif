@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
@@ -42,6 +43,7 @@ const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar diler
 
 export default function EditorScreen() {
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments } = useApp();
+  const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ quoteId?: string }>();
@@ -70,7 +72,6 @@ export default function EditorScreen() {
   // Local-only attached files (PDF/Word/Image) merged into the outgoing PDF at share time.
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
   const [showCatalogPicker, setShowCatalogPicker] = useState(false);
-  const [showEmailPicker, setShowEmailPicker] = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showModeSheet, setShowModeSheet] = useState(false);
   const [showSystemPicker, setShowSystemPicker] = useState<string | null>(null); // itemId
@@ -122,11 +123,11 @@ export default function EditorScreen() {
 
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
-    setHazirlayanEmail(activeCompany?.hazirlayanEmails?.[0] || ''); setMusFirma(''); setMusYetkili('');
+    setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); bootedRef.current = null;
     teklifNoManualRef.current = false;
-  }, [activeCompany, quotes]);
+  }, [activeCompany, quotes, user]);
 
   const pickAttachments = async () => {
     try {
@@ -160,12 +161,6 @@ export default function EditorScreen() {
       showToast('Dosya seçilemedi: ' + (e?.message || ''));
     }
   };
-
-  useEffect(() => {
-    if (activeCompany && !hazirlayanEmail && activeCompany.hazirlayanEmails?.length) {
-      setHazirlayanEmail(activeCompany.hazirlayanEmails[0]);
-    }
-  }, [activeCompany, hazirlayanEmail]);
 
   useEffect(() => {
     if (!editingId && !notlar && activeCompany?.ozelNotlar) setNotlar(activeCompany.ozelNotlar);
@@ -362,14 +357,6 @@ export default function EditorScreen() {
           </View>
 
           <SectionHeader title="TEKLİF BİLGİLERİ" />
-          {activeCompany?.hazirlayanEmails?.length ? (
-            <FGroup label="Hazırlayan E-Mail">
-              <TouchableOpacity style={s.selectBox} onPress={() => setShowEmailPicker(true)}>
-                <Text style={s.selectText} numberOfLines={1}>{hazirlayanEmail || 'Seçiniz'}</Text>
-                <Ionicons name="chevron-down" size={14} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-            </FGroup>
-          ) : null}
           <Row>
             <FGroup label="Teklif No" flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
             <FGroup label="Tarih" flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
@@ -660,21 +647,6 @@ export default function EditorScreen() {
             )}
           </View>
         </View>
-      </Modal>
-
-      {/* Email picker */}
-      <Modal visible={showEmailPicker} transparent animationType="fade">
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowEmailPicker(false)}>
-          <View style={s.pickerSheet}>
-            <Text style={s.modalTitle}>Hazırlayan Seç</Text>
-            {(activeCompany?.hazirlayanEmails || []).map((em) => (
-              <TouchableOpacity key={em} style={[s.emailRow, hazirlayanEmail === em && s.emailRowActive]} onPress={() => { setHazirlayanEmail(em); setShowEmailPicker(false); }}>
-                <Ionicons name={hazirlayanEmail === em ? 'radio-button-on' : 'radio-button-off'} size={16} color={hazirlayanEmail === em ? theme.colors.primary : theme.colors.textMuted} />
-                <Text style={[s.emailText, hazirlayanEmail === em && s.emailTextActive]} numberOfLines={1}>{em}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
       </Modal>
 
       {/* Customer picker */}

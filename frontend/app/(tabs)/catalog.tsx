@@ -18,7 +18,8 @@ import * as XLSX from 'xlsx';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
+import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
+import { shareFileViaWhatsApp } from '@/src/lib/file-share';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
   { value: 'text', label: 'Metin', icon: 'text-outline' },
@@ -142,6 +143,14 @@ function sheetToRows(wb: XLSX.WorkBook): string[][] {
     .filter((r) => r.some((c) => c));
 }
 
+const MAX_CATALOG_FILE_BYTES = 8 * 1024 * 1024; // 8MB — see backend MAX_CATALOG_FILE_BASE64_CHARS
+
+function fmtFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function CatalogScreen() {
   const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, updateCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
@@ -150,6 +159,77 @@ export default function CatalogScreen() {
   const [editing, setEditing] = useState<CatalogItemT | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [q, setQ] = useState('');
+
+  // --- Firma Kataloğu (kendi hazırladıkları hazır PDF/görsel dosyalar) -----
+  const [catalogFiles, setCatalogFiles] = useState<CatalogFileT[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [emailShareFor, setEmailShareFor] = useState<CatalogFileT | null>(null);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharingEmail, setSharingEmail] = useState(false);
+
+  const loadCatalogFiles = async () => {
+    if (!activeCompany) { setCatalogFiles([]); return; }
+    try { setCatalogFiles(await api.listCatalogFiles(activeCompany.id)); }
+    catch { /* sessiz — liste zaten boş kalır */ }
+  };
+  useEffect(() => { loadCatalogFiles(); }, [activeCompany?.id]);
+
+  const pickCatalogFile = async () => {
+    if (!activeCompany) return;
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled) return;
+      const asset = res.assets?.[0];
+      if (!asset) return;
+      if ((asset.size || 0) > MAX_CATALOG_FILE_BYTES) {
+        showToast(`Dosya çok büyük (maksimum ${fmtFileSize(MAX_CATALOG_FILE_BYTES)})`);
+        return;
+      }
+      setUploadingFile(true);
+      const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const mime = asset.mimeType || (asset.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
+      const dataUri = `data:${mime};base64,${b64}`;
+      await api.uploadCatalogFile(activeCompany.id, asset.name || 'katalog', dataUri);
+      showToast('Katalog dosyası yüklendi');
+      await loadCatalogFiles();
+    } catch (e: any) {
+      showToast('Yüklenemedi: ' + (e?.message || ''));
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const deleteCatalogFile = async (f: CatalogFileT) => {
+    try { await api.deleteCatalogFile(f.id); setCatalogFiles((prev) => prev.filter((x) => x.id !== f.id)); }
+    catch (e: any) { showToast('Silinemedi: ' + (e?.message || '')); }
+  };
+
+  const shareCatalogFileWhatsApp = async (f: CatalogFileT) => {
+    try {
+      const full = await api.downloadCatalogFile(f.id);
+      await shareFileViaWhatsApp({ name: full.name, mime: full.mime, dataBase64: full.dataBase64 });
+    } catch (e: any) {
+      showToast('Paylaşılamadı: ' + (e?.message || ''));
+    }
+  };
+
+  const submitEmailShare = async () => {
+    if (!emailShareFor || !shareEmail.trim()) return;
+    setSharingEmail(true);
+    try {
+      await api.shareCatalogFileEmail(emailShareFor.id, shareEmail.trim());
+      showToast('E-posta gönderildi');
+      setEmailShareFor(null);
+      setShareEmail('');
+    } catch (e: any) {
+      showToast('Gönderilemedi: ' + (e?.message || ''));
+    } finally {
+      setSharingEmail(false);
+    }
+  };
 
   // --- Hizmet / Ürün Yapılandırıcı (seçenekli sistemler) -------------------
   const [sistemTipleri, setSistemTipleri] = useState<SystemTypeDefT[]>(activeCompany?.sistemTipleri || []);
@@ -492,6 +572,32 @@ export default function CatalogScreen() {
         </View>
 
         {/* Flat product/service list */}
+        {/* Firma Kataloğu — hazır PDF/görsel dosyalar, doğrudan paylaşım için */}
+        <Text style={[s.sectionH, { marginTop: 20 }]}>📄 FİRMA KATALOĞU</Text>
+        <Text style={s.hint}>Kendi hazırladığınız katalog/broşür dosyalarını (PDF, PNG, JPG — maksimum 8MB) yükleyin, müşterinize doğrudan WhatsApp veya e-posta ile gönderin.</Text>
+        {catalogFiles.map((f) => (
+          <View key={f.id} style={s.fileCard} testID={`catalog-file-${f.id}`}>
+            <Ionicons name={f.mime === 'application/pdf' ? 'document-text-outline' : 'image-outline'} size={22} color={theme.colors.primary} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={s.fileName} numberOfLines={1}>{f.name}</Text>
+              <Text style={s.fileMeta}>{fmtFileSize(f.size)}</Text>
+            </View>
+            <TouchableOpacity style={s.fileActionBtn} onPress={() => shareCatalogFileWhatsApp(f)} testID={`file-wa-${f.id}`}>
+              <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.fileActionBtn} onPress={() => { setEmailShareFor(f); setShareEmail(''); }} testID={`file-email-${f.id}`}>
+              <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.fileActionBtn} onPress={() => deleteCatalogFile(f)} testID={`file-delete-${f.id}`}>
+              <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
+            </TouchableOpacity>
+          </View>
+        ))}
+        <TouchableOpacity style={[s.addDashed, { marginTop: catalogFiles.length ? 8 : 0 }]} onPress={pickCatalogFile} disabled={uploadingFile} testID="upload-catalog-file-btn">
+          <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
+          <Text style={s.addDashedText}>{uploadingFile ? 'Yükleniyor...' : 'Katalog Dosyası Yükle'}</Text>
+        </TouchableOpacity>
+
         <Text style={[s.sectionH, { marginTop: 20 }]}>DÜZ ÜRÜN / HİZMET LİSTESİ</Text>
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
@@ -671,6 +777,35 @@ export default function CatalogScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Katalog dosyasını e-posta ile paylaş */}
+      <Modal visible={!!emailShareFor} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHdr}>
+              <Text style={s.modalTitle}>E-posta ile Paylaş</Text>
+              <TouchableOpacity onPress={() => setEmailShareFor(null)}>
+                <Ionicons name="close" size={22} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={s.hint} numberOfLines={1}>{emailShareFor?.name}</Text>
+            <TextInput
+              style={s.input}
+              placeholder="musteri@firma.com"
+              placeholderTextColor="#94a3b8"
+              value={shareEmail}
+              onChangeText={setShareEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              testID="catalog-file-share-email-input"
+            />
+            <TouchableOpacity style={[s.btnAccBig, sharingEmail && { opacity: 0.6 }]} disabled={sharingEmail} onPress={submitEmailShare} testID="catalog-file-share-email-submit">
+              <Ionicons name="send" size={16} color="#fff" />
+              <Text style={s.btnAccText}>{sharingEmail ? 'Gönderiliyor...' : 'Gönder'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -820,4 +955,10 @@ const s = StyleSheet.create({
   typeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   typeChipText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   typeChipTextActive: { color: '#fff' },
+  addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
+  addDashedText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
+  fileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 6 },
+  fileName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
+  fileMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
+  fileActionBtn: { paddingHorizontal: 6, paddingVertical: 4, marginLeft: 4 },
 });

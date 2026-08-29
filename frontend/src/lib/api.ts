@@ -169,6 +169,15 @@ export const api = {
   updateCatalogItem: (id: string, data: any) => req(`/catalog/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCatalogItem: (id: string) => req(`/catalog/${id}`, { method: 'DELETE' }),
 
+  // Firma Kataloğu (hazır PDF/görsel dosyalar)
+  listCatalogFiles: (companyId: string) => req(`/company/${companyId}/catalog-files`),
+  uploadCatalogFile: (companyId: string, name: string, dataBase64: string) =>
+    req('/company/catalog-files', { method: 'POST', body: JSON.stringify({ companyId, name, dataBase64 }) }),
+  downloadCatalogFile: (fileId: string) => req(`/company/catalog-files/${fileId}/download`),
+  deleteCatalogFile: (fileId: string) => req(`/company/catalog-files/${fileId}`, { method: 'DELETE' }),
+  shareCatalogFileEmail: (fileId: string, toEmail: string, message?: string) =>
+    req(`/company/catalog-files/${fileId}/share-email`, { method: 'POST', body: JSON.stringify({ toEmail, message: message || '' }) }),
+
   // Kasa (Gelir/Gider)
   listKasa: (companyId: string) => req(`/kasa/${companyId}`),
   createKasaEntry: (data: any) => req('/kasa', { method: 'POST', body: JSON.stringify(data) }),
@@ -366,6 +375,15 @@ export type CatalogItemT = {
   paraBirimi: string;
 };
 
+export type CatalogFileT = {
+  id: string;
+  companyId: string;
+  name: string;
+  mime: string;
+  size: number;
+  createdAt: string;
+};
+
 export type KasaEntryT = {
   id: string;
   companyId: string;
@@ -376,6 +394,7 @@ export type KasaEntryT = {
   yontem: string;
   notlar: string;
   tarih: string;
+  quoteId?: string | null;
 };
 
 export type TahsilatEntryT = {

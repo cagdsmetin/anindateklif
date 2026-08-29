@@ -2429,8 +2429,8 @@ async def get_rates():
     # olarak asıl aranan değer bu.
     try:
         ons_altin, ons_gumus = await asyncio.gather(
-            _fetch_yahoo_index("XAUUSD=X"),
-            _fetch_yahoo_index("XAGUSD=X"),
+            _fetch_yahoo_index("GC=F"),
+            _fetch_yahoo_index("SI=F"),
         )
         if ons_altin is not None:
             result["altin_ons_usd"] = ons_altin

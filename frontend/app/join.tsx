@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, StaffInviteInfoT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
+import { evaluatePassword, isPasswordValid, PASSWORD_RULE_LABELS, PasswordRuleKey } from '@/src/utils/password-validation';
 
 export default function JoinScreen() {
   const router = useRouter();
@@ -41,10 +42,13 @@ export default function JoinScreen() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  const pwStatus = evaluatePassword(password);
+  const pwValid = isPasswordValid(password);
+
   const onSubmit = async () => {
     if (busy) return;
     if (!name.trim()) { setError('Adınızı girin'); return; }
-    if (password.length < 8) { setError('Şifre en az 8 karakter olmalı'); return; }
+    if (!pwValid) { setError('Şifre, aşağıdaki tüm gereksinimleri karşılamalı'); return; }
     setError('');
     setBusy(true);
     try {
@@ -100,7 +104,7 @@ export default function JoinScreen() {
                 />
                 <TextInput
                   style={s.input}
-                  placeholder="Şifre belirleyin (en az 8 karakter)"
+                  placeholder="Şifre belirleyin"
                   placeholderTextColor="#94a3b8"
                   value={password}
                   onChangeText={setPassword}
@@ -109,9 +113,16 @@ export default function JoinScreen() {
                 />
               </View>
 
+              <PasswordChecklist status={pwStatus} />
+
               {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-              <TouchableOpacity style={[s.cta, busy && { opacity: 0.6 }]} onPress={onSubmit} disabled={busy} testID="join-submit">
+              <TouchableOpacity
+                style={[s.cta, (busy || !pwValid || !name.trim()) && { opacity: 0.6 }]}
+                onPress={onSubmit}
+                disabled={busy || !pwValid || !name.trim()}
+                testID="join-submit"
+              >
                 {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Katıl</Text>}
               </TouchableOpacity>
             </View>
@@ -119,6 +130,31 @@ export default function JoinScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean> }) {
+  const RULES: PasswordRuleKey[] = ['lower', 'upper', 'digit', 'symbol', 'length'];
+  return (
+    <View style={s.pwBlock}>
+      <Text style={s.pwTitle}>Şifre Gereksinimleri</Text>
+      <View style={s.pwList}>
+        {RULES.map((k) => (
+          <View key={k} style={s.pwRow}>
+            <Ionicons
+              name={status[k] ? 'checkmark-circle' : 'ellipse-outline'}
+              size={14}
+              color={status[k] ? theme.colors.green : theme.colors.textMuted}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[s.pwText, status[k] && { color: theme.colors.textSoft }]}>
+              {PASSWORD_RULE_LABELS[k]}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={s.pwHint}>Basit şifreler (örn. sadece harf/rakam) güvenlik sebebiyle kabul edilmez.</Text>
+    </View>
   );
 }
 
@@ -166,4 +202,10 @@ const s = StyleSheet.create({
     width: '100%',
   },
   ctaText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  pwBlock: { width: '100%', marginTop: 14, padding: 12, backgroundColor: theme.colors.surfaceSoft, borderRadius: 12 },
+  pwTitle: { fontSize: 12, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 8 },
+  pwList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pwRow: { flexDirection: 'row', alignItems: 'center', width: '47%' },
+  pwText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
+  pwHint: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 14 },
 });

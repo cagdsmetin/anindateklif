@@ -229,6 +229,8 @@ export const api = {
     req(`/team/messages/admin?company_id=${encodeURIComponent(companyId)}&a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
   sendTeamMessage: (companyId: string, recipientId: string, text: string): Promise<TeamMessageT> =>
     req('/team/messages', { method: 'POST', body: JSON.stringify({ companyId, recipientId, text }) }),
+  deleteTeamThread: (companyId: string, withUserId: string) =>
+    req(`/team/messages?company_id=${encodeURIComponent(companyId)}&with=${encodeURIComponent(withUserId)}`, { method: 'DELETE' }),
   subscriptionCheckout: (data: { plan: string; buyer_identity_number: string; billing_address: string; billing_city: string; billing_zip?: string }) =>
     req('/subscription/checkout', { method: 'POST', body: JSON.stringify(data) }),
 

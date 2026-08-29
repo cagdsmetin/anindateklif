@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   RefreshControl,
   ScrollView,
@@ -59,6 +60,8 @@ export default function TeamChatScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [kbInset, setKbInset] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingThread, setDeletingThread] = useState(false);
 
   const load = useCallback(async () => {
     if (!activeCompany) return;
@@ -178,6 +181,21 @@ export default function TeamChatScreen() {
     router.back();
   };
 
+  const onDeleteThread = async () => {
+    if (pane.kind !== 'thread' || !activeCompany || deletingThread) return;
+    setDeletingThread(true);
+    try {
+      await api.deleteTeamThread(activeCompany.id, pane.withId);
+      setShowDeleteConfirm(false);
+      setPane({ kind: 'list' });
+      await load();
+    } catch {
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeletingThread(false);
+    }
+  };
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.header}>
@@ -189,11 +207,40 @@ export default function TeamChatScreen() {
           <TouchableOpacity onPress={() => setPane({ kind: 'admin-list' })} style={s.headerBtn} testID="team-chat-admin-toggle">
             <Ionicons name="eye-outline" size={20} color={theme.colors.modules.mesaj} />
           </TouchableOpacity>
+        ) : pane.kind === 'thread' ? (
+          <TouchableOpacity onPress={() => setShowDeleteConfirm(true)} style={s.headerBtn} testID="team-chat-delete-thread">
+            <Ionicons name="trash-outline" size={20} color={theme.colors.red} />
+          </TouchableOpacity>
         ) : (
           <View style={s.headerBtn} />
         )}
       </View>
       <View style={s.divider} />
+
+      <Modal visible={showDeleteConfirm} transparent animationType="fade">
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowDeleteConfirm(false)}>
+          <View style={s.confirmBox}>
+            <Ionicons name="warning" size={28} color={theme.colors.red} />
+            <Text style={s.confirmTitle}>Konuşmayı Sil?</Text>
+            <Text style={s.confirmText}>
+              Bu konuşma kendi listenizden hemen kaldırılır. Firma sahibinin oversight görünümünde kayıt 30 gün daha tutulur.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, width: '100%' }}>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowDeleteConfirm(false)}>
+                <Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, { backgroundColor: theme.colors.red }, deletingThread && { opacity: 0.6 }]}
+                onPress={onDeleteThread}
+                disabled={deletingThread}
+                testID="team-chat-confirm-delete"
+              >
+                <Text style={{ fontWeight: '900', color: '#fff' }}>{deletingThread ? 'Siliniyor...' : 'Evet, Sil'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {loading ? (
         <View style={s.centerFill}><ActivityIndicator color={theme.colors.primary} /></View>
@@ -435,4 +482,12 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.5 },
+  overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  confirmBox: {
+    backgroundColor: '#fff', borderRadius: 18, padding: 22, width: '100%', maxWidth: 360,
+    alignItems: 'center', borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm,
+  },
+  confirmTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, marginTop: 10 },
+  confirmText: { fontSize: 12.5, color: theme.colors.textMuted, marginTop: 6, textAlign: 'center', lineHeight: 18 },
+  confirmBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
 });

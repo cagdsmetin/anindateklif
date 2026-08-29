@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute, NavItem } from '@/src/lib/navItems';
 import { useAuth } from '@/src/state/AuthContext';
+import { useApp } from '@/src/state/AppContext';
+import BlinkingDot from '@/src/components/BlinkingDot';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -30,6 +32,7 @@ function tabIcon(name: string, color: string) {
 function Sidebar({ items }: { items: NavItem[] }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { teamUnreadTotal } = useApp();
 
   return (
     <View style={sb.container}>
@@ -51,6 +54,7 @@ function Sidebar({ items }: { items: NavItem[] }) {
             >
               <Ionicons name={(active ? it.icon : `${it.icon}-outline`) as any} size={18} color={active ? '#fff' : theme.colors.textOnDark} />
               <Text style={[sb.navText, active && sb.navTextActive]} numberOfLines={1}>{it.title}</Text>
+              {it.name === 'team-chat' && teamUnreadTotal > 0 ? <BlinkingDot /> : null}
             </TouchableOpacity>
           );
         })}

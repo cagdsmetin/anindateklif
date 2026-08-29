@@ -1767,6 +1767,11 @@ async def send_team_message(payload: TeamMessageCreate, user=Depends(get_current
         "text": payload.text,
         "createdAt": utc_now_iso(),
         "readAt": None,
+        "deletedFor": [],
+        # Yonetici oversight'i icin mesaj burada 30 gun tutulur; personel
+        # kendi tarafinda 'deletedFor' ile hemen gizleyebilir ama gercek kayit
+        # bu tarihe kadar (yukaridaki TTL index sayesinde) veritabaninda kalir.
+        "expiresAt": _utc() + timedelta(days=30),
     }
     await db.team_messages.insert_one(msg)
     return _team_msg_out(msg)
@@ -1778,6 +1783,7 @@ async def get_team_thread(company_id: str, with_: str = Query(..., alias="with")
     self_id = _self_id(user)
     msgs = await db.team_messages.find({
         "companyId": company_id,
+        "deletedFor": {"$ne": self_id},
         "$or": [
             {"senderId": self_id, "recipientId": with_},
             {"senderId": with_, "recipientId": self_id},
@@ -1788,6 +1794,28 @@ async def get_team_thread(company_id: str, with_: str = Query(..., alias="with")
         {"$set": {"readAt": utc_now_iso()}},
     )
     return [_team_msg_out(m) for m in msgs]
+
+
+@api_router.delete("/team/messages")
+async def delete_team_thread_for_self(company_id: str, with_: str = Query(..., alias="with"), user=Depends(get_current_user)):
+    """Personelin/kullanicinin 'Konusmayi Sil' istegi -- sadece KENDI
+    gorunumunden hemen kaldirir (deletedFor). Firma sahibinin oversight
+    ('Tum Konusmalar') gorunumu ve 30 gunluk saklama suresi bundan
+    etkilenmez; gercek kayit TTL index'e kadar veritabaninda kalmaya
+    devam eder."""
+    await _own_company(user, company_id)
+    self_id = _self_id(user)
+    await db.team_messages.update_many(
+        {
+            "companyId": company_id,
+            "$or": [
+                {"senderId": self_id, "recipientId": with_},
+                {"senderId": with_, "recipientId": self_id},
+            ],
+        },
+        {"$addToSet": {"deletedFor": self_id}},
+    )
+    return {"ok": True}
 
 
 @api_router.get("/team/messages/admin", response_model=List[TeamMessageOut])
@@ -1837,6 +1865,8 @@ async def list_team_conversations(company_id: str, scope: str = "mine", user=Dep
     unread: Dict[str, int] = {}
     for m in msgs:
         if m["senderId"] != self_id and m["recipientId"] != self_id:
+            continue
+        if self_id in (m.get("deletedFor") or []):
             continue
         other_id = m["recipientId"] if m["senderId"] == self_id else m["senderId"]
         other_name = m.get("recipientName", "") if m["senderId"] == self_id else m.get("senderName", "")
@@ -2871,6 +2901,11 @@ async def on_startup():
         await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
         await db.revoked_tokens.create_index("jti", unique=True)
         await db.revoked_tokens.create_index("expires_at", expireAfterSeconds=0)
+        # Ekip Sohbeti: personel bir konusmayi kendi tarafinda hemen "silebilir"
+        # (bkz. deletedFor), ama mesajlar yonetici gorunumu icin 30 gun daha
+        # veritabaninda kalir ve bu TTL index sayesinde suresi dolunca
+        # otomatik olarak tamamen silinir.
+        await db.team_messages.create_index("expiresAt", expireAfterSeconds=0)
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 

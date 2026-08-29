@@ -1,4 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { usePathname } from 'expo-router';
 import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, QuoteT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
@@ -54,6 +56,9 @@ type Ctx = {
   // shared between the editor, preview, and history screens so PDF merging is consistent.
   getQuoteAttachments: (quoteId: string) => AttachmentT[];
   setQuoteAttachments: (quoteId: string, atts: AttachmentT[]) => void;
+  // Ekip Sohbeti: kaç okunmamış mesaj olduğu (WhatsApp Web tarzı yanıp sönen
+  // menü göstergesi + tarayıcı bildirimi için) — bkz. aşağıdaki polling useEffect.
+  teamUnreadTotal: number;
 };
 
 const AppContext = createContext<Ctx | null>(null);
@@ -99,6 +104,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [quotes, setQuotes] = useState<QuoteT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
+  const [teamUnreadTotal, setTeamUnreadTotal] = useState(0);
+  const pathname = usePathname();
+  const notifiedKeysRef = useRef<Set<string>>(new Set());
+  const teamUnreadFirstLoadRef = useRef(true);
 
   const getQuoteAttachments = useCallback(
     (quoteId: string) => attachmentsByQuoteId[quoteId] || [],
@@ -534,6 +543,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reloadTahsilat();
   }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadQuotes, reloadKasa, reloadTahsilat]);
 
+  // Ekip Sohbeti: okunmamis mesaj sayacini periyodik yokla (15sn) -- sidebar/
+  // drawer'daki 'Ekip Sohbeti' ogesini yanip sondurmek ve (sadece web'de)
+  // WhatsApp Web tarzi bir tarayici bildirimi gostermek icin kullaniliyor.
+  // Ekip Sohbeti ekrani zaten acikken bildirim gostermiyoruz (mesaj oradan
+  // zaten goruluyor), ve ilk yuklemede eski okunmamislar icin bildirim
+  // patlatmiyoruz -- sadece GERCEKTEN yeni gelen mesajlar icin.
+  useEffect(() => {
+    if (!user || !activeCompany) { setTeamUnreadTotal(0); return; }
+    let cancelled = false;
+    const companyId = activeCompany.id;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    const poll = async () => {
+      try {
+        const conv = await api.teamConversations(companyId, 'mine');
+        if (cancelled) return;
+        const total = (conv || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+        setTeamUnreadTotal(total);
+
+        const isOnTeamChat = pathname === '/team-chat';
+        const canNotify =
+          Platform.OS === 'web' &&
+          typeof window !== 'undefined' &&
+          'Notification' in window &&
+          Notification.permission === 'granted';
+
+        for (const c of conv || []) {
+          if (!c.otherUserId) continue;
+          const key = `${c.otherUserId}:${c.lastAt}`;
+          if (notifiedKeysRef.current.has(key)) continue;
+          notifiedKeysRef.current.add(key);
+          if (teamUnreadFirstLoadRef.current || isOnTeamChat || !c.unreadCount) continue;
+          if (canNotify) {
+            try {
+              const n = new Notification(c.otherUserName || 'Yeni mesaj', {
+                body: c.lastText,
+                tag: 'team-chat-' + c.otherUserId,
+              });
+              n.onclick = () => { try { window.focus(); } catch {} };
+            } catch {}
+          }
+        }
+        teamUnreadFirstLoadRef.current = false;
+      } catch {
+        // sessizce yut -- bir sonraki pollde tekrar denenir
+      }
+    };
+
+    poll();
+    const t = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [user, activeCompany, pathname]);
+
   return (
     <AppContext.Provider
       value={{
@@ -582,6 +649,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         showToast,
         getQuoteAttachments,
         setQuoteAttachments,
+        teamUnreadTotal,
       }}
     >
       {children}

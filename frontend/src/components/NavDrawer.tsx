@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute } from '@/src/lib/navItems';
 import { useAuth } from '@/src/state/AuthContext';
+import { useApp } from '@/src/state/AppContext';
+import BlinkingDot from '@/src/components/BlinkingDot';
 
 // Mobile counterpart to the desktop left sidebar (app/(tabs)/_layout.tsx) —
 // same destinations, same colors, opened from the hamburger button in
@@ -17,6 +19,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { teamUnreadTotal } = useApp();
   const items = buildNavItems({
     restricted: !!user?.is_staff && user?.staff_role !== 'admin',
     isOwner: !user?.is_staff,
@@ -58,6 +61,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
                 >
                   <Ionicons name={(active ? it.icon : `${it.icon}-outline`) as any} size={19} color={active ? '#fff' : theme.colors.textOnDark} />
                   <Text style={[s.navText, active && s.navTextActive]} numberOfLines={1}>{it.title}</Text>
+                  {it.name === 'team-chat' && teamUnreadTotal > 0 ? <BlinkingDot /> : null}
                 </TouchableOpacity>
               );
             })}

@@ -188,7 +188,7 @@ export default function PersonelScreen() {
                     <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={15} color={theme.colors.primary} />
                     <Text style={s.copyBtnText}>{copied ? 'Kopyalandı' : Platform.OS === 'web' ? 'Kopyala' : 'Seçip kopyala'}</Text>
                   </TouchableOpacity>
-                  <Text style={s.linkHint}>Bu linki WhatsApp, e-posta — nasıl istersen personelinle paylaş.</Text>
+                  <Text style={s.linkHint}>Davet linki, girdiğiniz e-posta adresine otomatik olarak gönderildi. Ayrıca WhatsApp gibi başka bir yoldan da paylaşabilirsiniz.</Text>
                 </View>
               ) : null}
             </View>

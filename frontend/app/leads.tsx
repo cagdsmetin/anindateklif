@@ -53,6 +53,8 @@ export default function LeadsScreen() {
 
   const companyId = activeCompany?.id;
 
+  const [autoTabDone, setAutoTabDone] = useState(false);
+
   const load = async () => {
     if (!companyId) return;
     setLoading(true);
@@ -66,6 +68,13 @@ export default function LeadsScreen() {
       setAllLeads(all);
       setRequests(reqs);
       setDailyCount(String(activeCompany?.leadDailyCount || 10));
+      // İlk kez giren ve hiç firması/talebi olmayan kullanıcıyı doğrudan
+      // "Yeni Talep" sekmesine yönlendir — boş bir liste görüp ne yapacağını
+      // anlayamamasın diye.
+      if (!autoTabDone) {
+        setAutoTabDone(true);
+        if (all.length === 0 && reqs.length === 0) setTab('talep');
+      }
     } catch (e: any) {
       showToast('Yüklenemedi: ' + (e?.message || ''));
     } finally {
@@ -274,7 +283,11 @@ export default function LeadsScreen() {
             {todayLeads.length === 0 ? (
               <View style={s.emptyBox}>
                 <Ionicons name="checkmark-done-circle-outline" size={26} color={theme.colors.textMuted} />
-                <Text style={s.emptyTextBox}>Bugün aranacak firma yok. "Yeni Talep" sekmesinden liste isteyebilirsin.</Text>
+                <Text style={s.emptyTextBox}>Bugün aranacak firma yok.</Text>
+                <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep">
+                  <Ionicons name="add-circle" size={16} color="#fff" />
+                  <Text style={s.ctaTalepBtnText}>Yeni Talep Oluştur</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               todayLeads.map(renderLeadRow)
@@ -287,6 +300,10 @@ export default function LeadsScreen() {
             <View style={s.emptyBox}>
               <Ionicons name="business-outline" size={26} color={theme.colors.textMuted} />
               <Text style={s.emptyTextBox}>Henüz firma eklenmedi.</Text>
+              <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep-2">
+                <Ionicons name="add-circle" size={16} color="#fff" />
+                <Text style={s.ctaTalepBtnText}>Yeni Talep Oluştur</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             allLeads.map(renderLeadRow)
@@ -403,6 +420,8 @@ const s = StyleSheet.create({
   sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 20 },
+  ctaTalepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 16, height: 40, marginTop: 12 },
+  ctaTalepBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
   leadCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },

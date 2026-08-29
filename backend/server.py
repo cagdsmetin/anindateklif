@@ -153,7 +153,7 @@ ALLOWED_ORIGINS = [
 ]
 
 MAX_LOGO_BASE64_CHARS = 2_800_000  # ~2MB decoded
-MAX_CATALOG_FILE_BASE64_CHARS = 11_200_000  # ~8MB decoded (base64 is ~1.37x raw size)
+MAX_CATALOG_FILE_BASE64_CHARS = 21_000_000  # ~15MB decoded (base64 is ~1.37x raw size); MongoDB doc limit is 16MB so this is the practical ceiling
 
 IYZICO_API_KEY = os.environ.get("IYZICO_API_KEY", "")
 IYZICO_SECRET_KEY = os.environ.get("IYZICO_SECRET_KEY", "")

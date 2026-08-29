@@ -143,7 +143,7 @@ function sheetToRows(wb: XLSX.WorkBook): string[][] {
     .filter((r) => r.some((c) => c));
 }
 
-const MAX_CATALOG_FILE_BYTES = 8 * 1024 * 1024; // 8MB — see backend MAX_CATALOG_FILE_BASE64_CHARS
+const MAX_CATALOG_FILE_BYTES = 15 * 1024 * 1024; // 15MB — see backend MAX_CATALOG_FILE_BASE64_CHARS
 
 function fmtFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

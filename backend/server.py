@@ -1182,6 +1182,7 @@ class KasaEntry(BaseModel):
     notlar: str = ""
     tarih: str  # YYYY-MM-DD
     quoteId: Optional[str] = None  # onaylanan tekliften otomatik oluşturulduysa bağlantı (mükerrer önleme için)
+    tahsilatId: Optional[str] = None  # bir tahsilat (para girişi) kaydından otomatik oluşturulduysa bağlantı
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -2137,12 +2138,35 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
     await _own_company(user, payload.companyId)
     obj = TahsilatEntry(userId=user["user_id"], **payload.dict())
     await db.tahsilat.insert_one(obj.dict())
+
+    # Müşteriden gerçekten para geldiğinde ("tahsilat" kaydı) bu tutar Kasa'ya
+    # da otomatik "gelir" olarak işlenir — kullanıcı ayrıca Kasa'ya elle girmek
+    # zorunda kalmasın. Sadece "borc" (henüz tahsil edilmemiş alacak) kayıtları
+    # Kasa'yı etkilemez.
+    if obj.tur == "tahsilat" and obj.tutar > 0:
+        kasa_doc = KasaEntry(
+            userId=user["user_id"],
+            companyId=obj.companyId,
+            tur="gelir",
+            kategori="Tahsilat",
+            tutar=obj.tutar,
+            paraBirimi=obj.paraBirimi,
+            yontem=obj.yontem,
+            notlar=f"{obj.musteriAdi} - tahsilat" + (f" ({obj.notlar})" if obj.notlar else ""),
+            tarih=obj.tarih,
+            tahsilatId=obj.id,
+        )
+        await db.kasa.insert_one(kasa_doc.dict())
+
     return obj
 
 
 @api_router.delete("/tahsilat/{entry_id}")
 async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
     _require_kasa_access(user)
+    # Bu tahsilat kaydından otomatik oluşturulmuş bir Kasa geliri varsa, kaydı
+    # silerken onu da temizle (yanlış girilen bir tahsilat Kasa'da asılı kalmasın).
+    await db.kasa.delete_many({"userId": user["user_id"], "tahsilatId": entry_id})
     await db.tahsilat.delete_one({"id": entry_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -2375,30 +2399,10 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
                 quoteId=quote_id,
             )
             await db.tahsilat.insert_one(tahsilat_doc.model_dump())
-
-        # Kasaya da bekleyen gelir olarak işle — müşterinin carisine (Tahsilat)
-        # ek olarak, onaylanan teklifin tutarı Kasa'da "gelir" satırı olarak da
-        # görünsün (kullanıcı isteği: "kasaya ... işlemen gerekli"). Mükerrer
-        # önleme: bu quote_id için zaten bir kasa geliri varsa tekrar oluşturma.
-        existing_kasa = await db.kasa.find_one({
-            "userId": user["user_id"],
-            "quoteId": quote_id,
-            "tur": "gelir",
-        })
-        if not existing_kasa and float(doc.get("genelToplam") or 0) > 0:
-            kasa_doc = KasaEntry(
-                userId=user["user_id"],
-                companyId=doc.get("companyId"),
-                tur="gelir",
-                kategori="Teklif Onayı",
-                tutar=float(doc.get("genelToplam") or 0),
-                paraBirimi=doc.get("paraBirimi") or "TRY",
-                yontem="Diğer",
-                notlar=f"Teklif {doc.get('teklifNo', '')} onaylandı (otomatik oluşturuldu)",
-                tarih=utc_now_iso()[:10],
-                quoteId=quote_id,
-            )
-            await db.kasa.insert_one(kasa_doc.dict())
+        # NOT: Onay anında Kasa'ya gelir YAZILMAZ — teklif tutarı henüz tahsil
+        # edilmiş değil, sadece müşteri carisine borç işlenir. Kasa'ya gelir,
+        # müşteriden gerçekten para geldiğinde (Tahsilat ekranından "tahsilat"
+        # kaydı girildiğinde, bkz. create_tahsilat_entry) otomatik eklenir.
 
     return Quote(**doc)
 

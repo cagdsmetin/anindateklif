@@ -50,6 +50,7 @@ export const theme = {
       tahsilat: '#0369A1',
       firma: '#475569',
       mesaj: '#7C3AED',
+      lead: '#B45309',
     },
   },
   radius: { sm: 8, md: 10, lg: 14, xl: 20, pill: 999 },

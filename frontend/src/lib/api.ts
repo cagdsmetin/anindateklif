@@ -178,6 +178,23 @@ export const api = {
   shareCatalogFileEmail: (fileId: string, toEmail: string, message?: string) =>
     req(`/company/catalog-files/${fileId}/share-email`, { method: 'POST', body: JSON.stringify({ toEmail, message: message || '' }) }),
 
+  // Firma Arama Takibi (lead)
+  listLeads: (companyId: string) => req(`/leads/${companyId}`),
+  listLeadsToday: (companyId: string) => req(`/leads/${companyId}/today`),
+  updateLead: (id: string, data: { durum?: string; notlar?: string }) =>
+    req(`/leads/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteLead: (id: string) => req(`/leads/${id}`, { method: 'DELETE' }),
+  setLeadDailyCount: (companyId: string, dailyCount: number) =>
+    req(`/company/${companyId}/lead-daily-count`, { method: 'PATCH', body: JSON.stringify({ dailyCount }) }),
+  createLeadSearchRequest: (companyId: string, sektor: string, bolge: string, aciklama: string) =>
+    req('/leads/search-request', { method: 'POST', body: JSON.stringify({ companyId, sektor, bolge, aciklama }) }),
+  listLeadSearchRequests: (companyId: string) => req(`/leads/search-requests/${companyId}`),
+  adminListLeadSearchRequests: () => req('/admin/leads/search-requests'),
+  adminUpdateLeadSearchRequest: (id: string, durum: string) =>
+    req(`/admin/leads/search-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  adminBulkAddLeads: (companyId: string, items: { firma: string; bolge: string; kategori: string; telefon: string }[]) =>
+    req('/admin/leads/bulk-add', { method: 'POST', body: JSON.stringify({ companyId, items }) }),
+
   // Kasa (Gelir/Gider)
   listKasa: (companyId: string) => req(`/kasa/${companyId}`),
   createKasaEntry: (data: any) => req('/kasa', { method: 'POST', body: JSON.stringify(data) }),
@@ -362,6 +379,31 @@ export type CompanyT = {
   banklar: BankAccountT[];
   hazirlayanEmails: string[];
   sistemTipleri: SystemTypeDefT[];
+  leadDailyCount: number;
+};
+
+export type LeadCompanyT = {
+  id: string;
+  companyId: string;
+  firma: string;
+  bolge: string;
+  kategori: string;
+  telefon: string;
+  durum: string;
+  notlar: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LeadSearchRequestT = {
+  id: string;
+  companyId: string;
+  companyName: string;
+  sektor: string;
+  bolge: string;
+  aciklama: string;
+  durum: string;
+  createdAt: string;
 };
 
 export type CatalogItemT = {

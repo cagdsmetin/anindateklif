@@ -1047,6 +1047,7 @@ class Company(BaseModel):
     banklar: List[BankAccount] = Field(default_factory=list)
     hazirlayanEmails: List[str] = Field(default_factory=list)
     sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
+    leadDailyCount: int = 10  # Firma Arama Takibi: günde kaç firma "Bugün Aranacaklar" listesine düşsün
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -2851,6 +2852,222 @@ async def subscription_callback(token: str = Form(...)):
         redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed"
 
     return RedirectResponse(url=redirect_url, status_code=302)
+
+
+# ============ FİRMA ARAMA TAKİBİ (LEAD / POTANSİYEL MÜŞTERİ) ============
+# Her firma kendi sektöründe (pergola, cam balkon, peyzaj mimarlığı, vb.)
+# potansiyel iş ortaklarını/firmaları aramak isteyebilir. Uygulama içinde canlı,
+# otomatik bir harita/işletme araması YOK (bu, ücretli bir servis - örn. Google
+# Places API - gerektirir). Bunun yerine: firma sahibi "hangi sektörde, hangi
+# bölgede firma arıyorum" diye bir TALEP oluşturur; bu talep admin'e (uygulama
+# sahibine) düşer, admin gerçek araştırmayı yapıp bulduğu firmaları (isim,
+# bölge, kategori, telefon) o firmanın listesine toplu olarak ekler. Firma
+# sahibi/personeli sonra bu listeyi klasik bir "arama takip" tablosu gibi
+# kullanır: her gün belirlenen sayıda firma "Bugün Aranacaklar" listesine
+# düşer, arayınca durumunu işaretler, dilerse WhatsApp'tan mesaj atar.
+
+LEAD_DURUM_VALUES = {"Aranmadı", "Arandı", "Cevap Yok", "Olumlu Dönüş", "Olumsuz Dönüş", "Kapandı"}
+DEFAULT_LEAD_DAILY_COUNT = 10
+MAX_LEAD_DAILY_COUNT = 100
+
+
+class LeadCompany(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    firma: str
+    bolge: str = ""
+    kategori: str = ""
+    telefon: str = ""
+    durum: str = "Aranmadı"
+    notlar: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class LeadCompanyCreate(BaseModel):
+    companyId: str
+    firma: str
+    bolge: str = ""
+    kategori: str = ""
+    telefon: str = ""
+
+    @field_validator("firma")
+    @classmethod
+    def _firma_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Firma adı zorunlu")
+        if len(v) > 200:
+            raise ValueError("Firma adı çok uzun")
+        return v
+
+
+class LeadBulkAddRequest(BaseModel):
+    companyId: str
+    items: List[LeadCompanyCreate]
+
+
+class LeadStatusUpdate(BaseModel):
+    durum: Optional[str] = None
+    notlar: Optional[str] = None
+
+
+class LeadDailyCountUpdate(BaseModel):
+    dailyCount: int
+
+
+class LeadSearchRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    companyName: str = ""
+    sektor: str
+    bolge: str = ""
+    aciklama: str = ""
+    durum: str = "Beklemede"  # "Beklemede" | "Tamamlandı"
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class LeadSearchRequestCreate(BaseModel):
+    companyId: str
+    sektor: str
+    bolge: str = ""
+    aciklama: str = ""
+
+    @field_validator("sektor")
+    @classmethod
+    def _sektor_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Sektör zorunlu")
+        if len(v) > 200:
+            raise ValueError("Sektör çok uzun")
+        return v
+
+
+@api_router.get("/leads/{company_id}", response_model=List[LeadCompany])
+async def list_leads(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.leads.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", 1).to_list(5000)
+    return [LeadCompany(**d) for d in docs]
+
+
+@api_router.get("/leads/{company_id}/today", response_model=List[LeadCompany])
+async def list_leads_today(company_id: str, user=Depends(get_current_user)):
+    company = await _own_company(user, company_id)
+    daily_count = int(company.get("leadDailyCount") or DEFAULT_LEAD_DAILY_COUNT)
+    daily_count = max(1, min(daily_count, MAX_LEAD_DAILY_COUNT))
+    # "Bugün aranacaklar" = henüz aranmamış ya da cevap alınamamış firmalar,
+    # en eski eklenenden başlayarak günlük limit kadarı. Bir firma arandı /
+    # sonuçlandı olarak işaretlenince otomatik olarak bu listeden düşer ve
+    # yerine bir sonraki bekleyen firma gelir — ayrı bir "gün" alanı tutmaya
+    # gerek kalmadan "aranmayanlar bir sonraki güne taşınır" davranışı budur.
+    docs = await db.leads.find(
+        {"companyId": company_id, "userId": user["user_id"], "durum": {"$in": ["Aranmadı", "Cevap Yok"]}},
+        {"_id": 0},
+    ).sort("createdAt", 1).limit(daily_count).to_list(daily_count)
+    return [LeadCompany(**d) for d in docs]
+
+
+@api_router.patch("/company/{company_id}/lead-daily-count")
+async def update_lead_daily_count(company_id: str, payload: LeadDailyCountUpdate, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    count = max(1, min(int(payload.dailyCount), MAX_LEAD_DAILY_COUNT))
+    await db.companies.update_one({"id": company_id, "userId": user["user_id"]}, {"$set": {"leadDailyCount": count}})
+    return {"ok": True, "dailyCount": count}
+
+
+@api_router.patch("/leads/{lead_id}", response_model=LeadCompany)
+async def update_lead(lead_id: str, payload: LeadStatusUpdate, user=Depends(get_current_user)):
+    doc = await db.leads.find_one({"id": lead_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Kayıt bulunamadı")
+    updates: Dict[str, Any] = {"updatedAt": utc_now_iso()}
+    if payload.durum is not None:
+        if payload.durum not in LEAD_DURUM_VALUES:
+            raise HTTPException(400, "Geçersiz durum")
+        updates["durum"] = payload.durum
+    if payload.notlar is not None:
+        updates["notlar"] = payload.notlar[:2000]
+    await db.leads.update_one({"id": lead_id, "userId": user["user_id"]}, {"$set": updates})
+    doc.update(updates)
+    return LeadCompany(**doc)
+
+
+@api_router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, user=Depends(get_current_user)):
+    await db.leads.delete_one({"id": lead_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+@api_router.post("/leads/search-request", response_model=LeadSearchRequest)
+async def create_lead_search_request(payload: LeadSearchRequestCreate, user=Depends(get_current_user)):
+    company = await _own_company(user, payload.companyId)
+    obj = LeadSearchRequest(
+        userId=user["user_id"],
+        companyId=payload.companyId,
+        companyName=company.get("sirketAdi", ""),
+        sektor=payload.sektor.strip(),
+        bolge=(payload.bolge or "").strip(),
+        aciklama=(payload.aciklama or "").strip()[:2000],
+    )
+    await db.lead_search_requests.insert_one(obj.model_dump())
+    return obj
+
+
+@api_router.get("/leads/search-requests/{company_id}", response_model=List[LeadSearchRequest])
+async def list_lead_search_requests(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.lead_search_requests.find(
+        {"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}
+    ).sort("createdAt", -1).to_list(500)
+    return [LeadSearchRequest(**d) for d in docs]
+
+
+# --- Admin: tüm firmalardan gelen arama taleplerini gör, araştırılan firmaları toplu ekle ---
+@api_router.get("/admin/leads/search-requests", response_model=List[LeadSearchRequest])
+async def admin_list_lead_search_requests(user=Depends(get_current_user)):
+    _require_admin(user)
+    docs = await db.lead_search_requests.find({}, {"_id": 0}).sort("createdAt", -1).to_list(1000)
+    return [LeadSearchRequest(**d) for d in docs]
+
+
+@api_router.patch("/admin/leads/search-requests/{request_id}")
+async def admin_update_lead_search_request(request_id: str, payload: LeadStatusUpdate, user=Depends(get_current_user)):
+    _require_admin(user)
+    if payload.durum and payload.durum not in {"Beklemede", "Tamamlandı"}:
+        raise HTTPException(400, "Geçersiz durum")
+    updates = {}
+    if payload.durum:
+        updates["durum"] = payload.durum
+    if not updates:
+        raise HTTPException(400, "Güncellenecek alan yok")
+    await db.lead_search_requests.update_one({"id": request_id}, {"$set": updates})
+    return {"ok": True}
+
+
+@api_router.post("/admin/leads/bulk-add", response_model=List[LeadCompany])
+async def admin_bulk_add_leads(payload: LeadBulkAddRequest, user=Depends(get_current_user)):
+    _require_admin(user)
+    target_company = await db.companies.find_one({"id": payload.companyId}, {"_id": 0})
+    if not target_company:
+        raise HTTPException(404, "Firma bulunamadı")
+    if len(payload.items) > 200:
+        raise HTTPException(400, "Tek seferde en fazla 200 firma eklenebilir")
+    created = []
+    for item in payload.items:
+        obj = LeadCompany(
+            userId=target_company["userId"],
+            companyId=payload.companyId,
+            firma=item.firma,
+            bolge=item.bolge,
+            kategori=item.kategori,
+            telefon=item.telefon,
+        )
+        await db.leads.insert_one(obj.model_dump())
+        created.append(obj)
+    return created
 
 
 # ============ HEDİYE / PROMOSYON KODU ============

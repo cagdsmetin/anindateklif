@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, LogBox, View } from 'react-native';
@@ -17,6 +17,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
@@ -53,7 +54,12 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   // Destek baloncuğu tek bir yerden, tüm ekranların üstünde render edilir --
   // sadece giriş yapmış ve kurulumu tamamlamış kullanıcılar için (splash,
   // giriş, kurulum sihirbazı, gizlilik/davet sayfalarında gösterilmez).
-  const showSupportBubble = !!user && user.onboarding_completed;
+  // AI Asistan ve Ekip Sohbeti ekranlarında da gizleniyor: bu sayfaların
+  // kendi mesaj gönderme çubuğu aynı sağ-alt köşede duruyor ve sabit
+  // baloncuk üstüne binip gönder butonunu görünmez/tıklanamaz hale
+  // getiriyordu (kullanıcı raporu: "gönder tuşu yok").
+  const bubbleHiddenRoutes = ['/assistant', '/team-chat'];
+  const showSupportBubble = !!user && user.onboarding_completed && !bubbleHiddenRoutes.includes(pathname);
   return (
     <>
       {children}

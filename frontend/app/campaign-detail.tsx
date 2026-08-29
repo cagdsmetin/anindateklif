@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -15,7 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { CustomerT } from '@/src/lib/api';
 
-const AUDIENCE_FILTERS = ['Tümü'];
+
 
 function renderCampaignMessage(mesaj: string, musteri: string, firma: string): string {
   return mesaj
@@ -26,7 +27,7 @@ function renderCampaignMessage(mesaj: string, musteri: string, firma: string): s
 export default function CampaignDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { campaigns, customers, activeCompany, markCampaignSent, showToast, toast } = useApp();
+  const { campaigns, customers, quotes, activeCompany, markCampaignSent, showToast, toast } = useApp();
   const params = useLocalSearchParams<{ id?: string }>();
   const campaignId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -35,12 +36,54 @@ export default function CampaignDetailScreen() {
     [campaignId, campaigns]
   );
 
-  const audienceCustomers = useMemo(
+  const phoneKey = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
+
+  // Bir müşterinin hangi hizmet/sistem türü için teklif aldığını, telefon
+  // numarası üzerinden teklif kayıtlarıyla eşleştirerek çıkarıyoruz — ayrı bir
+  // "etiket" alanı eklemeye gerek kalmadan segment listesi böyle oluşuyor.
+  const customerSystemTypes = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    quotes.forEach((q) => {
+      const key = phoneKey(q.musTelefon);
+      if (!key) return;
+      const types = (q.items || []).map((it) => (it.sistemTipi || '').trim()).filter(Boolean);
+      if (!types.length) return;
+      if (!map[key]) map[key] = new Set();
+      types.forEach((t) => map[key].add(t));
+    });
+    return map;
+  }, [quotes]);
+
+  const availableSegments = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(customerSystemTypes).forEach((s) => s.forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [customerSystemTypes]);
+
+  const AUDIENCE_FILTERS = useMemo(() => ['Tümü', ...availableSegments], [availableSegments]);
+
+  const [audienceFilter, setAudienceFilter] = useState('Tümü');
+  const [search, setSearch] = useState('');
+
+  const allCustomersWithPhone = useMemo(
     () => customers.filter((c) => (c.telefon || '').trim().length > 0),
     [customers]
   );
 
-  const [audienceFilter, setAudienceFilter] = useState('Tümü');
+  const audienceCustomers = useMemo(() => {
+    let list = allCustomersWithPhone;
+    if (audienceFilter !== 'Tümü') {
+      list = list.filter((c) => customerSystemTypes[phoneKey(c.telefon)]?.has(audienceFilter));
+    }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (c) => (c.firma || '').toLowerCase().includes(q) || (c.yetkili || '').toLowerCase().includes(q) || (c.telefon || '').includes(q)
+      );
+    }
+    return list;
+  }, [allCustomersWithPhone, audienceFilter, search, customerSystemTypes]);
+
   const [previewCustomerId, setPreviewCustomerId] = useState<string | null>(
     audienceCustomers[0]?.id || null
   );
@@ -150,6 +193,22 @@ export default function CampaignDetailScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        {availableSegments.length === 0 && (
+          <Text style={s.helperTinyMuted}>
+            Müşteriler teklif aldıkları hizmete göre otomatik gruplanır (örn. "Pergola"). Henüz eşleşen teklif yok, bu yüzden şimdilik sadece "Tümü" var.
+          </Text>
+        )}
+        <View style={s.searchBox}>
+          <Ionicons name="search-outline" size={16} color={theme.colors.textMuted} />
+          <TextInput
+            style={s.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Müşteri adı veya telefon ile ara..."
+            placeholderTextColor={theme.colors.textMuted}
+            testID="campdetail-search"
+          />
+        </View>
 
         <Text style={s.sectionTitle}>Müşteriler ({audienceCustomers.length})</Text>
         {audienceCustomers.length === 0 ? (
@@ -232,6 +291,9 @@ const s = StyleSheet.create({
   bubbleText: { fontSize: 13.5, color: '#111b21', lineHeight: 19 },
   bubbleCaption: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 6, fontWeight: '700' },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 15 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, height: 40, marginBottom: 20 },
+  searchInput: { flex: 1, fontSize: 13, color: theme.colors.text },
   filterChip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center' },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },

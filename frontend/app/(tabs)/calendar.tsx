@@ -254,7 +254,8 @@ export default function CalendarScreen() {
             const evs = eventsByDate[cell.iso] || [];
             const isToday = cell.iso === tIso;
             const isSelected = cell.iso === selectedDate;
-            const kinds = Array.from(new Set(evs.map((e) => e.kind)));
+            const holidayEv = evs.find((e) => e.kind === 'resmi') || evs.find((e) => e.kind === 'dini');
+            const otherKinds = Array.from(new Set(evs.filter((e) => e.kind !== 'resmi' && e.kind !== 'dini').map((e) => e.kind)));
             return (
               <TouchableOpacity
                 key={idx}
@@ -263,9 +264,17 @@ export default function CalendarScreen() {
                 testID={`cal-day-${cell.iso}`}
               >
                 <Text style={[s.dayNum, isSelected && s.dayNumSelected]}>{cell.day}</Text>
-                {kinds.length > 0 && (
+                {holidayEv && (
+                  <Text
+                    style={[s.holidayLabel, { color: isSelected ? '#fff' : KIND_COLOR[holidayEv.kind] }]}
+                    numberOfLines={2}
+                  >
+                    {holidayEv.title}
+                  </Text>
+                )}
+                {otherKinds.length > 0 && (
                   <View style={s.dotsRow}>
-                    {kinds.map((k) => (
+                    {otherKinds.map((k) => (
                       <View key={k} style={[s.dot, { backgroundColor: KIND_COLOR[k] }]} />
                     ))}
                   </View>
@@ -378,7 +387,8 @@ const s = StyleSheet.create({
   weekRow: { flexDirection: 'row', marginBottom: 6 },
   weekDayLabel: { width: CELL_SIZE as any, textAlign: 'center', fontSize: 11, fontWeight: '800', color: theme.colors.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: CELL_SIZE as any, aspectRatio: 1.15, alignItems: 'center', justifyContent: 'center' },
+  cell: { width: CELL_SIZE as any, aspectRatio: 1.15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
+  holidayLabel: { fontSize: 6.5, fontWeight: '700', textAlign: 'center', marginTop: 2, lineHeight: 8 },
   dayCell: { borderRadius: 6, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: '#fff' },
   dayCellSelected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   dayCellToday: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary },

@@ -18,6 +18,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -401,7 +402,12 @@ export default function EditorScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Grand total sticky */}
-          <View style={s.totalBanner}>
+          <LinearGradient
+            colors={[theme.colors.primary, theme.colors.navy]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.totalBanner}
+          >
             <View style={{ flex: 1 }}>
               <Text style={s.totalLabel}>GENEL TOPLAM ({cur})</Text>
               <Text style={s.totalValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
@@ -410,7 +416,7 @@ export default function EditorScreen() {
               <Text style={s.miniStat}>{items.length} kalem</Text>
               <Text style={s.miniStatSub}>KDV %{kdvOr}</Text>
             </View>
-          </View>
+          </LinearGradient>
 
           <SectionHeader title="TEKLİF BİLGİLERİ" />
           <Row>
@@ -816,9 +822,9 @@ function ItemCard({
 }) {
   const line = (item.adet || 0) * (item.birimFiyat || 0);
   const modeMeta =
-    item.mode === 'technical' ? { label: 'HİZMET / ÜRÜN', color: theme.colors.primary } :
-    item.mode === 'manual' ? { label: 'MANUEL', color: theme.colors.gold } :
-    { label: 'GENEL ÜRÜN', color: theme.colors.textMuted };
+    item.mode === 'technical' ? { label: 'HİZMET / ÜRÜN', color: theme.colors.primary, icon: 'construct' as const } :
+    item.mode === 'manual' ? { label: 'MANUEL', color: theme.colors.gold, icon: 'create' as const } :
+    { label: 'GENEL ÜRÜN', color: theme.colors.textMuted, icon: 'cube' as const };
   const preview = buildItemDescription(item);
   const selectedSys = sistemTipleri.find((s) => s.id === item.sistemTipiId);
   // Kartlar accordion mantığıyla çalışır -- açık/kapalı durumu parent'ta
@@ -831,12 +837,13 @@ function ItemCard({
   const summaryText = summaryBits.join(' — ') || 'Detaylar için dokunun';
 
   return (
-    <View style={itemStyles.card} testID={`quote-item-${idx}`}>
+    <View style={[itemStyles.card, { borderLeftColor: modeMeta.color }]} testID={`quote-item-${idx}`}>
       <TouchableOpacity activeOpacity={0.7} onPress={onToggleExpand} testID={`item-${idx}-toggle`}>
         <View style={itemStyles.hdr}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
             <Text style={itemStyles.no}>#{idx + 1}</Text>
             <View style={[itemStyles.modeBadge, { backgroundColor: modeMeta.color + '20', borderColor: modeMeta.color }]}>
+              <Ionicons name={modeMeta.icon} size={11} color={modeMeta.color} style={{ marginRight: 3 }} />
               <Text style={[itemStyles.modeBadgeText, { color: modeMeta.color }]}>{modeMeta.label}</Text>
             </View>
             <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={16} color={theme.colors.textMuted} />
@@ -1008,7 +1015,7 @@ function TotRow({ label, value, negative }: { label: string; value: string; nega
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  totalBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.navy, padding: 14, borderRadius: 14, marginBottom: 10, gap: 12, ...theme.shadow.md },
+  totalBanner: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, marginBottom: 10, gap: 12, ...theme.shadow.md },
   totalLabel: { color: '#94a3b8', fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6 },
   totalValue: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 2, letterSpacing: 0.3 },
   miniStats: { alignItems: 'flex-end' },
@@ -1110,11 +1117,11 @@ const s = StyleSheet.create({
 });
 
 const itemStyles = StyleSheet.create({
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm },
+  card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, borderLeftWidth: 4, marginBottom: 10, ...theme.shadow.sm },
   hdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   collapsedSummary: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 2 },
   no: { fontSize: 11, fontWeight: '900', color: theme.colors.textMuted },
-  modeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
+  modeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
   modeBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   linePrice: { fontSize: 13, fontWeight: '900', color: theme.colors.navy },
   label: { fontSize: 9.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },

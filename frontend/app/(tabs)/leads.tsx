@@ -29,6 +29,38 @@ const DURUM_COLORS: Record<string, string> = {
   'Kapandı': '#0f172a',
 };
 
+// WhatsApp mesaj şablonları -- firma arama sırasında en çok kullanılan 4
+// üslup. {sirket} kendi firma adımızla, {firma} aranan firmanın adıyla
+// otomatik dolduruluyor; kullanıcı göndermeden önce metni serbestçe
+// düzenleyebiliyor.
+type WaTemplate = { id: string; label: string; text: (sirket: string, firma: string) => string };
+const WHATSAPP_TEMPLATES: WaTemplate[] = [
+  {
+    id: 'samimi',
+    label: 'Samimi',
+    text: (sirket) =>
+      `Merhaba, ben ${sirket} adına yazıyorum 🙂 Projelerinizde değerlendirebileceğiniz bioklimatik pergola ve zip perde sistemlerimiz var. Kısa bir tanışma görüşmesi ayarlayabilir miyiz?`,
+  },
+  {
+    id: 'kisa',
+    label: 'Kısa & Net',
+    text: (sirket) =>
+      `Merhaba, ${sirket} - bioklimatik pergola ve zip perde üreticisiyiz. Projelerinizde değerlendirmek ister misiniz? İsterseniz katalog ve fiyat bilgisi gönderebilirim.`,
+  },
+  {
+    id: 'kurumsal',
+    label: 'Kurumsal',
+    text: (sirket) =>
+      `Sayın Yetkili, ${sirket} olarak bioklimatik pergola ve zip perde sistemleri üretimi ve satışı alanında hizmet vermekteyiz. Firmanızla olası iş birliği fırsatlarını değerlendirmek isteriz. Uygun bir zamanda bilgi vermekten memnuniyet duyarız.`,
+  },
+  {
+    id: 'ulasamadik',
+    label: 'Ulaşamadık',
+    text: (sirket) =>
+      `Merhaba, ${sirket}'ten arıyorum, sizi telefonla arayıp ulaşamadım. Bioklimatik pergola ve zip perde sistemlerimizle ilgili kısa bilgi vermek isterim, müsait olduğunuzda dönüş yaparsanız seviniriz.`,
+  },
+];
+
 type Tab = 'bugun' | 'tumu' | 'talep';
 
 export default function LeadsScreen() {
@@ -57,6 +89,10 @@ export default function LeadsScreen() {
   const [notesFor, setNotesFor] = useState<LeadCompanyT | null>(null);
   const [noteText, setNoteText] = useState('');
   const [reminderDate, setReminderDate] = useState('');
+
+  const [waLead, setWaLead] = useState<LeadCompanyT | null>(null);
+  const [waTemplateId, setWaTemplateId] = useState(WHATSAPP_TEMPLATES[0].id);
+  const [waText, setWaText] = useState('');
 
   const companyId = activeCompany?.id;
 
@@ -120,15 +156,37 @@ export default function LeadsScreen() {
     }
   };
 
+  // WhatsApp butonuna basınca artık doğrudan sabit tek bir mesajla açmıyoruz --
+  // önce hangi üslupla yazılacağını (Samimi/Kısa&Net/Kurumsal/Ulaşamadık)
+  // seçip, göndermeden önce metni düzenleyebileceğimiz bir pencere açılıyor.
   const openWhatsApp = (lead: LeadCompanyT) => {
     const cleaned = normalizePhoneForWhatsApp(lead.telefon || '');
     if (!cleaned) {
       showToast('Geçerli bir telefon numarası yok');
       return;
     }
-    const text = `Merhaba, ${activeCompany?.sirketAdi || 'firmamız'} olarak sizinle iş birliği yapmak istiyoruz.`;
-    const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
+    const first = WHATSAPP_TEMPLATES[0];
+    setWaLead(lead);
+    setWaTemplateId(first.id);
+    setWaText(first.text(activeCompany?.sirketAdi || 'firmamız', lead.firma));
+  };
+
+  const pickWaTemplate = (id: string) => {
+    setWaTemplateId(id);
+    const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === id);
+    if (tpl && waLead) setWaText(tpl.text(activeCompany?.sirketAdi || 'firmamız', waLead.firma));
+  };
+
+  const sendWaText = () => {
+    if (!waLead) return;
+    const cleaned = normalizePhoneForWhatsApp(waLead.telefon || '');
+    if (!cleaned) {
+      showToast('Geçerli bir telefon numarası yok');
+      return;
+    }
+    const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(waText)}`;
     Linking.openURL(url).catch(() => showToast('WhatsApp açılamadı'));
+    setWaLead(null);
   };
 
   const saveDailyCount = async () => {
@@ -495,6 +553,44 @@ export default function LeadsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={!!waLead} transparent animationType="fade" onRequestClose={() => setWaLead(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>{waLead?.firma} — WhatsApp Mesajı</Text>
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+              {WHATSAPP_TEMPLATES.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[s.waTemplateChip, waTemplateId === t.id && s.waTemplateChipActive]}
+                  onPress={() => pickWaTemplate(t.id)}
+                  testID={`wa-template-${t.id}`}
+                >
+                  <Text style={[s.waTemplateChipText, waTemplateId === t.id && s.waTemplateChipTextActive]}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={s.modalSubLabel}>Göndermeden önce metni düzenleyebilirsin</Text>
+            <TextInput
+              style={[s.input, { minHeight: 110, textAlignVertical: 'top' }]}
+              multiline
+              value={waText}
+              onChangeText={setWaText}
+              placeholder="Mesaj..."
+              placeholderTextColor="#94a3b8"
+            />
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setWaLead(null)}>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#16a34a', flexDirection: 'row', gap: 6 }]} onPress={sendWaText} testID="wa-send-btn">
+                <Ionicons name="logo-whatsapp" size={15} color="#fff" />
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>Gönder</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -561,6 +657,10 @@ const s = StyleSheet.create({
   reminderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 8 },
   reminderBadgeText: { fontSize: 10.5, fontWeight: '800', color: '#b45309' },
   modalSubLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
+  waTemplateChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: '#F8FAFC' },
+  waTemplateChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+  waTemplateChipText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.text },
+  waTemplateChipTextActive: { color: '#fff' },
   reminderPreset: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F8FAFC' },
   reminderPresetText: { fontSize: 11, fontWeight: '700', color: theme.colors.text },
   reminderChosenText: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },

@@ -37,7 +37,9 @@ const contactLink = (kind: 'email' | 'web', value: string, extraStyle: string = 
   const v = String(value ?? '').trim();
   if (!v) return '';
   const href = kind === 'email' ? `mailto:${v}` : websiteHref(v);
-  return `<a href="${esc(href)}" style="color:inherit;text-decoration:underline;${extraStyle}">${esc(v)}</a>`;
+  // text-underline-offset + hafif kucultulmus font: alt cizgi yaziya
+  // (ozellikle 'y','g' gibi kuyruklu harflere) degmesin, duzenli dursun.
+  return `<a href="${esc(href)}" style="color:inherit;text-decoration:underline;text-underline-offset:2.5px;font-size:0.94em;${extraStyle}">${esc(v)}</a>`;
 };
 
 const trDate = (iso: string) => {
@@ -146,7 +148,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
-  .cline { font-size:14px; color:#0f172a; line-height:1.6; margin:0 0 3px 0; word-wrap:break-word; overflow-wrap:break-word; }
+  .cline { font-size:14px; color:#0f172a; line-height:1.25; margin:0 0 1.5px 0; word-wrap:break-word; overflow-wrap:break-word; }
 
   .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; word-wrap:break-word; overflow-wrap:break-word; }
   .meta-table { border-collapse:collapse; margin:0 0 0 auto; max-width:100%; }

@@ -249,7 +249,7 @@ export default function PanelScreen() {
       if (!byMethod[y]) byMethod[y] = [];
       byMethod[y].push({ paraBirimi: t.paraBirimi, tutar: t.tutar });
     });
-    return Object.entries(byMethod)
+    const slices = Object.entries(byMethod)
       .map(([yontem, entries]) => ({
         label: yontem,
         color: YONTEM_COLORS[yontem] || theme.colors.textMuted,
@@ -257,8 +257,14 @@ export default function PanelScreen() {
       }))
       .filter((x) => x.value > 0)
       .sort((a, b) => b.value - a.value);
+    // Giderleri de aynı pastaya kırmızı bir dilim olarak ekle -- böylece
+    // "genel bakış"ta sadece tahsilat değil, bu ay çıkan para da görünür.
+    if (giderBuAy2 > 0) {
+      slices.push({ label: 'Gider', color: theme.colors.red, value: giderBuAy2 });
+    }
+    return slices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tahsilatThisMonth, rates]);
+  }, [tahsilatThisMonth, rates, giderBuAy2]);
   const paymentTotal = paymentBreakdown.reduce((a, x) => a + x.value, 0);
 
   const quoteStatusCounts = useMemo(() => {
@@ -268,6 +274,20 @@ export default function PanelScreen() {
     return map;
   }, [quotes]);
   const quoteStatusTotal = quotes.length;
+  // Her teklif durumu (Beklemede/Onaylandı/Reddedildi vb.) için toplam para
+  // değeri -- farklı para birimlerindeki teklifler günün kuruyla TL'ye
+  // çevrilip toplanır, TEKLİF DURUMLARI pasta diliminin altında gösterilir.
+  const quoteStatusValues = useMemo(() => {
+    const byStatus: Record<string, { paraBirimi: string; tutar: number }[]> = {};
+    quotes.forEach((q) => {
+      if (!byStatus[q.durum]) byStatus[q.durum] = [];
+      byStatus[q.durum].push({ paraBirimi: q.paraBirimi, tutar: q.genelToplam });
+    });
+    const map: Record<string, number> = {};
+    QUOTE_STATUSES.forEach((st) => { map[st] = sumToTRY(byStatus[st] || [], rates as RatesLike) || 0; });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotes, rates]);
 
   // Personel için Nakit Durumu yerine: kendi bu ayki tekliflerinin özeti
   const myQuotesThisMonth = useMemo(() => {
@@ -452,6 +472,7 @@ export default function PanelScreen() {
                   label: st,
                   value: quoteStatusCounts[st] || 0,
                   color: QUOTE_STATUS_COLORS[st],
+                  valueLabel: `${quoteStatusCounts[st] || 0} · ${fmtTRY(quoteStatusValues[st] || 0)}`,
                 }))}
                 total={quoteStatusTotal}
                 centerLabel="TEKLİF"
@@ -635,7 +656,7 @@ function CashPieChart({
   formatValue = fmtTRY,
   formatCenter,
 }: {
-  data: { label: string; value: number; color: string }[];
+  data: { label: string; value: number; color: string; valueLabel?: string }[];
   total: number;
   centerLabel?: string;
   formatValue?: (n: number) => string;
@@ -648,7 +669,7 @@ function CashPieChart({
     return (
       <View style={{ gap: 6 }}>
         {data.map((d, i) => (
-          <LegendDot key={i} color={d.color} label={d.label} value={formatValue(d.value)} />
+          <LegendDot key={i} color={d.color} label={d.label} value={d.valueLabel || formatValue(d.value)} />
         ))}
       </View>
     );
@@ -702,7 +723,7 @@ function CashPieChart({
           };
           return (
             <View key={i} {...hoverHandlers}>
-              <LegendDot color={sl.color} label={sl.label} value={formatValue(sl.value)} />
+              <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} />
             </View>
           );
         })}

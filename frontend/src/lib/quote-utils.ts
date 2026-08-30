@@ -32,7 +32,7 @@ const dimRole = (label: string): DimRole => {
 /**
  * Renders a technical-mode item's dimension fields (Genişlik/Cephe, Derinlik/
  * Uzunluk, Yükseklik) the way they read on a real teklif: width and depth
- * combined as "120 x 80", height always as "H: 200" -- instead of three
+ * combined as "120 x 80 mm", height always as "H: 200 mm" -- instead of three
  * separate "Label: value" segments. Any field that isn't one of these three
  * dimension roles (motor, renk, RAL, vb.) is left exactly as-is.
  */
@@ -50,14 +50,14 @@ function renderDimensionFields(fields: { label?: string; value?: string }[]): st
   for (const f of items) {
     if (!f.label && !f.value) continue;
     if (f.role === 'height' && f.value) {
-      parts.push(`H: ${f.value}`);
+      parts.push(`H: ${f.value} mm`);
       continue;
     }
     if ((f.role === 'width' || f.role === 'depth') && combineWidthDepth) {
       if (!widthDepthEmitted) {
         const w = items.find((x) => x.role === 'width')!.value;
         const d = items.find((x) => x.role === 'depth')!.value;
-        parts.push(`(${w}) x (${d})`);
+        parts.push(`${w} x ${d} mm`);
         widthDepthEmitted = true;
       }
       continue;

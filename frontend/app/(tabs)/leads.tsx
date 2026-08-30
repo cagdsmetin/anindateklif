@@ -94,6 +94,17 @@ export default function LeadsScreen() {
   const [waTemplateId, setWaTemplateId] = useState(WHATSAPP_TEMPLATES[0].id);
   const [waText, setWaText] = useState('');
 
+  // Kullanıcının kendi araştırdığı bir firmayı (Arkiv, Mimarlar Odası, Google
+  // vb. üzerinden bulduğu) doğrudan kendi listesine ekleyebilmesi için basit
+  // bir form -- "Yeni Talep" (admin'e sor) akışından bağımsız, admin onayı
+  // gerekmez.
+  const [addOpen, setAddOpen] = useState(false);
+  const [addFirma, setAddFirma] = useState('');
+  const [addBolge, setAddBolge] = useState('');
+  const [addKategori, setAddKategori] = useState('');
+  const [addTelefon, setAddTelefon] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
+
   const companyId = activeCompany?.id;
 
   const [autoTabDone, setAutoTabDone] = useState(false);
@@ -226,6 +237,31 @@ export default function LeadsScreen() {
       showToast('Hata: ' + (e?.message || ''));
     } finally {
       setSendingReq(false);
+    }
+  };
+
+  const addLeadManual = async () => {
+    if (!companyId) return;
+    if (!addFirma.trim()) {
+      showToast('Firma adı gerekli');
+      return;
+    }
+    setAddSaving(true);
+    try {
+      await api.createLead(companyId, {
+        firma: addFirma.trim(),
+        bolge: addBolge.trim(),
+        kategori: addKategori.trim(),
+        telefon: addTelefon.trim(),
+      });
+      setAddFirma(''); setAddBolge(''); setAddKategori(''); setAddTelefon('');
+      setAddOpen(false);
+      showToast('Firma eklendi');
+      await load();
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || ''));
+    } finally {
+      setAddSaving(false);
     }
   };
 
@@ -436,18 +472,24 @@ export default function LeadsScreen() {
         )}
 
         {!loading && tab === 'tumu' && (
-          allLeads.length === 0 ? (
-            <View style={s.emptyBox}>
-              <Ionicons name="business-outline" size={26} color={theme.colors.textMuted} />
-              <Text style={s.emptyTextBox}>Henüz firma eklenmedi.</Text>
-              <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep-2">
-                <Ionicons name="add-circle" size={16} color="#fff" />
-                <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            allLeads.map(renderLeadRow)
-          )
+          <>
+            <TouchableOpacity style={s.addManualBtn} onPress={() => setAddOpen(true)} testID="lead-add-manual-open">
+              <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
+              <Text style={s.addManualBtnText}>Kendi bulduğun bir firmayı ekle</Text>
+            </TouchableOpacity>
+            {allLeads.length === 0 ? (
+              <View style={s.emptyBox}>
+                <Ionicons name="business-outline" size={26} color={theme.colors.textMuted} />
+                <Text style={s.emptyTextBox}>Henüz firma eklenmedi.</Text>
+                <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep-2">
+                  <Ionicons name="add-circle" size={16} color="#fff" />
+                  <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              allLeads.map(renderLeadRow)
+            )}
+          </>
         )}
 
         {!loading && tab === 'talep' && (
@@ -591,6 +633,56 @@ export default function LeadsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Firma Ekle</Text>
+            <TextInput
+              style={s.input}
+              placeholder="Firma adı (zorunlu)"
+              placeholderTextColor="#94a3b8"
+              value={addFirma}
+              onChangeText={setAddFirma}
+              autoFocus
+              testID="lead-add-firma"
+            />
+            <TextInput
+              style={s.input}
+              placeholder="Bölge (örn: Beykoz / İstanbul)"
+              placeholderTextColor="#94a3b8"
+              value={addBolge}
+              onChangeText={setAddBolge}
+              testID="lead-add-bolge"
+            />
+            <TextInput
+              style={s.input}
+              placeholder="Sektör (örn: Mimarlık, Peyzaj)"
+              placeholderTextColor="#94a3b8"
+              value={addKategori}
+              onChangeText={setAddKategori}
+              testID="lead-add-kategori"
+            />
+            <TextInput
+              style={s.input}
+              placeholder="Telefon (opsiyonel)"
+              placeholderTextColor="#94a3b8"
+              value={addTelefon}
+              onChangeText={setAddTelefon}
+              keyboardType="phone-pad"
+              testID="lead-add-telefon"
+            />
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAddOpen(false)}>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={addLeadManual} disabled={addSaving} testID="lead-add-save">
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>{addSaving ? '...' : 'Ekle'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -627,6 +719,8 @@ const s = StyleSheet.create({
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 20 },
   ctaTalepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 16, height: 40, marginTop: 12 },
   ctaTalepBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
+  addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, marginBottom: 12, backgroundColor: '#fff' },
+  addManualBtnText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
   leadCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },

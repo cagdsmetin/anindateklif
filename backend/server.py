@@ -2973,6 +2973,25 @@ async def list_leads(company_id: str, user=Depends(get_current_user)):
     return [LeadCompany(**d) for d in docs]
 
 
+# Kullanıcının kendi bulduğu bir firmayı (ör. Arkiv, Mimarlar Odası, Google
+# üzerinden araştırıp bulduğu) doğrudan kendi listesine eklemesi için --
+# admin bulk-add'in aksine herhangi bir kullanıcı kendi firmasına kendi
+# leadlerini ekleyebilir, admin onayı gerekmez.
+@api_router.post("/leads", response_model=LeadCompany)
+async def create_lead(payload: LeadCompanyCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    obj = LeadCompany(
+        userId=user["user_id"],
+        companyId=payload.companyId,
+        firma=payload.firma,
+        bolge=payload.bolge,
+        kategori=payload.kategori,
+        telefon=payload.telefon,
+    )
+    await db.leads.insert_one(obj.model_dump())
+    return obj
+
+
 @api_router.get("/leads/{company_id}/today", response_model=List[LeadCompany])
 async def list_leads_today(company_id: str, user=Depends(get_current_user)):
     company = await _own_company(user, company_id)

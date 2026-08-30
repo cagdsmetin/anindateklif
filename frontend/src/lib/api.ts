@@ -181,6 +181,8 @@ export const api = {
   // Firma Arama Takibi (lead)
   listLeads: (companyId: string) => req(`/leads/${companyId}`),
   listLeadsToday: (companyId: string) => req(`/leads/${companyId}/today`),
+  createLead: (companyId: string, data: { firma: string; bolge?: string; kategori?: string; telefon?: string }) =>
+    req('/leads', { method: 'POST', body: JSON.stringify({ companyId, ...data }) }),
   updateLead: (id: string, data: { durum?: string; notlar?: string; tekrarTarihi?: string }) =>
     req(`/leads/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteLead: (id: string) => req(`/leads/${id}`, { method: 'DELETE' }),

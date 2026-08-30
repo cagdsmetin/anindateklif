@@ -2411,6 +2411,11 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
     if not doc:
         raise HTTPException(404, "Quote not found")
     previous_durum = doc.get("durum")
+    # Onaylı bir teklifi reddetmek, o teklife bağlı Tahsilat borcunu da iptal
+    # ediyor -- bu geri alınamaz bir mali işlem olduğu için sadece firma
+    # sahibi yapabilir, hiçbir personel (admin rollü olsa bile) yapamaz.
+    if previous_durum == "Onaylandı" and payload.durum == "Reddedildi" and user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Onaylı bir teklifi sadece firma sahibi reddedebilir")
     doc["durum"] = payload.durum
     doc["updatedAt"] = utc_now_iso()
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)

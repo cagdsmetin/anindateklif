@@ -17,6 +17,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
@@ -49,6 +50,12 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
+  const { user: me } = useAuth();
+  const isStaffUser = !!me?.is_staff;
+  // Onaylı bir teklifi reddetmek bağlı Tahsilat borcunu da iptal ediyor --
+  // geri alınamaz bir işlem olduğu için sadece firma sahibi yapabilsin ve
+  // öncesinde bir uyarı ekranından geçsin.
+  const [rejectConfirmFor, setRejectConfirmFor] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
@@ -366,9 +373,32 @@ export default function HistoryScreen() {
             <Text style={s.menuTitle}>Durum Seç</Text>
             {STATUSES.map((st) => {
               const cc = statusColor(st);
+              const targetQuote = quotes.find((q) => q.id === statusMenuFor);
+              const isRejectingApproved = targetQuote?.durum === 'Onaylandı' && st === 'Reddedildi';
+              if (isRejectingApproved && isStaffUser) {
+                return (
+                  <TouchableOpacity
+                    key={st}
+                    style={[s.menuItem, { backgroundColor: '#F1F5F9', borderColor: theme.colors.line }]}
+                    onPress={() => showToast('Onaylı bir teklifi sadece firma sahibi reddedebilir')}
+                  >
+                    <Ionicons name="lock-closed" size={13} color={theme.colors.textMuted} style={{ marginRight: 6 }} />
+                    <Text style={[s.menuItemText, { color: theme.colors.textMuted }]}>{st}</Text>
+                  </TouchableOpacity>
+                );
+              }
               return (
                 <TouchableOpacity key={st} testID={`set-status-${st}`} style={[s.menuItem, { backgroundColor: cc.bg, borderColor: cc.border }]} onPress={async () => {
-                  if (statusMenuFor) { await updateQuoteStatus(statusMenuFor, st); showToast('Durum güncellendi'); }
+                  if (!statusMenuFor) { setStatusMenuFor(null); return; }
+                  if (isRejectingApproved) {
+                    // Geri alınamaz + Tahsilat borcunu iptal eden bir işlem --
+                    // doğrudan uygulamak yerine önce uyarı ekranı gösteriyoruz.
+                    setRejectConfirmFor(statusMenuFor);
+                    setStatusMenuFor(null);
+                    return;
+                  }
+                  await updateQuoteStatus(statusMenuFor, st);
+                  showToast('Durum güncellendi');
                   setStatusMenuFor(null);
                 }}>
                   <Text style={[s.menuItemText, { color: cc.text }]}>{st}</Text>
@@ -376,6 +406,47 @@ export default function HistoryScreen() {
               );
             })}
           </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!rejectConfirmFor} transparent animationType="fade" onRequestClose={() => setRejectConfirmFor(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setRejectConfirmFor(null)}>
+          <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
+            <View style={s.confirmIconWrap}>
+              <Ionicons name="warning" size={22} color={theme.colors.red} />
+            </View>
+            <Text style={s.menuTitle}>Onaylı teklifi reddet</Text>
+            <Text style={s.confirmBody}>
+              Bu teklif zaten onaylanmıştı. Şimdi reddedersen, bu teklif için Tahsilat'a
+              otomatik işlenmiş olan borç kaydı da iptal edilip silinecek. Bu işlem geri alınamaz. Emin misin?
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnGhost]}
+                onPress={() => setRejectConfirmFor(null)}
+                testID="reject-approved-cancel"
+              >
+                <Text style={s.confirmBtnGhostText}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnDanger]}
+                onPress={async () => {
+                  if (rejectConfirmFor) {
+                    try {
+                      await updateQuoteStatus(rejectConfirmFor, 'Reddedildi');
+                      showToast('Teklif reddedildi, borç kaydı iptal edildi');
+                    } catch (e: any) {
+                      showToast('Hata: ' + (e?.message || ''));
+                    }
+                  }
+                  setRejectConfirmFor(null);
+                }}
+                testID="reject-approved-confirm"
+              >
+                <Text style={s.confirmBtnDangerText}>Evet, Reddet</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 

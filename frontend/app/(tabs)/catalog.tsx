@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
 import { shareFileViaWhatsApp } from '@/src/lib/file-share';
@@ -153,6 +154,10 @@ function fmtFileSize(bytes: number): string {
 
 export default function CatalogScreen() {
   const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, updateCompany, showToast } = useApp();
+  const { user: me } = useAuth();
+  // Katalog ve Yapılandırıcı sadece firma sahibi tarafından yönetilir --
+  // personel görüp teklifte kullanabilir ama ekleyip/düzenleyip/silemez.
+  const isStaffUser = !!me?.is_staff;
   const insets = useSafeAreaInsets();
   const [showForm, setShowForm] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
@@ -340,6 +345,21 @@ export default function CatalogScreen() {
     });
     setShowForm(true);
   };
+  // Duplicates an existing catalog item into the "new item" form so the
+  // person can tweak a couple of fields and save, instead of retyping
+  // everything from scratch for a near-identical product/service.
+  const duplicateItem = (it: CatalogItemT) => {
+    setEditing(null);
+    setF({
+      kategori: it.kategori,
+      urunAdi: it.urunAdi + ' (Kopya)',
+      aciklama: it.aciklama,
+      birim: it.birim,
+      birimFiyat: String(it.birimFiyat),
+      paraBirimi: it.paraBirimi,
+    });
+    setShowForm(true);
+  };
 
   const save = async () => {
     if (!f.urunAdi.trim()) {
@@ -491,16 +511,18 @@ export default function CatalogScreen() {
             onChangeText={setQ}
           />
         </View>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-          <TouchableOpacity style={[s.btnAcc, { flex: 1 }]} onPress={openNew} testID="new-catalog-btn">
-            <Ionicons name="add-circle" size={16} color="#fff" />
-            <Text style={s.btnAccText}>Yeni Ürün</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.btnAcc, { flex: 1, backgroundColor: theme.colors.navy }]} onPress={() => setShowBulk(true)} testID="bulk-import-btn">
-            <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-            <Text style={s.btnAccText}>Toplu İçe Aktar</Text>
-          </TouchableOpacity>
-        </View>
+        {!isStaffUser && (
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <TouchableOpacity style={[s.btnAcc, { flex: 1 }]} onPress={openNew} testID="new-catalog-btn">
+              <Ionicons name="add-circle" size={16} color="#fff" />
+              <Text style={s.btnAccText}>Yeni Ürün</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.btnAcc, { flex: 1, backgroundColor: theme.colors.navy }]} onPress={() => setShowBulk(true)} testID="bulk-import-btn">
+              <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+              <Text style={s.btnAccText}>Toplu İçe Aktar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
@@ -520,9 +542,11 @@ export default function CatalogScreen() {
                   <Text style={s.systemName}>{sys.name || '(Adsız Hizmet / Ürün)'}</Text>
                   <Text style={s.systemMeta}>{(sys.fields || []).length} alan tanımlı</Text>
                 </View>
-                <TouchableOpacity onPress={() => removeSystemType(sys.id)}>
-                  <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                </TouchableOpacity>
+                {!isStaffUser && (
+                  <TouchableOpacity onPress={() => removeSystemType(sys.id)}>
+                    <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
+                  </TouchableOpacity>
+                )}
               </TouchableOpacity>
 
               {isExpanded && (
@@ -536,6 +560,7 @@ export default function CatalogScreen() {
                       onBlur={commitSystemName}
                       placeholder="Örn: Cam Balkon"
                       placeholderTextColor="#94a3b8"
+                      editable={!isStaffUser}
                     />
                   </FieldGroup>
                   <Text style={s.subLabel}>ALT ALANLAR ({(sys.fields || []).length})</Text>
@@ -552,7 +577,8 @@ export default function CatalogScreen() {
                         <Ionicons name={(typeMeta?.icon as any) || 'square-outline'} size={14} color={theme.colors.primary} />
                         <TouchableOpacity
                           style={{ flex: 1 }}
-                          onPress={() => openEditField(sys.id, f)}
+                          onPress={() => { if (!isStaffUser) openEditField(sys.id, f); }}
+                          disabled={isStaffUser}
                           testID={`field-${f.id}-edit`}
                         >
                           <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
@@ -560,45 +586,53 @@ export default function CatalogScreen() {
                             {typeMeta?.label}{f.type === 'select' && f.options.length ? ` • ${f.options.length} seçenek` : ''}
                           </Text>
                         </TouchableOpacity>
-                        <View style={s.reorderCol}>
-                          <TouchableOpacity
-                            disabled={isFirst}
-                            onPress={() => moveField(sys.id, fi, -1)}
-                            style={[s.reorderBtn, isFirst && s.reorderBtnDisabled]}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            testID={`field-${f.id}-up`}
-                          >
-                            <Ionicons name="chevron-up" size={16} color={isFirst ? theme.colors.line : theme.colors.primary} />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            disabled={isLast}
-                            onPress={() => moveField(sys.id, fi, 1)}
-                            style={[s.reorderBtn, isLast && s.reorderBtnDisabled]}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            testID={`field-${f.id}-down`}
-                          >
-                            <Ionicons name="chevron-down" size={16} color={isLast ? theme.colors.line : theme.colors.primary} />
-                          </TouchableOpacity>
-                        </View>
-                        <TouchableOpacity onPress={() => removeField(sys.id, f.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                          <Ionicons name="close-circle" size={18} color={theme.colors.red} />
-                        </TouchableOpacity>
+                        {!isStaffUser && (
+                          <>
+                            <View style={s.reorderCol}>
+                              <TouchableOpacity
+                                disabled={isFirst}
+                                onPress={() => moveField(sys.id, fi, -1)}
+                                style={[s.reorderBtn, isFirst && s.reorderBtnDisabled]}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                testID={`field-${f.id}-up`}
+                              >
+                                <Ionicons name="chevron-up" size={16} color={isFirst ? theme.colors.line : theme.colors.primary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                disabled={isLast}
+                                onPress={() => moveField(sys.id, fi, 1)}
+                                style={[s.reorderBtn, isLast && s.reorderBtnDisabled]}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                testID={`field-${f.id}-down`}
+                              >
+                                <Ionicons name="chevron-down" size={16} color={isLast ? theme.colors.line : theme.colors.primary} />
+                              </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity onPress={() => removeField(sys.id, f.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                              <Ionicons name="close-circle" size={18} color={theme.colors.red} />
+                            </TouchableOpacity>
+                          </>
+                        )}
                       </View>
                     );
                   })}
-                  <TouchableOpacity style={s.addFieldBtn} onPress={() => openAddField(sys.id)} testID={`add-field-${sys.id}`}>
-                    <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
-                    <Text style={s.addFieldText}>+ Alt Alan Ekle</Text>
-                  </TouchableOpacity>
+                  {!isStaffUser && (
+                    <TouchableOpacity style={s.addFieldBtn} onPress={() => openAddField(sys.id)} testID={`add-field-${sys.id}`}>
+                      <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
+                      <Text style={s.addFieldText}>+ Alt Alan Ekle</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>
           );
         })}
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 }}>
-          <TextInput style={[s.input, { flex: 1 }]} placeholder="Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)" placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
-          <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
-        </View>
+        {!isStaffUser && (
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 }}>
+            <TextInput style={[s.input, { flex: 1 }]} placeholder="Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)" placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
+            <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
+          </View>
+        )}
 
         {/* Flat product/service list */}
         {/* Firma Kataloğu — hazır PDF/görsel dosyalar, doğrudan paylaşım için */}
@@ -643,12 +677,19 @@ export default function CatalogScreen() {
                 <Text style={s.catPrice}>{fmt(c.birimFiyat, c.paraBirimi)} / {c.birim}</Text>
               </View>
               <View style={{ gap: 6 }}>
-                <TouchableOpacity onPress={() => openEdit(c)} testID={`edit-${c.id}`}>
-                  <Ionicons name="pencil" size={20} color={theme.colors.primary} />
+                <TouchableOpacity onPress={() => duplicateItem(c)} testID={`duplicate-${c.id}`}>
+                  <Ionicons name="copy-outline" size={20} color={theme.colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => deleteCatalogItem(c.id)} testID={`delete-${c.id}`}>
-                  <Ionicons name="trash" size={20} color={theme.colors.red} />
-                </TouchableOpacity>
+                {!isStaffUser && (
+                  <>
+                    <TouchableOpacity onPress={() => openEdit(c)} testID={`edit-${c.id}`}>
+                      <Ionicons name="pencil" size={20} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteCatalogItem(c.id)} testID={`delete-${c.id}`}>
+                      <Ionicons name="trash" size={20} color={theme.colors.red} />
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </View>
           ))

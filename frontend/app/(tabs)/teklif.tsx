@@ -774,24 +774,41 @@ function ItemCard({
     { label: 'GENEL ÜRÜN', color: theme.colors.textMuted };
   const preview = buildItemDescription(item);
   const selectedSys = sistemTipleri.find((s) => s.id === item.sistemTipiId);
+  // Kartlar varsayılan olarak daraltılmış (özet) halde açılır; kullanıcı üstüne
+  // dokununca genişler/daralır. Böylece çok kalemli tekliflerde sayfa gereksiz
+  // uzamaz -- sadece üstünde çalışılan kalem açık kalır.
+  const [collapsed, setCollapsed] = useState(false);
+  const itemTitle = item.mode === 'technical' ? (item.sistemTipi || '') : (item.urunAdi || '');
+  const summaryBits = [itemTitle, preview].filter(Boolean);
+  const summaryText = summaryBits.join(' — ') || 'Detaylar için dokunun';
 
   return (
     <View style={itemStyles.card} testID={`quote-item-${idx}`}>
-      <View style={itemStyles.hdr}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-          <Text style={itemStyles.no}>#{idx + 1}</Text>
-          <View style={[itemStyles.modeBadge, { backgroundColor: modeMeta.color + '20', borderColor: modeMeta.color }]}>
-            <Text style={[itemStyles.modeBadgeText, { color: modeMeta.color }]}>{modeMeta.label}</Text>
+      <TouchableOpacity activeOpacity={0.7} onPress={() => setCollapsed((c) => !c)} testID={`item-${idx}-toggle`}>
+        <View style={itemStyles.hdr}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <Text style={itemStyles.no}>#{idx + 1}</Text>
+            <View style={[itemStyles.modeBadge, { backgroundColor: modeMeta.color + '20', borderColor: modeMeta.color }]}>
+              <Text style={[itemStyles.modeBadgeText, { color: modeMeta.color }]}>{modeMeta.label}</Text>
+            </View>
+            <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={16} color={theme.colors.textMuted} />
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={itemStyles.linePrice}>{fmt(line, currency)}</Text>
+            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onRemove(); }} testID={`remove-item-${idx}`}>
+              <Ionicons name="close-circle" size={20} color={theme.colors.red} />
+            </TouchableOpacity>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={itemStyles.linePrice}>{fmt(line, currency)}</Text>
-          <TouchableOpacity onPress={onRemove} testID={`remove-item-${idx}`}>
-            <Ionicons name="close-circle" size={20} color={theme.colors.red} />
-          </TouchableOpacity>
-        </View>
-      </View>
+        {collapsed && (
+          <Text style={itemStyles.collapsedSummary} numberOfLines={1} testID={`item-${idx}-summary`}>
+            {summaryText}
+          </Text>
+        )}
+      </TouchableOpacity>
 
+      {!collapsed && (
+      <>
       {/* TECHNICAL MODE — dynamic fields based on selected system */}
       {item.mode === 'technical' && (
         <>
@@ -900,6 +917,8 @@ function ItemCard({
           <Text style={itemStyles.previewLabel}>PDF HÜCRESİ</Text>
           <Text style={itemStyles.previewText}>{preview || <Text style={{ color: theme.colors.textMuted }}>Boş kalem</Text>}</Text>
         </View>
+      )}
+      </>
       )}
     </View>
   );
@@ -1045,6 +1064,7 @@ const s = StyleSheet.create({
 const itemStyles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm },
   hdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  collapsedSummary: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 2 },
   no: { fontSize: 11, fontWeight: '900', color: theme.colors.textMuted },
   modeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
   modeBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },

@@ -1510,6 +1510,15 @@ async def get_company(company_id: str, user=Depends(get_current_user)):
 @api_router.put("/companies/{company_id}", response_model=Company)
 async def update_company(company_id: str, payload: CompanyCreate, user=Depends(get_current_user)):
     doc = await _own_company(user, company_id)
+    if user.get("is_staff"):
+        # Staff can still hit this endpoint for the one thing they're allowed
+        # to touch (Teklif ekranındaki "özel notlar") -- but the Yapılandırıcı
+        # (sistemTipleri) itself is owner-only, so block only when that part
+        # of the payload actually differs from what's saved.
+        existing_systems = doc.get("sistemTipleri") or []
+        new_systems = [s.dict() if hasattr(s, "dict") else s for s in (payload.sistemTipleri or [])]
+        if new_systems != existing_systems:
+            raise HTTPException(status_code=403, detail="Hizmet/Ürün Yapılandırıcı'yı sadece firma sahibi düzenleyebilir")
     updated = {**doc, **payload.dict(), "userId": user["user_id"], "updatedAt": utc_now_iso()}
     await db.companies.replace_one({"id": company_id, "userId": user["user_id"]}, updated)
     return Company(**updated)
@@ -2017,8 +2026,17 @@ async def list_catalog(company_id: str, user=Depends(get_current_user)):
     return [CatalogItem(**d) for d in docs]
 
 
+# Hizmet/Ürün kataloğu ve Yapılandırıcı sadece firma sahibi tarafından
+# yönetilir -- personel bunları görüp teklifte kullanabilir ama
+# ekleyemez/düzenleyemez/silemez.
+def _require_owner(user: Dict[str, Any]):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Bu işlemi sadece firma sahibi yapabilir")
+
+
 @api_router.post("/catalog", response_model=CatalogItem)
 async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_current_user)):
+    _require_owner(user)
     await _own_company(user, payload.companyId)
     obj = CatalogItem(userId=user["user_id"], **payload.dict())
     await db.catalog.insert_one(obj.dict())
@@ -2027,6 +2045,7 @@ async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_curre
 
 @api_router.post("/catalog/bulk", response_model=List[CatalogItem])
 async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_current_user)):
+    _require_owner(user)
     await _own_company(user, payload.companyId)
     created = []
     for it in payload.items:
@@ -2040,6 +2059,7 @@ async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_curre
 
 @api_router.put("/catalog/{item_id}", response_model=CatalogItem)
 async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Depends(get_current_user)):
+    _require_owner(user)
     doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Item not found")
@@ -2050,6 +2070,7 @@ async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Dep
 
 @api_router.delete("/catalog/{item_id}")
 async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
+    _require_owner(user)
     await db.catalog.delete_one({"id": item_id, "userId": user["user_id"]})
     return {"ok": True}
 

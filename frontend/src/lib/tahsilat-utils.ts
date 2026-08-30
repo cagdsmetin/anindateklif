@@ -105,6 +105,37 @@ export function currentRateFor(cur: string, rates: RatesLike): number {
   return 0;
 }
 
+// Bir tutarı bir para biriminden başka bir para birimine çevirir (TRY köprü
+// olarak kullanılır: fromCur -> TRY -> toCur). Örn. müşteri $6.000 borçluyken
+// ₺50.000 ödediğinde, bu ödemeyi borcun kendi para biriminde (USD) doğru
+// şekilde düşebilmek için önce ₺50.000'i o günkü kurla dolara çevirmek
+// gerekiyor -- aksi halde ödeme ayrı bir TL bakiyesi olarak "boşta" kalıp
+// USD borcu hiç etkilemiyordu. Kur bilinmiyorsa (rates eksik) null döner --
+// çağıran taraf bu durumda ORİJİNAL para birimiyle kaydetmeye devam eder,
+// asla yanlış/tahmini bir kurla sessizce yanlış tutar kaydetmez.
+export function convertBetween(amount: number, fromCur: string, toCur: string, rates: RatesLike): number | null {
+  const from = (fromCur || 'TRY').toUpperCase();
+  const to = (toCur || 'TRY').toUpperCase();
+  if (from === to) return amount;
+  const inTRY = convertToTRY(amount, from, rates);
+  if (inTRY == null) return null;
+  if (to === 'TRY' || to === 'TL') return inTRY;
+  const toRate = currentRateFor(to, rates);
+  if (!toRate) return null;
+  return inTRY / toRate;
+}
+
+// Bir müşterinin o an TEK BİR para biriminde borcu varsa o para birimini
+// döndürür (ör. sadece USD borcu varsa 'USD'). Birden fazla para biriminde
+// aynı anda borcu varsa (nadir, karışık durum) null döner -- hangi borcun
+// kapatılmak istendiği belirsiz olduğu için otomatik çevirme yapılmaz,
+// kullanıcının seçtiği para birimiyle kaydedilmeye devam edilir.
+export function singleDebtCurrency(balances: CurrencyBalance[]): string | null {
+  const owed = balances.filter((b) => b.bakiye > 0.009);
+  if (owed.length !== 1) return null;
+  return owed[0].paraBirimi;
+}
+
 // Bir dizi {paraBirimi, tutar} (veya {paraBirimi, bakiye}) kaydını tek bir TL
 // toplamına indirger. Herhangi bir para birimi için kur bilinmiyorsa (kur
 // servisine erişilemedi vs.) `null` döner -- ekran bu durumda TL toplamını

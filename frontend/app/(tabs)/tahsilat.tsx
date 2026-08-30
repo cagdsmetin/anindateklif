@@ -17,7 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
-import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
+import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
@@ -113,18 +113,44 @@ export default function TahsilatScreen() {
     if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
     setSaving(true);
     try {
+      let finalTutar = Number(tutar);
+      let finalParaBirimi = paraBirimi;
+      let finalNotlar = notlar;
+
+      // Müşterinin TEK bir para biriminde borcu varsa ve tahsilat FARKLI bir
+      // para biriminde giriliyorsa (ör. $6.000 borç, müşteri ₺ ödedi), o
+      // ödemeyi borcun kendi para birimine o günkü kurla çevirip düşüyoruz --
+      // aksi halde ödeme ayrı bir bakiye olarak boşta kalıp USD/EUR borcu hiç
+      // etkilemiyordu (customer-ledger.tsx'teki aynı mantık, bkz. orada).
+      if (tur === 'tahsilat') {
+        const key = customerKey({ customerId: selectedCustomerId, musteriAdi: musteriAdi.trim() });
+        const musteriBalances = balances.find((b) => b.key === key)?.balances || [];
+        const debtCur = singleDebtCurrency(musteriBalances);
+        if (debtCur && debtCur !== paraBirimi) {
+          const converted = convertBetween(Number(tutar), paraBirimi, debtCur, rates);
+          if (converted != null) {
+            finalTutar = converted;
+            finalParaBirimi = debtCur;
+            const orijinalNot = `(${fmt(Number(tutar), paraBirimi)} olarak alındı)`;
+            finalNotlar = notlar ? `${notlar} ${orijinalNot}` : orijinalNot;
+          } else {
+            showToast('Kur bilgisi alınamadı, tutar girildiği para biriminde kaydedildi');
+          }
+        }
+      }
+
       await addTahsilatEntry({
         customerId: selectedCustomerId,
         musteriAdi: musteriAdi.trim(),
         musteriTelefon,
         tur,
-        tutar: Number(tutar),
-        paraBirimi,
+        tutar: finalTutar,
+        paraBirimi: finalParaBirimi,
         yontem,
         vadeTarihi: tur === 'borc' ? vadeTarihi : '',
-        notlar,
+        notlar: finalNotlar,
         tarih: todayIso(),
-        kurTRY: currentRateFor(paraBirimi, rates),
+        kurTRY: currentRateFor(finalParaBirimi, rates),
       });
       showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : 'Borç eklendi');
       resetForm();

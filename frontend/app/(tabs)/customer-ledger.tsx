@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { YONTEMLER, customerKey } from '@/src/lib/tahsilat-utils';
+import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
+import { api, RatesT } from '@/src/lib/api';
 
 /**
  * Müşteri bazlı cari hesap (para akışı) ekranı.
@@ -57,6 +58,15 @@ export default function CustomerLedgerScreen() {
       .sort((a, b) => Math.abs(b.bakiye) - Math.abs(a.bakiye));
   }, [entries]);
 
+  const [rates, setRates] = useState<RatesT | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   const [tur, setTur] = useState<'tahsilat' | 'borc'>('tahsilat');
   const [tutar, setTutar] = useState('');
   const [paraBirimi, setParaBirimi] = useState('TRY');
@@ -78,16 +88,42 @@ export default function CustomerLedgerScreen() {
     if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
     setSaving(true);
     try {
+      let finalTutar = Number(tutar);
+      let finalParaBirimi = paraBirimi;
+      let finalNotlar = notlar;
+
+      // Müşterinin TEK bir para biriminde borcu varsa ve ödeme FARKLI bir
+      // para biriminde giriliyorsa (ör. $6.000 borç, müşteri ₺ ödedi), o
+      // ödemeyi borcun kendi para birimine o günkü kurla çevirip düşüyoruz.
+      // Aksi halde ödeme ayrı bir bakiye olarak "boşta" kalıp borcu hiç
+      // etkilemiyordu. Kur bilinmiyorsa ya da müşterinin birden fazla para
+      // biriminde borcu varsa (belirsiz), hiçbir şey değiştirmeden girilen
+      // haliyle kaydediyoruz.
+      if (tur === 'tahsilat') {
+        const debtCur = singleDebtCurrency(balancesByCurrency);
+        if (debtCur && debtCur !== paraBirimi) {
+          const converted = convertBetween(Number(tutar), paraBirimi, debtCur, rates);
+          if (converted != null) {
+            finalTutar = converted;
+            finalParaBirimi = debtCur;
+            const orijinalNot = `(${fmt(Number(tutar), paraBirimi)} olarak alındı)`;
+            finalNotlar = notlar ? `${notlar} ${orijinalNot}` : orijinalNot;
+          } else {
+            showToast('Kur bilgisi alınamadı, tutar girildiği para biriminde kaydedildi');
+          }
+        }
+      }
+
       await addTahsilatEntry({
         customerId,
         musteriAdi,
         musteriTelefon,
         tur,
-        tutar: Number(tutar),
-        paraBirimi,
+        tutar: finalTutar,
+        paraBirimi: finalParaBirimi,
         yontem,
         vadeTarihi: tur === 'borc' ? vadeTarihi : '',
-        notlar,
+        notlar: finalNotlar,
         tarih: new Date().toISOString().split('T')[0],
       });
       showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : 'Borç eklendi');

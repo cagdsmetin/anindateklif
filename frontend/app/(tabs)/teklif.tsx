@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -43,6 +45,15 @@ function newItemId() { return 'it-' + Date.now() + '-' + Math.random().toString(
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
 
+// Teklif durumu rozeti için renk haritası -- Panel sayfasındaki (index.tsx)
+// Teklif Durumları grafiğiyle aynı renkler kullanılır (görsel tutarlılık).
+const DURUM_COLORS: Record<string, string> = {
+  Beklemede: theme.colors.textMuted,
+  Görüldü: theme.colors.gold,
+  Onaylandı: theme.colors.green,
+  Reddedildi: theme.colors.red,
+};
+
 export default function EditorScreen() {
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
   const { user } = useAuth();
@@ -64,6 +75,9 @@ export default function EditorScreen() {
   const params = useLocalSearchParams<{ quoteId?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  // Yalnızca ekranda küçük durum rozeti göstermek için -- kaydetme akışını
+  // (currentQuote/saveQuote) ETKİLEMEZ, mevcut davranış korunur.
+  const [durum, setDurum] = useState<string>('Beklemede');
   const [teklifNo, setTeklifNo] = useState(() => buildTeklifNo(countQuotesToday(quotes) + 1));
   const [tarih, setTarih] = useState(todayIso());
   const [gecerlilik, setGecerlilik] = useState(plusDaysIso(7));
@@ -88,6 +102,8 @@ export default function EditorScreen() {
   // daralır, sayfa çok kalemli tekliflerde uzamaz. Bir kart tıklanınca
   // açılır ve o an açık olan diğer kart otomatik kapanır.
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  // Silinirken kısa bir kaybolma animasyonu oynatılacak kalem id'leri.
+  const [leavingItemIds, setLeavingItemIds] = useState<Set<string>>(new Set());
   const [ekler, setEkler] = useState<QuoteEkT[]>([]);
   // Local-only attached files (PDF/Word/Image) merged into the outgoing PDF at share time.
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
@@ -147,6 +163,7 @@ export default function EditorScreen() {
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
     setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
+    setDurum(q.durum || 'Beklemede'); setLeavingItemIds(new Set());
   };
 
   const resetForm = useCallback(() => {
@@ -154,6 +171,7 @@ export default function EditorScreen() {
     setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); setExpandedItemId(null); bootedRef.current = null;
+    setDurum('Beklemede'); setLeavingItemIds(new Set());
     teklifNoManualRef.current = false;
   }, [activeCompany, quotes, user]);
 
@@ -236,7 +254,15 @@ export default function EditorScreen() {
       return merged;
     }));
   };
-  const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  // Silme işlemi önce kısa bir kaybolma animasyonu oynatır (leavingItemIds),
+  // animasyon bitince kalem gerçekten listeden kaldırılır.
+  const removeItem = (id: string) => {
+    setLeavingItemIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setItems((prev) => prev.filter((it) => it.id !== id));
+      setLeavingItemIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 190);
+  };
 
   const makeItem = (mode: 'technical' | 'manual' | 'general'): QuoteItemT => ({
     id: newItemId(), mode, urunAdi: '', sistemTipiId: '', sistemTipi: '',
@@ -413,19 +439,23 @@ export default function EditorScreen() {
               <Text style={s.totalValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
             </View>
             <View style={s.miniStats}>
+              <View style={[s.durumBadge, { backgroundColor: (DURUM_COLORS[durum] || theme.colors.textMuted) + '30' }]}>
+                <View style={[s.durumDot, { backgroundColor: DURUM_COLORS[durum] || theme.colors.textMuted }]} />
+                <Text style={s.durumBadgeText}>{durum}</Text>
+              </View>
               <Text style={s.miniStat}>{items.length} kalem</Text>
               <Text style={s.miniStatSub}>KDV %{kdvOr}</Text>
             </View>
           </LinearGradient>
 
-          <SectionHeader title="TEKLİF BİLGİLERİ" />
+          <SectionHeader title="TEKLİF BİLGİLERİ" icon="document-text" />
           <Row>
             <FGroup label="Teklif No" flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
             <FGroup label="Tarih" flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
           </Row>
           <FGroup label="Geçerlilik Tarihi"><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
 
-          <SectionHeaderWithAction title="MÜŞTERİ BİLGİLERİ" actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} />
+          <SectionHeaderWithAction title="MÜŞTERİ BİLGİLERİ" actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
             <Text style={s.label}>Firma Adı</Text>
             <TextInput
@@ -464,7 +494,7 @@ export default function EditorScreen() {
           <FGroup label="E-Mail"><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder="ornek@firma.com" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
           <FGroup label="Adres"><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder="Açık adres" placeholderTextColor="#94a3b8" /></FGroup>
 
-          <SectionHeader title="SİPARİŞ BİLGİLERİ" />
+          <SectionHeader title="SİPARİŞ BİLGİLERİ" icon="cart" />
           <FGroup label="Proje Adı"><TextInput style={s.input} value={projeAdi} onChangeText={setProjeAdi} placeholder="Proje / iş adı" placeholderTextColor="#94a3b8" /></FGroup>
           <Row>
             <FGroup label="Para Birimi" flex={1}>
@@ -492,12 +522,15 @@ export default function EditorScreen() {
             <FGroup label="KDV (%)" flex={1}><TextInput style={s.input} keyboardType="numeric" value={kdvOrani} onChangeText={setKdvOrani} /></FGroup>
           </Row>
 
-          <SectionHeader title={`KALEMLER (${items.length})`} />
+          <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
           {items.length === 0 && (
-            <View style={s.emptyBox}>
-              <Ionicons name="cube-outline" size={22} color={theme.colors.textMuted} />
-              <Text style={s.emptyText}>Kalem eklemek için aşağıdaki butonu kullanın.</Text>
-            </View>
+            <TouchableOpacity style={s.emptyBox} activeOpacity={0.8} onPress={() => setShowModeSheet(true)} testID="empty-add-item">
+              <View style={s.emptyIconCircle}>
+                <Ionicons name="add" size={26} color={theme.colors.primary} />
+              </View>
+              <Text style={s.emptyTitle}>Henüz kalem eklenmedi</Text>
+              <Text style={s.emptyText}>Başlamak için dokunun, hizmet/ürün, manuel bilgi ya da genel ürün ekleyin.</Text>
+            </TouchableOpacity>
           )}
 
           {items.map((it, idx) => (
@@ -514,6 +547,7 @@ export default function EditorScreen() {
               onOpenSystemPicker={() => setShowSystemPicker(it.id)}
               onOpenSelectPicker={(fieldId, options, title) => setShowSelectPicker({ itemId: it.id, fieldId, options, title })}
               onUpdateSystemFieldValue={(fi, val) => updateSystemFieldValue(it.id, fi, val)}
+              leaving={leavingItemIds.has(it.id)}
             />
           ))}
 
@@ -537,7 +571,7 @@ export default function EditorScreen() {
             </View>
           )}
 
-          <SectionHeader title="ÖZEL NOTLAR" />
+          <SectionHeader title="ÖZEL NOTLAR" icon="chatbox-ellipses" />
           <FGroup>
             <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder="Notlar, garanti, koşullar..." placeholderTextColor="#94a3b8" />
             {!user?.is_staff && (
@@ -556,7 +590,7 @@ export default function EditorScreen() {
           </FGroup>
 
           {/* EKLER — Additional attachment pages (References, Katalog, etc.) */}
-          <SectionHeader title="EKLER (İSTEĞE BAĞLI)" />
+          <SectionHeader title="EKLER (İSTEĞE BAĞLI)" icon="pricetags" />
           <Text style={s.helperTinyMuted}>{"Teklifin altına özel sayfalar ekleyebilirsiniz (örn. Referanslar listesi, Katalog). Her ek, PDF'de teklifle aynı stilde yeni sayfa olarak eklenir."}</Text>
           {ekler.map((ek, ei) => (
             <View key={ek.id} style={s.ekCard} testID={`ek-${ei}`}>
@@ -596,7 +630,7 @@ export default function EditorScreen() {
           </TouchableOpacity>
 
           {/* EK DOSYALAR — user-uploaded PDFs / images, merged into the outgoing PDF */}
-          <SectionHeader title="EK DOSYALAR (PDF · GÖRSEL)" />
+          <SectionHeader title="EK DOSYALAR (PDF · GÖRSEL)" icon="attach" />
           <Text style={s.helperTinyMuted}>{"Yüklediğin dosyalar teklif PDF'inin sonuna otomatik eklenir (PDF: sayfa sayfa, görsel: A4 sayfa olarak). Word dosyaları desteklenmez."}</Text>
           {attachments.map((att, ai) => {
             const isImg = (att.mime || '').startsWith('image/') || /\.(png|jpe?g)$/i.test(att.name);
@@ -806,7 +840,7 @@ export default function EditorScreen() {
 
 // ============ ITEM CARD ============
 function ItemCard({
-  item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue,
+  item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
 }: {
   item: QuoteItemT;
   idx: number;
@@ -819,7 +853,20 @@ function ItemCard({
   onOpenSystemPicker: () => void;
   onOpenSelectPicker: (fieldId: string, options: string[], title: string) => void;
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
+  leaving?: boolean;
 }) {
+  // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
+  // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (leaving) {
+      Animated.timing(enterAnim, { toValue: 0, duration: 180, easing: Easing.in(Easing.cubic), useNativeDriver: false }).start();
+    }
+  }, [leaving]);
   const line = (item.adet || 0) * (item.birimFiyat || 0);
   const modeMeta =
     item.mode === 'technical' ? { label: 'HİZMET / ÜRÜN', color: theme.colors.primary, icon: 'construct' as const } :
@@ -836,8 +883,16 @@ function ItemCard({
   const summaryBits = [itemTitle, preview].filter(Boolean);
   const summaryText = summaryBits.join(' — ') || 'Detaylar için dokunun';
 
+  const animatedCardStyle = {
+    opacity: enterAnim,
+    transform: [
+      { translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+      { scale: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) },
+    ],
+  };
+
   return (
-    <View style={[itemStyles.card, { borderLeftColor: modeMeta.color }]} testID={`quote-item-${idx}`}>
+    <Animated.View style={[itemStyles.card, { borderLeftColor: modeMeta.color }, animatedCardStyle]} testID={`quote-item-${idx}`}>
       <TouchableOpacity activeOpacity={0.7} onPress={onToggleExpand} testID={`item-${idx}-toggle`}>
         <View style={itemStyles.hdr}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
@@ -975,7 +1030,7 @@ function ItemCard({
       )}
       </>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -992,11 +1047,29 @@ function ModeChoice({ icon, title, desc, onPress, tid }: { icon: any; title: str
   );
 }
 
-function SectionHeader({ title }: { title: string }) { return <Text style={s.sectionH}>{title}</Text>; }
-function SectionHeaderWithAction({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
+function SectionHeader({ title, icon }: { title: string; icon?: keyof typeof Ionicons.glyphMap }) {
+  return (
+    <View style={s.sectionH}>
+      {icon && (
+        <View style={s.sectionIconWrap}>
+          <Ionicons name={icon} size={12} color={theme.colors.primary} />
+        </View>
+      )}
+      <Text style={s.sectionHText}>{title}</Text>
+    </View>
+  );
+}
+function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title: string; actionLabel?: string; onAction?: () => void; icon?: keyof typeof Ionicons.glyphMap }) {
   return (
     <View style={s.sectionRow}>
-      <Text style={s.sectionH2}>{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {icon && (
+          <View style={s.sectionIconWrap}>
+            <Ionicons name={icon} size={12} color={theme.colors.primary} />
+          </View>
+        )}
+        <Text style={s.sectionH2}>{title}</Text>
+      </View>
       {actionLabel && onAction ? <TouchableOpacity onPress={onAction}><Text style={s.sectionAction}>{actionLabel}</Text></TouchableOpacity> : null}
     </View>
   );
@@ -1018,10 +1091,15 @@ const s = StyleSheet.create({
   totalBanner: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, marginBottom: 10, gap: 12, ...theme.shadow.md },
   totalLabel: { color: '#94a3b8', fontSize: 10.5, fontWeight: '700', letterSpacing: 0.6 },
   totalValue: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 2, letterSpacing: 0.3 },
-  miniStats: { alignItems: 'flex-end' },
+  miniStats: { alignItems: 'flex-end', gap: 4 },
+  durumBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, gap: 4, marginBottom: 2 },
+  durumDot: { width: 6, height: 6, borderRadius: 3 },
+  durumBadgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800' },
   miniStat: { color: '#fff', fontSize: 12, fontWeight: '700' },
   miniStatSub: { color: theme.colors.primary, fontSize: 10, marginTop: 2, fontWeight: '800' },
-  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary, letterSpacing: 0.5 },
+  sectionH: { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
+  sectionHText: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
+  sectionIconWrap: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
@@ -1053,8 +1131,10 @@ const s = StyleSheet.create({
   chipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   chipText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
   chipTextActive: { color: '#fff' },
-  emptyBox: { backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 22, alignItems: 'center', marginBottom: 10, gap: 6 },
-  emptyText: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center' },
+  emptyBox: { backgroundColor: theme.colors.primary + '08', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary + '55', borderRadius: 14, padding: 24, alignItems: 'center', marginBottom: 10, gap: 4 },
+  emptyIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.navy },
+  emptyText: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', maxWidth: 260 },
   emptyMuted: { color: theme.colors.textMuted, textAlign: 'center', padding: 16, fontSize: 12 },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, backgroundColor: theme.colors.primarySoft, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary, borderRadius: 12, marginTop: 4 },
   addBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 13, letterSpacing: 0.2 },

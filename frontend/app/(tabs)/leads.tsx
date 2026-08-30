@@ -219,6 +219,9 @@ export default function LeadsScreen() {
     }
   };
 
+  // Admin'e talep düşürmüyoruz -- yapay zeka kendi içinde (web_search ile)
+  // gerçek firmaları arayıp doğrudan kullanıcının listesine ekliyor. Arama
+  // 10-40 saniye sürebilir, bu yüzden buton üstünde bekleme durumu gösteriyoruz.
   const submitRequest = async () => {
     if (!companyId) return;
     if (!reqSektor.trim()) {
@@ -227,14 +230,18 @@ export default function LeadsScreen() {
     }
     setSendingReq(true);
     try {
-      await api.createLeadSearchRequest(companyId, reqSektor.trim(), reqBolge.trim(), reqAciklama.trim());
+      const created = await api.aiFindLeads(companyId, reqSektor.trim(), reqBolge.trim(), reqAciklama.trim());
       setReqSektor('');
       setReqBolge('');
       setReqAciklama('');
-      showToast('Talebin alındı, araştırılıp listen doldurulacak');
+      showToast(`${created.length} firma bulundu ve listene eklendi`);
+      setTab('tumu');
       await load();
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || ''));
+      const msg = e?.status === 404
+        ? 'Uygun firma bulunamadı, farklı bir sektör/bölge dene'
+        : 'Şu anda firma bulunamadı, lütfen tekrar dene';
+      showToast(msg);
     } finally {
       setSendingReq(false);
     }
@@ -496,7 +503,7 @@ export default function LeadsScreen() {
           <View>
             <Text style={s.sectionTitle}>Aranacak Firmaları Bul</Text>
             <Text style={s.helperTinyMuted}>
-              Hangi sektörde ve hangi bölgede firma aramamızı istiyorsan yaz — araştırıp bulduğumuz firmaları listene ekleyeceğiz.
+              Hangi sektörde ve hangi bölgede firma aramamı istiyorsan yaz — yapay zeka hemen internetten gerçek firmaları arayıp bulduklarını doğrudan listene ekler (10-40 saniye sürebilir).
             </Text>
             <TextInput
               style={s.input}
@@ -523,9 +530,13 @@ export default function LeadsScreen() {
               onChangeText={setReqAciklama}
               testID="lead-req-aciklama"
             />
-            <TouchableOpacity style={s.submitBtn} onPress={submitRequest} disabled={sendingReq} testID="lead-req-submit">
-              <Ionicons name="send" size={16} color="#fff" />
-              <Text style={s.submitBtnText}>{sendingReq ? 'Gönderiliyor...' : 'Talebi Gönder'}</Text>
+            <TouchableOpacity style={[s.submitBtn, sendingReq && { opacity: 0.7 }]} onPress={submitRequest} disabled={sendingReq} testID="lead-req-submit">
+              {sendingReq ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="sparkles" size={16} color="#fff" />
+              )}
+              <Text style={s.submitBtnText}>{sendingReq ? 'Yapay zeka araştırıyor...' : 'Yapay Zekaya Buldur'}</Text>
             </TouchableOpacity>
 
             {requests.length > 0 && (

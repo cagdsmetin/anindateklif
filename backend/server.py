@@ -207,6 +207,57 @@ ASSISTANT_SYSTEM_PROMPT = (
     "bunun yerine hangi bilgilere ihtiyacın olduğunu sor. En fazla 8 alan öner."
 )
 
+# Firma Arama Takibi -- "Yeni Talep" gönderildiğinde admin'e sormadan, doğrudan
+# yapay zekanın web_search aracıyla GERÇEK firma bulup listeye eklemesi için.
+# Uydurma isim/telefon üretmeyi kesinlikle yasaklıyoruz -- bulamadığı alanı
+# boş bırakması isteniyor, tahmin etmesi değil.
+LEAD_FINDER_SYSTEM_PROMPT = (
+    "Sen bir B2B satış/pazarlama araştırma asistanısın. Görevin: kullanıcının verdiği sektörde ve "
+    "bölgede GERÇEKTEN VAR OLAN firmaları web_search aracını kullanarak internetten arayıp bulmak. "
+    "KURALLAR (çok önemli):\n"
+    "1) KESİNLİKLE uydurma/tahmini firma adı veya telefon numarası üretme. Sadece arama sonuçlarında "
+    "gerçekten gördüğün firmaları listele.\n"
+    "2) Bir firma için telefon numarası bulamazsan telefon alanını boş bırak (""), asla tahmini numara yazma.\n"
+    "3) Her firma için varsa ilçe/il bilgisini 'bolge' alanına yaz.\n"
+    "4) En fazla 12 firma öner, aynı firmayı tekrar etme.\n"
+    "5) Hiç uygun/doğrulanabilir firma bulamazsan boş dizi döndür.\n\n"
+    "Cevabının EN SONUNDA, başka HİÇBİR açıklama/markdown olmadan sadece şu formatta bir JSON dizisi ver:\n"
+    "```json\n[{\"firma\": \"...\", \"bolge\": \"...\", \"telefon\": \"...\"}]\n```"
+)
+
+_LEAD_JSON_ARR_RE = re.compile(r"```json\s*(\[.*?\])\s*```", re.DOTALL)
+
+
+def _extract_ai_leads(reply_text: str) -> List[Dict[str, str]]:
+    """AI'nin cevabından firma listesi JSON dizisini ayıklar ve doğrular.
+    Firma adı olmayan veya bariz bozuk kayıtları atar; hiçbir alanı
+    UYDURMAZ -- sadece modelin verdiği veriyi temizler/sınırlar."""
+    m = _LEAD_JSON_ARR_RE.search(reply_text)
+    raw = m.group(1) if m else reply_text
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    out: List[Dict[str, str]] = []
+    seen = set()
+    for item in data[:15]:
+        if not isinstance(item, dict):
+            continue
+        firma = str(item.get("firma") or "").strip()
+        if not firma or len(firma) > 200:
+            continue
+        key = firma.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        bolge = str(item.get("bolge") or "").strip()[:120]
+        telefon = str(item.get("telefon") or "").strip()[:40]
+        out.append({"firma": firma, "bolge": bolge, "telefon": telefon})
+    return out
+
+
 # Dummy hash for timing-safe login (mitigates account enumeration)
 _DUMMY_HASH = bcrypt.hashpw(b"dummy-password-not-used", bcrypt.gensalt()).decode()
 
@@ -2927,6 +2978,23 @@ class LeadBulkAddRequest(BaseModel):
     items: List[LeadCompanyCreate]
 
 
+class LeadAiFillRequest(BaseModel):
+    companyId: str
+    sektor: str
+    bolge: str = ""
+    aciklama: str = ""
+
+    @field_validator("sektor")
+    @classmethod
+    def _sektor_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Sektör zorunlu")
+        if len(v) > 120:
+            raise ValueError("Sektör çok uzun")
+        return v
+
+
 class LeadStatusUpdate(BaseModel):
     durum: Optional[str] = None
     notlar: Optional[str] = None
@@ -2990,6 +3058,50 @@ async def create_lead(payload: LeadCompanyCreate, user=Depends(get_current_user)
     )
     await db.leads.insert_one(obj.model_dump())
     return obj
+
+
+# Kullanıcı "Yeni Talep" sekmesinde sektör/bölge girip gönderdiğinde --
+# admin'e bir talep DÜŞMÜYOR, doğrudan burada yapay zeka (web_search aracıyla)
+# gerçek firmaları arayıp bulduklarını kullanıcının kendi listesine ekliyor.
+@api_router.post("/leads/ai-find", response_model=List[LeadCompany])
+async def ai_find_leads(payload: LeadAiFillRequest, user=Depends(get_current_user)):
+    if not _anthropic_client:
+        raise HTTPException(status_code=503, detail="Yapay zeka asistanı henüz yapılandırılmadı")
+    await _own_company(user, payload.companyId)
+    prompt = f"Sektör: {payload.sektor}\nBölge: {payload.bolge.strip() or 'belirtilmedi (Türkiye geneli arayabilirsin)'}"
+    if payload.aciklama.strip():
+        prompt += f"\nEk not: {payload.aciklama.strip()}"
+    try:
+        resp = await asyncio.to_thread(
+            _anthropic_client.messages.create,
+            model="claude-sonnet-5",
+            max_tokens=3000,
+            system=LEAD_FINDER_SYSTEM_PROMPT,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}],
+            messages=[{"role": "user", "content": prompt}],
+        )
+        reply_text = "".join(
+            block.text for block in resp.content if getattr(block, "type", None) == "text"
+        ).strip()
+    except Exception as e:
+        logger.error(f"Lead AI find error: {e}")
+        raise HTTPException(status_code=502, detail="Firma araması şu anda yapılamadı, lütfen tekrar deneyin")
+    items = _extract_ai_leads(reply_text)
+    if not items:
+        raise HTTPException(status_code=404, detail="Uygun firma bulunamadı, farklı bir sektör/bölge dene")
+    created = []
+    for item in items:
+        obj = LeadCompany(
+            userId=user["user_id"],
+            companyId=payload.companyId,
+            firma=item["firma"],
+            bolge=item["bolge"],
+            kategori=payload.sektor.strip(),
+            telefon=item["telefon"],
+        )
+        await db.leads.insert_one(obj.model_dump())
+        created.append(obj)
+    return created
 
 
 @api_router.get("/leads/{company_id}/today", response_model=List[LeadCompany])

@@ -68,7 +68,7 @@ export class ApiError extends Error {
   }
 }
 
-async function req(path: string, opts: RequestInit = {}) {
+async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 20000) {
   const token = await getSessionToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ async function req(path: string, opts: RequestInit = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000); // 20s client timeout
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -190,6 +190,11 @@ export const api = {
     req(`/company/${companyId}/lead-daily-count`, { method: 'PATCH', body: JSON.stringify({ dailyCount }) }),
   createLeadSearchRequest: (companyId: string, sektor: string, bolge: string, aciklama: string) =>
     req('/leads/search-request', { method: 'POST', body: JSON.stringify({ companyId, sektor, bolge, aciklama }) }),
+  // Yeni Talep gönderilince admin'e düşmüyor -- yapay zeka web'den gerçek
+  // firma arayıp doğrudan listeye ekliyor. Arama (web_search + reasoning)
+  // uzun sürebildiği için standart 20sn yerine 75sn timeout kullanıyoruz.
+  aiFindLeads: (companyId: string, sektor: string, bolge: string, aciklama: string) =>
+    req('/leads/ai-find', { method: 'POST', body: JSON.stringify({ companyId, sektor, bolge, aciklama }) }, 75000),
   listLeadSearchRequests: (companyId: string) => req(`/leads/search-requests/${companyId}`),
   adminListLeadSearchRequests: () => req('/admin/leads/search-requests'),
   adminUpdateLeadSearchRequest: (id: string, durum: string) =>

@@ -175,7 +175,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .tot-row .v { font-weight:700; color:#0f172a; white-space:nowrap; flex-shrink:0; }
   .tot-row.grand { background:#0f172a; color:#fff; border-color:#0f172a; font-size:13.5px; }
   .tot-row.grand .l { color:#fff; font-weight:800; letter-spacing:0.05em; }
-  .tot-row.grand .v { color:#fff; font-weight:900; }
+  .tot-row.grand .v { color:#fff; font-weight:900; font-size:16px; }
   .sign-box { border:1px solid #cbd5e1; height:40px; padding:6px; font-size:11px; color:#64748b; margin-top:5px; white-space:pre-wrap; }
 
   /* BANK */
@@ -438,7 +438,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   .totals-v { display:table-cell; text-align:right; font-size:9pt; font-weight:600; }
   .totals-div { border-top:1px solid #45443f; margin:10px 0; }
   .grand-label { font-size:7.6pt; color:#a5b4fc; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:3px; }
-  .grand-value { font-size:23pt; font-weight:800; color:#fff; letter-spacing:-0.5px; }
+  .grand-value { font-size:12pt; font-weight:800; color:#fff; letter-spacing:-0.3px; }
   .kdv-note { margin-top:8px; font-size:7.4pt; color:#a09fb0; }
 
   /* Bank */
@@ -688,7 +688,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .totals-v { display:table-cell; text-align:right; font-size:9.5pt; }
   .grand-wrap { border-top:1px solid #2b2926; margin-top:8px; padding-top:8px; }
   .grand-label { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; }
-  .grand-value { font-size:27pt; font-weight:400; letter-spacing:.5px; margin-top:3px; }
+  .grand-value { font-size:12pt; font-weight:600; letter-spacing:.3px; margin-top:3px; }
   .kdv-note { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7.2pt; color:#8a8478; margin-top:9px; }
 
   /* Bank */

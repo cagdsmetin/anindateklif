@@ -24,6 +24,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday } from '@/src/lib/quote-utils';
+import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
@@ -81,6 +82,11 @@ export default function EditorScreen() {
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
   const [items, setItems] = useState<QuoteItemT[]>([]);
+  // Kalem kartları için accordion durumu -- her an sadece TEK kart açık
+  // olur; yeni bir kalem eklendiğinde önceki kartlar otomatik olarak
+  // daralır, sayfa çok kalemli tekliflerde uzamaz. Bir kart tıklanınca
+  // açılır ve o an açık olan diğer kart otomatik kapanır.
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [ekler, setEkler] = useState<QuoteEkT[]>([]);
   // Local-only attached files (PDF/Word/Image) merged into the outgoing PDF at share time.
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
@@ -92,6 +98,14 @@ export default function EditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+  // Manuel/Genel kalemlerde daha önce girilmiş ürün adı -> fiyat
+  // eşleşmeleri (cihazda, firma bazlı kalıcı). Ref kullanıyoruz çünkü
+  // sadece updateItem içinde okunup yazılıyor, ekranda ayrıca gösterilmiyor.
+  const priceMemoryRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!activeCompany?.id) { priceMemoryRef.current = {}; return; }
+    loadPriceMemory(activeCompany.id).then((m) => { priceMemoryRef.current = m; });
+  }, [activeCompany?.id]);
   // Tracks whether the person has hand-edited the Teklif No field — once
   // they have, the auto-numbering effect below stops overwriting it.
   const teklifNoManualRef = useRef(false);
@@ -131,14 +145,14 @@ export default function EditorScreen() {
     setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
-    setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]);
+    setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
   };
 
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
     setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
-    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); bootedRef.current = null;
+    setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); setExpandedItemId(null); bootedRef.current = null;
     teklifNoManualRef.current = false;
   }, [activeCompany, quotes, user]);
 
@@ -194,7 +208,32 @@ export default function EditorScreen() {
   });
 
   const updateItem = (id: string, patch: Partial<QuoteItemT>) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    setItems((prev) => prev.map((it) => {
+      if (it.id !== id) return it;
+      const merged: QuoteItemT = { ...it, ...patch };
+      // Sadece Manuel/Genel modda: ürün adına göre fiyat hatırlama.
+      if (merged.mode === 'manual' || merged.mode === 'general') {
+        // İsim değişti ve fiyat henüz girilmemişse (0/boş), daha önce bu
+        // isimle kaydedilmiş fiyat varsa otomatik doldur -- kullanıcı
+        // isterse üzerine yazıp değiştirebilir ya da hiç dokunmayıp kendi
+        // manuel girebilir.
+        if (patch.urunAdi !== undefined && !it.birimFiyat) {
+          const key = normalizeItemName(merged.urunAdi);
+          const remembered = key ? priceMemoryRef.current[key] : undefined;
+          if (remembered != null) merged.birimFiyat = remembered;
+        }
+        // Fiyat girildiyse ve bir ürün adı varsa, bir sonraki sefer
+        // hatırlanmak üzere kaydet.
+        if (patch.birimFiyat !== undefined && merged.urunAdi && merged.birimFiyat) {
+          const key = normalizeItemName(merged.urunAdi);
+          if (key && priceMemoryRef.current[key] !== merged.birimFiyat) {
+            priceMemoryRef.current = { ...priceMemoryRef.current, [key]: merged.birimFiyat };
+            if (activeCompany?.id) savePriceMemory(activeCompany.id, priceMemoryRef.current);
+          }
+        }
+      }
+      return merged;
+    }));
   };
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
 
@@ -204,13 +243,17 @@ export default function EditorScreen() {
   });
 
   const addItem = (mode: 'technical' | 'manual' | 'general') => {
-    setItems((prev) => [...prev, makeItem(mode)]);
+    const it = makeItem(mode);
+    setItems((prev) => [...prev, it]);
+    setExpandedItemId(it.id);
     setShowModeSheet(false);
   };
 
   const addFromCatalog = (catId: string) => {
     const c = catalog.find((x) => x.id === catId); if (!c) return;
-    setItems((prev) => [...prev, { ...makeItem('general'), urunAdi: c.urunAdi, birim: c.birim, birimFiyat: c.birimFiyat, aciklama: c.aciklama }]);
+    const it = { ...makeItem('general'), urunAdi: c.urunAdi, birim: c.birim, birimFiyat: c.birimFiyat, aciklama: c.aciklama };
+    setItems((prev) => [...prev, it]);
+    setExpandedItemId(it.id);
     setShowCatalogPicker(false); showToast('Kalem eklendi');
   };
 
@@ -458,6 +501,8 @@ export default function EditorScreen() {
               idx={idx}
               currency={cur}
               sistemTipleri={activeCompany?.sistemTipleri || []}
+              expanded={expandedItemId === it.id}
+              onToggleExpand={() => setExpandedItemId((prev) => (prev === it.id ? null : it.id))}
               onChange={(patch) => updateItem(it.id, patch)}
               onRemove={() => removeItem(it.id)}
               onOpenSystemPicker={() => setShowSystemPicker(it.id)}
@@ -755,12 +800,14 @@ export default function EditorScreen() {
 
 // ============ ITEM CARD ============
 function ItemCard({
-  item, idx, currency, sistemTipleri, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue,
+  item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue,
 }: {
   item: QuoteItemT;
   idx: number;
   currency: string;
   sistemTipleri: SystemTypeDefT[];
+  expanded: boolean;
+  onToggleExpand: () => void;
   onChange: (patch: Partial<QuoteItemT>) => void;
   onRemove: () => void;
   onOpenSystemPicker: () => void;
@@ -774,17 +821,18 @@ function ItemCard({
     { label: 'GENEL ÜRÜN', color: theme.colors.textMuted };
   const preview = buildItemDescription(item);
   const selectedSys = sistemTipleri.find((s) => s.id === item.sistemTipiId);
-  // Kartlar varsayılan olarak daraltılmış (özet) halde açılır; kullanıcı üstüne
-  // dokununca genişler/daralır. Böylece çok kalemli tekliflerde sayfa gereksiz
-  // uzamaz -- sadece üstünde çalışılan kalem açık kalır.
-  const [collapsed, setCollapsed] = useState(false);
+  // Kartlar accordion mantığıyla çalışır -- açık/kapalı durumu parent'ta
+  // (teklif.tsx) tek bir `expandedItemId` ile tutulur, böylece yeni bir kalem
+  // eklendiğinde ya da başka bir karta dokunulduğunda önceki kart otomatik
+  // daralır ve sayfa çok kalemli tekliflerde uzamaz.
+  const collapsed = !expanded;
   const itemTitle = item.mode === 'technical' ? (item.sistemTipi || '') : (item.urunAdi || '');
   const summaryBits = [itemTitle, preview].filter(Boolean);
   const summaryText = summaryBits.join(' — ') || 'Detaylar için dokunun';
 
   return (
     <View style={itemStyles.card} testID={`quote-item-${idx}`}>
-      <TouchableOpacity activeOpacity={0.7} onPress={() => setCollapsed((c) => !c)} testID={`item-${idx}-toggle`}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onToggleExpand} testID={`item-${idx}-toggle`}>
         <View style={itemStyles.hdr}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
             <Text style={itemStyles.no}>#{idx + 1}</Text>

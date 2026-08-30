@@ -267,6 +267,21 @@ export default function CatalogScreen() {
   const commitSystemName = () => persistSystems(sistemTipleri);
   const removeSystemType = (id: string) => persistSystems(sistemTipleri.filter((s) => s.id !== id));
 
+  // Var olan bir Hizmet/Ürün sistemini (tüm alt alanlarıyla birlikte)
+  // kopyalar -- kullanıcı benzer bir ürünü sıfırdan tanımlamak yerine
+  // kopya üzerinde küçük değişiklikler yapabilsin diye. Kopyalanan alanlara
+  // yeni id verilir ki orijinaliyle karışmasın.
+  const duplicateSystemType = (sys: SystemTypeDefT) => {
+    const copy: SystemTypeDefT = {
+      id: uid(),
+      name: (sys.name || '') + ' (Kopya)',
+      fields: (sys.fields || []).map((f) => ({ ...f, id: uid() })),
+    };
+    persistSystems([...sistemTipleri, copy]);
+    setExpandedSystem(copy.id);
+    showToast('Hizmet/Ürün kopyalandı');
+  };
+
   const openAddField = (sysId: string) => {
     setEditingField(null);
     setShowAddField(sysId);
@@ -542,6 +557,9 @@ export default function CatalogScreen() {
                   <Text style={s.systemName}>{sys.name || '(Adsız Hizmet / Ürün)'}</Text>
                   <Text style={s.systemMeta}>{(sys.fields || []).length} alan tanımlı</Text>
                 </View>
+                <TouchableOpacity onPress={() => duplicateSystemType(sys)} testID={`duplicate-system-${sys.id}`}>
+                  <Ionicons name="copy-outline" size={18} color={theme.colors.textMuted} />
+                </TouchableOpacity>
                 {!isStaffUser && (
                   <TouchableOpacity onPress={() => removeSystemType(sys.id)}>
                     <Ionicons name="trash-outline" size={18} color={theme.colors.red} />

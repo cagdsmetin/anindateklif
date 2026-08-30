@@ -204,6 +204,20 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
       if (pageIndex > 0) pdf.addPage();
       pdf.addImage(pageImgData, 'JPEG', 0, 0, pageWidthPt, pageImgHeightPt);
 
+      // When a page's content is shorter than a full A4 page (typically the
+      // last page, once the "safe cut" search above has trimmed it to the
+      // last full paragraph), the image above only covers the top part of
+      // the page -- jsPDF leaves the rest of that physical page plain white
+      // by default. That produced a visible white gap under the content on
+      // templates whose own background isn't white (Modern/Minimal's cream
+      // tone), as if the page were cut off early. Filling the leftover strip
+      // with the document's own sampled background color extends that color
+      // all the way to the true page edge instead.
+      if (bgRef && pageImgHeightPt < pageHeightPt - 0.5) {
+        pdf.setFillColor(bgRef[0], bgRef[1], bgRef[2]);
+        pdf.rect(0, pageImgHeightPt, pageWidthPt, pageHeightPt - pageImgHeightPt + 1, 'F');
+      }
+
       // If the website credit line's vertical center lands on this page,
       // overlay an invisible clickable link at its exact rasterized
       // position so tapping "www.anindateklif.co" in the final PDF opens

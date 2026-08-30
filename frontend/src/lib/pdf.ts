@@ -170,9 +170,9 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .bt-right { display:table-cell; width:40%; vertical-align:top; padding-left:7px; }
   .notes-hdr { background:#1E293B; color:#fff; font-size:11px; font-weight:800; padding:6px 9px; letter-spacing:0.03em; }
   .notes-body { border:1px solid #cbd5e1; border-top:none; padding:8px; font-size:11px; line-height:1.5; color:#0f172a; min-height:44px; white-space:pre-wrap; }
-  .tot-row { display:flex; justify-content:space-between; align-items:center; border:1px solid #cbd5e1; padding:6px 10px; font-size:12px; margin-bottom:4px; }
-  .tot-row .l { color:#64748b; font-weight:600; }
-  .tot-row .v { font-weight:700; color:#0f172a; }
+  .tot-row { display:flex; justify-content:space-between; align-items:center; border:1px solid #cbd5e1; padding:6px 10px; font-size:12px; margin-bottom:4px; gap:8px; }
+  .tot-row .l { color:#64748b; font-weight:600; min-width:0; }
+  .tot-row .v { font-weight:700; color:#0f172a; white-space:nowrap; flex-shrink:0; }
   .tot-row.grand { background:#0f172a; color:#fff; border-color:#0f172a; font-size:13.5px; }
   .tot-row.grand .l { color:#fff; font-weight:800; letter-spacing:0.05em; }
   .tot-row.grand .v { color:#fff; font-weight:900; }
@@ -278,7 +278,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     <div class="bt-right">
       <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
       ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">İSKONTO (%${quote.iskonto})</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
-      ${quote.kdvOrani > 0 ? `<div class="tot-row"><div class="l">KDV (%${quote.kdvOrani})</div><div class="v">+${fmt(quote.kdvTutar || 0, cur)}</div></div>` : ''}
+      ${quote.kdvOrani > 0 ? `<div class="tot-row"><div class="l">KDV (%${quote.kdvOrani})</div><div class="v">${fmt(quote.kdvTutar || 0, cur)}</div></div>` : ''}
       <div class="tot-row grand"><div class="l">GENEL TOPLAM${quote.kdvOrani > 0 ? ' (KDV DAHİL)' : ''}</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
       <div class="sign-box">Onay / İmza :${company.imzaMetni ? `\n${esc(company.imzaMetni)}` : ''}</div>
     </div>
@@ -291,7 +291,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
   ` : ''}
 
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#1E293B;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
 
   <!-- ATTACHMENT PAGES -->
   ${eklerHtml}
@@ -533,7 +533,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
       <div class="totals-card">
         <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
         ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
-        ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">+ ${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
+        ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
         <div class="totals-div"></div>
         <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
         <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
@@ -541,7 +541,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     </div>
 
     ${bankSection}
-    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
+    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#4338ca;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
   </div>
   ${ekPages}
 </body>
@@ -787,7 +787,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     <div class="totals-col">
       <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
       ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
-      ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">+ ${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
+      ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
       <div class="grand-wrap">
         <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
         <div class="grand-value">${fmt(quote.genelToplam, cur)}</div>
@@ -796,7 +796,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   </div>
 
   ${bankSection}
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:inherit;text-decoration:none;">www.anindateklif.co</a></div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#b5502e;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
   ${ekPages}
 </body>
 </html>`;

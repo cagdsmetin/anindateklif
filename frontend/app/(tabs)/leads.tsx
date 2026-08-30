@@ -398,7 +398,7 @@ export default function LeadsScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Firma Arama Takibi</Text>
+          <Text style={s.headerTitle}>Müşteri Avcısı</Text>
           <View style={s.headerBtn} />
         </View>
         <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
@@ -499,7 +499,7 @@ export default function LeadsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Firma Arama Takibi</Text>
+        <Text style={s.headerTitle}>Müşteri Avcısı</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />

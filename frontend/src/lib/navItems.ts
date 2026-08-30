@@ -16,7 +16,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'customers', title: 'Müşteri', icon: 'people', color: m.musteri },
     { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
     { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
-    { name: 'leads', title: 'Firma Arama', icon: 'search', color: m.lead },
+    { name: 'leads', title: 'Müşteri Avcısı', icon: 'search', color: m.lead },
     { name: 'reminders', title: 'Hatırlat.', icon: 'notifications', color: m.hatirlatma },
     { name: 'calendar', title: 'Takvim', icon: 'calendar', color: m.hatirlatma },
   ];

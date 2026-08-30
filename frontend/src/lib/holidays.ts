@@ -26,6 +26,14 @@ const RESMI_TATILLER: { ay: number; gun: number; title: string }[] = [
   { ay: 10, gun: 29, title: 'Cumhuriyet Bayramı' },
 ];
 
+// Resmi tatil (izin günü) olmayan ama resmi/ulusal nitelikli anma günleri.
+// 10 Kasım Atatürk'ü Anma Günü çalışma günüdür, tatil değildir; saat 09:05'te
+// ülke genelinde saygı duruşu yapılır. Yine de "resmi" renk/ikon ile
+// takvimde gösterilir, sadece başlığında tatil olmadığı belirtilir.
+const RESMI_ANMA_GUNLERI: { ay: number; gun: number; title: string }[] = [
+  { ay: 11, gun: 10, title: "Atatürk'ü Anma Günü (09:05 Saygı Duruşu, tatil değil)" },
+];
+
 // Diyanet resmi dini günler takvimine göre; "resmi: true" işaretli olanlar
 // aynı zamanda resmi tatil (dini bayram) günleridir, diğerleri sadece
 // kandil/manevi gün niteliğindedir (resmi tatil değildir).
@@ -79,7 +87,7 @@ const DINI_GUNLER: Record<number, { ay: number; gun: number; title: string; resm
  * döner çünkü bunlar sabittir.
  */
 export function getHolidaysForYear(year: number): Holiday[] {
-  const resmi: Holiday[] = RESMI_TATILLER.map((r) => ({
+  const resmi: Holiday[] = [...RESMI_TATILLER, ...RESMI_ANMA_GUNLERI].map((r) => ({
     date: `${year}-${pad2(r.ay)}-${pad2(r.gun)}`,
     title: r.title,
     kind: 'resmi' as const,

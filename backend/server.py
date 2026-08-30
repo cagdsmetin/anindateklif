@@ -2476,6 +2476,16 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
         # müşteriden gerçekten para geldiğinde (Tahsilat ekranından "tahsilat"
         # kaydı girildiğinde, bkz. create_tahsilat_entry) otomatik eklenir.
 
+    # Onayın tam tersi: teklif "Reddedildi" durumuna geçerse, bu teklif için
+    # otomatik oluşturulmuş olan borç kaydını iptal et (sil). Teklif hiç
+    # onaylanmadıysa zaten böyle bir kayıt yoktur, hiçbir şey silinmez.
+    if payload.durum == "Reddedildi" and previous_durum != "Reddedildi":
+        await db.tahsilat.delete_many({
+            "userId": user["user_id"],
+            "quoteId": quote_id,
+            "tur": "borc",
+        })
+
     return Quote(**doc)
 
 

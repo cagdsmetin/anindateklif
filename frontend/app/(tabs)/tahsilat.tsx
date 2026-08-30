@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -17,7 +17,8 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
-import { YONTEMLER, computeCustomerBalances } from '@/src/lib/tahsilat-utils';
+import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
+import { api, RatesT } from '@/src/lib/api';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -34,6 +35,15 @@ export default function TahsilatScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const pendingSectionY = useRef(0);
+  const [rates, setRates] = useState<RatesT | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const [tur, setTur] = useState<'tahsilat' | 'borc'>('tahsilat');
   const [musteriAdi, setMusteriAdi] = useState('');
@@ -78,6 +88,11 @@ export default function TahsilatScreen() {
   }, [balances]);
   const borcluMusteri = balances.length;
 
+  // Üstteki kart artık Panel'deki hacim kartıyla aynı mantık: dövizli
+  // alacaklar da canlı kurla TL'ye çevrilip TEK bir TL toplamı gösteriliyor,
+  // altında $/€ dökümü kalıyor.
+  const toplamAlacakTRY = useMemo(() => sumToTRY(toplamAlacakByCurrency, rates), [toplamAlacakByCurrency, rates]);
+
   const filtered = useMemo(() => {
     const list = [...tahsilat].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.id || '').localeCompare(a.id || ''));
     if (!q.trim()) return list;
@@ -109,6 +124,7 @@ export default function TahsilatScreen() {
         vadeTarihi: tur === 'borc' ? vadeTarihi : '',
         notlar,
         tarih: todayIso(),
+        kurTRY: currentRateFor(paraBirimi, rates),
       });
       showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : 'Borç eklendi');
       resetForm();
@@ -160,17 +176,16 @@ export default function TahsilatScreen() {
           <View style={s.statsRow}>
             <View style={[s.statCard, { backgroundColor: theme.colors.primarySoft }]}>
               <Text style={[s.statLabel, { color: theme.colors.primaryDark }]}>TOPLAM ALACAK</Text>
-              {toplamAlacakByCurrency.length === 0 ? (
-                <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>{fmt(0)}</Text>
-              ) : (
-                toplamAlacakByCurrency.map((x) => (
-                  <Text key={x.paraBirimi} style={[s.statValue, { color: theme.colors.primaryDark, fontSize: toplamAlacakByCurrency.length > 1 ? 13 : 15 }]} numberOfLines={1}>
-                    {fmt(x.tutar, x.paraBirimi)}
-                  </Text>
-                ))
+              <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>
+                {toplamAlacakTRY != null ? fmt(toplamAlacakTRY, 'TRY') : fmt(0, 'TRY')}
+              </Text>
+              {toplamAlacakByCurrency.length > 0 && (
+                <Text style={s.statSubValue} numberOfLines={1}>
+                  {toplamAlacakByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
+                </Text>
               )}
             </View>
-            <TouchableOpacity style={[s.statCard, { backgroundColor: '#F1F5F9' }]} onPress={scrollToPending} testID="tahsilat-borclu-card">
+            <TouchableOpacity style={[s.statCard, { backgroundColor: '#F1F5F9' }]} onPress={() => router.push('/borclu-musteriler' as any)} testID="tahsilat-borclu-card">
               <Text style={[s.statLabel, { color: theme.colors.textSoft }]}>BORÇLU MÜŞTERİ</Text>
               <Text style={[s.statValue, { color: theme.colors.text }]} numberOfLines={1}>{borcluMusteri}</Text>
             </TouchableOpacity>
@@ -344,6 +359,7 @@ const s = StyleSheet.create({
   statCard: { flex: 1, borderRadius: 12, padding: 12 },
   statLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
   statValue: { fontSize: 15, fontWeight: '900', marginTop: 4 },
+  statSubValue: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
   sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.tahsilat, letterSpacing: 0.5 },
   card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
   turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: '#fff' },

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -27,6 +28,8 @@ const TEMPLATES: { id: PdfTemplateId; label: string }[] = [
   { id: 'classic', label: 'Klasik' },
   { id: 'modern', label: 'Modern' },
   { id: 'minimal', label: 'Minimal' },
+  { id: 'kurumsal', label: 'Kurumsal' },
+  { id: 'renkli', label: 'Renkli' },
 ];
 
 const SHARE_MESSAGE = 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.';
@@ -187,7 +190,7 @@ export default function PreviewScreen() {
       {/* TEMPLATE PICKER — lets the user preview and pick which quote design
           gets shared/printed. "Klasik" is the original design and stays the
           default so nothing changes unless the user actively switches. */}
-      <View style={s.templateBar}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.templateBar} contentContainerStyle={s.templateBarContent}>
         {TEMPLATES.map((t) => (
           <TouchableOpacity
             key={t.id}
@@ -198,7 +201,7 @@ export default function PreviewScreen() {
             <Text style={[s.templateChipText, template === t.id && s.templateChipTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* All three templates render from the exact HTML used for the real
           PDF (buildQuotePdfHtml), pinned to the same fixed page width the
@@ -267,8 +270,9 @@ const s = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   topTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  templateBar: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  templateChip: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.line, backgroundColor: '#fff' },
+  templateBar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  templateBarContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  templateChip: { minWidth: 84, alignItems: 'center', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.line, backgroundColor: '#fff' },
   templateChipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '14' },
   templateChipText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textSoft },
   templateChipTextActive: { color: theme.colors.primary },

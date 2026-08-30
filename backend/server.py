@@ -1184,6 +1184,7 @@ class KasaEntry(BaseModel):
     tarih: str  # YYYY-MM-DD
     quoteId: Optional[str] = None  # onaylanan tekliften otomatik oluşturulduysa bağlantı (mükerrer önleme için)
     tahsilatId: Optional[str] = None  # bir tahsilat (para girişi) kaydından otomatik oluşturulduysa bağlantı
+    kurTRY: float = 0.0  # paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (bilgi amaçlı, referans)
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1196,6 +1197,7 @@ class KasaEntryCreate(BaseModel):
     yontem: str = "Nakit"
     notlar: str = ""
     tarih: str
+    kurTRY: float = 0.0
 
 
 class TahsilatEntry(BaseModel):
@@ -1208,11 +1210,12 @@ class TahsilatEntry(BaseModel):
     tur: str  # "borc" | "tahsilat"
     tutar: float = 0.0
     paraBirimi: str = "TRY"
-    yontem: str = "Nakit"  # Nakit | Kart | Havale/EFT | Diğer (tahsilat için)
+    yontem: str = "Nakit"  # Nakit | Kart | Havale/EFT | Çek | Diğer (tahsilat için)
     vadeTarihi: str = ""   # YYYY-MM-DD (borc için, opsiyonel)
     notlar: str = ""
     tarih: str  # YYYY-MM-DD
     quoteId: str = ""  # dolu ise: bu borç bir teklifin "Onaylandı" durumuna geçmesiyle otomatik oluşturuldu
+    kurTRY: float = 0.0  # paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (bilgi amaçlı, referans)
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1229,6 +1232,7 @@ class TahsilatEntryCreate(BaseModel):
     notlar: str = ""
     tarih: str
     quoteId: str = ""
+    kurTRY: float = 0.0
 
 
 class Customer(BaseModel):
@@ -2156,6 +2160,7 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
             notlar=f"{obj.musteriAdi} - tahsilat" + (f" ({obj.notlar})" if obj.notlar else ""),
             tarih=obj.tarih,
             tahsilatId=obj.id,
+            kurTRY=obj.kurTRY,
         )
         await db.kasa.insert_one(kasa_doc.dict())
 
@@ -2384,6 +2389,15 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
                 if cust:
                     matched_customer_id = cust.get("id", "")
 
+            entry_cur = doc.get("paraBirimi") or "TRY"
+            entry_kur = 0.0
+            if entry_cur != "TRY":
+                try:
+                    rates_now = await get_rates()
+                    entry_kur = float((rates_now.usd_try if entry_cur == "USD" else rates_now.eur_try) or 0)
+                except Exception:
+                    entry_kur = 0.0
+
             tahsilat_doc = TahsilatEntry(
                 userId=user["user_id"],
                 companyId=doc.get("companyId"),
@@ -2392,12 +2406,13 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
                 musteriTelefon=mus_telefon,
                 tur="borc",
                 tutar=float(doc.get("genelToplam") or 0),
-                paraBirimi=doc.get("paraBirimi") or "TRY",
+                paraBirimi=entry_cur,
                 yontem="Diğer",
                 vadeTarihi="",
                 notlar=f"Teklif {doc.get('teklifNo', '')} onaylandı (otomatik oluşturuldu)",
                 tarih=utc_now_iso()[:10],
                 quoteId=quote_id,
+                kurTRY=entry_kur,
             )
             await db.tahsilat.insert_one(tahsilat_doc.model_dump())
         # NOT: Onay anında Kasa'ya gelir YAZILMAZ — teklif tutarı henüz tahsil

@@ -1,7 +1,7 @@
 import type { CompanyT, QuoteT } from './api';
 import { buildItemDescription } from './quote-utils';
 
-export type PdfTemplateId = 'classic' | 'modern' | 'minimal';
+export type PdfTemplateId = 'classic' | 'modern' | 'minimal' | 'kurumsal' | 'renkli';
 
 const fmt = (n: number, cur: string) => {
   const parts = new Intl.NumberFormat('tr-TR', {
@@ -34,6 +34,8 @@ const trDate = (iso: string) => {
 export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT, template: PdfTemplateId = 'classic'): string {
   if (template === 'modern') return buildModernHtml(company, quote);
   if (template === 'minimal') return buildMinimalHtml(company, quote);
+  if (template === 'kurumsal') return buildKurumsalHtml(company, quote);
+  if (template === 'renkli') return buildRenkliHtml(company, quote);
   return buildClassicHtml(company, quote);
 }
 
@@ -797,6 +799,385 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
 
   ${bankSection}
   <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#b5502e;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a></div>
+  ${ekPages}
+</body>
+</html>`;
+}
+
+function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
+  const cur = quote.paraBirimi || 'TL';
+  const items = quote.items || [];
+  const ekler = quote.ekler || [];
+  const banklar = company.banklar || [];
+
+  const v = (s?: string | number | null): string => {
+    if (s === null || s === undefined) return '-';
+    const str = String(s).trim();
+    return str.length > 0 ? esc(str) : '-';
+  };
+
+  const monogram = ((company.sirketAdi || '?').trim().split(/\s+/).slice(0, 2)
+    .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
+
+  const logoSrc = company.logoBase64
+    ? esc(company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    : '';
+
+  const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '';
+
+  const itemsRows = items.map((it, idx) => {
+    const desc = buildItemDescription(it);
+    const total = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
+    return `<tr>
+      <td class="c-idx">${idx + 1}</td>
+      <td class="c-desc">${esc(desc)}</td>
+      <td class="c-num">${esc(String(it.adet))}</td>
+      <td class="c-num">${fmt(it.birimFiyat, cur)}</td>
+      <td class="c-num c-total">${fmt(total, cur)}</td>
+    </tr>`;
+  }).join('');
+
+  const showIskonto = !!quote.iskonto && quote.iskonto > 0;
+  const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
+
+  const bankSection = banklar.length > 0 ? `
+    <div class="strip-section-label">Banka Bilgileri</div>
+    ${banklar.map((b) => `<div class="strip-row"><span class="strip-dot"></span>${v(b.banka)}${b.turu ? ` (${v(b.turu)})` : ''}<br/><span style="color:#94A3B8;">${v(b.iban)}</span></div>`).join('')}` : '';
+
+  const ekPages = ekler.map((ek) => `
+    <section class="ek-page">
+      <div class="ek-header">
+        <span>${v(company.sirketAdi)}</span>
+        <span>Teklif No: ${v(quote.teklifNo)} &middot; Sayfa Eki</span>
+      </div>
+      <div class="ek-title">${v(ek.baslik)}</div>
+      <div class="ek-body">${esc(ek.icerik || '')}</div>
+    </section>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4; margin: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=block');
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:'Montserrat','Helvetica Neue',Arial,sans-serif; color:#1E293B; background:#fff; font-size:9.5pt; line-height:1.5; }
+  .page { display:flex; min-height: 100vh; }
+
+  .strip { width:180px; flex-shrink:0; background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%); color:#fff; padding:28px 20px; }
+  .strip-logo-img { max-width:110px; max-height:80px; object-fit:contain; display:block; margin-bottom:16px; }
+  .strip-logo-fallback { width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19pt; margin-bottom:16px; }
+  .strip-company { font-size:12.5pt; font-weight:800; line-height:1.35; margin-bottom:3px; }
+  .strip-tagline { font-size:7.6pt; color:#94A3B8; margin-bottom:20px; }
+  .strip-section-label { font-size:6.8pt; letter-spacing:1.3px; color:#64748B; text-transform:uppercase; margin-bottom:7px; margin-top:18px; font-weight:700; }
+  .strip-row { display:flex; gap:6px; align-items:flex-start; font-size:8pt; color:#E2E8F0; margin-bottom:8px; line-height:1.45; }
+  .strip-dot { width:4px; height:4px; border-radius:2px; background:#38BDF8; margin-top:5px; flex-shrink:0; }
+  .strip-footer { margin-top:auto; padding-top:14px; border-top:1px solid rgba(255,255,255,0.16); font-size:6.8pt; color:#64748B; }
+
+  .content { flex:1; padding:30px 30px 22px; }
+  .doc-tag { font-size:8pt; letter-spacing:2.4px; color:#94A3B8; font-weight:800; text-transform:uppercase; }
+  .doc-heading { font-size:18pt; font-weight:900; color:#0F172A; margin:3px 0 2px; }
+  .doc-meta { font-size:8pt; color:#64748B; margin-bottom:16px; }
+
+  .cust-box { background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:11px 14px; margin-bottom:14px; }
+  .cust-label { font-size:6.8pt; letter-spacing:1px; color:#94A3B8; text-transform:uppercase; font-weight:800; margin-bottom:5px; }
+  .cust-grid { display:flex; gap:18px; flex-wrap:wrap; }
+  .cust-item { min-width:140px; }
+  .cust-item .k { font-size:6.6pt; letter-spacing:.5px; color:#94A3B8; text-transform:uppercase; font-weight:700; }
+  .cust-item .val { font-size:9.5pt; font-weight:700; color:#0F172A; margin-top:1px; }
+
+  table.items { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  table.items thead th { background:#0F172A; color:#fff; text-align:left; padding:8px 9px; font-size:7pt; letter-spacing:.6px; text-transform:uppercase; font-weight:700; }
+  table.items thead th.num { text-align:right; }
+  table.items tbody td { padding:8px 9px; font-size:8.6pt; color:#1E293B; border-bottom:1px solid #E2E8F0; }
+  table.items tbody td.c-num { text-align:right; white-space:nowrap; }
+  table.items tbody tr:nth-child(even) { background:#F8FAFC; }
+  td.c-total { font-weight:800; }
+
+  .banner-warn { font-size:6.9pt; letter-spacing:.4px; color:#7a4a00; background:#fff1d6; border-left:3px solid #c98a00; padding:6px 10px; margin-bottom:12px; font-weight:700; }
+
+  .bottom-row { display:flex; gap:16px; margin-bottom:14px; }
+  .notes-card { flex:1.4; }
+  .sub-title { font-size:6.9pt; letter-spacing:1px; text-transform:uppercase; color:#0F172A; font-weight:800; margin-bottom:5px; }
+  .sub-body { font-size:8.4pt; color:#334155; margin-bottom:9px; line-height:1.55; }
+  .sign-box { margin-top:10px; border-top:1px solid #E2E8F0; padding-top:8px; }
+  .sign-label { font-size:7.6pt; font-weight:700; margin-bottom:16px; color:#0F172A; }
+  .sign-line { border-top:1px solid #94A3B8; width:70%; }
+
+  .totals-card { flex:1; }
+  .totals-row { display:flex; justify-content:space-between; font-size:8.6pt; color:#475569; padding:3px 0; }
+  .totals-grand { display:flex; justify-content:space-between; align-items:center; background:#0F172A; color:#fff; border-radius:10px; padding:11px 14px; margin-top:7px; }
+  .totals-grand .l { font-size:6.8pt; letter-spacing:1px; text-transform:uppercase; color:#94A3B8; font-weight:700; }
+  .totals-grand .v { font-size:15pt; font-weight:900; }
+  .kdv-note { font-size:6.8pt; color:#94A3B8; margin-top:6px; }
+
+  .app-credit { text-align:center; font-size:6.9pt; color:#94A3B8; padding-top:8px; margin-top:6px; border-top:1px solid #E2E8F0; }
+
+  .ek-page { page-break-before:always; padding:30px; }
+  .ek-header { display:flex; justify-content:space-between; border-bottom:2px solid #0F172A; padding-bottom:8px; margin-bottom:16px; font-size:8pt; color:#64748B; }
+  .ek-title { font-size:15pt; font-weight:800; color:#0F172A; margin-bottom:14px; }
+  .ek-body { font-size:9pt; line-height:1.75; color:#1E293B; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="strip">
+      ${logoSrc ? `<img class="strip-logo-img" src="${logoSrc}" />` : `<div class="strip-logo-fallback">${esc(monogram)}</div>`}
+      <div class="strip-company">${v(company.sirketAdi)}</div>
+      ${company.website ? `<div class="strip-tagline">${v(company.website)}</div>` : ''}
+
+      <div class="strip-section-label">İletişim</div>
+      ${company.adres ? `<div class="strip-row"><span class="strip-dot"></span>${v(company.adres)}</div>` : ''}
+      ${phoneLine ? `<div class="strip-row"><span class="strip-dot"></span>${esc(phoneLine)}</div>` : ''}
+      ${company.email ? `<div class="strip-row"><span class="strip-dot"></span>${v(company.email)}</div>` : ''}
+
+      ${bankSection}
+
+      <div class="strip-footer">
+        Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/>
+        <a href="https://www.anindateklif.co" id="app-credit-link" style="color:#38BDF8;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="doc-tag">Teklif Formu</div>
+      <div class="doc-heading">${v(quote.teklifNo)}</div>
+      <div class="doc-meta">Tarih: ${trDate(quote.tarih)} &nbsp;·&nbsp; Geçerlilik: ${trDate(quote.gecerlilik)}</div>
+
+      <div class="cust-box">
+        <div class="cust-label">Müşteri &amp; Sipariş Bilgileri</div>
+        <div class="cust-grid">
+          <div class="cust-item"><div class="k">Firma</div><div class="val">${v(quote.musFirma)}</div></div>
+          <div class="cust-item"><div class="k">Yetkili</div><div class="val">${v(quote.musYetkili)}</div></div>
+          <div class="cust-item"><div class="k">Telefon</div><div class="val">${v(quote.musTelefon)}</div></div>
+          <div class="cust-item"><div class="k">Proje</div><div class="val">${v(quote.projeAdi)}</div></div>
+          <div class="cust-item"><div class="k">Ödeme Şekli</div><div class="val">${v(quote.odemeSekli)}</div></div>
+          <div class="cust-item"><div class="k">Teslim</div><div class="val">${v(quote.teslimGun)}</div></div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead>
+          <tr><th style="width:24px;">No</th><th>Sistem / Hizmet</th><th class="num" style="width:56px;">Miktar</th><th class="num" style="width:80px;">Birim Fiyat</th><th class="num" style="width:90px;">Toplam</th></tr>
+        </thead>
+        <tbody>${itemsRows}</tbody>
+      </table>
+
+      <div class="banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
+
+      <div class="bottom-row">
+        <div class="notes-card">
+          <div class="sub-title">Özel Notlar</div>
+          <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
+          <div class="sub-title">Satış Detayları</div>
+          <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+          <div class="sign-box">
+            <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
+            <div class="sign-line"></div>
+          </div>
+        </div>
+        <div class="totals-card">
+          <div class="totals-row"><span>Ara Toplam</span><span>${fmt(araToplamRaw, cur)}</span></div>
+          ${showIskonto ? `<div class="totals-row"><span>İskonto (%${esc(String(quote.iskonto))})</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
+          ${showKdv ? `<div class="totals-row"><span>KDV (%${esc(String(quote.kdvOrani))})</span><span>${fmt(quote.kdvTutar, cur)}</span></div>` : ''}
+          <div class="totals-grand"><span class="l">Genel Toplam</span><span class="v">${fmt(quote.genelToplam, cur)}</span></div>
+          ${showKdv ? `<div class="kdv-note">KDV Dahil</div>` : ''}
+        </div>
+      </div>
+    </div>
+  </div>
+  ${ekPages}
+</body>
+</html>`;
+}
+
+function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
+  const cur = quote.paraBirimi || 'TL';
+  const items = quote.items || [];
+  const ekler = quote.ekler || [];
+  const banklar = company.banklar || [];
+
+  const v = (s?: string | number | null): string => {
+    if (s === null || s === undefined) return '-';
+    const str = String(s).trim();
+    return str.length > 0 ? esc(str) : '-';
+  };
+
+  const monogram = ((company.sirketAdi || '?').trim().split(/\s+/).slice(0, 2)
+    .map((w) => w.charAt(0)).join('').toUpperCase()) || '?';
+
+  const logoSrc = company.logoBase64
+    ? esc(company.logoBase64.startsWith('data:') ? company.logoBase64 : `data:image/png;base64,${company.logoBase64}`)
+    : '';
+
+  const phoneLine = [company.telefon, company.telefon2].filter(Boolean).map((p) => esc(String(p))).join('  /  ') || '';
+
+  const itemsRows = items.map((it, idx) => {
+    const desc = buildItemDescription(it);
+    const total = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
+    return `<tr>
+      <td class="c-idx">${idx + 1}</td>
+      <td class="c-desc">${esc(desc)}</td>
+      <td class="c-num">${esc(String(it.adet))}</td>
+      <td class="c-num">${fmt(it.birimFiyat, cur)}</td>
+      <td class="c-num c-total">${fmt(total, cur)}</td>
+    </tr>`;
+  }).join('');
+
+  const showIskonto = !!quote.iskonto && quote.iskonto > 0;
+  const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
+  const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
+
+  const bankSection = banklar.length > 0 ? `
+    <div class="card bank-card">
+      <div class="bank-icon">${cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺'}</div>
+      <div>
+        ${banklar.map((b) => `<div><b>${v(b.banka)}</b>${b.turu ? ` (${v(b.turu)})` : ''} — ${v(b.iban)}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const ekPages = ekler.map((ek) => `
+    <section class="ek-page">
+      <div class="ek-header">
+        <span>${v(company.sirketAdi)}</span>
+        <span>Teklif No: ${v(quote.teklifNo)} &middot; Sayfa Eki</span>
+      </div>
+      <div class="ek-title">${v(ek.baslik)}</div>
+      <div class="ek-body">${esc(ek.icerik || '')}</div>
+    </section>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page { size: A4; margin: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=block');
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:'Poppins','Helvetica Neue',Arial,sans-serif; color:#1E1B4B; background:#EEF2FF; font-size:9.5pt; line-height:1.5; }
+  .page { padding:26px; }
+
+  .card { background:#fff; border-radius:14px; padding:16px 18px; margin-bottom:12px; }
+
+  .head-card { display:flex; align-items:center; justify-content:space-between; }
+  .head-left { display:flex; align-items:center; gap:12px; }
+  .logo-badge-img { max-width:70px; max-height:56px; object-fit:contain; border-radius:10px; }
+  .logo-badge { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#6366F1,#A855F7); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:14pt; }
+  .head-company { font-size:12pt; font-weight:800; color:#1E1B4B; }
+  .head-sub { font-size:7.6pt; color:#7C7A9C; margin-top:2px; }
+  .head-right { text-align:right; }
+  .head-badge { display:inline-block; background:#EEF2FF; color:#6366F1; font-size:7pt; font-weight:800; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border-radius:999px; margin-bottom:5px; }
+  .head-no { font-size:13.5pt; font-weight:900; color:#1E1B4B; }
+  .head-date { font-size:7.6pt; color:#7C7A9C; margin-top:2px; }
+
+  .cust-card { display:flex; gap:16px; flex-wrap:wrap; }
+  .cust-chip { flex:1; min-width:120px; }
+  .cust-chip-label { font-size:6.6pt; letter-spacing:.8px; text-transform:uppercase; color:#A5A3C4; font-weight:800; margin-bottom:4px; }
+  .cust-chip-value { font-size:9.6pt; font-weight:700; color:#1E1B4B; }
+
+  table.items { width:100%; border-collapse:separate; border-spacing:0 6px; }
+  table.items thead th { text-align:left; font-size:6.6pt; letter-spacing:.8px; text-transform:uppercase; color:#A5A3C4; font-weight:800; padding:0 10px; }
+  table.items thead th.num { text-align:right; }
+  table.items tbody td { background:#F8F9FF; padding:9px 10px; font-size:8.4pt; color:#1E1B4B; font-weight:600; }
+  table.items tbody tr td:first-child { border-radius:8px 0 0 8px; }
+  table.items tbody tr td:last-child { border-radius:0 8px 8px 0; font-weight:800; }
+  table.items tbody td.c-num { text-align:right; white-space:nowrap; }
+
+  .banner-warn { font-size:6.9pt; letter-spacing:.3px; color:#9A3412; background:#FFF7ED; border-left:3px solid #F97316; padding:6px 10px; margin-bottom:10px; font-weight:700; border-radius:6px; }
+
+  .totals-wrap { display:flex; justify-content:flex-end; margin-top:4px; }
+  .totals-inner { width:250px; }
+  .totals-row { display:flex; justify-content:space-between; font-size:8.4pt; color:#7C7A9C; padding:3px 4px; font-weight:600; }
+  .grand-badge { margin-top:6px; background:linear-gradient(135deg,#6366F1,#EC4899); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; color:#fff; }
+  .grand-badge .l { font-size:6.8pt; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; opacity:.85; }
+  .grand-badge .v { font-size:15pt; font-weight:900; }
+  .kdv-note { font-size:6.8pt; color:#A5A3C4; margin-top:5px; text-align:right; }
+
+  .notes-card .sub-title { font-size:6.9pt; letter-spacing:.8px; text-transform:uppercase; color:#6366F1; font-weight:800; margin-bottom:4px; }
+  .notes-card .sub-body { font-size:8.4pt; color:#4B4A73; margin-bottom:8px; line-height:1.5; }
+  .sign-box { margin-top:6px; border-top:1px solid #EEF2FF; padding-top:8px; }
+  .sign-label { font-size:7.6pt; font-weight:700; margin-bottom:14px; color:#1E1B4B; }
+  .sign-line { border-top:1px solid #C7C6E6; width:60%; }
+
+  .bank-card { display:flex; align-items:center; gap:10px; font-size:8.4pt; color:#1E1B4B; }
+  .bank-icon { width:26px; height:26px; border-radius:8px; background:#ECFDF5; display:flex; align-items:center; justify-content:center; color:#059669; font-weight:900; font-size:11pt; flex-shrink:0; }
+
+  .footer-note { text-align:center; font-size:8pt; color:#A5A3C4; margin-top:2px; }
+
+  .ek-page { page-break-before:always; padding:26px; }
+  .ek-header { display:flex; justify-content:space-between; border-bottom:2px solid #6366F1; padding-bottom:8px; margin-bottom:16px; font-size:8pt; color:#7C7A9C; }
+  .ek-title { font-size:15pt; font-weight:800; color:#1E1B4B; margin-bottom:14px; }
+  .ek-body { font-size:9pt; line-height:1.75; color:#1E1B4B; }
+</style>
+</head>
+<body>
+  <div class="page">
+
+    <div class="card head-card">
+      <div class="head-left">
+        ${logoSrc ? `<img class="logo-badge-img" src="${logoSrc}" />` : `<div class="logo-badge">${esc(monogram)}</div>`}
+        <div>
+          <div class="head-company">${v(company.sirketAdi)}</div>
+          <div class="head-sub">${[phoneLine, company.email].filter(Boolean).join(' · ') || '&nbsp;'}</div>
+        </div>
+      </div>
+      <div class="head-right">
+        <div class="head-badge">Teklif Formu</div>
+        <div class="head-no">${v(quote.teklifNo)}</div>
+        <div class="head-date">${trDate(quote.tarih)}</div>
+      </div>
+    </div>
+
+    <div class="card cust-card">
+      <div class="cust-chip"><div class="cust-chip-label">Müşteri</div><div class="cust-chip-value">${v(quote.musFirma)}</div></div>
+      <div class="cust-chip"><div class="cust-chip-label">Telefon</div><div class="cust-chip-value">${v(quote.musTelefon)}</div></div>
+      <div class="cust-chip"><div class="cust-chip-label">Proje</div><div class="cust-chip-value">${v(quote.projeAdi)}</div></div>
+      <div class="cust-chip"><div class="cust-chip-label">Ödeme Şekli</div><div class="cust-chip-value">${v(quote.odemeSekli)}</div></div>
+    </div>
+
+    <div class="card">
+      <table class="items">
+        <thead>
+          <tr><th style="width:24px;">No</th><th>Açıklama</th><th class="num" style="width:56px;">Miktar</th><th class="num" style="width:80px;">Fiyat</th><th class="num" style="width:90px;">Tutar</th></tr>
+        </thead>
+        <tbody>${itemsRows}</tbody>
+      </table>
+
+      <div class="banner-warn">ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.</div>
+
+      <div class="totals-wrap">
+        <div class="totals-inner">
+          <div class="totals-row"><span>Ara Toplam</span><span>${fmt(araToplamRaw, cur)}</span></div>
+          ${showIskonto ? `<div class="totals-row"><span>İskonto (%${esc(String(quote.iskonto))})</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
+          ${showKdv ? `<div class="totals-row"><span>KDV (%${esc(String(quote.kdvOrani))})</span><span>${fmt(quote.kdvTutar, cur)}</span></div>` : ''}
+          <div class="grand-badge"><span class="l">Genel Toplam</span><span class="v">${fmt(quote.genelToplam, cur)}</span></div>
+          ${showKdv ? `<div class="kdv-note">KDV Dahil</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card notes-card">
+      <div class="sub-title">Özel Notlar</div>
+      <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
+      <div class="sub-title">Satış Detayları</div>
+      <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+      <div class="sign-box">
+        <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
+        <div class="sign-line"></div>
+      </div>
+    </div>
+
+    ${bankSection}
+
+    <div class="footer-note">
+      Bu teklif Anında Teklif uygulaması ile hazırlanmıştır. &nbsp;<a href="https://www.anindateklif.co" id="app-credit-link" style="color:#6366F1;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a>
+    </div>
+
+  </div>
   ${ekPages}
 </body>
 </html>`;

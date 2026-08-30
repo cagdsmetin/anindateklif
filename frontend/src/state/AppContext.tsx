@@ -298,6 +298,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       yontem: data.yontem || 'Nakit',
       notlar: data.notlar || '',
       tarih: data.tarih || new Date().toISOString().split('T')[0],
+      kurTRY: Number(data.kurTRY) || 0,
     });
     await reloadKasa();
   }, [activeCompanyId, reloadKasa]);
@@ -321,6 +322,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       vadeTarihi: data.vadeTarihi || '',
       notlar: data.notlar || '',
       tarih: data.tarih || new Date().toISOString().split('T')[0],
+      kurTRY: Number(data.kurTRY) || 0,
     });
     await reloadTahsilat();
   }, [activeCompanyId, reloadTahsilat]);

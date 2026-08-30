@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
+import { api, RatesT } from '@/src/lib/api';
+import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
@@ -40,6 +42,15 @@ export default function KasaScreen() {
   const [notlar, setNotlar] = useState('');
   const [q, setQ] = useState('');
   const [saving, setSaving] = useState(false);
+  const [rates, setRates] = useState<RatesT | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const setTurAndKategori = (t: 'gelir' | 'gider') => {
     setTur(t);
@@ -49,11 +60,33 @@ export default function KasaScreen() {
   const thisMonth = monthKey(todayIso());
   const monthEntries = useMemo(() => kasa.filter((k) => monthKey(k.tarih) === thisMonth), [kasa, thisMonth]);
 
-  // Headline totals are kept in TRY only (mixing currencies into one sum would be
-  // misleading) — the transaction list below still shows each entry's own currency.
-  const gelirToplam = monthEntries.filter((k) => k.tur === 'gelir' && (k.paraBirimi || 'TRY') === 'TRY').reduce((a, k) => a + k.tutar, 0);
-  const giderToplam = monthEntries.filter((k) => k.tur === 'gider' && (k.paraBirimi || 'TRY') === 'TRY').reduce((a, k) => a + k.tutar, 0);
+  // Üstteki kartlar artık dövizli kayıtları da atlamıyor: her kayıt canlı
+  // kurla TL'ye çevrilip TEK bir TL toplamına ekleniyor (Panel'deki hacim
+  // kartıyla aynı mantık). Altında ayrıca o ayki $/€ dökümü gösteriliyor.
+  // Kur bilinmiyorsa (servise erişilemedi) o kayıt TL toplamına katılmaz ama
+  // döviz dökümünde görünmeye devam eder — sessizce kaybolmaz.
+  function toplamByCurrency(list: typeof monthEntries) {
+    const sums: Record<string, number> = {};
+    list.forEach((k) => { sums[k.paraBirimi || 'TRY'] = (sums[k.paraBirimi || 'TRY'] || 0) + k.tutar; });
+    return Object.entries(sums).map(([paraBirimi, tutar]) => ({ paraBirimi, tutar })).sort((a, b) => b.tutar - a.tutar);
+  }
+  function toplamTRY(list: typeof monthEntries) {
+    let total = 0;
+    list.forEach((k) => {
+      const v = convertToTRY(k.tutar, k.paraBirimi || 'TRY', rates);
+      if (v != null) total += v;
+    });
+    return total;
+  }
+
+  const gelirEntries = useMemo(() => monthEntries.filter((k) => k.tur === 'gelir'), [monthEntries]);
+  const giderEntries = useMemo(() => monthEntries.filter((k) => k.tur === 'gider'), [monthEntries]);
+  const gelirToplam = useMemo(() => toplamTRY(gelirEntries), [gelirEntries, rates]);
+  const giderToplam = useMemo(() => toplamTRY(giderEntries), [giderEntries, rates]);
+  const gelirByCurrency = useMemo(() => toplamByCurrency(gelirEntries), [gelirEntries]);
+  const giderByCurrency = useMemo(() => toplamByCurrency(giderEntries), [giderEntries]);
   const net = gelirToplam - giderToplam;
+  const dovizliVar = gelirByCurrency.some((x) => x.paraBirimi !== 'TRY') || giderByCurrency.some((x) => x.paraBirimi !== 'TRY');
 
   const kategoriDagilimi = useMemo(() => {
     const map: Record<string, { tur: 'gelir' | 'gider'; toplam: number }> = {};
@@ -82,7 +115,7 @@ export default function KasaScreen() {
     if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
     setSaving(true);
     try {
-      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso() });
+      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates) });
       showToast(tur === 'gelir' ? 'Gelir kaydedildi' : 'Gider kaydedildi');
       setTutar('');
       setNotlar('');
@@ -122,14 +155,25 @@ export default function KasaScreen() {
             <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft }]}>
               <Text style={[s.statLabel, { color: '#166534' }]}>BU AY GELİR</Text>
               <Text style={[s.statValue, { color: '#166534' }]} numberOfLines={1}>{fmt(gelirToplam, 'TRY')}</Text>
+              {gelirByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
+                <Text style={[s.statSubValue, { color: '#166534' }]} numberOfLines={1}>
+                  {gelirByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
+                </Text>
+              )}
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.redSoft }]}>
               <Text style={[s.statLabel, { color: '#991b1b' }]}>BU AY GİDER</Text>
               <Text style={[s.statValue, { color: '#991b1b' }]} numberOfLines={1}>{fmt(giderToplam, 'TRY')}</Text>
+              {giderByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
+                <Text style={[s.statSubValue, { color: '#991b1b' }]} numberOfLines={1}>
+                  {giderByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
+                </Text>
+              )}
             </View>
             <View style={[s.statCard, { backgroundColor: net >= 0 ? theme.colors.primarySoft : theme.colors.redSoft }]}>
               <Text style={[s.statLabel, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>BU AY NET</Text>
               <Text style={[s.statValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>{fmt(net, 'TRY')}</Text>
+              {dovizliVar && <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>canlı kurla</Text>}
             </View>
           </View>
 
@@ -253,6 +297,7 @@ const s = StyleSheet.create({
   statCard: { flex: 1, borderRadius: 12, padding: 12 },
   statLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
   statValue: { fontSize: 15, fontWeight: '900', marginTop: 4 },
+  statSubValue: { fontSize: 9.5, fontWeight: '700', marginTop: 2, opacity: 0.75 },
   sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.kasa, letterSpacing: 0.5 },
   card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
   turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: '#fff' },

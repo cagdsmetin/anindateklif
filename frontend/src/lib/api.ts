@@ -438,6 +438,7 @@ export type KasaEntryT = {
   notlar: string;
   tarih: string;
   quoteId?: string | null;
+  kurTRY?: number; // paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (referans)
 };
 
 export type TahsilatEntryT = {
@@ -454,6 +455,7 @@ export type TahsilatEntryT = {
   notlar: string;
   tarih: string;
   quoteId?: string; // dolu ise: teklif "Onaylandı" durumuna geçtiğinde otomatik oluşturuldu
+  kurTRY?: number; // paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (referans)
 };
 
 export type CustomerT = {

@@ -57,7 +57,7 @@ const WHATSAPP_TEMPLATES: WaTemplate[] = [
     id: 'ulasamadik',
     label: 'Ulaşamadık',
     text: (sirket) =>
-      `Merhaba, ${sirket}'ten arıyorum, sizi telefonla arayıp ulaşamadım. Bioklimatik pergola ve zip perde sistemlerimizle ilgili kısa bilgi vermek isterim, müsait olduğunuzda dönüş yaparsanız seviniriz.`,
+      `Merhaba, ${sirket} olarak sizi aramıştık ama ulaşamadık. Bioklimatik pergola ve zip perde sistemlerimizle ilgili kısa bilgi vermek isterim, müsait olduğunuzda dönüş yaparsanız seviniriz.`,
   },
 ];
 

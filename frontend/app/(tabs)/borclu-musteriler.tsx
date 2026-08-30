@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import TopHeader from '@/src/components/TopHeader';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 
 /**
@@ -42,7 +41,14 @@ export default function BorcluMusterilerScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Borçlu Müşteriler" />
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Borçlu Müşteriler</Text>
+          <View style={s.headerBtn} />
+        </View>
+        <View style={s.divider} />
         <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
       </SafeAreaView>
     );
@@ -50,7 +56,14 @@ export default function BorcluMusterilerScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Borçlu Müşteriler" />
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Borçlu Müşteriler</Text>
+        <View style={s.headerBtn} />
+      </View>
+      <View style={s.divider} />
       <FlatList
         data={debtors}
         keyExtractor={(d) => d.key}
@@ -86,6 +99,10 @@ export default function BorcluMusterilerScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
+  divider: { height: 1, backgroundColor: theme.colors.line },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   emptyBox: { marginTop: 40, alignItems: 'center', gap: 8 },

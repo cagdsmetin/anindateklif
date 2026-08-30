@@ -17,7 +17,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
     { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
     { name: 'leads', title: 'Müşteri Avcısı', icon: 'search', color: m.lead },
-    { name: 'reminders', title: 'Hatırlat.', icon: 'notifications', color: m.hatirlatma },
+    { name: 'reminders', title: 'Hatırlatmalar', icon: 'notifications', color: m.hatirlatma },
     { name: 'calendar', title: 'Takvim', icon: 'calendar', color: m.hatirlatma },
   ];
   // Kısıtlı personel (staff_role !== 'admin') Kasa/Tahsilat'ı hiç göremesin —
@@ -27,10 +27,9 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     items.push({ name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat });
   }
   items.push({ name: 'company', title: 'Firma', icon: 'business', color: m.firma });
-  // assistant/personel artık (tabs) grubunun içinde yaşıyor (bottom tab bar'da
-  // href:null ile gizli) — böylece masaüstü sol sidebar bu sayfalarda da
-  // görünmeye devam ediyor, tıpkı Kasa/Tahsilat gibi.
-  items.push({ name: 'assistant', title: 'AI Asistan', icon: 'sparkles', color: theme.colors.primary });
+  // AI Asistan artık sol menüde ayrı bir madde olarak gösterilmiyor (kullanıcı
+  // isteğiyle kaldırıldı) — sayfaya route hâlâ var (app/(tabs)/assistant),
+  // sadece sol navigasyon listesinden çıkarıldı.
   // Ekip Sohbeti: firma sahibi + personel arasında birebir mesajlaşma —
   // herkese açık (Kasa/Tahsilat gibi kısıtlı değil).
   items.push({ name: 'team-chat', title: 'Ekip Sohbeti', icon: 'chatbubbles', color: theme.colors.modules.mesaj });

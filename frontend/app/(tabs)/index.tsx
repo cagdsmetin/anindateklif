@@ -472,7 +472,8 @@ export default function PanelScreen() {
                   label: st,
                   value: quoteStatusCounts[st] || 0,
                   color: QUOTE_STATUS_COLORS[st],
-                  valueLabel: `${quoteStatusCounts[st] || 0} · ${fmtTRY(quoteStatusValues[st] || 0)}`,
+                  countLabel: String(quoteStatusCounts[st] || 0),
+                  amountLabel: fmtTRY(quoteStatusValues[st] || 0),
                 }))}
                 total={quoteStatusTotal}
                 centerLabel="TEKLİF"
@@ -560,6 +561,13 @@ export default function PanelScreen() {
           <ModuleTile icon="wallet" label="Kasa" color={theme.colors.modules.kasa} onPress={() => router.push('/(tabs)/kasa')} />
           <ModuleTile icon="cash" label="Tahsilat" color={theme.colors.modules.tahsilat} onPress={() => router.push('/(tabs)/tahsilat')} />
           <ModuleTile icon="business" label="Firma" color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
+          <ModuleTile icon="chatbubbles" label="Ekip Sohbeti" color={theme.colors.modules.mesaj} onPress={() => router.push('/(tabs)/team-chat' as any)} />
+          {!user?.is_staff ? (
+            <ModuleTile icon="person-add" label="Personel" color={theme.colors.gold} onPress={() => router.push('/(tabs)/personel' as any)} />
+          ) : null}
+          {(user?.email || '').toLowerCase() === 'ncagdasm@gmail.com' ? (
+            <ModuleTile icon="gift" label="Hediye Kodu" color={theme.colors.gold} onPress={() => router.push('/(tabs)/promo-admin' as any)} />
+          ) : null}
         </View>
       </ScrollView>
 
@@ -656,7 +664,7 @@ function CashPieChart({
   formatValue = fmtTRY,
   formatCenter,
 }: {
-  data: { label: string; value: number; color: string; valueLabel?: string }[];
+  data: { label: string; value: number; color: string; valueLabel?: string; countLabel?: string; amountLabel?: string }[];
   total: number;
   centerLabel?: string;
   formatValue?: (n: number) => string;
@@ -669,7 +677,7 @@ function CashPieChart({
     return (
       <View style={{ gap: 6 }}>
         {data.map((d, i) => (
-          <LegendDot key={i} color={d.color} label={d.label} value={d.valueLabel || formatValue(d.value)} />
+          <LegendDot key={i} color={d.color} label={d.label} value={d.valueLabel || formatValue(d.value)} countLabel={d.countLabel} amountLabel={d.amountLabel} />
         ))}
       </View>
     );
@@ -723,7 +731,7 @@ function CashPieChart({
           };
           return (
             <View key={i} {...hoverHandlers}>
-              <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} />
+              <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} countLabel={sl.countLabel} amountLabel={sl.amountLabel} />
             </View>
           );
         })}
@@ -732,12 +740,31 @@ function CashPieChart({
   );
 }
 
-function LegendDot({ color, label, value }: { color: string; label: string; value: string }) {
+function LegendDot({
+  color,
+  label,
+  value,
+  countLabel,
+  amountLabel,
+}: {
+  color: string;
+  label: string;
+  value: string;
+  countLabel?: string;
+  amountLabel?: string;
+}) {
   return (
     <View style={s.legendItem}>
       <View style={[s.legendDot, { backgroundColor: color }]} />
       <Text style={s.legendLabel} numberOfLines={1}>{label}</Text>
-      <Text style={s.legendValue} numberOfLines={1}>{value}</Text>
+      {countLabel !== undefined ? (
+        <View style={s.legendCountAmountWrap}>
+          <Text style={s.legendCount} numberOfLines={1}>{countLabel}</Text>
+          <Text style={s.legendValue} numberOfLines={1}>{amountLabel}</Text>
+        </View>
+      ) : (
+        <Text style={s.legendValue} numberOfLines={1}>{value}</Text>
+      )}
     </View>
   );
 }
@@ -856,6 +883,8 @@ const s = StyleSheet.create({
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
   legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
+  legendCountAmountWrap: { flexDirection: 'row', alignItems: 'center' },
+  legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, width: 22, textAlign: 'left', marginRight: 14 },
 
 
   alertBanner: {

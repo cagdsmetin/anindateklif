@@ -14,11 +14,12 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { ManualReminderT } from '@/src/lib/api';
+import { getHolidaysForYears } from '@/src/lib/holidays';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 
-type EventKind = 'garanti' | 'bakim' | 'teklif' | 'not';
+type EventKind = 'garanti' | 'bakim' | 'teklif' | 'not' | 'resmi' | 'dini';
 
 type CalEvent = {
   id: string;
@@ -33,18 +34,24 @@ const KIND_LABEL: Record<EventKind, string> = {
   bakim: 'Bakım',
   teklif: 'Teklif Geçerlilik',
   not: 'Not / Hatırlatıcı',
+  resmi: 'Resmi Tatil',
+  dini: 'Dini Gün / Bayram',
 };
 const KIND_COLOR: Record<EventKind, string> = {
   garanti: theme.colors.modules.gecmis,
   bakim: theme.colors.modules.servis,
   teklif: theme.colors.modules.teklif,
   not: theme.colors.gold,
+  resmi: theme.colors.red,
+  dini: '#8B5CF6',
 };
 const KIND_ICON: Record<EventKind, keyof typeof Ionicons.glyphMap> = {
   garanti: 'shield-checkmark-outline',
   bakim: 'construct-outline',
   teklif: 'document-text-outline',
   not: 'bookmark-outline',
+  resmi: 'flag-outline',
+  dini: 'moon-outline',
 };
 
 function pad2(n: number) {
@@ -125,9 +132,17 @@ export default function CalendarScreen() {
         });
       }
     });
+    getHolidaysForYears([viewYear - 1, viewYear, viewYear + 1]).forEach((h) => {
+      add(h.date, {
+        id: `h-${h.kind}-${h.date}-${h.title}`,
+        kind: h.kind,
+        title: h.title,
+        sub: h.kind === 'resmi' ? 'Resmi Tatil' : 'Dini Gün',
+      });
+    });
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [services, quotes, reminders, router]);
+  }, [services, quotes, reminders, router, viewYear]);
 
   const openAddReminder = () => {
     setEditingReminder(null);

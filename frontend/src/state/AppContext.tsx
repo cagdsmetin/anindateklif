@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { usePathname } from 'expo-router';
-import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, QuoteT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
+import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -45,6 +45,11 @@ type Ctx = {
   createCampaign: (data: { baslik: string; mesaj: string }) => Promise<CampaignT>;
   deleteCampaign: (id: string) => Promise<void>;
   markCampaignSent: (id: string, customerId: string) => Promise<void>;
+  reminders: ManualReminderT[];
+  reloadReminders: () => Promise<void>;
+  createReminder: (data: { baslik: string; notu?: string; tarih: string }) => Promise<ManualReminderT>;
+  updateReminder: (id: string, data: Partial<{ baslik: string; notu: string; tarih: string; tamamlandi: boolean }>) => Promise<void>;
+  deleteReminder: (id: string) => Promise<void>;
   quotes: QuoteT[];
   reloadQuotes: () => Promise<void>;
   saveQuote: (quote: Partial<QuoteT>, existingId?: string) => Promise<QuoteT>;
@@ -101,6 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [customers, setCustomers] = useState<CustomerT[]>([]);
   const [services, setServices] = useState<ServiceT[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignT[]>([]);
+  const [reminders, setReminders] = useState<ManualReminderT[]>([]);
   const [quotes, setQuotes] = useState<QuoteT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
@@ -186,6 +192,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const list = await api.listCampaigns(activeCompanyId);
     setCampaigns(list);
+  }, [activeCompanyId]);
+
+  const reloadReminders = useCallback(async () => {
+    if (!activeCompanyId) {
+      setReminders([]);
+      return;
+    }
+    const list = await api.listReminders(activeCompanyId);
+    setReminders(list);
   }, [activeCompanyId]);
 
   const reloadQuotes = useCallback(async () => {
@@ -419,6 +434,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reloadCampaigns();
   }, [reloadCampaigns]);
 
+  const createReminder = useCallback(async (data: { baslik: string; notu?: string; tarih: string }) => {
+    if (!activeCompanyId) throw new Error('Aktif firma yok');
+    const created: ManualReminderT = await api.createReminder({
+      companyId: activeCompanyId,
+      baslik: data.baslik || '',
+      notu: data.notu || '',
+      tarih: data.tarih,
+    });
+    await reloadReminders();
+    return created;
+  }, [activeCompanyId, reloadReminders]);
+
+  const updateReminder = useCallback(async (id: string, data: Partial<{ baslik: string; notu: string; tarih: string; tamamlandi: boolean }>) => {
+    await api.updateReminder(id, data);
+    await reloadReminders();
+  }, [reloadReminders]);
+
+  const deleteReminder = useCallback(async (id: string) => {
+    await api.deleteReminder(id);
+    await reloadReminders();
+  }, [reloadReminders]);
+
   const saveQuote = useCallback(async (quote: Partial<QuoteT>, existingId?: string) => {
     if (!activeCompanyId) throw new Error('Aktif firma yok');
     const payload = {
@@ -483,6 +520,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCustomers([]);
       setServices([]);
       setCampaigns([]);
+      setReminders([]);
       setQuotes([]);
       setKasa([]);
       setTahsilat([]);
@@ -540,10 +578,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reloadCustomers();
     reloadServices();
     reloadCampaigns();
+    reloadReminders();
     reloadQuotes();
     reloadKasa();
     reloadTahsilat();
-  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadQuotes, reloadKasa, reloadTahsilat]);
+  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadReminders, reloadQuotes, reloadKasa, reloadTahsilat]);
 
   // Ekip Sohbeti: okunmamis mesaj sayacini periyodik yokla (15sn) -- sidebar/
   // drawer'daki 'Ekip Sohbeti' ogesini yanip sondurmek ve (sadece web'de)
@@ -642,6 +681,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createCampaign,
         deleteCampaign,
         markCampaignSent,
+        reminders,
+        reloadReminders,
+        createReminder,
+        updateReminder,
+        deleteReminder,
         quotes,
         reloadQuotes,
         saveQuote,

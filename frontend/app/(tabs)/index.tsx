@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
+import { sumToTRY, RatesLike } from '@/src/lib/tahsilat-utils';
 
 const QUOTE_STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'] as const;
 const QUOTE_STATUS_COLORS: Record<string, string> = {
@@ -78,7 +79,7 @@ function urgency(days: number) {
 export default function PanelScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, quotes, customers, services, campaigns, kasa } = useApp();
+  const { activeCompany, quotes, customers, services, campaigns, kasa, tahsilat } = useApp();
   const { user } = useAuth();
 
   const [subStatus, setSubStatus] = useState<{ subscription_active: boolean; remaining_free: number; days_left?: number | null; renewal_due_soon?: boolean } | null>(null);
@@ -223,6 +224,42 @@ export default function PanelScreen() {
   const giderBuAy2 = useMemo(() => kasaThisMonth.filter((k) => k.tur === 'gider').reduce((a, k) => a + k.tutar, 0), [kasaThisMonth]);
   const kasaHacim = gelirBuAy2 + giderBuAy2;
   const gelirPct = kasaHacim > 0 ? Math.round((gelirBuAy2 / kasaHacim) * 100) : 0;
+
+  // Nakit Durumu kartı: bu ay gerçekten TAHSİL EDİLEN ödemeleri (Tahsilat
+  // ekranındaki "tahsilat" kayıtları -- borç/alacak değil, fiilen alınan para)
+  // ödeme yöntemine göre (Nakit/Kart/Havale/Çek/Diğer) gruplayıp pasta
+  // dilimi olarak gösterir. Kasa'daki "gelir" toplamına değil doğrudan
+  // Tahsilat kayıtlarına bakılır -- bu sayede bir ödeme alınmış olsa bile
+  // Kasa tarafında henüz işlenmemiş olsa dahi burada görünür.
+  const YONTEM_COLORS: Record<string, string> = {
+    'Nakit': theme.colors.green,
+    'Kart': theme.colors.primary,
+    'Havale/EFT': theme.colors.gold,
+    'Çek': '#8B5CF6',
+    'Diğer': theme.colors.textMuted,
+  };
+  const tahsilatThisMonth = useMemo(
+    () => tahsilat.filter((t) => t.tur === 'tahsilat' && (t.tarih || '').slice(0, 7) === thisMonthKey),
+    [tahsilat, thisMonthKey]
+  );
+  const paymentBreakdown = useMemo(() => {
+    const byMethod: Record<string, { paraBirimi: string; tutar: number }[]> = {};
+    tahsilatThisMonth.forEach((t) => {
+      const y = t.yontem || 'Diğer';
+      if (!byMethod[y]) byMethod[y] = [];
+      byMethod[y].push({ paraBirimi: t.paraBirimi, tutar: t.tutar });
+    });
+    return Object.entries(byMethod)
+      .map(([yontem, entries]) => ({
+        label: yontem,
+        color: YONTEM_COLORS[yontem] || theme.colors.textMuted,
+        value: sumToTRY(entries, rates as RatesLike) || 0,
+      }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tahsilatThisMonth, rates]);
+  const paymentTotal = paymentBreakdown.reduce((a, x) => a + x.value, 0);
 
   const quoteStatusCounts = useMemo(() => {
     const map: Record<string, number> = {};
@@ -399,19 +436,10 @@ export default function PanelScreen() {
           ) : (
             <View style={[s.card, s.overviewCard]}>
               <Text style={s.overviewTitle}>NAKİT DURUMU (BU AY)</Text>
-              {kasaHacim > 0 ? (
-                <>
-                  <View style={s.stackBar}>
-                    <View style={[s.stackSeg, { width: `${gelirPct}%`, backgroundColor: theme.colors.green }]} />
-                    <View style={[s.stackSeg, { width: `${100 - gelirPct}%`, backgroundColor: theme.colors.red }]} />
-                  </View>
-                  <View style={s.legendRow}>
-                    <LegendDot color={theme.colors.green} label="Gelir" value={fmtTRY(gelirBuAy2)} />
-                    <LegendDot color={theme.colors.red} label="Gider" value={fmtTRY(giderBuAy2)} />
-                  </View>
-                </>
+              {paymentTotal > 0 ? (
+                <CashPieChart data={paymentBreakdown} total={paymentTotal} />
               ) : (
-                <Text style={s.emptyLineText}>Bu ay kasa hareketi yok.</Text>
+                <Text style={s.emptyLineText}>Bu ay tahsil edilen ödeme yok.</Text>
               )}
             </View>
           )}
@@ -585,6 +613,95 @@ function RatePill({ label, value, icon, accent, isIndex, format, subValue }: { l
   );
 }
 
+// Ay içindeki tahsilatları ödeme yöntemine göre gösteren pasta grafik --
+// web'de gerçek dilimler (clip-path ile), fare bir dilimin üzerine
+// gelince o dilim merkeze göre hafifçe dışarı/yukarı kayar. Native tarafta
+// (henüz clip-path desteklenmediği için) sade bir lejant listesine düşer.
+function polarPoint(deg: number): string {
+  const rad = (deg * Math.PI) / 180;
+  const x = 50 + 50 * Math.sin(rad);
+  const y = 50 - 50 * Math.cos(rad);
+  return `${x}% ${y}%`;
+}
+function wedgeClipPath(startDeg: number, endDeg: number): string {
+  const points = ['50% 50%'];
+  const steps = Math.max(2, Math.ceil((endDeg - startDeg) / 6));
+  for (let i = 0; i <= steps; i++) {
+    points.push(polarPoint(startDeg + ((endDeg - startDeg) * i) / steps));
+  }
+  return `polygon(${points.join(', ')})`;
+}
+
+function CashPieChart({ data, total }: { data: { label: string; value: number; color: string }[]; total: number }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  if (Platform.OS !== 'web') {
+    return (
+      <View style={{ gap: 6 }}>
+        {data.map((d, i) => (
+          <LegendDot key={i} color={d.color} label={d.label} value={fmtTRY(d.value)} />
+        ))}
+      </View>
+    );
+  }
+
+  let acc = 0;
+  const slices = data.map((d) => {
+    const startDeg = (acc / total) * 360;
+    acc += d.value;
+    const endDeg = (acc / total) * 360;
+    return { ...d, startDeg, endDeg, midDeg: (startDeg + endDeg) / 2 };
+  });
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <View style={{ width: 110, height: 110, position: 'relative' }}>
+        {slices.map((sl, i) => {
+          const hovered = hoverIdx === i;
+          const rad = (sl.midDeg * Math.PI) / 180;
+          const dx = hovered ? Math.sin(rad) * 6 : 0;
+          const dy = hovered ? -Math.cos(rad) * 6 - 2 : 0;
+          const hoverHandlers: any = {
+            onMouseEnter: () => setHoverIdx(i),
+            onMouseLeave: () => setHoverIdx(null),
+          };
+          return (
+            <View
+              key={i}
+              {...hoverHandlers}
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: sl.color,
+                  transform: [{ translateX: dx }, { translateY: dy }],
+                } as any,
+                { clipPath: wedgeClipPath(sl.startDeg, sl.endDeg), transitionProperty: 'transform', transitionDuration: '180ms', cursor: 'pointer' } as any,
+              ]}
+            />
+          );
+        })}
+        <View style={s.pieCenterHole} pointerEvents="none">
+          <Text style={s.pieCenterLabel}>TOPLAM</Text>
+          <Text style={s.pieCenterValue} numberOfLines={1} adjustsFontSizeToFit>{fmtTRY(total)}</Text>
+        </View>
+      </View>
+      <View style={{ flex: 1, minWidth: 130, gap: 6 }}>
+        {slices.map((sl, i) => {
+          const hoverHandlers: any = {
+            onMouseEnter: () => setHoverIdx(i),
+            onMouseLeave: () => setHoverIdx(null),
+          };
+          return (
+            <View key={i} {...hoverHandlers}>
+              <LegendDot color={sl.color} label={sl.label} value={fmtTRY(sl.value)} />
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function LegendDot({ color, label, value }: { color: string; label: string; value: string }) {
   return (
     <View style={s.legendItem}>
@@ -654,6 +771,13 @@ function ModuleTile({ icon, label, color, onPress }: { icon: any; label: string;
 }
 
 const s = StyleSheet.create({
+  pieCenterHole: {
+    position: 'absolute', top: '20%', left: '20%', width: '60%', height: '60%',
+    borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    ...theme.shadow.sm,
+  },
+  pieCenterLabel: { fontSize: 8, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
+  pieCenterValue: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 1, maxWidth: '90%' },
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },

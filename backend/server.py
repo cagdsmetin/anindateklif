@@ -1026,6 +1026,7 @@ async def delete_account(user=Depends(get_current_user)):
     await db.quotes.delete_many({"userId": uid})
     await db.services.delete_many({"userId": uid})
     await db.campaigns.delete_many({"userId": uid})
+    await db.manual_reminders.delete_many({"userId": uid})
     await db.kasa.delete_many({"userId": uid})
     await db.tahsilat.delete_many({"userId": uid})
     await db.company_invites.delete_many({"ownerUserId": uid})
@@ -1453,6 +1454,36 @@ class CampaignMarkSent(BaseModel):
     customerId: str
 
 
+# Kullanıcının Takvim/Hatırlatmalar ekranında kendi eliyle oluşturduğu
+# serbest not/hatırlatıcı -- garanti/bakım/teklif/kampanya gibi otomatik
+# üretilen hatırlatmalardan farklı olarak tamamen manuel, herhangi bir
+# tarihe bağlanabilir (randevu, geri arama, vs).
+class ManualReminder(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    baslik: str
+    notu: str = ""
+    tarih: str  # YYYY-MM-DD
+    tamamlandi: bool = False
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class ManualReminderCreate(BaseModel):
+    companyId: str
+    baslik: str
+    notu: str = ""
+    tarih: str
+
+
+class ManualReminderUpdate(BaseModel):
+    baslik: Optional[str] = None
+    notu: Optional[str] = None
+    tarih: Optional[str] = None
+    tamamlandi: Optional[bool] = None
+
+
 # ============ HELPERS ============
 def compute_totals(items: List[QuoteItem], iskonto: float, kdvOrani: float):
     subtotal = sum((it.adet or 0) * (it.birimFiyat or 0) for it in items)
@@ -1534,6 +1565,7 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     await db.quotes.delete_many({"companyId": company_id, "userId": uid})
     await db.services.delete_many({"companyId": company_id, "userId": uid})
     await db.campaigns.delete_many({"companyId": company_id, "userId": uid})
+    await db.manual_reminders.delete_many({"companyId": company_id, "userId": uid})
     await db.kasa.delete_many({"companyId": company_id, "userId": uid})
     await db.tahsilat.delete_many({"companyId": company_id, "userId": uid})
     return {"ok": True}
@@ -2358,6 +2390,40 @@ async def mark_campaign_sent(campaign_id: str, payload: CampaignMarkSent, user=D
 @api_router.delete("/campaigns/{campaign_id}")
 async def delete_campaign(campaign_id: str, user=Depends(get_current_user)):
     await db.campaigns.delete_one({"id": campaign_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ MANUAL REMINDER ROUTES (Takvim -- serbest not/hatırlatıcı) ============
+@api_router.get("/reminders/{company_id}", response_model=List[ManualReminder])
+async def list_manual_reminders(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.manual_reminders.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("tarih", 1).to_list(2000)
+    return [ManualReminder(**d) for d in docs]
+
+
+@api_router.post("/reminders", response_model=ManualReminder)
+async def create_manual_reminder(payload: ManualReminderCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    obj = ManualReminder(userId=user["user_id"], **payload.dict())
+    await db.manual_reminders.insert_one(obj.dict())
+    return obj
+
+
+@api_router.patch("/reminders/{reminder_id}", response_model=ManualReminder)
+async def update_manual_reminder(reminder_id: str, payload: ManualReminderUpdate, user=Depends(get_current_user)):
+    doc = await db.manual_reminders.find_one({"id": reminder_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Hatırlatıcı bulunamadı")
+    updates = {k: v for k, v in payload.dict().items() if v is not None}
+    doc.update(updates)
+    doc["updatedAt"] = utc_now_iso()
+    await db.manual_reminders.replace_one({"id": reminder_id, "userId": user["user_id"]}, doc)
+    return ManualReminder(**doc)
+
+
+@api_router.delete("/reminders/{reminder_id}")
+async def delete_manual_reminder(reminder_id: str, user=Depends(get_current_user)):
+    await db.manual_reminders.delete_one({"id": reminder_id, "userId": user["user_id"]})
     return {"ok": True}
 
 

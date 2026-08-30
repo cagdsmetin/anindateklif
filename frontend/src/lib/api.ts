@@ -232,6 +232,12 @@ export const api = {
     req(`/campaigns/${id}/mark-sent`, { method: 'PATCH', body: JSON.stringify({ customerId }) }),
   deleteCampaign: (id: string) => req(`/campaigns/${id}`, { method: 'DELETE' }),
 
+  // Manuel Hatırlatıcılar (Takvim -- serbest not/hatırlatıcı)
+  listReminders: (companyId: string) => req(`/reminders/${companyId}`),
+  createReminder: (data: any) => req('/reminders', { method: 'POST', body: JSON.stringify(data) }),
+  updateReminder: (id: string, data: any) => req(`/reminders/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteReminder: (id: string) => req(`/reminders/${id}`, { method: 'DELETE' }),
+
   // Quotes
   listQuotes: (companyId: string) => req(`/quotes/${companyId}`),
   createQuote: (data: any) => req('/quotes', { method: 'POST', body: JSON.stringify(data) }),
@@ -505,6 +511,18 @@ export type CampaignT = {
   baslik: string;
   mesaj: string;
   sends: Record<string, CampaignSendT>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ManualReminderT = {
+  id: string;
+  userId: string;
+  companyId: string;
+  baslik: string;
+  notu: string;
+  tarih: string;
+  tamamlandi: boolean;
   createdAt: string;
   updatedAt: string;
 };

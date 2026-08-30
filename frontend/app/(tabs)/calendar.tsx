@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -11,11 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { ManualReminderT } from '@/src/lib/api';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
 
-type EventKind = 'garanti' | 'bakim' | 'teklif';
+type EventKind = 'garanti' | 'bakim' | 'teklif' | 'not';
 
 type CalEvent = {
   id: string;
@@ -29,16 +32,19 @@ const KIND_LABEL: Record<EventKind, string> = {
   garanti: 'Garanti Bitişi',
   bakim: 'Bakım',
   teklif: 'Teklif Geçerlilik',
+  not: 'Not / Hatırlatıcı',
 };
 const KIND_COLOR: Record<EventKind, string> = {
   garanti: theme.colors.modules.gecmis,
   bakim: theme.colors.modules.servis,
   teklif: theme.colors.modules.teklif,
+  not: theme.colors.gold,
 };
 const KIND_ICON: Record<EventKind, keyof typeof Ionicons.glyphMap> = {
   garanti: 'shield-checkmark-outline',
   bakim: 'construct-outline',
   teklif: 'document-text-outline',
+  not: 'bookmark-outline',
 };
 
 function pad2(n: number) {
@@ -55,7 +61,12 @@ function todayIso() {
 export default function CalendarScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { services, quotes, activeCompany } = useApp();
+  const { services, quotes, activeCompany, reminders, createReminder, updateReminder, deleteReminder } = useApp();
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<ManualReminderT | null>(null);
+  const [formBaslik, setFormBaslik] = useState('');
+  const [formNotu, setFormNotu] = useState('');
+  const [savingReminder, setSavingReminder] = useState(false);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -103,8 +114,51 @@ export default function CalendarScreen() {
           });
         }
       });
+    reminders.forEach((r) => {
+      if (r.tarih) {
+        add(r.tarih, {
+          id: `n-${r.id}`,
+          kind: 'not',
+          title: r.baslik || 'Not',
+          sub: r.notu || '',
+          onPress: () => openEditReminder(r),
+        });
+      }
+    });
     return map;
-  }, [services, quotes, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services, quotes, reminders, router]);
+
+  const openAddReminder = () => {
+    setEditingReminder(null);
+    setFormBaslik('');
+    setFormNotu('');
+    setShowReminderModal(true);
+  };
+  const openEditReminder = (r: ManualReminderT) => {
+    setEditingReminder(r);
+    setFormBaslik(r.baslik);
+    setFormNotu(r.notu);
+    setShowReminderModal(true);
+  };
+  const saveReminder = async () => {
+    if (!formBaslik.trim()) return;
+    setSavingReminder(true);
+    try {
+      if (editingReminder) {
+        await updateReminder(editingReminder.id, { baslik: formBaslik.trim(), notu: formNotu });
+      } else {
+        await createReminder({ baslik: formBaslik.trim(), notu: formNotu, tarih: selectedDate });
+      }
+      setShowReminderModal(false);
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+  const removeReminder = async (id: string) => {
+    await deleteReminder(id);
+    setShowReminderModal(false);
+  };
 
   const goPrevMonth = () => {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); } else { setViewMonth((m) => m - 1); }
@@ -215,7 +269,13 @@ export default function CalendarScreen() {
           ))}
         </View>
 
-        <Text style={s.sectionTitle}>{selectedDate === tIso ? 'Bugün' : selectedDate}</Text>
+        <View style={s.sectionRow}>
+          <Text style={s.sectionTitle}>{selectedDate === tIso ? 'Bugün' : selectedDate}</Text>
+          <TouchableOpacity style={s.addNoteBtn} onPress={openAddReminder} testID="cal-add-reminder">
+            <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
+            <Text style={s.addNoteText}>Not / Hatırlatıcı Ekle</Text>
+          </TouchableOpacity>
+        </View>
         {selectedEvents.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="calendar-outline" size={26} color={theme.colors.textMuted} />
@@ -236,8 +296,55 @@ export default function CalendarScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Manuel not/hatırlatıcı ekleme-düzenleme modalı */}
+      <Modal visible={showReminderModal} transparent animationType="fade" onRequestClose={() => setShowReminderModal(false)}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowReminderModal(false)}>
+          <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
+            <Text style={s.modalTitle}>{editingReminder ? 'Notu Düzenle' : 'Not / Hatırlatıcı Ekle'}</Text>
+            <Text style={s.modalDate}>{trDateLabel(editingReminder ? editingReminder.tarih : selectedDate)}</Text>
+            <Text style={s.modalLabel}>Başlık</Text>
+            <TextInput
+              style={s.modalInput}
+              value={formBaslik}
+              onChangeText={setFormBaslik}
+              placeholder="örn: Müşteriyi ara"
+              placeholderTextColor="#94a3b8"
+              testID="reminder-baslik-input"
+            />
+            <Text style={s.modalLabel}>Not (opsiyonel)</Text>
+            <TextInput
+              style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]}
+              value={formNotu}
+              onChangeText={setFormNotu}
+              placeholder="Detay ekleyin"
+              placeholderTextColor="#94a3b8"
+              multiline
+              testID="reminder-notu-input"
+            />
+            <View style={s.modalBtnRow}>
+              {editingReminder && (
+                <TouchableOpacity style={s.modalDeleteBtn} onPress={() => removeReminder(editingReminder.id)} testID="reminder-delete-btn">
+                  <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowReminderModal(false)}>
+                <Text style={s.modalCancelText}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalSaveBtn} onPress={saveReminder} disabled={savingReminder} testID="reminder-save-btn">
+                <Text style={s.modalSaveText}>{savingReminder ? 'Kaydediliyor...' : 'Kaydet'}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
+}
+
+function trDateLabel(iso: string): string {
+  const m = (iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : iso || '-';
 }
 
 const CELL_SIZE = '14.28%';
@@ -256,18 +363,33 @@ const s = StyleSheet.create({
   weekRow: { flexDirection: 'row', marginBottom: 6 },
   weekDayLabel: { width: CELL_SIZE as any, textAlign: 'center', fontSize: 11, fontWeight: '800', color: theme.colors.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: CELL_SIZE as any, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  cell: { width: CELL_SIZE as any, aspectRatio: 1.15, alignItems: 'center', justifyContent: 'center' },
   dayCell: { borderRadius: 6, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: '#fff' },
   dayCellSelected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   dayCellToday: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary },
-  dayNum: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
+  dayNum: { fontSize: 12, fontWeight: '700', color: theme.colors.text },
   dayNumSelected: { color: '#fff' },
   dotsRow: { flexDirection: 'row', gap: 2, marginTop: 3 },
   dot: { width: 5, height: 5, borderRadius: 3 },
   legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14, marginBottom: 20 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendText: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '600' },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4 },
+  addNoteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  addNoteText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.primary },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
+  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginBottom: 2 },
+  modalDate: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 14, fontWeight: '700' },
+  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  modalInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
+  modalBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  modalDeleteBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.redSoft },
+  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  modalCancelText: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  modalSaveBtn: { flex: 1.4, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
+  modalSaveText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center' },
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 8 },

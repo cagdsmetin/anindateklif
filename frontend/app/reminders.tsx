@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 // redeploy trigger
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { CustomerT, QuoteT, ServiceT } from '@/src/lib/api';
+import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
 
 const HIDDEN_KEY = 'hiddenReminders';
@@ -39,7 +39,13 @@ function urgency(days: number) {
 export default function RemindersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { services, quotes, campaigns, customers, activeCompany } = useApp();
+  const { services, quotes, campaigns, customers, activeCompany, reminders, createReminder, updateReminder, deleteReminder } = useApp();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<ManualReminderT | null>(null);
+  const [formBaslik, setFormBaslik] = useState('');
+  const [formNotu, setFormNotu] = useState('');
+  const [formTarih, setFormTarih] = useState(() => new Date().toISOString().slice(0, 10));
+  const [savingReminder, setSavingReminder] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
 
@@ -106,7 +112,47 @@ export default function RemindersScreen() {
       .sort((a, b) => (b.camp.createdAt || '').localeCompare(a.camp.createdAt || ''));
   }, [campaigns, audienceCustomers, hidden]);
 
-  const totalCount = garantiList.length + bakimList.length + teklifList.length + kampanyaList.length;
+  const manualList = useMemo(() => {
+    return reminders
+      .filter((r) => !r.tamamlandi)
+      .map((r) => ({ r, days: daysUntil(r.tarih) ?? 9999 }))
+      .sort((a, b) => a.days - b.days);
+  }, [reminders]);
+
+  const totalCount = garantiList.length + bakimList.length + teklifList.length + kampanyaList.length + manualList.length;
+
+  const openAdd = () => {
+    setEditingReminder(null);
+    setFormBaslik('');
+    setFormNotu('');
+    setFormTarih(new Date().toISOString().slice(0, 10));
+    setShowAdd(true);
+  };
+  const openEdit = (r: ManualReminderT) => {
+    setEditingReminder(r);
+    setFormBaslik(r.baslik);
+    setFormNotu(r.notu);
+    setFormTarih(r.tarih);
+    setShowAdd(true);
+  };
+  const saveManualReminder = async () => {
+    if (!formBaslik.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(formTarih.trim())) return;
+    setSavingReminder(true);
+    try {
+      if (editingReminder) {
+        await updateReminder(editingReminder.id, { baslik: formBaslik.trim(), notu: formNotu, tarih: formTarih.trim() });
+      } else {
+        await createReminder({ baslik: formBaslik.trim(), notu: formNotu, tarih: formTarih.trim() });
+      }
+      setShowAdd(false);
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+  const removeManualReminder = async (id: string) => {
+    await deleteReminder(id);
+    setShowAdd(false);
+  };
 
   const sirketAdi = activeCompany?.sirketAdi || '';
 
@@ -117,9 +163,14 @@ export default function RemindersScreen() {
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Hatırlatmalar</Text>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/calendar' as any)} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-open-calendar">
-          <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={openAdd} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-add-btn">
+            <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/calendar' as any)} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-open-calendar">
+            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={s.divider} />
 
@@ -130,6 +181,26 @@ export default function RemindersScreen() {
             <Text style={s.emptyTextBox}>Şu an bekleyen hatırlatma yok. Her şey güncel!</Text>
           </View>
         ) : null}
+
+        {/* Manuel not / hatırlatıcılar -- kullanıcının kendi eklediği */}
+        <SectionHeader icon="bookmark-outline" title="Notlarım / Hatırlatıcılarım" count={manualList.length} color={theme.colors.gold} />
+        {manualList.length === 0 ? (
+          <EmptyLine text="Henüz eklediğiniz bir not/hatırlatıcı yok. Sağ üstteki + ile ekleyebilirsiniz." />
+        ) : (
+          manualList.map(({ r, days }) => (
+            <ReminderRow
+              key={r.id}
+              category="Not"
+              categoryColor={theme.colors.gold}
+              title={r.baslik}
+              sub={`${trDate(r.tarih)}${r.notu ? ' · ' + r.notu : ''}`}
+              badge={urgency(days)}
+              label={days === 9999 ? '' : urgency(days).label}
+              onPress={() => openEdit(r)}
+              onHide={() => removeManualReminder(r.id)}
+            />
+          ))
+        )}
 
         {/* Garanti bitiş tarihleri */}
         <SectionHeader icon="shield-checkmark-outline" title="Garanti Bitiş Tarihleri" count={garantiList.length} color={theme.colors.modules.gecmis} />
@@ -217,6 +288,34 @@ export default function RemindersScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Manuel not/hatırlatıcı ekleme-düzenleme modalı */}
+      <Modal visible={showAdd} transparent animationType="fade" onRequestClose={() => setShowAdd(false)}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowAdd(false)}>
+          <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
+            <Text style={s.modalTitle}>{editingReminder ? 'Notu Düzenle' : 'Not / Hatırlatıcı Ekle'}</Text>
+            <Text style={s.modalLabel}>Başlık</Text>
+            <TextInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder="örn: Müşteriyi ara" placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
+            <Text style={s.modalLabel}>Tarih (YYYY-AA-GG)</Text>
+            <TextInput style={s.modalInput} value={formTarih} onChangeText={setFormTarih} placeholder="2026-09-01" placeholderTextColor="#94a3b8" testID="manual-reminder-tarih" />
+            <Text style={s.modalLabel}>Not (opsiyonel)</Text>
+            <TextInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder="Detay ekleyin" placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
+            <View style={s.modalBtnRow}>
+              {editingReminder && (
+                <TouchableOpacity style={s.modalDeleteBtn} onPress={() => removeManualReminder(editingReminder.id)} testID="manual-reminder-delete">
+                  <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowAdd(false)}>
+                <Text style={s.modalCancelText}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalSaveBtn} onPress={saveManualReminder} disabled={savingReminder} testID="manual-reminder-save">
+                <Text style={s.modalSaveText}>{savingReminder ? 'Kaydediliyor...' : 'Kaydet'}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -303,6 +402,17 @@ function ReminderRow({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
+  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginBottom: 14 },
+  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  modalInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
+  modalBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  modalDeleteBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.redSoft },
+  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  modalCancelText: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  modalSaveBtn: { flex: 1.4, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
+  modalSaveText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

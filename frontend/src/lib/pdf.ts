@@ -406,7 +406,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:8px; border-bottom:2.5px solid #1c1c1e; margin-bottom:11px; }
   .company-block { flex:1; max-width:38%; }
   .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 7px; }
-  .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.7; }
+  .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.35; }
   .logo-center { flex:0 0 auto; max-width:24%; display:flex; align-items:flex-start; justify-content:center; padding:0 10px; }
   .head-right { flex:1; max-width:38%; text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { margin-bottom:8px; }
@@ -660,7 +660,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .logo-img { max-width:170px; max-height:130px; object-fit:contain; object-position:center; display:block; margin:0 auto; }
   .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; margin:0 auto; }
   .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; margin:0 0 8px; }
-  .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.85; }
+  .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.4; }
   .doc-id { flex:1; max-width:36%; text-align:right; }
   .doc-title { font-size:20pt; letter-spacing:3px; font-weight:400; color:#2b2926; }
   .doc-sub { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }
@@ -905,9 +905,9 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   .strip-logo-img { max-width:110px; max-height:80px; object-fit:contain; display:block; margin-bottom:16px; }
   .strip-logo-fallback { width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19pt; margin-bottom:16px; }
   .strip-company { font-size:12.5pt; font-weight:800; line-height:1.35; margin-bottom:3px; }
-  .strip-tagline { font-size:7.6pt; color:#94A3B8; margin-bottom:20px; }
+  .strip-tagline { font-size:7.6pt; color:#94A3B8; margin-bottom:11px; }
   .strip-section-label { font-size:6.8pt; letter-spacing:1.3px; color:#64748B; text-transform:uppercase; margin-bottom:7px; margin-top:18px; font-weight:700; }
-  .strip-row { display:flex; gap:6px; align-items:flex-start; margin-bottom:10px; }
+  .strip-row { display:flex; gap:6px; align-items:flex-start; margin-bottom:6px; }
   .strip-dot { width:4px; height:4px; border-radius:2px; background:#38BDF8; margin-top:5px; flex-shrink:0; }
   .strip-bank-name { font-size:7.8pt; font-weight:700; color:#E2E8F0; line-height:1.4; word-break:break-word; }
   .strip-bank-iban { font-size:7.6pt; font-weight:600; color:#38BDF8; letter-spacing:0.2px; margin-top:3px; word-break:break-all; }

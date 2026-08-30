@@ -756,7 +756,7 @@ function LegendDot({
   return (
     <View style={s.legendItem}>
       <View style={[s.legendDot, { backgroundColor: color }]} />
-      <Text style={s.legendLabel} numberOfLines={1}>{label}</Text>
+      <Text style={countLabel !== undefined ? s.legendLabelFixed : s.legendLabel} numberOfLines={1}>{label}</Text>
       {countLabel !== undefined ? (
         <View style={s.legendCountAmountWrap}>
           <Text style={s.legendCount} numberOfLines={1}>{countLabel}</Text>
@@ -882,9 +882,10 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
+  legendLabelFixed: { fontSize: 12, color: theme.colors.textSoft, marginRight: 8 },
   legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
-  legendCountAmountWrap: { flexDirection: 'row', alignItems: 'center' },
-  legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, width: 22, textAlign: 'left', marginRight: 14 },
+  legendCountAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, textAlign: 'left' },
 
 
   alertBanner: {

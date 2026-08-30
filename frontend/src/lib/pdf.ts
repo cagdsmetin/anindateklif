@@ -20,6 +20,26 @@ const esc = (s: string) =>
     .replace(/"/g, '&quot;')
     .replace(/\n/g, '<br/>');
 
+// Turns a raw website value ("firma.com", "www.firma.com", "https://firma.com")
+// into a safe absolute https:// href -- so the mailto:/http(s): links below
+// always resolve to something clickable regardless of how the person typed
+// it into the Firma sayfası.
+const websiteHref = (site: string) => {
+  const trimmed = String(site ?? '').trim();
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
+// A plain-text email/website line, but wrapped in a real <a> so the person
+// reading the PDF (desktop viewer or a phone) can tap straight into a mail
+// compose window or the company site instead of having to copy the text.
+const contactLink = (kind: 'email' | 'web', value: string, extraStyle: string = '') => {
+  const v = String(value ?? '').trim();
+  if (!v) return '';
+  const href = kind === 'email' ? `mailto:${v}` : websiteHref(v);
+  return `<a href="${esc(href)}" style="color:inherit;text-decoration:underline;${extraStyle}">${esc(v)}</a>`;
+};
+
 const trDate = (iso: string) => {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -207,8 +227,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
         ${company.adres ? `<div class="cline">${esc(company.adres)}</div>` : ''}
         ${company.telefon ? `<div class="cline">${esc(company.telefon)}</div>` : ''}
         ${company.telefon2 ? `<div class="cline">${esc(company.telefon2)}</div>` : ''}
-        ${company.email ? `<div class="cline">${esc(company.email)}</div>` : ''}
-        ${company.website ? `<div class="cline">${esc(company.website)}</div>` : ''}
+        ${company.email ? `<div class="cline">${contactLink('email', company.email)}</div>` : ''}
+        ${company.website ? `<div class="cline">${contactLink('web', company.website)}</div>` : ''}
       </td>
       <td class="center-col">
         ${logo}
@@ -466,7 +486,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="company-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
-          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
+          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + contactLink('email', company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? contactLink('web', company.website) : ''}` : ''}
         </div>` : ''}
       </div>
       <div class="logo-center">
@@ -717,7 +737,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
         ${(company.adres || company.telefon || company.telefon2 || company.email || company.website) ? `<div class="brand-meta">
           ${company.adres ? `${esc(company.adres)}<br/>` : ''}
           ${(company.telefon || company.telefon2) ? `Tel: ${phoneLine}<br/>` : ''}
-          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + esc(company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? esc(company.website) : ''}` : ''}
+          ${(company.email || company.website) ? `${company.email ? 'E-Mail: ' + contactLink('email', company.email) : ''}${company.email && company.website ? ' &nbsp;&middot;&nbsp; ' : ''}${company.website ? contactLink('web', company.website) : ''}` : ''}
         </div>` : ''}
       </div>
       <div class="logo-center">
@@ -941,12 +961,12 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
     <div class="strip">
       ${logoSrc ? `<img class="strip-logo-img" src="${logoSrc}" />` : `<div class="strip-logo-fallback">${esc(monogram)}</div>`}
       <div class="strip-company">${v(company.sirketAdi)}</div>
-      ${company.website ? `<div class="strip-tagline">${v(company.website)}</div>` : ''}
+      ${company.website ? `<div class="strip-tagline">${contactLink('web', company.website, 'color:#94A3B8;')}</div>` : ''}
 
       <div class="strip-section-label">İletişim</div>
       ${company.adres ? `<div class="strip-row"><span class="strip-dot"></span>${v(company.adres)}</div>` : ''}
       ${phoneLine ? `<div class="strip-row"><span class="strip-dot"></span>${esc(phoneLine)}</div>` : ''}
-      ${company.email ? `<div class="strip-row"><span class="strip-dot"></span>${v(company.email)}</div>` : ''}
+      ${company.email ? `<div class="strip-row"><span class="strip-dot"></span>${contactLink('email', company.email, 'color:#E2E8F0;')}</div>` : ''}
 
       ${bankSection}
 
@@ -1136,7 +1156,7 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
         ${logoSrc ? `<img class="logo-badge-img" src="${logoSrc}" />` : `<div class="logo-badge">${esc(monogram)}</div>`}
         <div>
           <div class="head-company">${v(company.sirketAdi)}</div>
-          <div class="head-sub">${[phoneLine, company.email].filter(Boolean).join(' · ') || '&nbsp;'}</div>
+          <div class="head-sub">${[phoneLine, company.email ? contactLink('email', company.email) : '', company.website ? contactLink('web', company.website) : ''].filter(Boolean).join(' · ') || '&nbsp;'}</div>
         </div>
       </div>
       <div class="head-right">

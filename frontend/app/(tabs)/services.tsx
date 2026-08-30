@@ -196,7 +196,10 @@ export default function ServicesScreen() {
         })}
       </ScrollView>
 
-      <TouchableOpacity style={[s.fab, { bottom: insets.bottom + 18 }]} onPress={openAdd} testID="svc-add-fab">
+      <TouchableOpacity // Bottom offset is pushed up (+66) so this FAB doesn't sit directly under
+      // the global support chat bubble (SupportBubble, bottom-right, same corner) --
+      // they used to fully overlap, making this add button invisible/unclickable.
+      style={[s.fab, { bottom: insets.bottom + 18 + 66 }]} onPress={openAdd} testID="svc-add-fab">
         <Ionicons name="add" size={26} color="#fff" />
       </TouchableOpacity>
 

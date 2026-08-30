@@ -368,10 +368,25 @@ export default function HistoryScreen() {
                 style={[s.confirmBtn, s.confirmBtnDanger]}
                 onPress={async () => {
                   if (deleteTarget) {
-                    await deleteQuote(deleteTarget);
-                    showToast('Teklif silindi');
+                    try {
+                      await deleteQuote(deleteTarget);
+                      showToast('Teklif silindi');
+                      setDeleteTarget(null);
+                    } catch (e: any) {
+                      // Backend blocks deletion when real Tahsilat payments are
+                      // linked to this quote -- surface its detail message
+                      // rather than a generic error, and keep the modal open
+                      // so the person isn't left wondering what happened.
+                      let msg = e?.message || 'Teklif silinemedi';
+                      try {
+                        const parsed = e?.body ? JSON.parse(e.body) : null;
+                        if (parsed?.detail) msg = parsed.detail;
+                      } catch {}
+                      showToast(msg);
+                    }
+                  } else {
+                    setDeleteTarget(null);
                   }
-                  setDeleteTarget(null);
                 }}
                 testID="delete-quote-confirm"
               >

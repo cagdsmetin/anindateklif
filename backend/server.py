@@ -2497,13 +2497,36 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, user=Depends(get_current_user)):
     """Soft delete — moves the quote to the trash instead of erasing it, so an
-    accidental delete can be undone within QUOTE_TRASH_RETENTION_DAYS days."""
+    accidental delete can be undone within QUOTE_TRASH_RETENTION_DAYS days.
+
+    A quote that already has real money movement recorded against it in
+    Tahsilat (tur="tahsilat" -- an actual payment received/given, as opposed
+    to the auto-generated "borc" receivable) cannot be deleted directly: the
+    person must go delete those payment records first. This prevents a quote
+    from disappearing out from under real cash-flow history. The auto-created
+    "borc" entry (if any, and not yet paid) is just an unpaid receivable with
+    no real money moved yet, so it's safe to clean up automatically here.
+    """
+    has_real_payment = await db.tahsilat.find_one(
+        {"userId": user["user_id"], "quoteId": quote_id, "tur": "tahsilat"}
+    )
+    if has_real_payment:
+        raise HTTPException(
+            status_code=400,
+            detail="Bu teklife bağlı Tahsilat kaydı var. Önce Tahsilat sayfasından bu teklifle ilgili ödeme kayıtlarını silmelisiniz.",
+        )
     result = await db.quotes.update_one(
         {"id": quote_id, "userId": user["user_id"], "deletedAt": None},
         {"$set": {"deletedAt": utc_now_iso()}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Teklif bulunamadı")
+    # No real payment against this quote -- safe to drop the auto-generated
+    # unpaid debt record too, so it doesn't linger in Tahsilat referencing a
+    # now-deleted quote.
+    await db.tahsilat.delete_many(
+        {"userId": user["user_id"], "quoteId": quote_id, "tur": "borc"}
+    )
     return {"ok": True}
 
 

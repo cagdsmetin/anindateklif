@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView, Image, Platform, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Modal, ScrollView, Image, Platform, useWindowDimensions, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
@@ -145,9 +145,20 @@ export default function TopHeader({ title }: { title?: string }) {
             <TouchableOpacity
               testID="signout-btn"
               style={s.signoutBtn}
-              onPress={async () => {
+              onPress={() => {
                 setMenuVisible(false);
-                await signOut();
+                // Confirm before signing out -- same pattern as the desktop
+                // sidebar's "Çıkış Yap" so a stray tap can't log the person
+                // out by accident.
+                if (Platform.OS === 'web') {
+                  // eslint-disable-next-line no-alert
+                  if (window.confirm('Çıkış yapmak istediğinize emin misiniz?')) signOut();
+                  return;
+                }
+                Alert.alert('Çıkış Yap', 'Çıkış yapmak istediğinize emin misiniz?', [
+                  { text: 'Vazgeç', style: 'cancel' },
+                  { text: 'Çıkış Yap', style: 'destructive', onPress: () => signOut() },
+                ]);
               }}
             >
               <Ionicons name="log-out-outline" size={16} color={theme.colors.red} />

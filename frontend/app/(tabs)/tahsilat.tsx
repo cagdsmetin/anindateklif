@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
+import { YONTEMLER, computeCustomerBalances } from '@/src/lib/tahsilat-utils';
 
-const YONTEMLER = ['Nakit', 'Kart', 'Havale/EFT', 'Diğer'];
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
 function fmt(n: number, cur: string = 'TRY') {
@@ -30,6 +31,9 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 export default function TahsilatScreen() {
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  const pendingSectionY = useRef(0);
 
   const [tur, setTur] = useState<'tahsilat' | 'borc'>('tahsilat');
   const [musteriAdi, setMusteriAdi] = useState('');
@@ -57,22 +61,21 @@ export default function TahsilatScreen() {
     setShowSuggest(false);
   };
 
-  // Per-customer receivable balance: sum(borç) - sum(tahsilat), TRY only for a single
-  // meaningful headline number (mirrors the Kasa screen's approach to mixed currencies).
-  const balances = useMemo(() => {
-    const map: Record<string, { key: string; musteriAdi: string; musteriTelefon: string; bakiye: number; hasOverdue: boolean }> = {};
-    const today = todayIso();
-    tahsilat.forEach((t) => {
-      if ((t.paraBirimi || 'TRY') !== 'TRY') return;
-      const key = t.customerId || `ad:${t.musteriAdi}`;
-      if (!map[key]) map[key] = { key, musteriAdi: t.musteriAdi, musteriTelefon: t.musteriTelefon, bakiye: 0, hasOverdue: false };
-      map[key].bakiye += t.tur === 'borc' ? t.tutar : -t.tutar;
-      if (t.tur === 'borc' && t.vadeTarihi && t.vadeTarihi < today) map[key].hasOverdue = true;
-    });
-    return Object.values(map).filter((m) => m.bakiye > 0.009).sort((a, b) => b.bakiye - a.bakiye);
-  }, [tahsilat]);
+  // Her müşterinin borç/tahsilat bakiyesi, PARA BİRİMİ BAZINDA -- önceden bu
+  // hesap sadece TRY kayıtlarını sayıyordu, teklif USD/EUR ise (uygulamada
+  // çok yaygın) o borç burada hiç görünmüyordu ve TOPLAM ALACAK / BORÇLU
+  // MÜŞTERİ kartları sıfır gösteriyordu, halbuki kayıt "SON HAREKETLER"de
+  // duruyordu. Artık hiçbir para birimi atlanmıyor.
+  const balances = useMemo(() => computeCustomerBalances(tahsilat), [tahsilat]);
 
-  const toplamAlacak = balances.reduce((a, b) => a + b.bakiye, 0);
+  // Toplam alacağı da para birimine göre ayrı ayrı topluyoruz (ör. "$3.000,00 · ₺1.200,00").
+  const toplamAlacakByCurrency = useMemo(() => {
+    const sums: Record<string, number> = {};
+    balances.forEach((b) => b.balances.forEach((x) => { sums[x.paraBirimi] = (sums[x.paraBirimi] || 0) + x.bakiye; }));
+    return Object.entries(sums)
+      .map(([paraBirimi, tutar]) => ({ paraBirimi, tutar }))
+      .sort((a, b) => b.tutar - a.tutar);
+  }, [balances]);
   const borcluMusteri = balances.length;
 
   const filtered = useMemo(() => {
@@ -126,6 +129,20 @@ export default function TahsilatScreen() {
     Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`).catch(() => showToast('Arama başlatılamadı'));
   };
 
+  const scrollToPending = () => {
+    scrollRef.current?.scrollTo({ y: Math.max(0, pendingSectionY.current - 8), animated: true });
+  };
+
+  // Müşteri bazlı cari hesap (para akışı) ekranına git -- ismi ve varsa
+  // müşteri id'sini query param olarak taşıyoruz ki o ekran doğru kaydı
+  // filtreleyebilsin.
+  const openLedger = (b: { customerId: string; musteriAdi: string; musteriTelefon: string }) => {
+    router.push({
+      pathname: '/customer-ledger',
+      params: { customerId: b.customerId || '', musteriAdi: b.musteriAdi, musteriTelefon: b.musteriTelefon || '' },
+    } as any);
+  };
+
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -139,16 +156,24 @@ export default function TahsilatScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title="Tahsilat & Bakiye" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={s.statsRow}>
             <View style={[s.statCard, { backgroundColor: theme.colors.primarySoft }]}>
               <Text style={[s.statLabel, { color: theme.colors.primaryDark }]}>TOPLAM ALACAK</Text>
-              <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>{fmt(toplamAlacak)}</Text>
+              {toplamAlacakByCurrency.length === 0 ? (
+                <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>{fmt(0)}</Text>
+              ) : (
+                toplamAlacakByCurrency.map((x) => (
+                  <Text key={x.paraBirimi} style={[s.statValue, { color: theme.colors.primaryDark, fontSize: toplamAlacakByCurrency.length > 1 ? 13 : 15 }]} numberOfLines={1}>
+                    {fmt(x.tutar, x.paraBirimi)}
+                  </Text>
+                ))
+              )}
             </View>
-            <View style={[s.statCard, { backgroundColor: '#F1F5F9' }]}>
+            <TouchableOpacity style={[s.statCard, { backgroundColor: '#F1F5F9' }]} onPress={scrollToPending} testID="tahsilat-borclu-card">
               <Text style={[s.statLabel, { color: theme.colors.textSoft }]}>BORÇLU MÜŞTERİ</Text>
               <Text style={[s.statValue, { color: theme.colors.text }]} numberOfLines={1}>{borcluMusteri}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
           <Text style={s.sectionH}>YENİ KAYIT</Text>
@@ -240,7 +265,9 @@ export default function TahsilatScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={s.sectionH}>BEKLEYEN ALACAKLAR</Text>
+          <View onLayout={(e) => { pendingSectionY.current = e.nativeEvent.layout.y; }}>
+            <Text style={s.sectionH}>BEKLEYEN ALACAKLAR</Text>
+          </View>
           {balances.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="checkmark-circle-outline" size={30} color={theme.colors.textMuted} />
@@ -256,8 +283,13 @@ export default function TahsilatScreen() {
                       {b.hasOverdue ? <View style={s.overdueTag}><Text style={s.overdueTagText}>Vadesi geçti</Text></View> : null}
                     </View>
                     {b.musteriTelefon ? <Text style={s.pendingPhone}>{b.musteriTelefon}</Text> : null}
+                    {b.balances.map((x) => (
+                      <Text key={x.paraBirimi} style={s.pendingAmount}>{fmt(x.bakiye, x.paraBirimi)}</Text>
+                    ))}
                   </View>
-                  <Text style={s.pendingAmount}>{fmt(b.bakiye)}</Text>
+                  <TouchableOpacity style={s.ledgerBtn} onPress={() => openLedger(b)} testID={`tahsilat-ledger-${b.key}`}>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={theme.colors.modules.tahsilat} />
+                  </TouchableOpacity>
                   <TouchableOpacity style={s.callBtn} onPress={() => call(b.musteriTelefon)} testID={`tahsilat-call-${b.key}`}>
                     <Ionicons name="call-outline" size={15} color={theme.colors.primary} />
                     <Text style={s.callBtnText}>Hatırlat</Text>
@@ -345,6 +377,7 @@ const s = StyleSheet.create({
   overdueTag: { backgroundColor: theme.colors.redSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   overdueTagText: { fontSize: 9, fontWeight: '800', color: '#991b1b' },
   callBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+  ledgerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F2FE', marginRight: 6 },
   callBtnText: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },

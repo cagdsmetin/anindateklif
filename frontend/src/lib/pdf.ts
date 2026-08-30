@@ -291,7 +291,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <div class="bank-footer">Tüm banka masrafları ve transfer ücretleri alıcıya aittir.</div>
   ` : ''}
 
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#1E293B;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#1E293B;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a></div>
 
   <!-- ATTACHMENT PAGES -->
   ${eklerHtml}
@@ -438,7 +438,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   .totals-v { display:table-cell; text-align:right; font-size:9pt; font-weight:600; }
   .totals-div { border-top:1px solid #45443f; margin:10px 0; }
   .grand-label { font-size:7.6pt; color:#a5b4fc; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:3px; }
-  .grand-value { font-size:12pt; font-weight:800; color:#fff; letter-spacing:-0.3px; }
+  .grand-value { font-size:17pt; font-weight:800; color:#fff; letter-spacing:-0.3px; }
   .kdv-note { margin-top:8px; font-size:7.4pt; color:#a09fb0; }
 
   /* Bank */
@@ -541,7 +541,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     </div>
 
     ${bankSection}
-    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#4338ca;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
+    <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#4338ca;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a></div>
   </div>
   ${ekPages}
 </body>
@@ -688,7 +688,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .totals-v { display:table-cell; text-align:right; font-size:9.5pt; }
   .grand-wrap { border-top:1px solid #2b2926; margin-top:8px; padding-top:8px; }
   .grand-label { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7.3pt; letter-spacing:1.6px; text-transform:uppercase; color:#b5502e; }
-  .grand-value { font-size:12pt; font-weight:600; letter-spacing:.3px; margin-top:3px; }
+  .grand-value { font-size:17pt; font-weight:600; letter-spacing:.3px; margin-top:3px; }
   .kdv-note { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7.2pt; color:#8a8478; margin-top:9px; }
 
   /* Bank */
@@ -796,7 +796,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   </div>
 
   ${bankSection}
-  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#b5502e;text-decoration:underline;font-weight:800;">www.anindateklif.co</a></div>
+  <div class="app-credit">Bu teklif Anında Teklif uygulaması ile hazırlanmıştır.<br/><a href="https://www.anindateklif.co" id="app-credit-link" style="color:#b5502e;text-decoration:underline;text-underline-offset:2px;font-weight:700;letter-spacing:0.4px;">www.anindateklif.co</a></div>
   ${ekPages}
 </body>
 </html>`;

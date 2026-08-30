@@ -882,7 +882,7 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
-  legendLabelFixed: { fontSize: 12, color: theme.colors.textSoft, marginRight: 8 },
+  legendLabelFixed: { width: 84, fontSize: 12, color: theme.colors.textSoft, marginRight: 8 },
   legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   legendCountAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, textAlign: 'left' },

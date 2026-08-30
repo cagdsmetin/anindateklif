@@ -215,14 +215,17 @@ LEAD_FINDER_SYSTEM_PROMPT = (
     "Sen bir B2B satış/pazarlama araştırma asistanısın. Görevin: kullanıcının verdiği sektörde ve "
     "bölgede GERÇEKTEN VAR OLAN firmaları web_search aracını kullanarak internetten arayıp bulmak. "
     "KURALLAR (çok önemli):\n"
-    "1) KESİNLİKLE uydurma/tahmini firma adı veya telefon numarası üretme. Sadece arama sonuçlarında "
-    "gerçekten gördüğün firmaları listele.\n"
-    "2) Bir firma için telefon numarası bulamazsan telefon alanını boş bırak (""), asla tahmini numara yazma.\n"
-    "3) Her firma için varsa ilçe/il bilgisini 'bolge' alanına yaz.\n"
-    "4) En fazla 12 firma öner, aynı firmayı tekrar etme.\n"
-    "5) Hiç uygun/doğrulanabilir firma bulamazsan boş dizi döndür.\n\n"
+    "1) KESİNLİKLE uydurma/tahmini firma adı, telefon numarası, website veya e-posta üretme. Sadece "
+    "arama sonuçlarında gerçekten gördüğün, resmi sitesinde/iletişim sayfasında yazan bilgileri listele.\n"
+    "2) Bir firma için telefon, website veya e-posta bulamazsan o alanı boş bırak (""), asla tahmini "
+    "değer yazma.\n"
+    "3) Website varsa 'website' alanına domaini yaz (ör. ornekfirma.com.tr). E-posta varsa (genelde "
+    "firmanın kendi sitesindeki iletişim sayfasında görünür) 'email' alanına yaz.\n"
+    "4) Her firma için varsa ilçe/il bilgisini 'bolge' alanına yaz.\n"
+    "5) En fazla 12 firma öner, aynı firmayı tekrar etme.\n"
+    "6) Hiç uygun/doğrulanabilir firma bulamazsan boş dizi döndür.\n\n"
     "Cevabının EN SONUNDA, başka HİÇBİR açıklama/markdown olmadan sadece şu formatta bir JSON dizisi ver:\n"
-    "```json\n[{\"firma\": \"...\", \"bolge\": \"...\", \"telefon\": \"...\"}]\n```"
+    "```json\n[{\"firma\": \"...\", \"bolge\": \"...\", \"telefon\": \"...\", \"website\": \"...\", \"email\": \"...\"}]\n```"
 )
 
 _LEAD_JSON_ARR_RE = re.compile(r"```json\s*(\[.*?\])\s*```", re.DOTALL)
@@ -254,7 +257,9 @@ def _extract_ai_leads(reply_text: str) -> List[Dict[str, str]]:
         seen.add(key)
         bolge = str(item.get("bolge") or "").strip()[:120]
         telefon = str(item.get("telefon") or "").strip()[:40]
-        out.append({"firma": firma, "bolge": bolge, "telefon": telefon})
+        website = str(item.get("website") or "").strip()[:200]
+        email = str(item.get("email") or "").strip()[:200]
+        out.append({"firma": firma, "bolge": bolge, "telefon": telefon, "website": website, "email": email})
     return out
 
 
@@ -2945,6 +2950,13 @@ class LeadCompany(BaseModel):
     bolge: str = ""
     kategori: str = ""
     telefon: str = ""
+    website: str = ""
+    email: str = ""
+    # Yönetici bu firmayı bir personele atayıp "ara, iletişime geç" gibi bir
+    # not bırakabilir -- personel kendi ekranında sadece kendisine atananları
+    # ayrı bir baloncukta görür. Boşsa kimseye atanmamış demektir.
+    atananKullaniciId: str = ""
+    atananNot: str = ""
     durum: str = "Aranmadı"
     notlar: str = ""
     # Bu firmayı ne zaman TEKRAR aramamız gerektiğini işaretlemek için
@@ -2961,6 +2973,8 @@ class LeadCompanyCreate(BaseModel):
     bolge: str = ""
     kategori: str = ""
     telefon: str = ""
+    website: str = ""
+    email: str = ""
 
     @field_validator("firma")
     @classmethod
@@ -2999,6 +3013,10 @@ class LeadStatusUpdate(BaseModel):
     durum: Optional[str] = None
     notlar: Optional[str] = None
     tekrarTarihi: Optional[str] = None
+    website: Optional[str] = None
+    email: Optional[str] = None
+    atananKullaniciId: Optional[str] = None
+    atananNot: Optional[str] = None
 
 
 class LeadDailyCountUpdate(BaseModel):
@@ -3055,6 +3073,8 @@ async def create_lead(payload: LeadCompanyCreate, user=Depends(get_current_user)
         bolge=payload.bolge,
         kategori=payload.kategori,
         telefon=payload.telefon,
+        website=payload.website,
+        email=payload.email,
     )
     await db.leads.insert_one(obj.model_dump())
     return obj
@@ -3098,6 +3118,8 @@ async def ai_find_leads(payload: LeadAiFillRequest, user=Depends(get_current_use
             bolge=item["bolge"],
             kategori=payload.sektor.strip(),
             telefon=item["telefon"],
+            website=item.get("website", ""),
+            email=item.get("email", ""),
         )
         await db.leads.insert_one(obj.model_dump())
         created.append(obj)
@@ -3155,6 +3177,19 @@ async def update_lead(lead_id: str, payload: LeadStatusUpdate, user=Depends(get_
         if t and not re.match(r"^\d{4}-\d{2}-\d{2}$", t):
             raise HTTPException(400, "Geçersiz tarih formatı")
         updates["tekrarTarihi"] = t
+    if payload.website is not None:
+        updates["website"] = payload.website.strip()[:200]
+    if payload.email is not None:
+        updates["email"] = payload.email.strip()[:200]
+    if payload.atananKullaniciId is not None or payload.atananNot is not None:
+        # Firmayı bir personele atamak sadece firma sahibine (ya da "admin"
+        # rollü personele) açık -- normal personel başkasına iş atayamaz.
+        if user.get("is_staff") and user.get("staff_role") != "admin":
+            raise HTTPException(status_code=403, detail="Sadece firma sahibi atama yapabilir")
+        if payload.atananKullaniciId is not None:
+            updates["atananKullaniciId"] = payload.atananKullaniciId.strip()
+        if payload.atananNot is not None:
+            updates["atananNot"] = payload.atananNot.strip()[:500]
     await db.leads.update_one({"id": lead_id, "userId": user["user_id"]}, {"$set": updates})
     doc.update(updates)
     return LeadCompany(**doc)
@@ -3188,6 +3223,15 @@ async def list_lead_search_requests(company_id: str, user=Depends(get_current_us
         {"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}
     ).sort("createdAt", -1).to_list(500)
     return [LeadSearchRequest(**d) for d in docs]
+
+
+# Artık "Yeni Talep" admin'e düşmüyor (bkz. /leads/ai-find) -- bu eski
+# kayıtlar sadece geçmişten kalma. Kullanıcı isterse kendi geçmiş taleplerini
+# temizleyebilsin diye basit bir self-servis silme uç noktası.
+@api_router.delete("/leads/search-requests/{request_id}")
+async def delete_lead_search_request(request_id: str, user=Depends(get_current_user)):
+    await db.lead_search_requests.delete_one({"id": request_id, "userId": user["user_id"]})
+    return {"ok": True}
 
 
 # --- Admin: tüm firmalardan gelen arama taleplerini gör, araştırılan firmaları toplu ekle ---

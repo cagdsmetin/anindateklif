@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, LeadCompanyT, LeadSearchRequestT } from '@/src/lib/api';
+import { useAuth } from '@/src/state/AuthContext';
+import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
 
@@ -74,10 +75,12 @@ export default function LeadsScreen() {
     'leadsTabOrder_v1',
     ['bugun', 'tumu', 'talep']
   );
+  const { user: me } = useAuth();
+  const isStaffUser = !!me?.is_staff && me?.staff_role !== 'admin';
   const [loading, setLoading] = useState(false);
   const [todayLeads, setTodayLeads] = useState<LeadCompanyT[]>([]);
   const [allLeads, setAllLeads] = useState<LeadCompanyT[]>([]);
-  const [requests, setRequests] = useState<LeadSearchRequestT[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMemberT[]>([]);
   const [dailyCount, setDailyCount] = useState('10');
   const [savingDaily, setSavingDaily] = useState(false);
 
@@ -105,6 +108,13 @@ export default function LeadsScreen() {
   const [addTelefon, setAddTelefon] = useState('');
   const [addSaving, setAddSaving] = useState(false);
 
+  // Yönetici bir firmayı personele "ara, iletişime geç" notuyla atayabilsin
+  // diye -- personel sadece adminse veya sahip değilse bu butonu göremez.
+  const [assignFor, setAssignFor] = useState<LeadCompanyT | null>(null);
+  const [assignStaffId, setAssignStaffId] = useState('');
+  const [assignNote, setAssignNote] = useState('Ara, iletişime geç');
+  const [assignSaving, setAssignSaving] = useState(false);
+
   const companyId = activeCompany?.id;
 
   const [autoTabDone, setAutoTabDone] = useState(false);
@@ -113,21 +123,28 @@ export default function LeadsScreen() {
     if (!companyId) return;
     setLoading(true);
     try {
-      const [today, all, reqs] = await Promise.all([
+      const [today, all] = await Promise.all([
         api.listLeadsToday(companyId),
         api.listLeads(companyId),
-        api.listLeadSearchRequests(companyId),
       ]);
       setTodayLeads(today);
       setAllLeads(all);
-      setRequests(reqs);
       setDailyCount(String(activeCompany?.leadDailyCount || 10));
-      // İlk kez giren ve hiç firması/talebi olmayan kullanıcıyı doğrudan
-      // "Yeni Talep" sekmesine yönlendir — boş bir liste görüp ne yapacağını
-      // anlayamamasın diye.
+      // Personele atama yapabilmesi için ekip listesini sadece firma sahibi
+      // (ya da admin rollü personel) yükler -- normal personel bu uca zaten
+      // erişemiyor (403), o yüzden hiç denemiyoruz.
+      if (!isStaffUser) {
+        try {
+          setStaffMembers(await api.listStaff(companyId));
+        } catch {
+          setStaffMembers([]);
+        }
+      }
+      // İlk kez giren ve hiç firması olmayan kullanıcıyı doğrudan "Yeni Talep"
+      // sekmesine yönlendir — boş bir liste görüp ne yapacağını anlayamamasın diye.
       if (!autoTabDone) {
         setAutoTabDone(true);
-        if (all.length === 0 && reqs.length === 0) setTab('talep');
+        if (all.length === 0) setTab('talep');
       }
     } catch (e: any) {
       showToast('Yüklenemedi: ' + (e?.message || ''));
@@ -148,6 +165,31 @@ export default function LeadsScreen() {
     const kapanan = allLeads.filter((l) => l.durum === 'Kapandı').length;
     return { total, aranan, olumlu, kapanan };
   }, [allLeads]);
+
+  // "Tüm Firmalar" sekmesinde yeni eklenen (özellikle yapay zekanın bulduğu)
+  // firmalar en üste çıksın diye en yeni ilk sıralıyoruz -- eskiler kaybolmuyor,
+  // sadece sırası değişiyor. Ayrıca durumlarına göre üç ayrı gruba bölüyoruz:
+  // henüz aranmayanlar, cevap vermeyenler, ve arayıp sonuçlandırılanlar.
+  const tumuGroups = useMemo(() => {
+    const sorted = [...allLeads].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const aranacaklar = sorted.filter((l) => l.durum === 'Aranmadı');
+    const cevapVermeyenler = sorted.filter((l) => l.durum === 'Cevap Yok');
+    const arananlar = sorted.filter((l) => l.durum !== 'Aranmadı' && l.durum !== 'Cevap Yok');
+    return { aranacaklar, cevapVermeyenler, arananlar };
+  }, [allLeads]);
+
+  // Personel sadece kendisine yönetici tarafından atanan firmaları burada,
+  // ayrı ve öne çıkan bir bölümde görür.
+  const myAssignedLeads = useMemo(() => {
+    if (!isStaffUser || !me?.user_id) return [];
+    return allLeads.filter((l) => l.atananKullaniciId === me.user_id);
+  }, [allLeads, isStaffUser, me?.user_id]);
+
+  const staffLabelById = useMemo(() => {
+    const map: Record<string, string> = {};
+    staffMembers.forEach((s) => { if (s.type === 'active') map[s.id] = s.name || s.email; });
+    return map;
+  }, [staffMembers]);
 
   const updateStatus = async (lead: LeadCompanyT, durum: string) => {
     try {
@@ -278,6 +320,46 @@ export default function LeadsScreen() {
     setReminderDate(lead.tekrarTarihi || '');
   };
 
+  const openAssign = (lead: LeadCompanyT) => {
+    setAssignFor(lead);
+    setAssignStaffId(lead.atananKullaniciId || '');
+    setAssignNote(lead.atananNot || 'Ara, iletişime geç');
+  };
+
+  const saveAssign = async () => {
+    if (!assignFor) return;
+    if (!assignStaffId) {
+      showToast('Bir personel seç');
+      return;
+    }
+    setAssignSaving(true);
+    try {
+      await api.updateLead(assignFor.id, { atananKullaniciId: assignStaffId, atananNot: assignNote });
+      setAssignFor(null);
+      showToast('Firma personele atandı');
+      await load();
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || ''));
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+  const clearAssign = async () => {
+    if (!assignFor) return;
+    setAssignSaving(true);
+    try {
+      await api.updateLead(assignFor.id, { atananKullaniciId: '', atananNot: '' });
+      setAssignFor(null);
+      showToast('Atama kaldırıldı');
+      await load();
+    } catch (e: any) {
+      showToast('Hata: ' + (e?.message || ''));
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
   const isoDatePlusDays = (days: number) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -324,8 +406,10 @@ export default function LeadsScreen() {
     );
   }
 
-  const renderLeadRow = (lead: LeadCompanyT) => (
-    <View key={lead.id} style={s.leadCard} testID={`lead-${lead.id}`}>
+  const renderLeadRow = (lead: LeadCompanyT) => {
+    const assignedToMe = isStaffUser && !!me?.user_id && lead.atananKullaniciId === me.user_id;
+    return (
+    <View key={lead.id} style={[s.leadCard, assignedToMe && s.leadCardAssigned]} testID={`lead-${lead.id}`}>
       <View style={{ flex: 1 }}>
         <Text style={s.leadName} numberOfLines={1}>{lead.firma}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
@@ -339,6 +423,24 @@ export default function LeadsScreen() {
           </TouchableOpacity>
         ) : (
           <Text style={s.leadSub}>telefon yok</Text>
+        )}
+        {!!lead.website && (
+          <TouchableOpacity
+            style={s.phoneRow}
+            onPress={() => {
+              const url = /^https?:\/\//i.test(lead.website) ? lead.website : `https://${lead.website}`;
+              Linking.openURL(url).catch(() => showToast('Site açılamadı'));
+            }}
+          >
+            <Ionicons name="globe-outline" size={13} color={theme.colors.primary} />
+            <Text style={s.phoneRowText} numberOfLines={1}>{lead.website}</Text>
+          </TouchableOpacity>
+        )}
+        {!!lead.email && (
+          <TouchableOpacity style={s.phoneRow} onPress={() => Linking.openURL(`mailto:${lead.email}`).catch(() => showToast('E-posta açılamadı'))}>
+            <Ionicons name="mail-outline" size={13} color={theme.colors.primary} />
+            <Text style={s.phoneRowText} numberOfLines={1}>{lead.email}</Text>
+          </TouchableOpacity>
         )}
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
           {DURUM_OPTIONS.map((d) => (
@@ -357,12 +459,29 @@ export default function LeadsScreen() {
             <Text style={s.reminderBadgeText}>Tekrar ara: {trDateShort(lead.tekrarTarihi)}</Text>
           </View>
         )}
+        {!!lead.atananKullaniciId && !isStaffUser && (
+          <View style={s.assignBadge}>
+            <Ionicons name="person-outline" size={12} color="#5b21b6" />
+            <Text style={s.assignBadgeText}>{staffLabelById[lead.atananKullaniciId] || 'Personel'}: {lead.atananNot || 'Ara, iletişime geç'}</Text>
+          </View>
+        )}
+        {assignedToMe && (
+          <View style={[s.assignBadge, { backgroundColor: '#FEF3C7' }]}>
+            <Ionicons name="notifications-outline" size={12} color="#b45309" />
+            <Text style={[s.assignBadgeText, { color: '#b45309' }]}>Sana atandı: {lead.atananNot || 'Ara, iletişime geç'}</Text>
+          </View>
+        )}
         {!!lead.notlar && <Text style={s.leadNote} numberOfLines={2}>📝 {lead.notlar}</Text>}
       </View>
       <View style={{ alignItems: 'flex-end', gap: 8 }}>
         <TouchableOpacity style={s.iconBtn} onPress={() => openNotes(lead)} testID={`lead-notes-${lead.id}`}>
           <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
         </TouchableOpacity>
+        {!isStaffUser && (
+          <TouchableOpacity style={s.iconBtn} onPress={() => openAssign(lead)} testID={`lead-assign-${lead.id}`}>
+            <Ionicons name="person-add-outline" size={16} color="#5b21b6" />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={s.waBtn} onPress={() => openWhatsApp(lead)}>
           <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
         </TouchableOpacity>
@@ -371,7 +490,8 @@ export default function LeadsScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -494,7 +614,35 @@ export default function LeadsScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              allLeads.map(renderLeadRow)
+              <>
+                {myAssignedLeads.length > 0 && (
+                  <View style={{ marginBottom: 16 }}>
+                    <View style={s.assignSectionHeader}>
+                      <Ionicons name="notifications" size={14} color="#b45309" />
+                      <Text style={s.assignSectionTitle}>Sana Atananlar ({myAssignedLeads.length})</Text>
+                    </View>
+                    {myAssignedLeads.map(renderLeadRow)}
+                  </View>
+                )}
+                <Text style={s.sectionTitle}>Aranacaklar ({tumuGroups.aranacaklar.length})</Text>
+                {tumuGroups.aranacaklar.length === 0 ? (
+                  <Text style={[s.helperTinyMuted, { marginBottom: 16 }]}>Aranacak firma yok.</Text>
+                ) : (
+                  <View style={{ marginBottom: 16 }}>{tumuGroups.aranacaklar.map(renderLeadRow)}</View>
+                )}
+                <Text style={s.sectionTitle}>Cevap Vermeyenler ({tumuGroups.cevapVermeyenler.length})</Text>
+                {tumuGroups.cevapVermeyenler.length === 0 ? (
+                  <Text style={[s.helperTinyMuted, { marginBottom: 16 }]}>Cevap vermeyen firma yok.</Text>
+                ) : (
+                  <View style={{ marginBottom: 16 }}>{tumuGroups.cevapVermeyenler.map(renderLeadRow)}</View>
+                )}
+                <Text style={s.sectionTitle}>Arananlar ({tumuGroups.arananlar.length})</Text>
+                {tumuGroups.arananlar.length === 0 ? (
+                  <Text style={s.helperTinyMuted}>Henüz sonuçlandırılan firma yok.</Text>
+                ) : (
+                  <View>{tumuGroups.arananlar.map(renderLeadRow)}</View>
+                )}
+              </>
             )}
           </>
         )}
@@ -538,23 +686,6 @@ export default function LeadsScreen() {
               )}
               <Text style={s.submitBtnText}>{sendingReq ? 'Yapay zeka araştırıyor...' : 'Yapay Zekaya Buldur'}</Text>
             </TouchableOpacity>
-
-            {requests.length > 0 && (
-              <>
-                <Text style={[s.sectionTitle, { marginTop: 24 }]}>Geçmiş Taleplerin</Text>
-                {requests.map((r) => (
-                  <View key={r.id} style={s.reqCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.reqSektor}>{r.sektor}{r.bolge ? ` · ${r.bolge}` : ''}</Text>
-                      {!!r.aciklama && <Text style={s.reqAciklama} numberOfLines={2}>{r.aciklama}</Text>}
-                    </View>
-                    <View style={[s.reqDurum, r.durum === 'Tamamlandı' ? s.reqDurumDone : s.reqDurumPending]}>
-                      <Text style={[s.reqDurumText, r.durum === 'Tamamlandı' ? { color: '#16a34a' } : { color: '#b45309' }]}>{r.durum}</Text>
-                    </View>
-                  </View>
-                ))}
-              </>
-            )}
           </View>
         )}
       </ScrollView>
@@ -694,6 +825,53 @@ export default function LeadsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={!!assignFor} transparent animationType="fade" onRequestClose={() => setAssignFor(null)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>{assignFor?.firma} — Personele Ata</Text>
+            {staffMembers.filter((m) => m.type === 'active').length === 0 ? (
+              <Text style={s.helperTinyMuted}>Henüz eklenmiş bir personelin yok. Önce Personel ekranından ekip üyesi ekle.</Text>
+            ) : (
+              <>
+                <Text style={s.modalSubLabel}>Kime atansın?</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6, marginBottom: 10 }}>
+                  {staffMembers.filter((m) => m.type === 'active').map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[s.waTemplateChip, assignStaffId === m.id && s.waTemplateChipActive]}
+                      onPress={() => setAssignStaffId(m.id)}
+                    >
+                      <Text style={[s.waTemplateChipText, assignStaffId === m.id && s.waTemplateChipTextActive]}>{m.name || m.email}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
+                  multiline
+                  value={assignNote}
+                  onChangeText={setAssignNote}
+                  placeholder="Not (örn: Ara, iletişime geç)"
+                  placeholderTextColor="#94a3b8"
+                />
+              </>
+            )}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAssignFor(null)}>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+              </TouchableOpacity>
+              {!!assignFor?.atananKullaniciId && (
+                <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#fee2e2' }]} onPress={clearAssign} disabled={assignSaving}>
+                  <Text style={[s.modalBtnText, { color: '#dc2626' }]}>Kaldır</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveAssign} disabled={assignSaving}>
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>{assignSaving ? '...' : 'Ata'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -733,6 +911,11 @@ const s = StyleSheet.create({
   addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, marginBottom: 12, backgroundColor: '#fff' },
   addManualBtnText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
   leadCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
+  leadCardAssigned: { borderColor: '#f59e0b', borderWidth: 1.5, backgroundColor: '#FFFBEB' },
+  assignBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EDE9FE', alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
+  assignBadgeText: { fontSize: 10.5, fontWeight: '800', color: '#5b21b6' },
+  assignSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.4 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
   leadNote: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, fontStyle: 'italic' },

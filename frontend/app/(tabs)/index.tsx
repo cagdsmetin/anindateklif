@@ -447,21 +447,17 @@ export default function PanelScreen() {
           <View style={[s.card, s.overviewCard]}>
             <Text style={s.overviewTitle}>TEKLİF DURUMLARI</Text>
             {quoteStatusTotal > 0 ? (
-              <>
-                <View style={s.stackBar}>
-                  {QUOTE_STATUSES.map((st) => {
-                    const cnt = quoteStatusCounts[st] || 0;
-                    if (!cnt) return null;
-                    const pct = (cnt / quoteStatusTotal) * 100;
-                    return <View key={st} style={[s.stackSeg, { width: `${pct}%`, backgroundColor: QUOTE_STATUS_COLORS[st] }]} />;
-                  })}
-                </View>
-                <View style={s.legendRow}>
-                  {QUOTE_STATUSES.map((st) => (
-                    <LegendDot key={st} color={QUOTE_STATUS_COLORS[st]} label={st} value={String(quoteStatusCounts[st] || 0)} />
-                  ))}
-                </View>
-              </>
+              <CashPieChart
+                data={QUOTE_STATUSES.filter((st) => (quoteStatusCounts[st] || 0) > 0).map((st) => ({
+                  label: st,
+                  value: quoteStatusCounts[st] || 0,
+                  color: QUOTE_STATUS_COLORS[st],
+                }))}
+                total={quoteStatusTotal}
+                centerLabel="TEKLİF"
+                formatValue={(n) => String(n)}
+                formatCenter={(n) => String(n)}
+              />
             ) : (
               <Text style={s.emptyLineText}>Henüz teklif oluşturulmadı.</Text>
             )}
@@ -632,14 +628,27 @@ function wedgeClipPath(startDeg: number, endDeg: number): string {
   return `polygon(${points.join(', ')})`;
 }
 
-function CashPieChart({ data, total }: { data: { label: string; value: number; color: string }[]; total: number }) {
+function CashPieChart({
+  data,
+  total,
+  centerLabel = 'TOPLAM',
+  formatValue = fmtTRY,
+  formatCenter,
+}: {
+  data: { label: string; value: number; color: string }[];
+  total: number;
+  centerLabel?: string;
+  formatValue?: (n: number) => string;
+  formatCenter?: (n: number) => string;
+}) {
+  const fmtCenter = formatCenter || formatValue;
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   if (Platform.OS !== 'web') {
     return (
       <View style={{ gap: 6 }}>
         {data.map((d, i) => (
-          <LegendDot key={i} color={d.color} label={d.label} value={fmtTRY(d.value)} />
+          <LegendDot key={i} color={d.color} label={d.label} value={formatValue(d.value)} />
         ))}
       </View>
     );
@@ -681,8 +690,8 @@ function CashPieChart({ data, total }: { data: { label: string; value: number; c
           );
         })}
         <View style={s.pieCenterHole} pointerEvents="none">
-          <Text style={s.pieCenterLabel}>TOPLAM</Text>
-          <Text style={s.pieCenterValue} numberOfLines={1} adjustsFontSizeToFit>{fmtTRY(total)}</Text>
+          <Text style={s.pieCenterLabel}>{centerLabel}</Text>
+          <Text style={s.pieCenterValue} numberOfLines={1} adjustsFontSizeToFit>{fmtCenter(total)}</Text>
         </View>
       </View>
       <View style={{ flex: 1, minWidth: 130, gap: 6 }}>
@@ -693,7 +702,7 @@ function CashPieChart({ data, total }: { data: { label: string; value: number; c
           };
           return (
             <View key={i} {...hoverHandlers}>
-              <LegendDot color={sl.color} label={sl.label} value={fmtTRY(sl.value)} />
+              <LegendDot color={sl.color} label={sl.label} value={formatValue(sl.value)} />
             </View>
           );
         })}

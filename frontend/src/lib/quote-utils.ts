@@ -57,7 +57,7 @@ function renderDimensionFields(fields: { label?: string; value?: string }[]): st
       if (!widthDepthEmitted) {
         const w = items.find((x) => x.role === 'width')!.value;
         const d = items.find((x) => x.role === 'depth')!.value;
-        parts.push(`${w} x ${d}`);
+        parts.push(`(${w}) x (${d})`);
         widthDepthEmitted = true;
       }
       continue;

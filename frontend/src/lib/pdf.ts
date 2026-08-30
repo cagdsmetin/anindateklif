@@ -841,9 +841,21 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   const showKdv = !!quote.kdvOrani && quote.kdvOrani > 0;
   const araToplamRaw = (quote.araToplam || 0) + (quote.iskontoTutar || 0);
 
+  // Banka adı ve türü aynı bilgiyi tekrar ediyorsa (ör. "Garanti Bankası TL"
+  // ve "Garanti Bankası (TL)") parantez içinde ikinci kez eklemiyoruz --
+  // aksi halde dar kenar sütununda satır satır karışıp okunmaz hale geliyordu.
+  const norm = (s: string) => s.toLowerCase().replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
+  const bankLabel = (b: typeof banklar[number]) => {
+    const banka = (b.banka || '').trim();
+    const turu = (b.turu || '').trim();
+    if (!turu) return v(banka);
+    if (!banka) return v(turu);
+    if (norm(banka).includes(norm(turu)) || norm(turu).includes(norm(banka))) return v(banka);
+    return `${v(banka)} (${v(turu)})`;
+  };
   const bankSection = banklar.length > 0 ? `
     <div class="strip-section-label">Banka Bilgileri</div>
-    ${banklar.map((b) => `<div class="strip-row"><span class="strip-dot"></span>${v(b.banka)}${b.turu ? ` (${v(b.turu)})` : ''}<br/><span style="color:#94A3B8;">${v(b.iban)}</span></div>`).join('')}` : '';
+    ${banklar.map((b) => `<div class="strip-row"><span class="strip-dot"></span><div style="flex:1;min-width:0;"><div class="strip-bank-name">${bankLabel(b)}</div><div class="strip-bank-iban">${v(b.iban)}</div></div></div>`).join('')}` : '';
 
   const ekPages = ekler.map((ek) => `
     <section class="ek-page">
@@ -873,8 +885,10 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   .strip-company { font-size:12.5pt; font-weight:800; line-height:1.35; margin-bottom:3px; }
   .strip-tagline { font-size:7.6pt; color:#94A3B8; margin-bottom:20px; }
   .strip-section-label { font-size:6.8pt; letter-spacing:1.3px; color:#64748B; text-transform:uppercase; margin-bottom:7px; margin-top:18px; font-weight:700; }
-  .strip-row { display:flex; gap:6px; align-items:flex-start; font-size:8pt; color:#E2E8F0; margin-bottom:8px; line-height:1.45; }
+  .strip-row { display:flex; gap:6px; align-items:flex-start; margin-bottom:10px; }
   .strip-dot { width:4px; height:4px; border-radius:2px; background:#38BDF8; margin-top:5px; flex-shrink:0; }
+  .strip-bank-name { font-size:7.8pt; font-weight:700; color:#E2E8F0; line-height:1.4; word-break:break-word; }
+  .strip-bank-iban { font-size:7.6pt; font-weight:600; color:#38BDF8; letter-spacing:0.2px; margin-top:3px; word-break:break-all; }
   .strip-footer { margin-top:auto; padding-top:14px; border-top:1px solid rgba(255,255,255,0.16); font-size:6.8pt; color:#64748B; }
 
   .content { flex:1; padding:30px 30px 22px; }

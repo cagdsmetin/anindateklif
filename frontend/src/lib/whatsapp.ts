@@ -202,6 +202,13 @@ export type WhatsAppShareResult = {
   attached: boolean;
   /** true: we downloaded the PDF to the computer and the user must drag it into the opened chat. */
   downloaded: boolean;
+  /**
+   * true: the quote had no customer phone number on file, so we could not land
+   * directly in a pre-filled chat -- the message text was copied to the
+   * clipboard instead so the person can paste it themselves after picking a
+   * chat in the WhatsApp Web chat list that just opened.
+   */
+  messageCopied?: boolean;
 };
 
 /**
@@ -254,15 +261,28 @@ export async function shareQuoteViaWhatsApp(opts: {
   // ---------- WEB ----------
   if (Platform.OS === 'web') {
     const desiredName = fileName || `${(quote.teklifNo || 'teklif').replace(/[^A-Za-z0-9_-]/g, '_')}.pdf`;
-    // Deliberately NOT pre-filling a specific customer's number here. wa.me/<number>
-    // jumps straight into one chat, but the desktop fallback below can only ever
-    // hand WhatsApp a pre-filled *message* -- the PDF still has to be dragged in by
-    // hand regardless of which chat we land on. Given that manual step is
-    // unavoidable anyway, it's simpler and more flexible to open WhatsApp Web's
-    // own chat list and let the person pick the recipient themselves (they may
-    // want to send it to someone other than the number saved on the quote, or the
-    // quote may not have a number on file at all).
-    const waUrl = 'https://web.whatsapp.com/';
+    // If the quote has a customer phone number on file, jump straight into
+    // that person's chat with the message already filled in via wa.me's
+    // ?text= param -- this is the only way WhatsApp accepts pre-filled text.
+    // The PDF still needs to be dragged in by hand either way (see the big
+    // comment above this function), but at least the text arrives correctly.
+    // Without a phone number we can't target a specific chat, so we fall
+    // back to the bare chat list and copy the message to the clipboard
+    // instead (handled further below) so it isn't just silently lost.
+    const cleanedPhone = normalizePhoneForWhatsApp(quote.musTelefon || '');
+    const waUrl = cleanedPhone
+      ? `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`
+      : 'https://web.whatsapp.com/';
+    let messageCopied = false;
+    if (!cleanedPhone) {
+      try {
+        const nav: any = navigator;
+        if (nav.clipboard && typeof nav.clipboard.writeText === 'function') {
+          await nav.clipboard.writeText(message);
+          messageCopied = true;
+        }
+      } catch { /* best-effort only */ }
+    }
 
     // Preferred, mobile browsers ONLY: the OS-native share sheet actually lists
     // WhatsApp and hands it the file directly there — no separate save/attach
@@ -310,7 +330,7 @@ export async function shareQuoteViaWhatsApp(opts: {
     } else {
       window.open(waUrl, '_blank');
     }
-    return { attached: false, downloaded: true };
+    return { attached: false, downloaded: true, messageCopied };
   }
 
   // ---------- NATIVE (iOS / Android) ----------

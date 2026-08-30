@@ -204,6 +204,9 @@ export default function HistoryScreen() {
       if (!result) { if (waWindow) { try { waWindow.close(); } catch {} } return; }
       const r = await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi, message, waWindow });
       if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+      if (r.messageCopied) {
+        showToast('Müşterinin kayıtlı telefonu yok — mesaj metni panoya kopyalandı, WhatsApp\'ta sohbete yapıştır');
+      }
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
       showToast('WhatsApp hatası: ' + (e?.message || ''));

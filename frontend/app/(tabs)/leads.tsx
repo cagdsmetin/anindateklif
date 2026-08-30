@@ -74,7 +74,7 @@ export default function LeadsScreen() {
   // hepsi alt alta dizilirse Aranacaklar uzun oldukça diğerleri ekranın çok
   // aşağısında kalıyordu -- bunun yerine küçük filtre çipleriyle tek seferde
   // sadece bir grup gösteriyoruz.
-  const [tumuFilter, setTumuFilter] = useState<'aranacak' | 'cevapyok' | 'arananlar'>('aranacak');
+  const [tumuFilter, setTumuFilter] = useState<string>('Aranmadı');
   const [reorderingTabs, setReorderingTabs] = useState(false);
   const { order: tabOrder, moveLeft: moveTabLeft, moveRight: moveTabRight } = useOrderedNames(
     'leadsTabOrder_v1',
@@ -173,14 +173,15 @@ export default function LeadsScreen() {
 
   // "Tüm Firmalar" sekmesinde yeni eklenen (özellikle yapay zekanın bulduğu)
   // firmalar en üste çıksın diye en yeni ilk sıralıyoruz -- eskiler kaybolmuyor,
-  // sadece sırası değişiyor. Ayrıca durumlarına göre üç ayrı gruba bölüyoruz:
-  // henüz aranmayanlar, cevap vermeyenler, ve arayıp sonuçlandırılanlar.
+  // sadece sırası değişiyor. Durum seçeneklerinin (Aranmadı/Arandı/Cevap Yok/
+  // Olumlu Dönüş/Olumsuz Dönüş/Kapandı) her biri kendi grubunda, filtre
+  // çipleriyle tek tek görülebiliyor -- uzun bir grup diğerlerini aşağıda
+  // bırakmasın diye.
   const tumuGroups = useMemo(() => {
     const sorted = [...allLeads].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    const aranacaklar = sorted.filter((l) => l.durum === 'Aranmadı');
-    const cevapVermeyenler = sorted.filter((l) => l.durum === 'Cevap Yok');
-    const arananlar = sorted.filter((l) => l.durum !== 'Aranmadı' && l.durum !== 'Cevap Yok');
-    return { aranacaklar, cevapVermeyenler, arananlar };
+    const map: Record<string, LeadCompanyT[]> = {};
+    DURUM_OPTIONS.forEach((d) => { map[d] = sorted.filter((l) => l.durum === d); });
+    return map;
   }, [allLeads]);
 
   // Personel sadece kendisine yönetici tarafından atanan firmaları burada,
@@ -630,48 +631,21 @@ export default function LeadsScreen() {
                   </View>
                 )}
                 <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-                  <TouchableOpacity
-                    style={[s.tumuFilterChip, tumuFilter === 'aranacak' && s.tumuFilterChipActive]}
-                    onPress={() => setTumuFilter('aranacak')}
-                    testID="lead-filter-aranacak"
-                  >
-                    <Text style={[s.tumuFilterChipText, tumuFilter === 'aranacak' && s.tumuFilterChipTextActive]}>Aranacaklar ({tumuGroups.aranacaklar.length})</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.tumuFilterChip, tumuFilter === 'cevapyok' && s.tumuFilterChipActive]}
-                    onPress={() => setTumuFilter('cevapyok')}
-                    testID="lead-filter-cevapyok"
-                  >
-                    <Text style={[s.tumuFilterChipText, tumuFilter === 'cevapyok' && s.tumuFilterChipTextActive]}>Cevap Vermeyenler ({tumuGroups.cevapVermeyenler.length})</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.tumuFilterChip, tumuFilter === 'arananlar' && s.tumuFilterChipActive]}
-                    onPress={() => setTumuFilter('arananlar')}
-                    testID="lead-filter-arananlar"
-                  >
-                    <Text style={[s.tumuFilterChipText, tumuFilter === 'arananlar' && s.tumuFilterChipTextActive]}>Arananlar ({tumuGroups.arananlar.length})</Text>
-                  </TouchableOpacity>
+                  {DURUM_OPTIONS.map((d) => (
+                    <TouchableOpacity
+                      key={d}
+                      style={[s.tumuFilterChip, { borderColor: DURUM_COLORS[d] }, tumuFilter === d && { backgroundColor: DURUM_COLORS[d] }]}
+                      onPress={() => setTumuFilter(d)}
+                      testID={`lead-filter-${d}`}
+                    >
+                      <Text style={[s.tumuFilterChipText, { color: tumuFilter === d ? '#fff' : DURUM_COLORS[d] }]}>{d} ({tumuGroups[d]?.length || 0})</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                {tumuFilter === 'aranacak' && (
-                  tumuGroups.aranacaklar.length === 0 ? (
-                    <Text style={s.helperTinyMuted}>Aranacak firma yok.</Text>
-                  ) : (
-                    tumuGroups.aranacaklar.map(renderLeadRow)
-                  )
-                )}
-                {tumuFilter === 'cevapyok' && (
-                  tumuGroups.cevapVermeyenler.length === 0 ? (
-                    <Text style={s.helperTinyMuted}>Cevap vermeyen firma yok.</Text>
-                  ) : (
-                    tumuGroups.cevapVermeyenler.map(renderLeadRow)
-                  )
-                )}
-                {tumuFilter === 'arananlar' && (
-                  tumuGroups.arananlar.length === 0 ? (
-                    <Text style={s.helperTinyMuted}>Henüz sonuçlandırılan firma yok.</Text>
-                  ) : (
-                    tumuGroups.arananlar.map(renderLeadRow)
-                  )
+                {(tumuGroups[tumuFilter] || []).length === 0 ? (
+                  <Text style={s.helperTinyMuted}>Bu grupta firma yok.</Text>
+                ) : (
+                  (tumuGroups[tumuFilter] || []).map(renderLeadRow)
                 )}
               </>
             )}
@@ -935,10 +909,8 @@ const s = StyleSheet.create({
   dailySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 15 },
   sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
-  tumuFilterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F1F5F9' },
-  tumuFilterChipActive: { backgroundColor: theme.colors.primary },
-  tumuFilterChipText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
-  tumuFilterChipTextActive: { color: '#fff' },
+  tumuFilterChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1 },
+  tumuFilterChipText: { fontSize: 11, fontWeight: '800' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 20 },
   ctaTalepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 16, height: 40, marginTop: 12 },

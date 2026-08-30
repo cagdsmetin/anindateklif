@@ -6,19 +6,75 @@ import type { QuoteItemT, QuoteT } from './api';
  * Manual mode → concatenates the product name + Key: Value pairs.
  * General mode → returns the product name (with optional description).
  */
+// Loose Turkish-aware label matching so "Genişlik", "genislik", "Cephe (Genişlik)"
+// etc. all resolve to the same dimension role, regardless of exact casing/
+// diacritics/spacing the person used when they set up the configurator field.
+const normalizeLabel = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]/g, '');
+
+const HEIGHT_LABELS = new Set(['yukseklik', 'h', 'height']);
+const WIDTH_LABELS = new Set(['genislik', 'cephe', 'en', 'width', 'w']);
+const DEPTH_LABELS = new Set(['derinlik', 'uzunluk', 'boy', 'depth', 'length', 'd', 'l']);
+
+type DimRole = 'height' | 'width' | 'depth' | null;
+const dimRole = (label: string): DimRole => {
+  const n = normalizeLabel(label);
+  if (HEIGHT_LABELS.has(n)) return 'height';
+  if (WIDTH_LABELS.has(n)) return 'width';
+  if (DEPTH_LABELS.has(n)) return 'depth';
+  return null;
+};
+
+/**
+ * Renders a technical-mode item's dimension fields (Genişlik/Cephe, Derinlik/
+ * Uzunluk, Yükseklik) the way they read on a real teklif: width and depth
+ * combined as "120 x 80", height always as "H: 200" -- instead of three
+ * separate "Label: value" segments. Any field that isn't one of these three
+ * dimension roles (motor, renk, RAL, vb.) is left exactly as-is.
+ */
+function renderDimensionFields(fields: { label?: string; value?: string }[]): string[] {
+  const items = fields.map((f) => ({
+    label: (f.label || '').trim(),
+    value: (f.value || '').trim(),
+    role: dimRole((f.label || '').trim()),
+  }));
+  const widthHasValue = items.some((f) => f.role === 'width' && f.value);
+  const depthHasValue = items.some((f) => f.role === 'depth' && f.value);
+  const combineWidthDepth = widthHasValue && depthHasValue;
+  const parts: string[] = [];
+  let widthDepthEmitted = false;
+  for (const f of items) {
+    if (!f.label && !f.value) continue;
+    if (f.role === 'height' && f.value) {
+      parts.push(`H: ${f.value}`);
+      continue;
+    }
+    if ((f.role === 'width' || f.role === 'depth') && combineWidthDepth) {
+      if (!widthDepthEmitted) {
+        const w = items.find((x) => x.role === 'width')!.value;
+        const d = items.find((x) => x.role === 'depth')!.value;
+        parts.push(`${w} x ${d}`);
+        widthDepthEmitted = true;
+      }
+      continue;
+    }
+    if (f.label && f.value) parts.push(`${f.label}: ${f.value}`);
+    else if (f.value) parts.push(f.value);
+    else parts.push(f.label);
+  }
+  return parts;
+}
+
 export function buildItemDescription(it: QuoteItemT): string {
   const parts: string[] = [];
   if (it.mode === 'technical') {
     const head = it.sistemTipi || it.urunAdi || '';
     if (head) parts.push(head);
-    for (const f of it.sistemFields || []) {
-      const label = (f.label || '').trim();
-      const value = (f.value || '').trim();
-      if (!label && !value) continue;
-      if (label && value) parts.push(`${label}: ${value}`);
-      else if (value) parts.push(value);
-      else parts.push(label);
-    }
+    parts.push(...renderDimensionFields(it.sistemFields || []));
   } else if (it.mode === 'manual') {
     const head = it.urunAdi || '';
     if (head) parts.push(head);

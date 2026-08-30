@@ -237,6 +237,10 @@ export default function CatalogScreen() {
   const [newSystemName, setNewSystemName] = useState('');
   const [showAddField, setShowAddField] = useState<string | null>(null);
   const [newField, setNewField] = useState<{ label: string; type: SystemField['type']; options: string[]; optionInput: string }>({ label: '', type: 'text', options: [], optionInput: '' });
+  // When set, the Add Field modal is in edit mode for this existing field
+  // instead of creating a new one -- lets the person fix a typo or tweak
+  // options without deleting and re-adding the whole field.
+  const [editingField, setEditingField] = useState<{ sysId: string; fieldId: string } | null>(null);
 
   useEffect(() => { setSistemTipleri(activeCompany?.sistemTipleri || []); }, [activeCompany]);
 
@@ -259,20 +263,41 @@ export default function CatalogScreen() {
   const removeSystemType = (id: string) => persistSystems(sistemTipleri.filter((s) => s.id !== id));
 
   const openAddField = (sysId: string) => {
+    setEditingField(null);
     setShowAddField(sysId);
     setNewField({ label: '', type: 'text', options: [], optionInput: '' });
   };
+  const openEditField = (sysId: string, field: SystemField) => {
+    setEditingField({ sysId, fieldId: field.id });
+    setShowAddField(sysId);
+    setNewField({ label: field.label, type: field.type, options: field.options || [], optionInput: '' });
+  };
   const commitAddField = () => {
     if (!showAddField || !newField.label.trim()) { showToast('Alan adı zorunlu'); return; }
-    const field: SystemField = {
-      id: uid(),
-      label: newField.label.trim(),
-      type: newField.type,
-      options: newField.type === 'select' ? newField.options : [],
-    };
-    if (newField.type === 'select' && field.options.length === 0) { showToast('Liste tipi için en az bir seçenek ekleyin'); return; }
-    persistSystems(sistemTipleri.map((s) => (s.id === showAddField ? { ...s, fields: [...(s.fields || []), field] } : s)));
+    if (newField.type === 'select' && newField.options.length === 0) { showToast('Liste tipi için en az bir seçenek ekleyin'); return; }
+    if (editingField && editingField.sysId === showAddField) {
+      // Editing an existing field: keep its id (and therefore any values
+      // already saved against it on past quotes) and just update label/type/options.
+      persistSystems(sistemTipleri.map((s) => (s.id === showAddField ? {
+        ...s,
+        fields: (s.fields || []).map((f) => (f.id === editingField.fieldId ? {
+          ...f,
+          label: newField.label.trim(),
+          type: newField.type,
+          options: newField.type === 'select' ? newField.options : [],
+        } : f)),
+      } : s)));
+    } else {
+      const field: SystemField = {
+        id: uid(),
+        label: newField.label.trim(),
+        type: newField.type,
+        options: newField.type === 'select' ? newField.options : [],
+      };
+      persistSystems(sistemTipleri.map((s) => (s.id === showAddField ? { ...s, fields: [...(s.fields || []), field] } : s)));
+    }
     setShowAddField(null);
+    setEditingField(null);
   };
   const removeField = (sysId: string, fieldId: string) => persistSystems(
     sistemTipleri.map((s) => (s.id === sysId ? { ...s, fields: (s.fields || []).filter((f) => f.id !== fieldId) } : s))
@@ -525,12 +550,16 @@ export default function CatalogScreen() {
                           <Ionicons name="reorder-two" size={18} color={theme.colors.textMuted} />
                         </View>
                         <Ionicons name={(typeMeta?.icon as any) || 'square-outline'} size={14} color={theme.colors.primary} />
-                        <View style={{ flex: 1 }}>
+                        <TouchableOpacity
+                          style={{ flex: 1 }}
+                          onPress={() => openEditField(sys.id, f)}
+                          testID={`field-${f.id}-edit`}
+                        >
                           <Text style={s.fieldLabel} numberOfLines={1}>{f.label}</Text>
                           <Text style={s.fieldType}>
                             {typeMeta?.label}{f.type === 'select' && f.options.length ? ` • ${f.options.length} seçenek` : ''}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                         <View style={s.reorderCol}>
                           <TouchableOpacity
                             disabled={isFirst}
@@ -724,8 +753,8 @@ export default function CatalogScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Yeni Alan Ekle</Text>
-              <TouchableOpacity onPress={() => setShowAddField(null)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
+              <Text style={s.modalTitle}>{editingField ? 'Alanı Düzenle' : 'Yeni Alan Ekle'}</Text>
+              <TouchableOpacity onPress={() => { setShowAddField(null); setEditingField(null); }}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
               <FieldGroup label="Alan Adı">
@@ -771,7 +800,7 @@ export default function CatalogScreen() {
               )}
               <TouchableOpacity style={s.btnAccBig} onPress={commitAddField} testID="save-field-btn">
                 <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={s.btnAccText}>Alanı Ekle</Text>
+                <Text style={s.btnAccText}>{editingField ? 'Değişiklikleri Kaydet' : 'Alanı Ekle'}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

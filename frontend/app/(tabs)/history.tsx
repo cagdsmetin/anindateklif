@@ -22,7 +22,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
-import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb, openWhatsAppChat } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -209,6 +209,18 @@ export default function HistoryScreen() {
       }
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
+      showToast('WhatsApp hatası: ' + (e?.message || ''));
+    }
+  };
+
+  // Templates other than "Teklif Hazır" are plain reminder/thank-you notes --
+  // they have nothing to attach, so we skip PDF generation entirely and just
+  // hand WhatsApp the filled-in text directly (no download/share dialog, no
+  // "drag the PDF in" step).
+  const doWhatsAppTextOnly = async (quote: QuoteT, message: string) => {
+    try {
+      await openWhatsAppChat(quote.musTelefon || '', message);
+    } catch (e: any) {
       showToast('WhatsApp hatası: ' + (e?.message || ''));
     }
   };
@@ -468,7 +480,12 @@ export default function HistoryScreen() {
                     onPress={() => {
                       const quote = waMenuQuote;
                       setWaMenuFor(null);
-                      if (quote) doWhatsApp(quote, preview);
+                      if (!quote) return;
+                      if (tpl.id === 'teklif_hazir') {
+                        doWhatsApp(quote, preview);
+                      } else {
+                        doWhatsAppTextOnly(quote, preview);
+                      }
                     }}
                   >
                     <View style={s.waTemplateHead}>

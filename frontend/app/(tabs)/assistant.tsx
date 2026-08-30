@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -27,12 +27,30 @@ type ChatMsg = {
   actionDismissed?: boolean;
 };
 
-const SUGGESTIONS = [
-  'Bu uygulamayı nasıl kullanırım?',
-  'Cam balkon için teklif kalemi metni öner',
-  'Teklif notları için profesyonel bir taslak yaz',
-  'Fiyatlandırma notu nasıl yazılır?',
-];
+const FALLBACK_SYSTEM_NAMES = ['Cam Balkon', 'Pergola'];
+
+/**
+ * Firmanın kendi sistemTipleri (Katalog yapılandırıcısında tanımladığı ürün/
+ * sistem adları) ve katalog kategorileri kullanılarak, o firmanın sektörüne
+ * özel öneri chip'leri üretilir. Hiç veri yoksa (yeni firma) genel
+ * gölgelendirme örnekleri gösterilir -- ama firma kendi ürünlerini
+ * (ör. sadece 'Pergola') tanımladıysa artık 'Cam Balkon' değil 'Pergola'
+ * örneği gösterilir.
+ */
+function buildSuggestions(sistemTipleri?: { name: string }[], catalog?: { kategori: string }[]) {
+  const fromSystems = (sistemTipleri || []).map((s) => (s.name || '').trim()).filter(Boolean);
+  const fromCatalog = Array.from(new Set((catalog || []).map((c) => (c.kategori || '').trim()).filter(Boolean)));
+  const pool = fromSystems.length ? fromSystems : fromCatalog.length ? fromCatalog : FALLBACK_SYSTEM_NAMES;
+  const primary = pool[0] || FALLBACK_SYSTEM_NAMES[0];
+  const secondary = pool[1] || pool[0] || FALLBACK_SYSTEM_NAMES[1];
+
+  return [
+    'Bu uygulamayı nasıl kullanırım?',
+    `${primary} için teklif kalemi metni öner`,
+    `${secondary} için müşteriden alınacak ölçü/detay listesi hazırla`,
+    'Fiyatlandırma notu nasıl yazılır?',
+  ];
+}
 
 const FIELD_TYPE_LABEL: Record<string, string> = {
   text: 'Metin',
@@ -50,7 +68,12 @@ export default function AssistantScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { activeCompany, updateCompany, showToast } = useApp();
+  const { activeCompany, updateCompany, showToast, catalog } = useApp();
+
+  const suggestions = useMemo(
+    () => buildSuggestions(activeCompany?.sistemTipleri, catalog),
+    [activeCompany?.sistemTipleri, catalog]
+  );
 
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
@@ -157,7 +180,7 @@ export default function AssistantScreen() {
                 Uygulamayı kullanma konusunda soru sorabilir, ya da bir teklif hazırlarken ürün açıklaması, fiyatlandırma notu veya teklif notu taslağı isteyebilirsiniz. Sattığınız ürün/hizmeti ve hangi alanları (ölçü, marka, renk vb.) girdiğinizi anlatırsanız, Katalog yapılandırıcısını sizin için otomatik hazırlayabilirim.
               </Text>
               <View style={s.suggestWrap}>
-                {SUGGESTIONS.map((sug) => (
+                {suggestions.map((sug) => (
                   <TouchableOpacity key={sug} style={s.suggestChip} onPress={() => send(sug)} testID="assistant-suggestion">
                     <Text style={s.suggestChipText}>{sug}</Text>
                   </TouchableOpacity>

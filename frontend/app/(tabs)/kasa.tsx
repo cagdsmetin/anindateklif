@@ -88,6 +88,20 @@ export default function KasaScreen() {
   const net = gelirToplam - giderToplam;
   const dovizliVar = gelirByCurrency.some((x) => x.paraBirimi !== 'TRY') || giderByCurrency.some((x) => x.paraBirimi !== 'TRY');
 
+  // BU AY NET kartının altında sadece 'canlı kurla' yazıp rakam göstermemek
+  // yetersizdi -- gelir ile giderin döviz kısımları birbirine netleştirilip
+  // (ör. $6.000 gelir - $0 gider = $6.000 net) GELİR/GİDER kartlarındaki gibi
+  // $/€ dökümü burada da gösteriliyor.
+  const netByCurrency = useMemo(() => {
+    const sums: Record<string, number> = {};
+    gelirByCurrency.forEach((x) => { if (x.paraBirimi !== 'TRY') sums[x.paraBirimi] = (sums[x.paraBirimi] || 0) + x.tutar; });
+    giderByCurrency.forEach((x) => { if (x.paraBirimi !== 'TRY') sums[x.paraBirimi] = (sums[x.paraBirimi] || 0) - x.tutar; });
+    return Object.entries(sums)
+      .map(([paraBirimi, tutar]) => ({ paraBirimi, tutar }))
+      .filter((x) => Math.abs(x.tutar) > 0.009)
+      .sort((a, b) => Math.abs(b.tutar) - Math.abs(a.tutar));
+  }, [gelirByCurrency, giderByCurrency]);
+
   const kategoriDagilimi = useMemo(() => {
     const map: Record<string, { tur: 'gelir' | 'gider'; toplam: number }> = {};
     monthEntries.forEach((k) => {
@@ -173,7 +187,13 @@ export default function KasaScreen() {
             <View style={[s.statCard, { backgroundColor: net >= 0 ? theme.colors.primarySoft : theme.colors.redSoft }]}>
               <Text style={[s.statLabel, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>BU AY NET</Text>
               <Text style={[s.statValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>{fmt(net, 'TRY')}</Text>
-              {dovizliVar && <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>canlı kurla</Text>}
+              {netByCurrency.length > 0 ? (
+                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>
+                  {netByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
+                </Text>
+              ) : dovizliVar ? (
+                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>canlı kurla</Text>
+              ) : null}
             </View>
           </View>
 

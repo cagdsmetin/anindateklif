@@ -657,6 +657,7 @@ const tr: Dict = {
     s075: 'Ekip Sohbeti',
     s076: 'Personel',
     s077: 'Hediye Kodu',
+    toplamLabel: 'TOPLAM',
   },
   personel: {
     s001: 'Personel',
@@ -1689,6 +1690,7 @@ const en: Dict = {
     s075: 'Team Chat',
     s076: 'Staff',
     s077: 'Gift Code',
+    toplamLabel: 'TOTAL',
   },
   personel: {
     s001: 'Staff',
@@ -2721,6 +2723,7 @@ const it: Dict = {
     s075: 'Chat Team',
     s076: 'Personale',
     s077: 'Codice Regalo',
+    toplamLabel: 'TOTALE',
   },
   personel: {
     s001: 'Personale',

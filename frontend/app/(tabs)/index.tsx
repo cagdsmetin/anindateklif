@@ -462,7 +462,7 @@ export default function PanelScreen() {
           ) : (
             <View style={[s.card, s.overviewCard]}>
               <Text style={s.overviewTitle}>{t('panel.s048')}</Text>
-              <CashPieChart data={paymentBreakdown} total={paymentTotal} emptyText={t('panel.s049')} />
+              <CashPieChart data={paymentBreakdown} total={paymentTotal} emptyText={t('panel.s049')} centerLabel={t('panel.toplamLabel')} />
             </View>
           )}
 

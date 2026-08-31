@@ -7,6 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { buildNavItems, isNavItemActive, navItemRoute, NavItem } from '@/src/lib/navItems';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
 
@@ -36,6 +37,7 @@ function Sidebar({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const { teamUnreadTotal } = useApp();
   const { signOut } = useAuth();
+  const { t } = useLanguage();
   const [reordering, setReordering] = useState(false);
   const { applyOrder, moveUp, moveDown } = useOrderedNames(
     'sidebarOrder_v1',
@@ -46,12 +48,12 @@ function Sidebar({ items }: { items: NavItem[] }) {
   const confirmSignOut = () => {
     if (Platform.OS === 'web') {
       // eslint-disable-next-line no-alert
-      if (window.confirm('Çıkış yapmak istediğinize emin misiniz?')) signOut();
+      if (window.confirm(t('nav.cikisSorusu'))) signOut();
       return;
     }
-    Alert.alert('Çıkış Yap', 'Çıkış yapmak istediğinize emin misiniz?', [
-      { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Çıkış Yap', style: 'destructive', onPress: () => signOut() },
+    Alert.alert(t('nav.cikisYap'), t('nav.cikisSorusu'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('nav.cikisYap'), style: 'destructive', onPress: () => signOut() },
     ]);
   };
 
@@ -117,7 +119,7 @@ function Sidebar({ items }: { items: NavItem[] }) {
       </ScrollView>
       <TouchableOpacity style={sb.signoutItem} onPress={confirmSignOut} testID="sidebar-signout">
         <Ionicons name="log-out-outline" size={18} color={theme.colors.red} />
-        <Text style={sb.signoutText} numberOfLines={1}>Çıkış Yap</Text>
+        <Text style={sb.signoutText} numberOfLines={1}>{t('nav.cikisYap')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -136,7 +138,8 @@ export default function TabsLayout() {
   const isOwner = !user?.is_staff;
   const isAdmin = (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com';
 
-  const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin });
+  const { t: tNav } = useLanguage();
+  const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin, t: tNav });
 
   const tabs = (
     <Tabs

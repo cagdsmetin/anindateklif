@@ -19,6 +19,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage, LANGUAGES } from '@/src/lib/i18n';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
 
@@ -259,6 +260,13 @@ export default function CompanyScreen() {
             </>
           )}
 
+          {/* Uygulama dili — kayıt olduktan sonra da her an değiştirilebilir;
+              seçim backend'e (User.language) kaydedilir, tüm cihazlarda aynı
+              dilde açılır. Sıra bilerek TR -> EN -> IT: en tanıdıktan en
+              yeni pazara doğru. */}
+          <SectionHeader title="UYGULAMA DİLİ" />
+          <LanguageSwitcher />
+
           {/* Hesabım — e-posta + telefon doğrulama */}
           <SectionHeader title="HESABIM" />
           {user?.email_verified === false && (
@@ -369,6 +377,43 @@ export default function CompanyScreen() {
 }
 
 function SectionHeader({ title }: { title: string }) { return <Text style={s.sectionH}>{title}</Text>; }
+
+function LanguageSwitcher() {
+  const { lang, setLang, t } = useLanguage();
+  const { showToast } = useApp();
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10 }}>{t('firma.dilAciklama')}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {LANGUAGES.map((l) => {
+          const active = l.code === lang;
+          return (
+            <TouchableOpacity
+              key={l.code}
+              onPress={async () => { await setLang(l.code); showToast(t('firma.dilDegisti')); }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: active ? theme.colors.primary : theme.colors.line,
+                backgroundColor: active ? theme.colors.primary + '12' : '#fff',
+              }}
+              testID={`lang-${l.code}`}
+            >
+              <Text style={{ fontSize: 18 }}>{l.flag}</Text>
+              <Text style={{ fontSize: 12.5, fontWeight: active ? '900' : '600', color: active ? theme.colors.primary : theme.colors.text }}>{l.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: number }) {
   return <View style={[{ marginBottom: 10 }, flex ? { flex } : {}]}><Text style={s.label}>{label}</Text>{children}</View>;
 }

@@ -130,7 +130,7 @@ export const api = {
   resetPassword: (token: string, new_password: string) =>
     req('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
   me: () => req('/auth/me'),
-  updateMe: (data: Partial<Pick<UserT, 'name' | 'phone' | 'country' | 'currency' | 'tax_label' | 'onboarding_completed'>>) =>
+  updateMe: (data: Partial<Pick<UserT, 'name' | 'phone' | 'country' | 'currency' | 'tax_label' | 'language' | 'onboarding_completed'>>) =>
     req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),
   deleteAccount: () => req('/auth/account', { method: 'DELETE' }),
@@ -289,6 +289,7 @@ export type UserT = {
   country: string;
   currency: string;
   tax_label: string;
+  language?: 'tr' | 'en' | 'it';
   onboarding_completed: boolean;
   is_staff?: boolean;
   staff_role?: string | null;

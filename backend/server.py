@@ -515,6 +515,7 @@ class UserOut(BaseModel):
     country: str = ""
     currency: str = ""
     tax_label: str = ""
+    language: str = "tr"
     onboarding_completed: bool = False
     is_staff: bool = False
     staff_role: Optional[str] = None
@@ -533,7 +534,15 @@ class UserProfileUpdate(BaseModel):
     country: Optional[str] = None
     currency: Optional[str] = None
     tax_label: Optional[str] = None
+    language: Optional[str] = None
     onboarding_completed: Optional[bool] = None
+
+    @field_validator("language")
+    @classmethod
+    def _lang_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("tr", "en", "it"):
+            raise ValueError("Gecersiz dil kodu")
+        return v
 
 
 async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
@@ -605,6 +614,7 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         country=u.get("country", ""),
         currency=u.get("currency", ""),
         tax_label=u.get("tax_label", ""),
+        language=u.get("language", "tr"),
         onboarding_completed=bool(u.get("onboarding_completed", False)),
         is_staff=bool(u.get("staff_owner_user_id")),
         staff_role=u.get("staff_role"),
@@ -767,6 +777,7 @@ async def register(payload: RegisterRequest, request: Request):
         "country": "",
         "currency": "",
         "tax_label": "",
+        "language": "tr",
         "onboarding_completed": False,
         "createdAt": _utc().isoformat(),
     }

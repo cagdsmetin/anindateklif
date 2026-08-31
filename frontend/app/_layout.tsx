@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { AuthProvider, useAuth } from '@/src/state/AuthContext';
 import { AppProvider } from '@/src/state/AppContext';
+import { LanguageProvider } from '@/src/lib/i18n';
 import { authTheme } from '@/src/lib/auth-theme';
 import SupportBubble from '@/src/components/SupportBubble';
 
@@ -80,11 +81,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppProvider>
-          <RouteGuard>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
-          </RouteGuard>
-        </AppProvider>
+        <LanguageProvider>
+          <AppProvider>
+            <RouteGuard>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
+            </RouteGuard>
+          </AppProvider>
+        </LanguageProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

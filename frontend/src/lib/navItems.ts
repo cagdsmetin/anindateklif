@@ -6,40 +6,51 @@ export type NavItem = { name: string; title: string; icon: string; color: string
 // used by the desktop left sidebar (app/(tabs)/_layout.tsx) and by the
 // mobile slide-in drawer (src/components/NavDrawer.tsx) so both stay in
 // sync automatically.
-export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; isAdmin?: boolean }): NavItem[] {
+// `t`: i18n.tsx'teki useLanguage().t fonksiyonu -- verilmezse (LanguageProvider
+// disinda bir cagri) Turkce sabit basliklara geri duser, hicbir cagri yeri kirmaz.
+export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; isAdmin?: boolean; t?: (key: string) => string }): NavItem[] {
   const m = theme.colors.modules;
+  const tt = opts?.t || ((k: string) => {
+    const fallback: Record<string, string> = {
+      'nav.panel': 'Panel', 'nav.teklif': 'Teklif', 'nav.katalog': 'Katalog', 'nav.gecmis': 'Gecmis',
+      'nav.musteri': 'Musteri', 'nav.servis': 'Servis', 'nav.kampanya': 'Kampanya', 'nav.musteriAvcisi': 'Musteri Avcisi',
+      'nav.hatirlatmalar': 'Hatirlatmalar', 'nav.takvim': 'Takvim', 'nav.kasa': 'Kasa', 'nav.tahsilat': 'Tahsilat',
+      'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
+    };
+    return fallback[k] || k;
+  });
   const items: NavItem[] = [
-    { name: 'index', title: 'Panel', icon: 'grid', color: theme.colors.primary },
-    { name: 'teklif', title: 'Teklif', icon: 'create', color: m.teklif },
-    { name: 'catalog', title: 'Katalog', icon: 'library', color: m.katalog },
-    { name: 'history', title: 'Geçmiş', icon: 'time', color: m.gecmis },
-    { name: 'customers', title: 'Müşteri', icon: 'people', color: m.musteri },
-    { name: 'services', title: 'Servis', icon: 'construct', color: m.servis },
-    { name: 'campaigns', title: 'Kampanya', icon: 'megaphone', color: m.kampanya },
-    { name: 'leads', title: 'Müşteri Avcısı', icon: 'search', color: m.lead },
-    { name: 'reminders', title: 'Hatırlatmalar', icon: 'notifications', color: m.hatirlatma },
-    { name: 'calendar', title: 'Takvim', icon: 'calendar', color: m.hatirlatma },
+    { name: 'index', title: tt('nav.panel'), icon: 'grid', color: theme.colors.primary },
+    { name: 'teklif', title: tt('nav.teklif'), icon: 'create', color: m.teklif },
+    { name: 'catalog', title: tt('nav.katalog'), icon: 'library', color: m.katalog },
+    { name: 'history', title: tt('nav.gecmis'), icon: 'time', color: m.gecmis },
+    { name: 'customers', title: tt('nav.musteri'), icon: 'people', color: m.musteri },
+    { name: 'services', title: tt('nav.servis'), icon: 'construct', color: m.servis },
+    { name: 'campaigns', title: tt('nav.kampanya'), icon: 'megaphone', color: m.kampanya },
+    { name: 'leads', title: tt('nav.musteriAvcisi'), icon: 'search', color: m.lead },
+    { name: 'reminders', title: tt('nav.hatirlatmalar'), icon: 'notifications', color: m.hatirlatma },
+    { name: 'calendar', title: tt('nav.takvim'), icon: 'calendar', color: m.hatirlatma },
   ];
   // Kısıtlı personel (staff_role !== 'admin') Kasa/Tahsilat'ı hiç göremesin —
   // gerçek erişim engeli backend'de (403), bu sadece o sekmeleri gizliyor.
   if (!opts?.restricted) {
-    items.push({ name: 'kasa', title: 'Kasa', icon: 'wallet', color: m.kasa });
-    items.push({ name: 'tahsilat', title: 'Tahsilat', icon: 'cash', color: m.tahsilat });
+    items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
+    items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
   }
-  items.push({ name: 'company', title: 'Firma', icon: 'business', color: m.firma });
+  items.push({ name: 'company', title: tt('nav.firma'), icon: 'business', color: m.firma });
   // AI Asistan artık sol menüde ayrı bir madde olarak gösterilmiyor (kullanıcı
   // isteğiyle kaldırıldı) — sayfaya route hâlâ var (app/(tabs)/assistant),
   // sadece sol navigasyon listesinden çıkarıldı.
   // Ekip Sohbeti: firma sahibi + personel arasında birebir mesajlaşma —
   // herkese açık (Kasa/Tahsilat gibi kısıtlı değil).
-  items.push({ name: 'team-chat', title: 'Ekip Sohbeti', icon: 'chatbubbles', color: theme.colors.modules.mesaj });
+  items.push({ name: 'team-chat', title: tt('nav.ekipSohbeti'), icon: 'chatbubbles', color: theme.colors.modules.mesaj });
   // Personel ekranı sadece firma sahibine gösterilir.
   if (opts?.isOwner) {
-    items.push({ name: 'personel', title: 'Personel', icon: 'person-add', color: theme.colors.gold });
+    items.push({ name: 'personel', title: tt('nav.personel'), icon: 'person-add', color: theme.colors.gold });
   }
   // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.
   if (opts?.isAdmin) {
-    items.push({ name: 'promo-admin', title: 'Hediye Kodu', icon: 'gift', color: theme.colors.gold });
+    items.push({ name: 'promo-admin', title: tt('nav.hediyeKodu'), icon: 'gift', color: theme.colors.gold });
   }
   return items;
 }

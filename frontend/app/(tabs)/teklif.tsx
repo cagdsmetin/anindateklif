@@ -589,45 +589,11 @@ export default function EditorScreen() {
             )}
           </FGroup>
 
-          {/* EKLER — Additional attachment pages (References, Katalog, etc.) */}
-          <SectionHeader title="EKLER (İSTEĞE BAĞLI)" icon="pricetags" />
-          <Text style={s.helperTinyMuted}>{"Teklifin altına özel sayfalar ekleyebilirsiniz (örn. Referanslar listesi, Katalog). Her ek, PDF'de teklifle aynı stilde yeni sayfa olarak eklenir."}</Text>
-          {ekler.map((ek, ei) => (
-            <View key={ek.id} style={s.ekCard} testID={`ek-${ei}`}>
-              <View style={s.ekHdr}>
-                <Text style={s.ekBadge}>EK {ei + 1}</Text>
-                <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={() => setEkler(ekler.filter((_, i) => i !== ei))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`ek-remove-${ei}`}>
-                  <Ionicons name="close-circle" size={20} color={theme.colors.red} />
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={[s.input, { marginBottom: 6 }]}
-                value={ek.baslik}
-                onChangeText={(v) => setEkler(ekler.map((x, i) => (i === ei ? { ...x, baslik: v } : x)))}
-                placeholder="Başlık (örn: Referanslarımız)"
-                placeholderTextColor="#94a3b8"
-                testID={`ek-title-${ei}`}
-              />
-              <TextInput
-                style={[s.input, s.multiline, { minHeight: 100 }]}
-                multiline
-                value={ek.icerik}
-                onChangeText={(v) => setEkler(ekler.map((x, i) => (i === ei ? { ...x, icerik: v } : x)))}
-                placeholder="İçerik (referans firma listeniz, açıklamalar, teknik notlar...)"
-                placeholderTextColor="#94a3b8"
-                testID={`ek-content-${ei}`}
-              />
-            </View>
-          ))}
-          <TouchableOpacity
-            style={s.addBtn}
-            onPress={() => setEkler([...ekler, { id: 'ek-' + Date.now() + Math.random().toString(36).slice(2, 8), baslik: '', icerik: '' }])}
-            testID="add-ek-btn"
-          >
-            <Ionicons name="document-attach-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.addBtnText}>Ek Sayfa Ekle</Text>
-          </TouchableOpacity>
+          {/* EKLER (İsteğe bağlı özel sayfalar) UI'dan kaldırıldı -- kullanıcı
+              ihtiyaç olmadığını belirtti. `ekler` verisi ve PDF oluşturma
+              mantığı (buildQuotePdfHtml) dokunulmadan bırakıldı: daha önce
+              bu alanla eklenmiş teklifler PDF'te olduğu gibi görünmeye
+              devam eder, sadece yeni ek ekleme arayüzü gizlendi. */}
 
           {/* EK DOSYALAR — user-uploaded PDFs / images, merged into the outgoing PDF */}
           <SectionHeader title="EK DOSYALAR (PDF · GÖRSEL)" icon="attach" />

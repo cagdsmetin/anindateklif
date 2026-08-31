@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -25,7 +25,7 @@ const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
  * feels native to the rest of the app.
  */
 export default function ServiceAddScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, services, customers, createService, updateService, showToast, toast } = useApp();
@@ -45,7 +45,7 @@ export default function ServiceAddScreen() {
   const [servisTarihi, setServisTarihi] = useState(editing?.servisTarihi || '');
   const [garantiBitis, setGarantiBitis] = useState(editing?.garantiBitis || '');
   const [bakimTarihi, setBakimTarihi] = useState(editing?.bakimTarihi || '');
-  const [durum, setDurum] = useState(editing?.durum || t('serviceAdd.s002'));
+  const [durum, setDurum] = useState(editing?.durum || 'Açık');
   const [busy, setBusy] = useState(false);
   const [errFirma, setErrFirma] = useState(false);
   const [errBaslik, setErrBaslik] = useState(false);
@@ -234,7 +234,7 @@ export default function ServiceAddScreen() {
                     style={[s.statusPill, durum === st && s.statusPillActive]}
                     onPress={() => setDurum(st)}
                   >
-                    <Text style={[s.statusPillText, durum === st && s.statusPillTextActive]}>{st}</Text>
+                    <Text style={[s.statusPillText, durum === st && s.statusPillTextActive]}>{statusLabel(lang, st)}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

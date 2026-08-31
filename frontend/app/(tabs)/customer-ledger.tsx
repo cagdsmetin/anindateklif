@@ -17,7 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 /**
  * Müşteri bazlı cari hesap (para akışı) ekranı.
@@ -30,7 +30,7 @@ import { useLanguage } from '@/src/lib/i18n';
  *   "Çek" de var (tahsilat-utils.ts üzerinden Tahsilat ekranıyla ortak liste).
  */
 export default function CustomerLedgerScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, showToast } = useApp();
@@ -226,7 +226,7 @@ export default function CustomerLedgerScreen() {
                 <View style={s.chipRow}>
                   {YONTEMLER.map((y) => (
                     <TouchableOpacity key={y} style={[s.methodChip, yontem === y && s.methodChipActive]} onPress={() => setYontem(y)}>
-                      <Text style={[s.methodChipText, yontem === y && s.methodChipTextActive]}>{y}</Text>
+                      <Text style={[s.methodChipText, yontem === y && s.methodChipTextActive]}>{statusLabel(lang, y)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -273,7 +273,7 @@ export default function CustomerLedgerScreen() {
                     <Ionicons name={tx.tur === 'borc' ? 'arrow-up' : 'arrow-down'} size={15} color={tx.tur === 'borc' ? '#DC2626' : '#059669'} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.entryTitle}>{tx.tur === 'borc' ? t('customerLedger.s023') : t('nav.tahsilat')} · {tx.yontem}</Text>
+                    <Text style={s.entryTitle}>{tx.tur === 'borc' ? t('customerLedger.s023') : t('nav.tahsilat')} · {statusLabel(lang, tx.yontem)}</Text>
                     <Text style={s.entryMeta}>{trDate(tx.tarih)}{tx.notlar ? ' · ' + tx.notlar : ''}</Text>
                   </View>
                   <Text style={[s.entryAmount, { color: tx.tur === 'borc' ? '#DC2626' : '#059669' }]}>

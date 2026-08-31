@@ -38,6 +38,64 @@ export function currencyForLang(lang: Lang): 'TRY' | 'USD' | 'EUR' {
   return 'TRY';
 }
 
+// Panel/Geçmiş gibi ekranlardaki "ana tutar + altında diğer para birimlerine
+// çevrimi" kartları için: hangi para biriminin BÜYÜK/ana, hangilerinin altta
+// küçük gösterileceğini uygulama diline göre belirler. Bu sadece EKRANDA
+// GÖSTERİM sırasını değiştirir -- verinin kendisi (TRY bazlı hesap) ve
+// karşılaştırma/mantık kısımları hiç etkilenmez, sadece hangi değerin önce
+// gösterileceği değişir. İtalyanca kullanan Euro'yu, İngilizce kullanan
+// Dolar'ı ana para birimi olarak görür; Türkçe her zaman TL ile başlar.
+export type CurCode = 'TRY' | 'USD' | 'EUR';
+export function orderedAmounts(
+  lang: Lang,
+  tryVal: number | null,
+  usdVal: number | null,
+  eurVal: number | null
+): { cur: CurCode; val: number | null }[] {
+  const all: Record<CurCode, number | null> = { TRY: tryVal, USD: usdVal, EUR: eurVal };
+  const order: CurCode[] = lang === 'en' ? ['USD', 'EUR', 'TRY'] : lang === 'it' ? ['EUR', 'USD', 'TRY'] : ['TRY', 'USD', 'EUR'];
+  return order.map((cur) => ({ cur, val: all[cur] }));
+}
+
+// Backend'de saklanan ve karşılaştırmalarda kullanılan durum/yöntem gibi
+// alanlar (örn. teklif.durum, kasa.yontem) HER ZAMAN Türkçe kanonik değer
+// olarak kalır -- bunları çevirip kaydetmek filtreleri/eşleşmeleri bozar.
+// Bu sözlük SADECE EKRANDA GÖSTERİM için: kanonik Türkçe değeri alır,
+// geçerli dile göre kullanıcıya gösterilecek metni döner. Veri hiç
+// değişmez, sadece görüntülenen etiket değişir.
+const ENUM_LABELS: Record<string, { en: string; it: string }> = {
+  // Teklif durumu
+  Beklemede: { en: 'Pending', it: 'In attesa' },
+  Görüldü: { en: 'Seen', it: 'Visto' },
+  Onaylandı: { en: 'Approved', it: 'Approvato' },
+  Reddedildi: { en: 'Rejected', it: 'Rifiutato' },
+  // Servis durumu
+  Açık: { en: 'Open', it: 'Aperto' },
+  'Devam ediyor': { en: 'In Progress', it: 'In corso' },
+  Tamamlandı: { en: 'Completed', it: 'Completato' },
+  İptal: { en: 'Cancelled', it: 'Annullato' },
+  // Ödeme yöntemi (Kasa/Tahsilat)
+  Nakit: { en: 'Cash', it: 'Contanti' },
+  Kart: { en: 'Card', it: 'Carta' },
+  'Havale/EFT': { en: 'Bank Transfer', it: 'Bonifico' },
+  Çek: { en: 'Check', it: 'Assegno' },
+  Diğer: { en: 'Other', it: 'Altro' },
+  // Firma Arama Takibi (leads) durumu
+  Aranmadı: { en: 'Not Called', it: 'Non chiamato' },
+  Arandı: { en: 'Called', it: 'Chiamato' },
+  'Cevap Yok': { en: 'No Answer', it: 'Nessuna risposta' },
+  'Olumlu Dönüş': { en: 'Positive Response', it: 'Risposta positiva' },
+  'Olumsuz Dönüş': { en: 'Negative Response', it: 'Risposta negativa' },
+  Kapandı: { en: 'Closed', it: 'Chiuso' },
+};
+
+export function statusLabel(lang: Lang, value: string): string {
+  if (lang === 'tr' || !value) return value;
+  const entry = ENUM_LABELS[value];
+  if (!entry) return value;
+  return lang === 'it' ? entry.it : entry.en;
+}
+
 type Dict = Record<string, Record<string, string>>;
 
 // --- TÜRKÇE (kaynak metin -- diğer diller buradan çevrilir) ---------------

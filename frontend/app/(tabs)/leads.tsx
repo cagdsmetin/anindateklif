@@ -19,7 +19,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
 const DURUM_COLORS: Record<string, string> = {
@@ -66,7 +66,7 @@ const WHATSAPP_TEMPLATES: WaTemplate[] = [
 type Tab = 'bugun' | 'tumu' | 'talep';
 
 export default function LeadsScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, showToast } = useApp();
@@ -457,7 +457,7 @@ export default function LeadsScreen() {
               style={[s.durumChip, { borderColor: DURUM_COLORS[d] }, lead.durum === d && { backgroundColor: DURUM_COLORS[d] }]}
               onPress={() => updateStatus(lead, d)}
             >
-              <Text style={[s.durumChipText, { color: lead.durum === d ? '#fff' : DURUM_COLORS[d] }]}>{d}</Text>
+              <Text style={[s.durumChipText, { color: lead.durum === d ? '#fff' : DURUM_COLORS[d] }]}>{statusLabel(lang, d)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -639,7 +639,7 @@ export default function LeadsScreen() {
                       onPress={() => setTumuFilter(d)}
                       testID={`lead-filter-${d}`}
                     >
-                      <Text style={[s.tumuFilterChipText, { color: tumuFilter === d ? '#fff' : DURUM_COLORS[d] }]}>{d} ({tumuGroups[d]?.length || 0})</Text>
+                      <Text style={[s.tumuFilterChipText, { color: tumuFilter === d ? '#fff' : DURUM_COLORS[d] }]}>{statusLabel(lang, d)} ({tumuGroups[d]?.length || 0})</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

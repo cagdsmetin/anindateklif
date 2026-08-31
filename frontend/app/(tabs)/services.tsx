@@ -17,7 +17,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -39,7 +39,7 @@ function trDate(iso: string): string {
 }
 
 export default function ServicesScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { services, activeCompany, deleteService, updateServiceStatus, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -156,7 +156,7 @@ export default function ServicesScreen() {
                   <Text style={s.hDate}>{t('services.s016')}{trDate(svc.servisTarihi)}</Text>
                 </View>
                 <TouchableOpacity testID={`svc-status-${svc.id}`} onPress={() => setStatusMenuFor(svc.id)} style={[s.statusBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
-                  <Text style={[s.statusText, { color: c.text }]}>{svc.durum}</Text>
+                  <Text style={[s.statusText, { color: c.text }]}>{statusLabel(lang, svc.durum)}</Text>
                   <Ionicons name="chevron-down" size={11} color={c.text} />
                 </TouchableOpacity>
               </View>

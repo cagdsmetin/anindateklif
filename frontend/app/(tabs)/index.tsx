@@ -9,7 +9,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
 import { sumToTRY, RatesLike } from '@/src/lib/tahsilat-utils';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
 
 const QUOTE_STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'] as const;
 const QUOTE_STATUS_COLORS: Record<string, string> = {
@@ -78,7 +78,7 @@ function urgency(days: number) {
 }
 
 export default function PanelScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, quotes, customers, services, campaigns, kasa, tahsilat } = useApp();
@@ -253,7 +253,7 @@ export default function PanelScreen() {
     });
     const slices = Object.entries(byMethod)
       .map(([yontem, entries]) => ({
-        label: yontem,
+        label: statusLabel(lang, yontem),
         color: YONTEM_COLORS[yontem] || theme.colors.textMuted,
         value: sumToTRY(entries, rates as RatesLike) || 0,
       }))
@@ -394,15 +394,23 @@ export default function PanelScreen() {
             onPress={() => router.push('/(tabs)/history')}
             testID="hero-hacim-card"
           >
-            <Text style={s.heroLabel}>{t('panel.s041')}{hacimTRY == null ? ' (USD)' : ''}</Text>
-            <Text style={s.heroValue} numberOfLines={1}>
-              {hacimTRY != null ? fmt(hacimTRY, 'TRY') : fmt(hacimBuAy, 'USD')}
-            </Text>
-            {hacimTRY != null && (hacimUSDEquiv != null || hacimEURequiv != null) ? (
-              <Text style={s.heroSub} numberOfLines={1}>
-                ≈ {hacimUSDEquiv != null ? fmt(hacimUSDEquiv, 'USD') : ''}{hacimUSDEquiv != null && hacimEURequiv != null ? ' · ' : ''}{hacimEURequiv != null ? fmt(hacimEURequiv, 'EUR') : ''}
-              </Text>
-            ) : null}
+            {(() => {
+              const [primaryAmt, ...secondaryAmt] = orderedAmounts(lang, hacimTRY, hacimUSDEquiv, hacimEURequiv);
+              const secondaryShown = secondaryAmt.filter((x) => x.val != null);
+              return (
+                <>
+                  <Text style={s.heroLabel}>{t('panel.s041')}{primaryAmt.val == null ? ` (${primaryAmt.cur})` : ''}</Text>
+                  <Text style={s.heroValue} numberOfLines={1}>
+                    {primaryAmt.val != null ? fmt(primaryAmt.val, primaryAmt.cur) : fmt(hacimBuAy, 'USD')}
+                  </Text>
+                  {primaryAmt.val != null && secondaryShown.length > 0 ? (
+                    <Text style={s.heroSub} numberOfLines={1}>
+                      ≈ {secondaryShown.map((x) => fmt(x.val as number, x.cur)).join(' · ')}
+                    </Text>
+                  ) : null}
+                </>
+              );
+            })()}
             <Text style={s.heroSub}>{quotesThisMonth.length} teklif</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -454,33 +462,26 @@ export default function PanelScreen() {
           ) : (
             <View style={[s.card, s.overviewCard]}>
               <Text style={s.overviewTitle}>{t('panel.s048')}</Text>
-              {paymentTotal > 0 ? (
-                <CashPieChart data={paymentBreakdown} total={paymentTotal} />
-              ) : (
-                <Text style={s.emptyLineText}>{t('panel.s049')}</Text>
-              )}
+              <CashPieChart data={paymentBreakdown} total={paymentTotal} emptyText={t('panel.s049')} />
             </View>
           )}
 
           <View style={[s.card, s.overviewCard]}>
             <Text style={s.overviewTitle}>{t('panel.s050')}</Text>
-            {quoteStatusTotal > 0 ? (
-              <CashPieChart
-                data={QUOTE_STATUSES.filter((st) => (quoteStatusCounts[st] || 0) > 0).map((st) => ({
-                  label: st,
-                  value: quoteStatusCounts[st] || 0,
-                  color: QUOTE_STATUS_COLORS[st],
-                  countLabel: String(quoteStatusCounts[st] || 0),
-                  amountLabel: fmtTRY(quoteStatusValues[st] || 0),
-                }))}
-                total={quoteStatusTotal}
-                centerLabel={t('panel.s051')}
-                formatValue={(n) => String(n)}
-                formatCenter={(n) => String(n)}
-              />
-            ) : (
-              <Text style={s.emptyLineText}>{t('panel.s007')}</Text>
-            )}
+            <CashPieChart
+              data={QUOTE_STATUSES.filter((st) => (quoteStatusCounts[st] || 0) > 0).map((st) => ({
+                label: statusLabel(lang, st),
+                value: quoteStatusCounts[st] || 0,
+                color: QUOTE_STATUS_COLORS[st],
+                countLabel: String(quoteStatusCounts[st] || 0),
+                amountLabel: fmtTRY(quoteStatusValues[st] || 0),
+              }))}
+              total={quoteStatusTotal}
+              centerLabel={t('panel.s051')}
+              formatValue={(n) => String(n)}
+              formatCenter={(n) => String(n)}
+              emptyText={t('panel.s007')}
+            />
           </View>
         </View>
 
@@ -661,17 +662,32 @@ function CashPieChart({
   centerLabel = 'TOPLAM',
   formatValue = fmtTRY,
   formatCenter,
+  emptyText,
 }: {
   data: { label: string; value: number; color: string; valueLabel?: string; countLabel?: string; amountLabel?: string }[];
   total: number;
   centerLabel?: string;
   formatValue?: (n: number) => string;
   formatCenter?: (n: number) => string;
+  emptyText?: string;
 }) {
   const fmtCenter = formatCenter || formatValue;
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
+  // Veri yoksa da kartın her zaman aynı "dilimli" görünümde kalması için --
+  // gerçek dilimler yerine tek renkli, nötr bir "boş halka" gösterilir.
+  const isEmpty = !(total > 0) || data.length === 0;
+  const displayData = isEmpty ? [{ label: '', value: 1, color: '#E5E7EB' }] : data;
+  const displayTotal = isEmpty ? 1 : total;
+
   if (Platform.OS !== 'web') {
+    if (isEmpty) {
+      return (
+        <View style={{ gap: 6 }}>
+          <LegendDot color="#E5E7EB" label={emptyText || '—'} value={fmtCenter(0)} />
+        </View>
+      );
+    }
     return (
       <View style={{ gap: 6 }}>
         {data.map((d, i) => (
@@ -682,10 +698,10 @@ function CashPieChart({
   }
 
   let acc = 0;
-  const slices = data.map((d) => {
-    const startDeg = (acc / total) * 360;
+  const slices = displayData.map((d) => {
+    const startDeg = (acc / displayTotal) * 360;
     acc += d.value;
-    const endDeg = (acc / total) * 360;
+    const endDeg = (acc / displayTotal) * 360;
     return { ...d, startDeg, endDeg, midDeg: (startDeg + endDeg) / 2 };
   });
 
@@ -718,21 +734,25 @@ function CashPieChart({
         })}
         <View style={s.pieCenterHole} pointerEvents="none">
           <Text style={s.pieCenterLabel}>{centerLabel}</Text>
-          <Text style={s.pieCenterValue} numberOfLines={1} adjustsFontSizeToFit>{fmtCenter(total)}</Text>
+          <Text style={s.pieCenterValue} numberOfLines={1} adjustsFontSizeToFit>{fmtCenter(isEmpty ? 0 : total)}</Text>
         </View>
       </View>
       <View style={{ flex: 1, minWidth: 130, gap: 6 }}>
-        {slices.map((sl, i) => {
-          const hoverHandlers: any = {
-            onMouseEnter: () => setHoverIdx(i),
-            onMouseLeave: () => setHoverIdx(null),
-          };
-          return (
-            <View key={i} {...hoverHandlers}>
-              <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} countLabel={sl.countLabel} amountLabel={sl.amountLabel} />
-            </View>
-          );
-        })}
+        {isEmpty ? (
+          <Text style={{ fontSize: 12, color: '#94a3b8', fontWeight: '600' }}>{emptyText || '—'}</Text>
+        ) : (
+          slices.map((sl, i) => {
+            const hoverHandlers: any = {
+              onMouseEnter: () => setHoverIdx(i),
+              onMouseLeave: () => setHoverIdx(null),
+            };
+            return (
+              <View key={i} {...hoverHandlers}>
+                <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} countLabel={sl.countLabel} amountLabel={sl.amountLabel} />
+              </View>
+            );
+          })
+        )}
       </View>
     </View>
   );

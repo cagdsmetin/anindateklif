@@ -16,7 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, RatesT } from '@/src/lib/api';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
@@ -32,7 +32,7 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 function monthKey(d: string) { return (d || '').slice(0, 7); }
 
 export default function KasaScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
 
@@ -240,7 +240,7 @@ export default function KasaScreen() {
             <View style={s.chipRow}>
               {YONTEMLER.map((y) => (
                 <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
-                  <Text style={[s.chipText, yontem === y && s.chipTextActive]}>{y}</Text>
+                  <Text style={[s.chipText, yontem === y && s.chipTextActive]}>{statusLabel(lang, y)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -296,7 +296,7 @@ export default function KasaScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.txKat} numberOfLines={1}>{k.kategori}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
-                  <Text style={s.txMeta}>{k.yontem} · {k.tarih}</Text>
+                  <Text style={s.txMeta}>{statusLabel(lang, k.yontem)} · {k.tarih}</Text>
                 </View>
                 <Text style={[s.txAmount, { color: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.tutar, k.paraBirimi)}</Text>
                 <TouchableOpacity onPress={() => remove(k.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`kasa-delete-${k.id}`}>

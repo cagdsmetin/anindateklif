@@ -74,7 +74,7 @@ export default function CampaignDetailScreen() {
 
   const audienceCustomers = useMemo(() => {
     let list = allCustomersWithPhone;
-    if (audienceFilter !== 'Tümü') {
+    if (audienceFilter !== t('campaignDetail.s002')) {
       list = list.filter((c) => customerSystemTypes[phoneKey(c.telefon)]?.has(audienceFilter));
     }
     const q = search.trim().toLowerCase();

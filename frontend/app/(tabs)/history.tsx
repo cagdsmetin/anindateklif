@@ -26,7 +26,7 @@ import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canS
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -50,7 +50,7 @@ const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
 const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
@@ -252,30 +252,46 @@ export default function HistoryScreen() {
             <Text style={s.statValue}>{pendingCount}</Text>
           </View>
           <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-            <Text style={[s.statLabel, { color: '#166534' }]}>{t('history.s015')}{approvedTRY == null ? ' (USD)' : ''}</Text>
-            <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>
-              {approvedTRY != null ? fmt(approvedTRY, 'TRY') : fmt(totalValueUSDOnly, 'USD')}
-            </Text>
-            {approvedTRY != null && (approvedEquiv.usd != null || approvedEquiv.eur != null) ? (
-              <Text style={[s.statSubLabel, { color: '#166534' }]} numberOfLines={1}>
-                ≈ {approvedEquiv.usd != null ? fmt(approvedEquiv.usd, 'USD') : ''}{approvedEquiv.usd != null && approvedEquiv.eur != null ? ' · ' : ''}{approvedEquiv.eur != null ? fmt(approvedEquiv.eur, 'EUR') : ''}
-              </Text>
-            ) : null}
+            {(() => {
+              const [primaryAmt, ...secondaryAmt] = orderedAmounts(lang, approvedTRY, approvedEquiv.usd, approvedEquiv.eur);
+              const secondaryShown = secondaryAmt.filter((x) => x.val != null);
+              return (
+                <>
+                  <Text style={[s.statLabel, { color: '#166534' }]}>{t('history.s015')}{primaryAmt.val == null ? ` (${primaryAmt.cur})` : ''}</Text>
+                  <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>
+                    {primaryAmt.val != null ? fmt(primaryAmt.val, primaryAmt.cur) : fmt(totalValueUSDOnly, 'USD')}
+                  </Text>
+                  {primaryAmt.val != null && secondaryShown.length > 0 ? (
+                    <Text style={[s.statSubLabel, { color: '#166534' }]} numberOfLines={1}>
+                      ≈ {secondaryShown.map((x) => fmt(x.val as number, x.cur)).join(' · ')}
+                    </Text>
+                  ) : null}
+                </>
+              );
+            })()}
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>{t('history.s016')}</Text>
             <Text style={s.statValue}>{thisMonthCount}</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('history.s017')}{monthVolumeTRY == null ? ' (USD)' : ''}</Text>
-            <Text style={s.statValue} numberOfLines={1}>
-              {monthVolumeTRY != null ? fmt(monthVolumeTRY, 'TRY') : fmt(monthVolumeUSD, 'USD')}
-            </Text>
-            {monthVolumeTRY != null && (monthVolumeEquiv.usd != null || monthVolumeEquiv.eur != null) ? (
-              <Text style={s.statSubLabel} numberOfLines={1}>
-                ≈ {monthVolumeEquiv.usd != null ? fmt(monthVolumeEquiv.usd, 'USD') : ''}{monthVolumeEquiv.usd != null && monthVolumeEquiv.eur != null ? ' · ' : ''}{monthVolumeEquiv.eur != null ? fmt(monthVolumeEquiv.eur, 'EUR') : ''}
-              </Text>
-            ) : null}
+            {(() => {
+              const [primaryAmt, ...secondaryAmt] = orderedAmounts(lang, monthVolumeTRY, monthVolumeEquiv.usd, monthVolumeEquiv.eur);
+              const secondaryShown = secondaryAmt.filter((x) => x.val != null);
+              return (
+                <>
+                  <Text style={s.statLabel}>{t('history.s017')}{primaryAmt.val == null ? ` (${primaryAmt.cur})` : ''}</Text>
+                  <Text style={s.statValue} numberOfLines={1}>
+                    {primaryAmt.val != null ? fmt(primaryAmt.val, primaryAmt.cur) : fmt(monthVolumeUSD, 'USD')}
+                  </Text>
+                  {primaryAmt.val != null && secondaryShown.length > 0 ? (
+                    <Text style={s.statSubLabel} numberOfLines={1}>
+                      ≈ {secondaryShown.map((x) => fmt(x.val as number, x.cur)).join(' · ')}
+                    </Text>
+                  ) : null}
+                </>
+              );
+            })()}
           </View>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -320,7 +336,7 @@ export default function HistoryScreen() {
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={s.hAmount} numberOfLines={1}>{fmt(quote.genelToplam, quote.paraBirimi)}</Text>
                   <TouchableOpacity testID={`status-${quote.id}`} onPress={() => setStatusMenuFor(quote.id)} style={[s.statusBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
-                    <Text style={[s.statusText, { color: c.text }]}>{quote.durum}</Text>
+                    <Text style={[s.statusText, { color: c.text }]}>{statusLabel(lang, quote.durum)}</Text>
                     <Ionicons name="chevron-down" size={11} color={c.text} />
                   </TouchableOpacity>
                 </View>

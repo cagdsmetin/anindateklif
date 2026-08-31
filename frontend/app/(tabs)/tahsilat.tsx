@@ -19,7 +19,7 @@ import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -31,7 +31,7 @@ function fmt(n: number, cur: string = 'TRY') {
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 
 export default function TahsilatScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -280,7 +280,7 @@ export default function TahsilatScreen() {
                 <View style={s.chipRow}>
                   {YONTEMLER.map((y) => (
                     <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
-                      <Text style={[s.chipText, yontem === y && s.chipTextActive]}>{y}</Text>
+                      <Text style={[s.chipText, yontem === y && s.chipTextActive]}>{statusLabel(lang, y)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -361,7 +361,7 @@ export default function TahsilatScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.txKat} numberOfLines={1}>{tx.musteriAdi}{tx.notlar ? ` · ${tx.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
-                    {tx.tur === 'tahsilat' ? tx.yontem : t('tahsilat.s034')}{tx.vadeTarihi ? ` · Vade: ${tx.vadeTarihi}` : ''} · {tx.tarih}
+                    {tx.tur === 'tahsilat' ? statusLabel(lang, tx.yontem) : t('tahsilat.s034')}{tx.vadeTarihi ? ` · Vade: ${tx.vadeTarihi}` : ''} · {tx.tarih}
                   </Text>
                 </View>
                 <Text style={[s.txAmount, { color: tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>

@@ -33,7 +33,7 @@ import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -56,7 +56,7 @@ const DURUM_COLORS: Record<string, string> = {
 };
 
 export default function EditorScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
@@ -443,7 +443,7 @@ export default function EditorScreen() {
             <View style={s.miniStats}>
               <View style={[s.durumBadge, { backgroundColor: (DURUM_COLORS[durum] || theme.colors.textMuted) + '30' }]}>
                 <View style={[s.durumDot, { backgroundColor: DURUM_COLORS[durum] || theme.colors.textMuted }]} />
-                <Text style={s.durumBadgeText}>{durum}</Text>
+                <Text style={s.durumBadgeText}>{statusLabel(lang, durum)}</Text>
               </View>
               <Text style={s.miniStat}>{items.length} kalem</Text>
               <Text style={s.miniStatSub}>{t('teklifPage.s023')}{kdvOr}</Text>
@@ -822,7 +822,7 @@ function ItemCard({
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
   leaving?: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
   // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
   const enterAnim = useRef(new Animated.Value(0)).current;

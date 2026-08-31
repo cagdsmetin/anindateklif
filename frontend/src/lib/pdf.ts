@@ -147,8 +147,8 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      the whole letterhead. */
   .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
-  .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 7px 0; line-height:1.3; word-wrap:break-word; overflow-wrap:break-word; }
-  .cline { font-size:14px; color:#0f172a; line-height:1.25; margin:0 0 1.5px 0; word-wrap:break-word; overflow-wrap:break-word; }
+  .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 4px 0; line-height:1.15; word-wrap:break-word; overflow-wrap:break-word; }
+  .cline { font-size:14px; color:#0f172a; line-height:1.05; margin:0; word-wrap:break-word; overflow-wrap:break-word; }
 
   .doc-title { margin: 0 0 10px 0; font-size:23px; font-weight:900; color:#1E293B; letter-spacing:0.04em; line-height:1.15; text-align:right; word-wrap:break-word; overflow-wrap:break-word; }
   .meta-table { border-collapse:collapse; margin:0 0 0 auto; max-width:100%; }
@@ -405,8 +405,8 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
   /* Header */
   .header { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:8px; border-bottom:2.5px solid #1c1c1e; margin-bottom:11px; }
   .company-block { flex:1; max-width:38%; }
-  .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 7px; }
-  .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.35; }
+  .company-name { font-size:16pt; font-weight:800; letter-spacing:-0.3px; margin:0 0 4px; }
+  .company-meta { font-size:9.8pt; color:#6b6b6b; line-height:1.15; }
   .logo-center { flex:0 0 auto; max-width:24%; display:flex; align-items:flex-start; justify-content:center; padding:0 10px; }
   .head-right { flex:1; max-width:38%; text-align:right; display:flex; flex-direction:column; align-items:flex-end; }
   .logo-row { margin-bottom:8px; }
@@ -659,8 +659,8 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   .logo-row { margin-bottom:9px; }
   .logo-img { max-width:170px; max-height:130px; object-fit:contain; object-position:center; display:block; margin:0 auto; }
   .logo-fallback { width:110px; height:110px; border:1px solid #b5502e; color:#b5502e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:27pt; font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; margin:0 auto; }
-  .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; margin:0 0 8px; }
-  .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:8px; line-height:1.4; }
+  .brand-name { font-size:16pt; letter-spacing:.2px; font-weight:700; margin:0 0 4px; }
+  .brand-meta { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:9.4pt; color:#8a8478; margin-top:2px; line-height:1.15; }
   .doc-id { flex:1; max-width:36%; text-align:right; }
   .doc-title { font-size:20pt; letter-spacing:3px; font-weight:400; color:#2b2926; }
   .doc-sub { font-family:'Montserrat', 'Helvetica Neue', Arial, sans-serif; font-size:7pt; letter-spacing:1.8px; text-transform:uppercase; color:#b5502e; margin-top:3px; }

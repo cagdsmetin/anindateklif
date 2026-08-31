@@ -15,9 +15,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
-import { api } from '@/src/lib/api';
+import { api, RatesT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
+import { useLanguage, currencyForLang } from '@/src/lib/i18n';
 
 type PlanT = {
   id: string;
@@ -56,12 +57,28 @@ function planUnitLabel(durationDays: number): string {
   return `/ ${durationDays} gün`;
 }
 
+// Ödeme her zaman TL olarak (iyzico) tahsil edilir -- burada değişen yalnızca
+// EKRANDAKİ yaklaşık karşılık: İngilizce kullanan kullanıcıya $ karşılığı,
+// İtalyanca kullanan kullanıcıya € karşılığı küçük bir "≈" notu olarak
+// gösterilir. Türkçe'de not gösterilmez, gerçek tahsilat tutarı zaten TL.
+function approxPriceLabel(priceTry: number, lang: 'tr' | 'en' | 'it', rates: RatesT | null): string | null {
+  if (lang === 'tr' || !priceTry) return null;
+  const cur = currencyForLang(lang);
+  const rate = cur === 'USD' ? rates?.usd_try : rates?.eur_try;
+  if (!rate) return null;
+  const val = priceTry / rate;
+  const sym = cur === 'USD' ? '$' : '€';
+  return `≈ ${sym}${val.toFixed(2)}`;
+}
+
 export default function SubscriptionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { lang } = useLanguage();
 
   const [status, setStatus] = useState<StatusT | null>(null);
+  const [rates, setRates] = useState<RatesT | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -76,6 +93,10 @@ export default function SubscriptionScreen() {
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
+
+  useEffect(() => {
+    api.rates().then((r) => setRates(r)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -294,6 +315,9 @@ export default function SubscriptionScreen() {
                             ₺{plan.price_try.toFixed(0)} <Text style={s.planPriceUnit}>{planUnitLabel(plan.duration_days)}</Text>
                           </Text>
                         </View>
+                        {approxPriceLabel(plan.price_try, lang, rates) ? (
+                          <Text style={s.planApprox}>{approxPriceLabel(plan.price_try, lang, rates)}</Text>
+                        ) : null}
                         <View style={{ marginTop: 12, gap: 8 }}>
                           <PlanBullet text="Sınırsız teklif oluşturma" />
                           <PlanBullet text={isYearly ? 'Yıllık otomatik yenileme' : 'Haftalık otomatik yenileme'} />
@@ -327,6 +351,9 @@ export default function SubscriptionScreen() {
                     </Text>
                   )}
                 </TouchableOpacity>
+                {approxPriceLabel(activePlan?.price_try ?? 0, lang, rates) ? (
+                  <Text style={s.ctaApprox}>{approxPriceLabel(activePlan?.price_try ?? 0, lang, rates)}</Text>
+                ) : null}
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>
             )}
@@ -468,6 +495,7 @@ const s = StyleSheet.create({
   planListPrice: { fontSize: 15, fontWeight: '700', color: theme.colors.textMuted, textDecorationLine: 'line-through' },
   planPrice: { fontSize: 30, fontWeight: '900', color: theme.colors.primary },
   planPriceUnit: { fontSize: 14, fontWeight: '700', color: theme.colors.textMuted },
+  planApprox: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   radioOuter: {
     position: 'absolute',
     top: 18,
@@ -524,6 +552,7 @@ const s = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
+  ctaApprox: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', marginTop: 6 },
   footNote: { fontSize: 11.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 10 },
   promoToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18, paddingVertical: 8 },
   promoToggleText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSoft },

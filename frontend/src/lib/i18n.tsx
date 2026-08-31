@@ -658,6 +658,8 @@ const tr: Dict = {
     s076: 'Personel',
     s077: 'Hediye Kodu',
     toplamLabel: 'TOPLAM',
+    gelirLabel: 'Gelir',
+    borcLabel: 'Borç',
   },
   personel: {
     s001: 'Personel',
@@ -1691,6 +1693,8 @@ const en: Dict = {
     s076: 'Staff',
     s077: 'Gift Code',
     toplamLabel: 'TOTAL',
+    gelirLabel: 'Income',
+    borcLabel: 'Debt',
   },
   personel: {
     s001: 'Staff',
@@ -2724,6 +2728,8 @@ const it: Dict = {
     s076: 'Personale',
     s077: 'Codice Regalo',
     toplamLabel: 'TOTALE',
+    gelirLabel: 'Entrate',
+    borcLabel: 'Debito',
   },
   personel: {
     s001: 'Personale',

@@ -8,7 +8,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
-import { sumToTRY, RatesLike } from '@/src/lib/tahsilat-utils';
+import { sumToTRY, RatesLike, computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
 
 const QUOTE_STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'] as const;
@@ -227,46 +227,38 @@ export default function PanelScreen() {
   const kasaHacim = gelirBuAy2 + giderBuAy2;
   const gelirPct = kasaHacim > 0 ? Math.round((gelirBuAy2 / kasaHacim) * 100) : 0;
 
-  // Nakit Durumu kartı: bu ay gerçekten TAHSİL EDİLEN ödemeleri (Tahsilat
-  // ekranındaki "tahsilat" kayıtları -- borç/alacak değil, fiilen alınan para)
-  // ödeme yöntemine göre (Nakit/Kart/Havale/Çek/Diğer) gruplayıp pasta
-  // dilimi olarak gösterir. Kasa'daki "gelir" toplamına değil doğrudan
-  // Tahsilat kayıtlarına bakılır -- bu sayede bir ödeme alınmış olsa bile
-  // Kasa tarafında henüz işlenmemiş olsa dahi burada görünür.
-  const YONTEM_COLORS: Record<string, string> = {
-    'Nakit': theme.colors.green,
-    'Kart': theme.colors.primary,
-    'Havale/EFT': theme.colors.gold,
-    'Çek': '#8B5CF6',
-    'Diğer': theme.colors.textMuted,
-  };
+  // Nakit Durumu kartı: bu ay gerçekten TAHSİL EDİLEN ödemeleri (Gelir),
+  // bu ay kasadan çıkan parayı (Gider) ve bugüne kadar biriken, hâlâ tahsil
+  // edilmemiş toplam alacağı (Borç) tek pastada gösterir.
   const tahsilatThisMonth = useMemo(
     () => tahsilat.filter((t) => t.tur === 'tahsilat' && (t.tarih || '').slice(0, 7) === thisMonthKey),
     [tahsilat, thisMonthKey]
   );
   const paymentBreakdown = useMemo(() => {
-    const byMethod: Record<string, { paraBirimi: string; tutar: number }[]> = {};
-    tahsilatThisMonth.forEach((tx) => {
-      const y = tx.yontem || t('panel.s002');
-      if (!byMethod[y]) byMethod[y] = [];
-      byMethod[y].push({ paraBirimi: tx.paraBirimi, tutar: tx.tutar });
+    // Nakit Durumu pastası: yöntem (Nakit/Kart/vb.) yerine 3 basit dilim --
+    // Gelir (bu ay tahsil edilen), Gider (bu ay kasadan çıkan) ve Borç
+    // (bugüne kadar biriken, hâlâ tahsil edilmemiş toplam alacak -- Borçlu
+    // Müşteriler ekranıyla aynı hesap). Böylece kart hem bu ayki nakit
+    // akışını hem de genel borç durumunu tek bakışta gösterir.
+    const gelirTutar = sumToTRY(
+      tahsilatThisMonth.map((tx) => ({ paraBirimi: tx.paraBirimi, tutar: tx.tutar })),
+      rates as RatesLike
+    ) || 0;
+    const debtSummaries = computeCustomerDebtSummaries(tahsilat);
+    const borcEntries: { paraBirimi: string; tutar: number }[] = [];
+    debtSummaries.forEach((d) => {
+      d.perCurrency.forEach((c) => {
+        if (c.kalanBorc > 0.009) borcEntries.push({ paraBirimi: c.paraBirimi, tutar: c.kalanBorc });
+      });
     });
-    const slices = Object.entries(byMethod)
-      .map(([yontem, entries]) => ({
-        label: statusLabel(lang, yontem),
-        color: YONTEM_COLORS[yontem] || theme.colors.textMuted,
-        value: sumToTRY(entries, rates as RatesLike) || 0,
-      }))
-      .filter((x) => x.value > 0)
-      .sort((a, b) => b.value - a.value);
-    // Giderleri de aynı pastaya kırmızı bir dilim olarak ekle -- böylece
-    // "genel bakış"ta sadece tahsilat değil, bu ay çıkan para da görünür.
-    if (giderBuAy2 > 0) {
-      slices.push({ label: t('panel.s022'), color: theme.colors.red, value: giderBuAy2 });
-    }
+    const borcTutar = sumToTRY(borcEntries, rates as RatesLike) || 0;
+    const slices: { label: string; color: string; value: number }[] = [];
+    if (gelirTutar > 0) slices.push({ label: t('panel.gelirLabel'), color: theme.colors.green, value: gelirTutar });
+    if (giderBuAy2 > 0) slices.push({ label: t('panel.s022'), color: theme.colors.red, value: giderBuAy2 });
+    if (borcTutar > 0) slices.push({ label: t('panel.borcLabel'), color: theme.colors.gold, value: borcTutar });
     return slices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tahsilatThisMonth, rates, giderBuAy2]);
+  }, [tahsilatThisMonth, tahsilat, rates, giderBuAy2]);
   const paymentTotal = paymentBreakdown.reduce((a, x) => a + x.value, 0);
 
   const quoteStatusCounts = useMemo(() => {

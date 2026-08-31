@@ -49,6 +49,66 @@ const trDate = (iso: string) => {
   return iso;
 };
 
+// QR kod -- sadece qrcode paketinin saf-JS matris uretici cekirdegini
+// (qrcode/lib/core) kullanir; paketin ust seviye index'i (server.js) Node
+// 'fs'/canvas API'lerine bagli oldugu icin React Native (mobil) tarafinda
+// bundle edilemez -- core/qrcode.js ise yalnizca kendi ic modullerine
+// (+ saf JS olan dijkstrajs) bagli, bu yuzden hem web hem native PDF
+// olusturmada calisir. QR, matrisi kendimiz SVG <rect>'lere cizerek
+// olusturuyoruz; hicbir async/network cagrisi yok, tamamen senkron.
+const QrCore = require('qrcode/lib/core/qrcode.js') as {
+  create: (data: string, options?: { errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H' }) => {
+    modules: { size: number; get: (row: number, col: number) => number };
+  };
+};
+
+function buildQrSvg(text: string, sizePx: number): string {
+  try {
+    // 'L' (en dusuk hata duzeltme) bilerek secildi -- icerik uzun oldugu icin
+    // 'M'/'Q' modul sayisini ciddi artirip 62-90px'lik kucuk baski alaninda
+    // taranamaz hale getiriyordu; 'L' + kisa/oz metin, telefon kamerasiyla
+    // rahat okunacak yogunlukta bir kare uretiyor.
+    const qr = QrCore.create(text, { errorCorrectionLevel: 'L' });
+    const modules = qr.modules;
+    const count = modules.size;
+    const quiet = 2; // QR standardinin onerdigi "sessiz bolge" kadar bosluk
+    const total = count + quiet * 2;
+    const cell = sizePx / total;
+    let rects = '';
+    for (let row = 0; row < count; row++) {
+      for (let col = 0; col < count; col++) {
+        if (modules.get(row, col)) {
+          const x = ((col + quiet) * cell).toFixed(2);
+          const y = ((row + quiet) * cell).toFixed(2);
+          rects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+        }
+      }
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}" shape-rendering="crispEdges"><rect width="${sizePx}" height="${sizePx}" fill="#ffffff"/><g fill="#000000">${rects}</g></svg>`;
+  } catch {
+    return '';
+  }
+}
+
+// QR icerigi -- teklifi veren firma + teklifi alan musteri bilgilerinin ozet
+// metni (URL degil, duz metin -- taranınca telefonda kart gibi okunur).
+function buildQuoteQrText(company: CompanyT, quote: QuoteT): string {
+  // Bilerek kisa tutuluyor: her ek satir QR'nin modul sayisini (dolayisiyla
+  // yogunlugunu) artirip kucuk baski alaninda taranmasini zorlastirir --
+  // burada URL degil duz metin oldugu icin de tek onceligimiz okunabilirlik.
+  const cur = quote.paraBirimi || 'USD';
+  const lines: string[] = [];
+  const tarihStr = quote.tarih ? `  ${trDate(quote.tarih)}` : '';
+  lines.push(`TEKLIF NO: ${quote.teklifNo || ''}${tarihStr}`);
+  if (company.sirketAdi) lines.push(company.sirketAdi);
+  const firmaIletisim = [company.telefon, company.email].filter(Boolean).join('  ');
+  if (firmaIletisim) lines.push(`Tel/E-posta: ${firmaIletisim}`);
+  const musteri = [quote.musFirma, quote.musYetkili].filter(Boolean).join(' - ');
+  if (musteri) lines.push(`Musteri: ${musteri}`);
+  lines.push(`Toplam: ${fmt(quote.genelToplam || 0, cur)}`);
+  return lines.join('\n');
+}
+
 // Dispatcher — picks one of the three visual templates. Defaults to
 // 'classic' so every existing call site (quick-share from the editor,
 // history re-share) keeps producing exactly the same PDF as before this
@@ -85,6 +145,10 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   const logo = company.logoBase64
     ? `<img src="${esc(company.logoBase64)}" class="logo"/>`
     : `<div class="logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
+
+  // Logonun altındaki QR -- taranınca teklifi veren firma ve teklifi alan
+  // musterinin bilgilerini (URL degil, duz metin kart olarak) gosterir.
+  const qrSvg = buildQrSvg(buildQuoteQrText(company, quote), 92);
 
   const bankRows = (company.banklar || [])
     .map(
@@ -146,6 +210,9 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
   .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
+  .qr-wrap { margin:6px auto 0; width:92px; text-align:center; }
+  .qr-wrap svg { display:block; width:92px; height:92px; }
+  .qr-cap { font-size:6.5px; color:#94a3b8; letter-spacing:0.04em; margin-top:3px; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 4px 0; line-height:1.15; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.05; margin:0; word-wrap:break-word; overflow-wrap:break-word; }
@@ -234,6 +301,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
       </td>
       <td class="center-col">
         ${logo}
+        ${qrSvg ? `<div class="qr-wrap">${qrSvg}<div class="qr-cap">TEKLİF BİLGİSİ</div></div>` : ''}
       </td>
       <td class="right-col">
         <div class="doc-title">TEKLİF FORMU</div>

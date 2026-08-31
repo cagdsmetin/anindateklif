@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -24,6 +25,7 @@ const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
  * feels native to the rest of the app.
  */
 export default function ServiceAddScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, services, customers, createService, updateService, showToast, toast } = useApp();
@@ -43,7 +45,7 @@ export default function ServiceAddScreen() {
   const [servisTarihi, setServisTarihi] = useState(editing?.servisTarihi || '');
   const [garantiBitis, setGarantiBitis] = useState(editing?.garantiBitis || '');
   const [bakimTarihi, setBakimTarihi] = useState(editing?.bakimTarihi || '');
-  const [durum, setDurum] = useState(editing?.durum || 'Açık');
+  const [durum, setDurum] = useState(editing?.durum || t('serviceAdd.s002'));
   const [busy, setBusy] = useState(false);
   const [errFirma, setErrFirma] = useState(false);
   const [errBaslik, setErrBaslik] = useState(false);
@@ -63,11 +65,11 @@ export default function ServiceAddScreen() {
     setErrFirma(!fOk);
     setErrBaslik(!bOk);
     if (!fOk || !bOk) {
-      showToast('Müşteri Firma ve Başlık zorunludur');
+      showToast(t('serviceAdd.s006'));
       return;
     }
     if (!activeCompany) {
-      showToast('Önce firma seçiniz');
+      showToast(t('serviceAdd.s007'));
       return;
     }
     setBusy(true);
@@ -88,10 +90,10 @@ export default function ServiceAddScreen() {
       } else {
         await createService(payload);
       }
-      showToast('Servis kaydı kaydedildi');
+      showToast(t('serviceAdd.s008'));
       router.back();
     } catch (e: any) {
-      showToast('Kayıt hatası: ' + (e?.message || ''));
+      showToast(t('serviceAdd.s009') + (e?.message || ''));
     } finally {
       setBusy(false);
     }
@@ -110,7 +112,7 @@ export default function ServiceAddScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{editingId ? 'Servis Düzenle' : 'Servis Ekle'}</Text>
+        <Text style={s.headerTitle}>{editingId ? t('serviceAdd.s010') : 'Servis Ekle'}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -125,16 +127,16 @@ export default function ServiceAddScreen() {
             <View style={s.heroCircle}>
               <Ionicons name="construct" size={36} color={theme.colors.primary} />
             </View>
-            <Text style={s.heroCaption}>Servis & Garanti Kaydı</Text>
+            <Text style={s.heroCaption}>{t('serviceAdd.s011')}</Text>
           </View>
 
           <View style={s.card}>
             <View style={s.field}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={s.fieldLabel}>Müşteri Firma <Text style={{ color: theme.colors.red }}>*</Text></Text>
+                <Text style={s.fieldLabel}>{t('serviceAdd.s012')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
                 {customers.length > 0 ? (
                   <TouchableOpacity onPress={() => setPickerOpen((v) => !v)} testID="svcadd-pick-customer">
-                    <Text style={{ fontSize: 11.5, fontWeight: '800', color: theme.colors.primary }}>Müşteri Seç</Text>
+                    <Text style={{ fontSize: 11.5, fontWeight: '800', color: theme.colors.primary }}>{t('serviceAdd.s013')}</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -153,7 +155,7 @@ export default function ServiceAddScreen() {
                   testID="svcadd-firma"
                   value={musFirma}
                   onChangeText={(v) => { setMusFirma(v); if (errFirma) setErrFirma(false); }}
-                  placeholder="Örn: Yılmaz İnşaat"
+                  placeholder={t('serviceAdd.s014')}
                   placeholderTextColor="#94a3b8"
                   style={s.input}
                 />
@@ -161,15 +163,15 @@ export default function ServiceAddScreen() {
             </View>
 
             <FieldRow
-              label="Müşteri Adı"
+              label={t('serviceAdd.s015')}
               icon="person-outline"
-              placeholder="Yetkili kişi"
+              placeholder={t('serviceAdd.s016')}
               value={musYetkili}
               onChange={setMusYetkili}
               testID="svcadd-yetkili"
             />
             <FieldRow
-              label="Telefon"
+              label={t('serviceAdd.s017')}
               icon="call-outline"
               placeholder="0532 123 45 67"
               value={musTelefon}
@@ -178,44 +180,44 @@ export default function ServiceAddScreen() {
               testID="svcadd-telefon"
             />
             <FieldRow
-              label="Başlık"
+              label={t('serviceAdd.s019')}
               required
               icon="hammer-outline"
-              placeholder="Örn: Pergola Kurulumu"
+              placeholder={t('serviceAdd.s020')}
               value={baslik}
               onChange={(v) => { setBaslik(v); if (errBaslik) setErrBaslik(false); }}
               error={errBaslik}
               testID="svcadd-baslik"
             />
             <FieldRow
-              label="Açıklama"
+              label={t('serviceAdd.s021')}
               icon="document-text-outline"
-              placeholder="Servis detayları..."
+              placeholder={t('serviceAdd.s022')}
               value={aciklama}
               onChange={setAciklama}
               multiline
               testID="svcadd-aciklama"
             />
             <FieldRow
-              label="Servis Tarihi"
+              label={t('serviceAdd.s023')}
               icon="calendar-outline"
-              placeholder="YYYY-AA-GG"
+              placeholder={t('serviceAdd.s001')}
               value={servisTarihi}
               onChange={setServisTarihi}
               testID="svcadd-servistarihi"
             />
             <FieldRow
-              label="Garanti Bitiş Tarihi"
+              label={t('serviceAdd.s024')}
               icon="shield-checkmark-outline"
-              placeholder="YYYY-AA-GG"
+              placeholder={t('serviceAdd.s001')}
               value={garantiBitis}
               onChange={setGarantiBitis}
               testID="svcadd-garanti"
             />
             <FieldRow
-              label="Bakım Tarihi"
+              label={t('serviceAdd.s025')}
               icon="build-outline"
-              placeholder="YYYY-AA-GG"
+              placeholder={t('serviceAdd.s001')}
               value={bakimTarihi}
               onChange={setBakimTarihi}
               testID="svcadd-bakim"
@@ -223,7 +225,7 @@ export default function ServiceAddScreen() {
             />
 
             <View style={[s.field, { marginTop: 4, marginBottom: 0 }]}>
-              <Text style={s.fieldLabel}>Durum</Text>
+              <Text style={s.fieldLabel}>{t('serviceAdd.s026')}</Text>
               <View style={s.statusRow}>
                 {STATUSES.map((st) => (
                   <TouchableOpacity
@@ -248,7 +250,7 @@ export default function ServiceAddScreen() {
             activeOpacity={0.9}
             testID="svcadd-save"
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Servisi Kaydet</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('serviceAdd.s027')}</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

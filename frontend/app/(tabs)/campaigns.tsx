@@ -13,6 +13,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { CampaignT } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 function trDateTime(iso: string): string {
   if (!iso) return '-';
@@ -26,6 +27,7 @@ function trDateTime(iso: string): string {
 }
 
 export default function CampaignsScreen() {
+  const { t } = useLanguage();
   const { campaigns, customers, activeCompany, deleteCampaign } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -44,23 +46,23 @@ export default function CampaignsScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Kampanya" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <TopHeader title={t('campaigns.s001')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('campaigns.s002')}</Text></View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Kampanya" />
+      <TopHeader title={t('campaigns.s001')} />
       <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
         <View style={s.statsRow}>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Toplam Kampanya</Text>
+            <Text style={s.statLabel}>{t('campaigns.s003')}</Text>
             <Text style={s.statValue}>{campaigns.length}</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Telefonlu Müşteri</Text>
+            <Text style={s.statLabel}>{t('campaigns.s004')}</Text>
             <Text style={s.statValue}>{audienceCount}</Text>
           </View>
         </View>
@@ -68,7 +70,7 @@ export default function CampaignsScreen() {
         {campaigns.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="megaphone-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Henüz kampanya oluşturmadınız.</Text>
+            <Text style={s.emptyTextBox}>{t('campaigns.s005')}</Text>
           </View>
         ) : campaigns.map((camp) => {
           const sent = sentCount(camp);
@@ -84,7 +86,7 @@ export default function CampaignsScreen() {
             >
               <View style={s.cardTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.hTitle} numberOfLines={1}>{camp.baslik || 'İsimsiz Kampanya'}</Text>
+                  <Text style={s.hTitle} numberOfLines={1}>{camp.baslik || t('campaigns.s006')}</Text>
                   <Text style={s.hDate}>{trDateTime(camp.createdAt)}</Text>
                 </View>
                 <TouchableOpacity
@@ -104,7 +106,7 @@ export default function CampaignsScreen() {
                 <View style={s.progressTrack}>
                   <View style={[s.progressFill, { width: `${pct * 100}%` }]} />
                 </View>
-                <Text style={s.progressText}>{sent}/{total} müşteri</Text>
+                <Text style={s.progressText}>{sent}/{total} {t('campaigns.s008')}</Text>
               </View>
             </TouchableOpacity>
           );

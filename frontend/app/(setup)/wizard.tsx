@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { useAuth } from '@/src/state/AuthContext';
 import { api } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 const TOTAL_STEPS = 6;
 
@@ -33,6 +34,7 @@ const COUNTRIES: Country[] = [
 type BankRow = { banka: string; turu: string; hesapSahibi: string; iban: string };
 
 export default function SetupWizard() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user, updateUser, signOut } = useAuth();
   const [step, setStep] = useState(1);
@@ -122,7 +124,7 @@ export default function SetupWizard() {
       // 3) Mark onboarding complete → route guard sends to tabs
       await updateUser({ onboarding_completed: true });
     } catch (e: any) {
-      Alert.alert('Kurulum Hatası', 'Bilgiler kaydedilemedi. Lütfen tekrar deneyin.');
+      Alert.alert(t('wizard.s007'), t('wizard.s008'));
     } finally {
       setBusy(false);
     }
@@ -137,7 +139,7 @@ export default function SetupWizard() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('İzin Gerekli', 'Galeriye erişim izni verilmedi.');
+        Alert.alert(t('wizard.s009'), t('wizard.s010'));
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -151,7 +153,7 @@ export default function SetupWizard() {
         setLogoBase64(`data:image/jpeg;base64,${res.assets[0].base64}`);
       }
     } catch {
-      Alert.alert('Hata', 'Logo seçilemedi.');
+      Alert.alert('Hata', t('wizard.s011'));
     }
   };
 
@@ -169,9 +171,9 @@ export default function SetupWizard() {
           )}
           <Text style={s.stepLabel}>{`Adım ${step} / ${TOTAL_STEPS}`}</Text>
           <TouchableOpacity
-            onPress={() => Alert.alert('Çıkış', 'Kurulumdan çıkıp giriş ekranına dönmek ister misin?', [
-              { text: 'İptal', style: 'cancel' },
-              { text: 'Çık', style: 'destructive', onPress: () => signOut() },
+            onPress={() => Alert.alert(t('wizard.s012'), t('wizard.s013'), [
+              { text: t('wizard.s014'), style: 'cancel' },
+              { text: t('wizard.s015'), style: 'destructive', onPress: () => signOut() },
             ])}
             style={s.backBtn}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -192,7 +194,7 @@ export default function SetupWizard() {
 
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {step === 1 && (
-            <StepShell icon="globe-outline" title="Nerede çalışıyorsun?" subtitle="Ülken; para birimini, vergi etiketini, tarih biçimini ve bölge listesini belirler. Daha sonra Ayarlar'dan değiştirebilirsin.">
+            <StepShell icon="globe-outline" title={t('wizard.s016')} subtitle={t('wizard.s017')}>
               {COUNTRIES.map((c) => {
                 const sel = country.code === c.code;
                 return (
@@ -217,22 +219,22 @@ export default function SetupWizard() {
           )}
 
           {step === 2 && (
-            <StepShell icon="business-outline" title="İşletmeni tanıtalım" subtitle="Bu bilgiler tekliflerinin başlığında ve imza bölümünde görünür.">
-              <Field label="Şirket / İşletme Adı" required>
+            <StepShell icon="business-outline" title={t('wizard.s018')} subtitle={t('wizard.s019')}>
+              <Field label={t('wizard.s020')} required>
                 <TextInput
                   value={sirketAdi}
                   onChangeText={setSirketAdi}
-                  placeholder="Örn: Rüya Yapı Dekorasyon"
+                  placeholder={t('wizard.s021')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   testID="setup-company-name"
                 />
               </Field>
-              <Field label="İmza Metni (Ad Soyad)">
+              <Field label={t('wizard.s022')}>
                 <TextInput
                   value={imzaMetni}
                   onChangeText={setImzaMetni}
-                  placeholder="Ad Soyad"
+                  placeholder={t('wizard.s023')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   testID="setup-signature"
@@ -242,42 +244,42 @@ export default function SetupWizard() {
           )}
 
           {step === 3 && (
-            <StepShell icon="image-outline" title="Logonu ekleyelim" subtitle="Logon PDF tekliflerinin sol üstünde marka olarak yer alacak. İstersen atlayabilirsin.">
+            <StepShell icon="image-outline" title={t('wizard.s024')} subtitle={t('wizard.s025')}>
               <TouchableOpacity onPress={pickLogo} activeOpacity={0.85} style={s.logoBox} testID="setup-logo">
                 {logoBase64 ? (
                   <Image source={{ uri: logoBase64 }} style={s.logoImg} resizeMode="contain" />
                 ) : (
                   <>
                     <Ionicons name="cloud-upload-outline" size={40} color={authTheme.primary} />
-                    <Text style={s.logoTitle}>Logo Yükle</Text>
-                    <Text style={s.logoHint}>PNG / JPG · Kare oran önerilir</Text>
+                    <Text style={s.logoTitle}>{t('wizard.s026')}</Text>
+                    <Text style={s.logoHint}>{t('wizard.s027')}</Text>
                   </>
                 )}
               </TouchableOpacity>
               {logoBase64 ? (
                 <TouchableOpacity onPress={() => setLogoBase64('')} style={s.linkBtn}>
-                  <Text style={s.linkText}>Logoyu Kaldır</Text>
+                  <Text style={s.linkText}>{t('wizard.s028')}</Text>
                 </TouchableOpacity>
               ) : null}
             </StepShell>
           )}
 
           {step === 4 && (
-            <StepShell icon="call-outline" title="İletişim & Vergi Bilgileri" subtitle="Bu bilgiler tekliflerin alt bölümünde ve fatura başlığında yer alır.">
-              <Field label="Adres">
-                <TextInput value={adres} onChangeText={setAdres} placeholder="İş yeri adresi" placeholderTextColor={authTheme.textMuted} style={[s.input, s.textarea]} multiline testID="setup-address" />
+            <StepShell icon="call-outline" title={t('wizard.s029')} subtitle={t('wizard.s030')}>
+              <Field label={t('wizard.s031')}>
+                <TextInput value={adres} onChangeText={setAdres} placeholder={t('wizard.s032')} placeholderTextColor={authTheme.textMuted} style={[s.input, s.textarea]} multiline testID="setup-address" />
               </Field>
-              <Field label="Telefon">
+              <Field label={t('wizard.s033')}>
                 <TextInput value={telefon} onChangeText={setTelefon} placeholder="+90 ..." placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="phone-pad" testID="setup-phone" />
               </Field>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Field label="Vergi Dairesi">
+                  <Field label={t('wizard.s035')}>
                     <TextInput value={vergiDairesi} onChangeText={setVergiDairesi} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} />
                   </Field>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="Vergi No">
+                  <Field label={t('wizard.s036')}>
                     <TextInput value={vergiNo} onChangeText={setVergiNo} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="number-pad" />
                   </Field>
                 </View>
@@ -286,7 +288,7 @@ export default function SetupWizard() {
           )}
 
           {step === 5 && (
-            <StepShell icon="card-outline" title="Banka Hesapların" subtitle="Bu bilgiler PDF'in alt bölümünde 'Ödeme Bilgileri' başlığı altında görünür. Sonradan ekleyebilirsin.">
+            <StepShell icon="card-outline" title={t('wizard.s037')} subtitle={t('wizard.s038')}>
               {banks.map((b, idx) => (
                 <View key={idx} style={s.bankCard}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -298,11 +300,11 @@ export default function SetupWizard() {
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                  <TextInput value={b.banka} onChangeText={(t) => updateBank(banks, setBanks, idx, { banka: t })} placeholder="Banka Adı" placeholderTextColor={authTheme.textMuted} style={s.input} />
+                  <TextInput value={b.banka} onChangeText={(t) => updateBank(banks, setBanks, idx, { banka: t })} placeholder={t('wizard.s039')} placeholderTextColor={authTheme.textMuted} style={s.input} />
                   <View style={{ height: 8 }} />
-                  <TextInput value={b.hesapSahibi} onChangeText={(t) => updateBank(banks, setBanks, idx, { hesapSahibi: t })} placeholder="Hesap Sahibi" placeholderTextColor={authTheme.textMuted} style={s.input} />
+                  <TextInput value={b.hesapSahibi} onChangeText={(t) => updateBank(banks, setBanks, idx, { hesapSahibi: t })} placeholder={t('wizard.s040')} placeholderTextColor={authTheme.textMuted} style={s.input} />
                   <View style={{ height: 8 }} />
-                  <TextInput value={b.iban} onChangeText={(t) => updateBank(banks, setBanks, idx, { iban: t })} placeholder="IBAN" placeholderTextColor={authTheme.textMuted} style={s.input} autoCapitalize="characters" />
+                  <TextInput value={b.iban} onChangeText={(t) => updateBank(banks, setBanks, idx, { iban: t })} placeholder={t('wizard.s041')} placeholderTextColor={authTheme.textMuted} style={s.input} autoCapitalize="characters" />
                 </View>
               ))}
               <TouchableOpacity
@@ -311,28 +313,28 @@ export default function SetupWizard() {
                 activeOpacity={0.85}
               >
                 <Ionicons name="add-circle-outline" size={18} color={authTheme.primary} />
-                <Text style={s.addBtnText}>Yeni Hesap Ekle</Text>
+                <Text style={s.addBtnText}>{t('wizard.s042')}</Text>
               </TouchableOpacity>
             </StepShell>
           )}
 
           {step === 6 && (
-            <StepShell icon="cube-outline" title="İlk Hizmet / Ürün Kalemin" subtitle="Sık kullandığın bir hizmeti veya ürünü tanımla. Alanları virgülle ayır. Daha sonra Ayarlar'dan Hizmet / Ürün listeni genişletebilirsin.">
-              <Field label="Hizmet / Ürün Adı">
+            <StepShell icon="cube-outline" title={t('wizard.s043')} subtitle={t('wizard.s044')}>
+              <Field label={t('wizard.s045')}>
                 <TextInput
                   value={systemName}
                   onChangeText={setSystemName}
-                  placeholder="Örn: Cam Balkon"
+                  placeholder={t('wizard.s046')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   testID="setup-system-name"
                 />
               </Field>
-              <Field label="Alt Alanlar (virgülle ayır)">
+              <Field label={t('wizard.s047')}>
                 <TextInput
                   value={systemFieldsRaw}
                   onChangeText={setSystemFieldsRaw}
-                  placeholder="Örn: Ölçü, Cam Kalınlığı, Motor Çeşidi"
+                  placeholder={t('wizard.s048')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   testID="setup-system-fields"
@@ -341,8 +343,7 @@ export default function SetupWizard() {
               <View style={s.finishNote}>
                 <Ionicons name="sparkles" size={16} color={authTheme.goldLight} />
                 <Text style={s.finishNoteText}>
-                  Kurulumu tamamladığında ilk teklifini oluşturmaya hazır olacaksın!
-                </Text>
+                  {t('wizard.s049')}</Text>
               </View>
             </StepShell>
           )}
@@ -361,7 +362,7 @@ export default function SetupWizard() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={s.ctaText}>{step === TOTAL_STEPS ? 'Kurulumu Tamamla' : 'İleri'}</Text>
+                <Text style={s.ctaText}>{step === TOTAL_STEPS ? 'Kurulumu Tamamla' : t('wizard.s050')}</Text>
                 <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
               </>
             )}

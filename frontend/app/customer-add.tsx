@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Standalone "Müşteri Ekle" screen (mirrors the reference design).
@@ -25,6 +26,7 @@ import { api } from '@/src/lib/api';
  * Only touches this screen — the rest of the app is untouched.
  */
 export default function CustomerAddScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, reloadCustomers, showToast, customers, toast } = useApp();
@@ -56,7 +58,7 @@ export default function CustomerAddScreen() {
       return;
     }
     if (!activeCompany) {
-      showToast('Önce firma seçiniz');
+      showToast(t('customerAdd.s001'));
       return;
     }
     setBusy(true);
@@ -77,10 +79,10 @@ export default function CustomerAddScreen() {
         await api.createCustomer(payload);
       }
       await reloadCustomers();
-      showToast('Müşteri kaydedildi');
+      showToast(t('customerAdd.s002'));
       router.back();
     } catch (e: any) {
-      showToast('Kayıt hatası: ' + (e?.message || ''));
+      showToast(t('customerAdd.s003') + (e?.message || ''));
     } finally {
       setBusy(false);
     }
@@ -101,7 +103,7 @@ export default function CustomerAddScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{editingId ? 'Müşteri Düzenle' : 'Müşteri Ekle'}</Text>
+        <Text style={s.headerTitle}>{editingId ? t('customerAdd.s004') : t('customerAdd.s005')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -117,16 +119,16 @@ export default function CustomerAddScreen() {
             <View style={s.heroCircle}>
               <Ionicons name="person-add" size={36} color={theme.colors.primary} />
             </View>
-            <Text style={s.heroCaption}>Müşteri Bilgileri</Text>
+            <Text style={s.heroCaption}>{t('customerAdd.s006')}</Text>
           </View>
 
           {/* Form card */}
           <View style={s.card}>
             <FieldRow
-              label="Ad Soyad / Firma Ünvanı"
+              label={t('customerAdd.s007')}
               required
               icon="person-outline"
-              placeholder="Örn: Ahmet Yılmaz"
+              placeholder={t('customerAdd.s008')}
               value={firma}
               onChange={(v) => { setFirma(v); if (errName) setErrName(false); }}
               error={errName}
@@ -134,7 +136,7 @@ export default function CustomerAddScreen() {
               testID="cadd-name"
             />
             <FieldRow
-              label="Telefon"
+              label={t('customerAdd.s009')}
               required
               icon="call-outline"
               placeholder="0532 123 45 67"
@@ -145,9 +147,9 @@ export default function CustomerAddScreen() {
               testID="cadd-phone"
             />
             <FieldRow
-              label="E-posta Adresi"
+              label={t('customerAdd.s011')}
               icon="mail-outline"
-              placeholder="ornek@mail.com"
+              placeholder={t('customerAdd.s012')}
               value={email}
               onChange={setEmail}
               keyboardType="email-address"
@@ -155,17 +157,17 @@ export default function CustomerAddScreen() {
               testID="cadd-email"
             />
             <FieldRow
-              label="Şirket Adı"
+              label={t('customerAdd.s013')}
               icon="business-outline"
-              placeholder="Opsiyonel"
+              placeholder={t('customerAdd.s014')}
               value={sirket}
               onChange={setSirket}
               testID="cadd-company"
             />
             <FieldRow
-              label="Adres"
+              label={t('customerAdd.s015')}
               icon="location-outline"
-              placeholder="Fatura adresi..."
+              placeholder={t('customerAdd.s016')}
               value={adres}
               onChange={setAdres}
               multiline
@@ -184,7 +186,7 @@ export default function CustomerAddScreen() {
             activeOpacity={0.9}
             testID="cadd-save"
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Müşteriyi Kaydet</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('customerAdd.s017')}</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

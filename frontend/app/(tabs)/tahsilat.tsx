@@ -19,6 +19,7 @@ import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -30,6 +31,7 @@ function fmt(n: number, cur: string = 'TRY') {
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 
 export default function TahsilatScreen() {
+  const { t } = useLanguage();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -108,9 +110,9 @@ export default function TahsilatScreen() {
   const isDiger = yontem === 'Diğer';
 
   const save = async () => {
-    if (!musteriAdi.trim()) { showToast('Müşteri adı giriniz'); return; }
+    if (!musteriAdi.trim()) { showToast(t('tahsilat.s002')); return; }
     if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
-    if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
+    if (isDiger && !notlar.trim()) { showToast(t('tahsilat.s003')); return; }
     setSaving(true);
     try {
       let finalTutar = Number(tutar);
@@ -134,7 +136,7 @@ export default function TahsilatScreen() {
             const orijinalNot = `(${fmt(Number(tutar), paraBirimi)} olarak alındı)`;
             finalNotlar = notlar ? `${notlar} ${orijinalNot}` : orijinalNot;
           } else {
-            showToast('Kur bilgisi alınamadı, tutar girildiği para biriminde kaydedildi');
+            showToast(t('tahsilat.s004'));
           }
         }
       }
@@ -152,7 +154,7 @@ export default function TahsilatScreen() {
         tarih: todayIso(),
         kurTRY: currentRateFor(finalParaBirimi, rates),
       });
-      showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : 'Borç eklendi');
+      showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : t('tahsilat.s005'));
       resetForm();
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
@@ -162,13 +164,13 @@ export default function TahsilatScreen() {
   };
 
   const remove = async (id: string) => {
-    try { await deleteTahsilatEntry(id); showToast('Kayıt silindi'); }
+    try { await deleteTahsilatEntry(id); showToast(t('tahsilat.s006')); }
     catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
   };
 
   const call = (phone: string) => {
-    if (!phone) { showToast('Telefon numarası kayıtlı değil'); return; }
-    Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`).catch(() => showToast('Arama başlatılamadı'));
+    if (!phone) { showToast(t('tahsilat.s007')); return; }
+    Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`).catch(() => showToast(t('tahsilat.s008')));
   };
 
   const scrollToPending = () => {
@@ -188,20 +190,20 @@ export default function TahsilatScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Tahsilat" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <TopHeader title={t('tahsilat.s009')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('tahsilat.s010')}</Text></View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Tahsilat & Bakiye" />
+      <TopHeader title={t('tahsilat.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={s.statsRow}>
             <View style={[s.statCard, { backgroundColor: theme.colors.primarySoft }]}>
-              <Text style={[s.statLabel, { color: theme.colors.primaryDark }]}>TOPLAM ALACAK</Text>
+              <Text style={[s.statLabel, { color: theme.colors.primaryDark }]}>{t('tahsilat.s012')}</Text>
               <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>
                 {toplamAlacakTRY != null ? fmt(toplamAlacakTRY, 'TRY') : fmt(0, 'TRY')}
               </Text>
@@ -212,27 +214,27 @@ export default function TahsilatScreen() {
               )}
             </View>
             <TouchableOpacity style={[s.statCard, { backgroundColor: '#F1F5F9' }]} onPress={() => router.push('/borclu-musteriler' as any)} testID="tahsilat-borclu-card">
-              <Text style={[s.statLabel, { color: theme.colors.textSoft }]}>BORÇLU MÜŞTERİ</Text>
+              <Text style={[s.statLabel, { color: theme.colors.textSoft }]}>{t('tahsilat.s013')}</Text>
               <Text style={[s.statValue, { color: theme.colors.text }]} numberOfLines={1}>{borcluMusteri}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={s.sectionH}>YENİ KAYIT</Text>
+          <Text style={s.sectionH}>{t('tahsilat.s014')}</Text>
           <View style={s.card}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
               <TouchableOpacity style={[s.turBtn, tur === 'tahsilat' && s.turBtnGelirActive]} onPress={() => setTur('tahsilat')} testID="tahsilat-tur-tahsilat">
-                <Text style={[s.turBtnText, tur === 'tahsilat' && { color: '#166534' }]}>Tahsilat (+)</Text>
+                <Text style={[s.turBtnText, tur === 'tahsilat' && { color: '#166534' }]}>{t('tahsilat.s015')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.turBtn, tur === 'borc' && s.turBtnGiderActive]} onPress={() => setTur('borc')} testID="tahsilat-tur-borc">
-                <Text style={[s.turBtnText, tur === 'borc' && { color: '#991b1b' }]}>Borç Ekle</Text>
+                <Text style={[s.turBtnText, tur === 'borc' && { color: '#991b1b' }]}>{t('tahsilat.s016')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={s.label}>MÜŞTERİ</Text>
+            <Text style={s.label}>{t('tahsilat.s017')}</Text>
             <View style={{ zIndex: 20 }}>
               <TextInput
                 style={s.input}
-                placeholder="Müşteri adı yazın veya seçin"
+                placeholder={t('tahsilat.s018')}
                 placeholderTextColor="#94a3b8"
                 value={musteriAdi}
                 onChangeText={(v) => { setMusteriAdi(v); setSelectedCustomerId(''); setShowSuggest(true); }}
@@ -257,11 +259,11 @@ export default function TahsilatScreen() {
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <View style={{ flex: 1.4 }}>
-                <Text style={s.label}>TUTAR</Text>
+                <Text style={s.label}>{t('tahsilat.s019')}</Text>
                 <TextInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="tahsilat-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>PARA BİRİMİ</Text>
+                <Text style={s.label}>{t('tahsilat.s020')}</Text>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {CURRENCIES.map((c) => (
                     <TouchableOpacity key={c} style={[s.curChip, paraBirimi === c && s.curChipActive]} onPress={() => setParaBirimi(c)}>
@@ -274,7 +276,7 @@ export default function TahsilatScreen() {
 
             {tur === 'tahsilat' ? (
               <>
-                <Text style={[s.label, { marginTop: 10 }]}>YÖNTEM</Text>
+                <Text style={[s.label, { marginTop: 10 }]}>{t('tahsilat.s021')}</Text>
                 <View style={s.chipRow}>
                   {YONTEMLER.map((y) => (
                     <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
@@ -285,17 +287,17 @@ export default function TahsilatScreen() {
               </>
             ) : (
               <View style={{ marginTop: 10 }}>
-                <Text style={s.label}>VADE TARİHİ (opsiyonel)</Text>
-                <TextInput style={s.input} value={vadeTarihi} onChangeText={setVadeTarihi} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" testID="tahsilat-vade-input" />
+                <Text style={s.label}>{t('tahsilat.s022')}</Text>
+                <TextInput style={s.input} value={vadeTarihi} onChangeText={setVadeTarihi} placeholder={t('tahsilat.s023')} placeholderTextColor="#94a3b8" testID="tahsilat-vade-input" />
               </View>
             )}
 
-            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? "NOT (zorunlu — 'Diğer' seçtiniz)" : 'NOT (opsiyonel)'}</Text>
+            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? t('tahsilat.s024') : 'NOT (opsiyonel)'}</Text>
             <TextInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
               onChangeText={setNotlar}
-              placeholder={isDiger ? "Ne için olduğunu açıklayın..." : 'Açıklama...'}
+              placeholder={isDiger ? t('tahsilat.s025') : t('tahsilat.s026')}
               placeholderTextColor="#94a3b8"
               testID="tahsilat-not-input"
             />
@@ -307,12 +309,12 @@ export default function TahsilatScreen() {
           </View>
 
           <View onLayout={(e) => { pendingSectionY.current = e.nativeEvent.layout.y; }}>
-            <Text style={s.sectionH}>BEKLEYEN ALACAKLAR</Text>
+            <Text style={s.sectionH}>{t('tahsilat.s027')}</Text>
           </View>
           {balances.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="checkmark-circle-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyTextBox}>Bekleyen alacak yok.</Text>
+              <Text style={s.emptyTextBox}>{t('tahsilat.s028')}</Text>
             </View>
           ) : (
             <View style={s.card}>
@@ -321,7 +323,7 @@ export default function TahsilatScreen() {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={s.pendingName} numberOfLines={1}>{b.musteriAdi}</Text>
-                      {b.hasOverdue ? <View style={s.overdueTag}><Text style={s.overdueTagText}>Vadesi geçti</Text></View> : null}
+                      {b.hasOverdue ? <View style={s.overdueTag}><Text style={s.overdueTagText}>{t('tahsilat.s029')}</Text></View> : null}
                     </View>
                     {b.musteriTelefon ? <Text style={s.pendingPhone}>{b.musteriTelefon}</Text> : null}
                     {b.balances.map((x) => (
@@ -333,39 +335,39 @@ export default function TahsilatScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity style={s.callBtn} onPress={() => call(b.musteriTelefon)} testID={`tahsilat-call-${b.key}`}>
                     <Ionicons name="call-outline" size={15} color={theme.colors.primary} />
-                    <Text style={s.callBtnText}>Hatırlat</Text>
+                    <Text style={s.callBtnText}>{t('tahsilat.s030')}</Text>
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
           )}
 
-          <Text style={s.sectionH}>SON HAREKETLER</Text>
+          <Text style={s.sectionH}>{t('tahsilat.s031')}</Text>
           <View style={s.searchWrap}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput style={s.searchInput} placeholder="Müşteri veya not ara..." placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="tahsilat-search-input" />
+            <TextInput style={s.searchInput} placeholder={t('tahsilat.s032')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="tahsilat-search-input" />
           </View>
           {filtered.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="wallet-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyTextBox}>Henüz kayıt yok.</Text>
+              <Text style={s.emptyTextBox}>{t('tahsilat.s033')}</Text>
             </View>
           ) : (
-            filtered.map((t) => (
-              <View key={t.id} style={s.txRow} testID={`tahsilat-tx-${t.id}`}>
-                <View style={[s.txIcon, { backgroundColor: t.tur === 'tahsilat' ? theme.colors.greenSoft : theme.colors.redSoft }]}>
-                  <Ionicons name={t.tur === 'tahsilat' ? 'arrow-down' : 'arrow-up'} size={16} color={t.tur === 'tahsilat' ? theme.colors.green : theme.colors.red} />
+            filtered.map((tx) => (
+              <View key={tx.id} style={s.txRow} testID={`tahsilat-tx-${tx.id}`}>
+                <View style={[s.txIcon, { backgroundColor: tx.tur === 'tahsilat' ? theme.colors.greenSoft : theme.colors.redSoft }]}>
+                  <Ionicons name={tx.tur === 'tahsilat' ? 'arrow-down' : 'arrow-up'} size={16} color={tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.txKat} numberOfLines={1}>{t.musteriAdi}{t.notlar ? ` · ${t.notlar}` : ''}</Text>
+                  <Text style={s.txKat} numberOfLines={1}>{tx.musteriAdi}{tx.notlar ? ` · ${tx.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
-                    {t.tur === 'tahsilat' ? t.yontem : 'Borç'}{t.vadeTarihi ? ` · Vade: ${t.vadeTarihi}` : ''} · {t.tarih}
+                    {tx.tur === 'tahsilat' ? tx.yontem : t('tahsilat.s034')}{tx.vadeTarihi ? ` · Vade: ${tx.vadeTarihi}` : ''} · {tx.tarih}
                   </Text>
                 </View>
-                <Text style={[s.txAmount, { color: t.tur === 'tahsilat' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>
-                  {t.tur === 'tahsilat' ? '+' : '-'}{fmt(t.tutar, t.paraBirimi)}
+                <Text style={[s.txAmount, { color: tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>
+                  {tx.tur === 'tahsilat' ? '+' : '-'}{fmt(tx.tutar, tx.paraBirimi)}
                 </Text>
-                <TouchableOpacity onPress={() => remove(t.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`tahsilat-delete-${t.id}`}>
+                <TouchableOpacity onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`tahsilat-delete-${tx.id}`}>
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
                 </TouchableOpacity>
               </View>

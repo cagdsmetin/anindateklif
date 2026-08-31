@@ -23,8 +23,10 @@ import {
   PASSWORD_RULE_LABELS,
   PasswordRuleKey,
 } from '@/src/utils/password-validation';
+import { useLanguage } from '@/src/lib/i18n';
 
 export default function RegisterScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { register } = useAuth();
 
@@ -52,10 +54,10 @@ export default function RegisterScreen() {
     if (busy) return;
     setError(null);
     if (!canSubmit) {
-      if (!acceptedTerms) setError('Devam etmek için Gizlilik İlkesi ve Hizmet Şartlarını kabul edin');
-      else if (!pwValid) setError('Şifre gereksinimlerini karşılamalıdır');
-      else if (phoneDigits.length < 10) setError('Geçerli bir telefon numarası giriniz');
-      else setError('Lütfen tüm alanları doğru doldurun');
+      if (!acceptedTerms) setError(t('register.s001'));
+      else if (!pwValid) setError(t('register.s002'));
+      else if (phoneDigits.length < 10) setError(t('register.s003'));
+      else setError(t('register.s004'));
       return;
     }
     setBusy(true);
@@ -73,12 +75,12 @@ export default function RegisterScreen() {
 
       if (e instanceof ApiError) {
         if (e.kind === 'network') {
-          setError('Sunucuya bağlanılamıyor. İnternet bağlantınızı ve uygulamanın güncel sürüm olduğunu kontrol edin.');
+          setError(t('register.s005'));
         } else if (e.kind === 'timeout') {
-          setError('Sunucu yanıt vermedi. Lütfen tekrar deneyin.');
+          setError(t('register.s006'));
         } else if (e.status === 409) {
           const bodyMsg409 = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
-          setError(bodyMsg409 || 'Bu e-posta zaten kayıtlı');
+          setError(bodyMsg409 || t('register.s007'));
         } else if (e.status === 400) {
           const bodyMsg400 = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
           setError(bodyMsg400 || 'Bilgileri kontrol edin');
@@ -87,13 +89,13 @@ export default function RegisterScreen() {
           const bodyMsg = (e.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
           setError(bodyMsg || 'Bilgileri kontrol edin');
         } else if (typeof e.status === 'number' && e.status >= 500) {
-          setError('Sunucu geçici olarak yanıt vermiyor. Birazdan tekrar deneyin.');
+          setError(t('register.s008'));
         } else {
           setError(`Kayıt başarısız (${e.status || '?'}). Tekrar deneyin.`);
         }
       } else {
         const msg = String(e?.message || '');
-        setError(msg ? `Kayıt başarısız: ${msg}` : 'Kayıt başarısız. Lütfen tekrar deneyin.');
+        setError(msg ? `Kayıt başarısız: ${msg}` : t('register.s009'));
       }
     } finally {
       setBusy(false);
@@ -111,8 +113,8 @@ export default function RegisterScreen() {
           <View style={s.logoWrap}>
             <BrandLogo size={76} />
           </View>
-          <Text style={s.title}>Aramıza Katıl</Text>
-          <Text style={s.subtitle}>Profesyonel teklif dünyasına ilk adımınızı atın.</Text>
+          <Text style={s.title}>{t('register.s010')}</Text>
+          <Text style={s.subtitle}>{t('register.s011')}</Text>
 
           {error ? (
             <View style={s.errorBox}>
@@ -121,10 +123,10 @@ export default function RegisterScreen() {
             </View>
           ) : null}
 
-          <InputRow icon="person-outline" placeholder="Ad Soyad" value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
+          <InputRow icon="person-outline" placeholder={t('register.s012')} value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
           <InputRow
             icon="call-outline"
-            placeholder="Telefon Numarası"
+            placeholder={t('register.s013')}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
@@ -132,7 +134,7 @@ export default function RegisterScreen() {
           />
           <InputRow
             icon="mail-outline"
-            placeholder="E-posta Adresi"
+            placeholder={t('register.s014')}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -142,7 +144,7 @@ export default function RegisterScreen() {
           />
           <InputRow
             icon="lock-closed-outline"
-            placeholder="Şifre"
+            placeholder={t('register.s015')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPw}
@@ -167,9 +169,8 @@ export default function RegisterScreen() {
               {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
             </View>
             <Text style={s.termsText}>
-              Kayıt olurken <Text style={s.termsLink}>Gizlilik İlkesi</Text> ve{' '}
-              <Text style={s.termsLink}>Hizmet Şartlarını</Text> kabul ediyorum.
-            </Text>
+              {t('register.s016')}<Text style={s.termsLink}>{t('register.s017')}</Text> ve{' '}
+              <Text style={s.termsLink}>{t('register.s018')}</Text> {t('register.s019')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -179,13 +180,13 @@ export default function RegisterScreen() {
             disabled={busy}
             testID="reg-submit"
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Kayıt Ol</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('register.s020')}</Text>}
           </TouchableOpacity>
 
           <View style={s.footer}>
-            <Text style={s.footerText}>Zaten hesabınız var mı? </Text>
+            <Text style={s.footerText}>{t('register.s021')}</Text>
             <TouchableOpacity onPress={() => router.replace('/login')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={s.footerLink}>Giriş Yap</Text>
+              <Text style={s.footerLink}>{t('register.s022')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -195,10 +196,11 @@ export default function RegisterScreen() {
 }
 
 function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean> }) {
+  const { t } = useLanguage();
   const RULES: PasswordRuleKey[] = ['lower', 'upper', 'digit', 'symbol', 'length'];
   return (
     <View style={s.pwBlock}>
-      <Text style={s.pwTitle}>Şifre Gereksinimleri</Text>
+      <Text style={s.pwTitle}>{t('register.s023')}</Text>
       <View style={s.pwList}>
         {RULES.map((k) => (
           <View key={k} style={s.pwRow}>
@@ -214,7 +216,7 @@ function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean
           </View>
         ))}
       </View>
-      <Text style={s.pwHint}>Tüm kriterleri sağlamayan şifreler güvenlik sebebiyle reddedilir.</Text>
+      <Text style={s.pwHint}>{t('register.s024')}</Text>
     </View>
   );
 }

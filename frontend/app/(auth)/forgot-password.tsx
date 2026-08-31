@@ -16,8 +16,10 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { forgotPassword } = useAuth();
   const [email, setEmail] = useState('');
@@ -30,7 +32,7 @@ export default function ForgotPasswordScreen() {
     setError(null);
     const em = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
-      setError('Geçerli bir e-posta adresi girin');
+      setError(t('forgotPassword.s001'));
       return;
     }
     setBusy(true);
@@ -38,7 +40,7 @@ export default function ForgotPasswordScreen() {
       await forgotPassword(em);
       setSent(true);
     } catch {
-      setError('İşlem başarısız. Lütfen tekrar deneyin.');
+      setError(t('forgotPassword.s002'));
     } finally {
       setBusy(false);
     }
@@ -55,17 +57,15 @@ export default function ForgotPasswordScreen() {
           <View style={s.logoWrap}>
             <BrandLogo size={72} />
           </View>
-          <Text style={s.title}>Şifreni Sıfırla</Text>
+          <Text style={s.title}>{t('forgotPassword.s003')}</Text>
           <Text style={s.subtitle}>
-            Hesabına bağlı e-posta adresini gir. Sana bir sıfırlama bağlantısı göndereceğiz.
-          </Text>
+            {t('forgotPassword.s004')}</Text>
 
           {sent ? (
             <View style={s.successBox}>
               <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
               <Text style={s.successText}>
-                Eğer bu e-posta kayıtlıysa, sıfırlama bağlantısı gönderildi. Gelen kutunu kontrol et.
-              </Text>
+                {t('forgotPassword.s005')}</Text>
             </View>
           ) : null}
 
@@ -81,7 +81,7 @@ export default function ForgotPasswordScreen() {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="E-posta Adresi"
+              placeholder={t('forgotPassword.s006')}
               placeholderTextColor={authTheme.textMuted}
               style={s.input}
               keyboardType="email-address"
@@ -97,12 +97,12 @@ export default function ForgotPasswordScreen() {
             disabled={busy}
             testID="fp-submit"
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Sıfırlama Bağlantısı Gönder</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('forgotPassword.s007')}</Text>}
           </TouchableOpacity>
 
           <View style={s.footer}>
             <TouchableOpacity onPress={() => router.replace('/login')}>
-              <Text style={s.footerLink}>← Giriş Ekranına Dön</Text>
+              <Text style={s.footerLink}>{t('forgotPassword.s008')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const SERVICE_STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
@@ -50,6 +51,7 @@ function daysUntil(iso: string): number | null {
 }
 
 export default function ReportsScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { quotes, services, customers } = useApp();
@@ -143,7 +145,7 @@ export default function ReportsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Raporlar</Text>
+        <Text style={s.headerTitle}>{t('reports.s009')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -152,18 +154,18 @@ export default function ReportsScreen() {
         {/* Teklif hacmi grafiği */}
         <View style={s.sectionHdr}>
           <Ionicons name="bar-chart-outline" size={14} color={theme.colors.navy} />
-          <Text style={s.sectionTitle}>Teklif Hacmi</Text>
+          <Text style={s.sectionTitle}>{t('reports.s010')}</Text>
         </View>
         <View style={s.card}>
           <View style={s.segmentRow}>
             <TouchableOpacity style={[s.segBtn, period === 'ay' && s.segBtnActive]} onPress={() => setPeriod('ay')} testID="report-period-ay">
-              <Text style={[s.segText, period === 'ay' && s.segTextActive]}>Aylık</Text>
+              <Text style={[s.segText, period === 'ay' && s.segTextActive]}>{t('reports.s011')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.segBtn, period === 'hafta' && s.segBtnActive]} onPress={() => setPeriod('hafta')} testID="report-period-hafta">
-              <Text style={[s.segText, period === 'hafta' && s.segTextActive]}>Haftalık</Text>
+              <Text style={[s.segText, period === 'hafta' && s.segTextActive]}>{t('reports.s012')}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.chartVolume}>{fmt(periodVolumeUSD, 'USD')} <Text style={s.chartVolumeSub}>toplam hacim (USD)</Text></Text>
+          <Text style={s.chartVolume}>{fmt(periodVolumeUSD, 'USD')} <Text style={s.chartVolumeSub}>{t('reports.s013')}</Text></Text>
           <View style={s.chartBars}>
             {buckets.map((b) => {
               const h = b.count > 0 ? Math.max(6, (b.count / maxCount) * 96) : 2;
@@ -181,11 +183,11 @@ export default function ReportsScreen() {
         {/* En çok teklif verilen müşteriler */}
         <View style={s.sectionHdr}>
           <Ionicons name="people-outline" size={14} color={theme.colors.navy} />
-          <Text style={s.sectionTitle}>En Çok Teklif Verilen Müşteriler</Text>
+          <Text style={s.sectionTitle}>{t('reports.s014')}</Text>
         </View>
         <View style={s.card}>
           {topCustomers.length === 0 ? (
-            <Text style={s.emptyLineText}>Henüz teklif verisi yok.</Text>
+            <Text style={s.emptyLineText}>{t('reports.s015')}</Text>
           ) : (
             topCustomers.map((c, idx) => (
               <View key={c.firma} style={[s.rankRow, idx < topCustomers.length - 1 && s.rankRowBorder]}>
@@ -204,31 +206,31 @@ export default function ReportsScreen() {
         {/* Dönüşüm oranı */}
         <View style={s.sectionHdr}>
           <Ionicons name="swap-horizontal-outline" size={14} color={theme.colors.navy} />
-          <Text style={s.sectionTitle}>Dönüşüm Oranı</Text>
+          <Text style={s.sectionTitle}>{t('reports.s016')}</Text>
         </View>
         <View style={s.card}>
-          <ConversionRow label="Onaylandı" count={conversion.onay} total={conversion.total} color={theme.colors.green} />
-          <ConversionRow label="Reddedildi" count={conversion.red} total={conversion.total} color={theme.colors.red} />
-          <ConversionRow label="Beklemede" count={conversion.bekleyen} total={conversion.total} color={theme.colors.gold} last />
+          <ConversionRow label={t('reports.s001')} count={conversion.onay} total={conversion.total} color={theme.colors.green} />
+          <ConversionRow label={t('reports.s017')} count={conversion.red} total={conversion.total} color={theme.colors.red} />
+          <ConversionRow label={t('reports.s018')} count={conversion.bekleyen} total={conversion.total} color={theme.colors.gold} last />
         </View>
 
         {/* Servis / garanti istatistikleri */}
         <View style={s.sectionHdr}>
           <Ionicons name="shield-checkmark-outline" size={14} color={theme.colors.navy} />
-          <Text style={s.sectionTitle}>Servis & Garanti İstatistikleri</Text>
+          <Text style={s.sectionTitle}>{t('reports.s019')}</Text>
         </View>
         <View style={s.card}>
           <View style={s.statsRow}>
             <View style={s.statCard}>
-              <Text style={s.statLabel}>Toplam Servis</Text>
+              <Text style={s.statLabel}>{t('reports.s020')}</Text>
               <Text style={s.statValue}>{serviceStats.total}</Text>
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-              <Text style={[s.statLabel, { color: '#166534' }]}>Garanti Aktif</Text>
+              <Text style={[s.statLabel, { color: '#166534' }]}>{t('reports.s021')}</Text>
               <Text style={[s.statValue, { color: '#166534' }]}>{serviceStats.garantiAktif}</Text>
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' }]}>
-              <Text style={[s.statLabel, { color: '#991b1b' }]}>Garanti Bitmiş</Text>
+              <Text style={[s.statLabel, { color: '#991b1b' }]}>{t('reports.s022')}</Text>
               <Text style={[s.statValue, { color: '#991b1b' }]}>{serviceStats.garantiBitmis}</Text>
             </View>
           </View>
@@ -240,7 +242,7 @@ export default function ReportsScreen() {
                 <View key={st}>
                   <View style={s.convHead}>
                     <Text style={s.convLabel}>{st}</Text>
-                    <Text style={s.convValue}>{count} · %{pct}</Text>
+                    <Text style={s.convValue}>{count} {t('reports.s002')}{pct}</Text>
                   </View>
                   <View style={s.convTrack}>
                     <View style={[s.convFill, { width: `${pct}%`, backgroundColor: cc.text }]} />
@@ -256,12 +258,13 @@ export default function ReportsScreen() {
 }
 
 function ConversionRow({ label, count, total, color, last }: { label: string; count: number; total: number; color: string; last?: boolean }) {
+  const { t } = useLanguage();
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
     <View style={{ marginBottom: last ? 0 : 14 }}>
       <View style={s.convHead}>
         <Text style={s.convLabel}>{label}</Text>
-        <Text style={s.convValue}>{count} · %{pct}</Text>
+        <Text style={s.convValue}>{count} {t('reports.s002')}{pct}</Text>
       </View>
       <View style={s.convTrack}>
         <View style={[s.convFill, { width: `${pct}%`, backgroundColor: color }]} />

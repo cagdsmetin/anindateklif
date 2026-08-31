@@ -17,13 +17,15 @@ import { theme } from '@/src/lib/theme';
 import { api, StaffMemberT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 const ROLES: { id: string; label: string; desc: string }[] = [
-  { id: 'staff', label: 'Personel', desc: 'Teklif/müşteri/servis girer, Kasa ve Tahsilat\'ı göremez' },
+  { id: 'staff', label: 'Personel', desc: "Teklif/müşteri/servis girer, Kasa ve Tahsilat'ı göremez" },
   { id: 'admin', label: 'Yönetici', desc: 'Sizinle aynı yetkilere sahip, Kasa ve Tahsilat dahil her şeyi görür' },
 ];
 
 export default function PersonelScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { activeCompany } = useApp();
   const { user } = useAuth();
@@ -43,7 +45,7 @@ export default function PersonelScreen() {
       const res = await api.listStaff(activeCompany.id);
       setMembers(res || []);
     } catch (e: any) {
-      setError('Personel listesi alınamadı');
+      setError(t('personel.s005'));
     }
   }, [activeCompany]);
 
@@ -56,7 +58,7 @@ export default function PersonelScreen() {
     if (busy || !activeCompany) return;
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes('@')) {
-      setError('Geçerli bir e-posta girin');
+      setError(t('personel.s006'));
       return;
     }
     setError('');
@@ -68,7 +70,7 @@ export default function PersonelScreen() {
       setEmail('');
       await load();
     } catch (e: any) {
-      let msg = 'Davet gönderilemedi';
+      let msg = t('personel.s007');
       if (e?.body) {
         try {
           const parsed = JSON.parse(e.body);
@@ -103,7 +105,7 @@ export default function PersonelScreen() {
       else await api.removeStaff(activeCompany.id, m.id);
       await load();
     } catch {
-      setError('İşlem başarısız, tekrar deneyin');
+      setError(t('personel.s008'));
     }
   };
 
@@ -114,11 +116,11 @@ export default function PersonelScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Personel</Text>
+          <Text style={s.headerTitle}>{t('personel.s001')}</Text>
           <View style={s.headerBtn} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Bu sayfayı sadece firma sahibi görüntüleyebilir.</Text>
+          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>{t('personel.s009')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -130,7 +132,7 @@ export default function PersonelScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="personel-back">
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Personel</Text>
+        <Text style={s.headerTitle}>{t('personel.s001')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -142,11 +144,11 @@ export default function PersonelScreen() {
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-            <Text style={s.sectionLabel}>Yeni Personel Davet Et</Text>
+            <Text style={s.sectionLabel}>{t('personel.s010')}</Text>
             <View style={s.card}>
               <TextInput
                 style={s.input}
-                placeholder="personel@ornek.com"
+                placeholder={t('personel.s011')}
                 placeholderTextColor="#94a3b8"
                 value={email}
                 onChangeText={setEmail}
@@ -171,7 +173,7 @@ export default function PersonelScreen() {
               {error ? <Text style={s.errorText}>{error}</Text> : null}
 
               <TouchableOpacity style={[s.cta, busy && { opacity: 0.6 }]} onPress={onInvite} disabled={busy} testID="staff-invite-submit">
-                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Davet Linki Oluştur</Text>}
+                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('personel.s012')}</Text>}
               </TouchableOpacity>
 
               {lastInviteLink ? (
@@ -186,16 +188,16 @@ export default function PersonelScreen() {
                   />
                   <TouchableOpacity style={s.copyBtn} onPress={onCopyLink} testID="staff-invite-copy">
                     <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={15} color={theme.colors.primary} />
-                    <Text style={s.copyBtnText}>{copied ? 'Kopyalandı' : Platform.OS === 'web' ? 'Kopyala' : 'Seçip kopyala'}</Text>
+                    <Text style={s.copyBtnText}>{copied ? t('personel.s013') : Platform.OS === 'web' ? 'Kopyala' : t('personel.s014')}</Text>
                   </TouchableOpacity>
-                  <Text style={s.linkHint}>Davet linki, girdiğiniz e-posta adresine otomatik olarak gönderildi. Ayrıca WhatsApp gibi başka bir yoldan da paylaşabilirsiniz.</Text>
+                  <Text style={s.linkHint}>{t('personel.s015')}</Text>
                 </View>
               ) : null}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>Ekip ({members.length})</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('personel.s016')}{members.length})</Text>
             {members.length === 0 ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Henüz personel eklemediniz.</Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('personel.s018')}</Text>
             ) : (
               members.map((m) => (
                 <View key={`${m.type}-${m.id}`} style={s.memberRow} testID={`staff-row-${m.id}`}>
@@ -204,7 +206,7 @@ export default function PersonelScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
                       <View style={[s.badge, m.type === 'pending' && s.badgePending]}>
                         <Text style={[s.badgeText, m.type === 'pending' && s.badgeTextPending]}>
-                          {m.type === 'pending' ? 'Davet bekliyor' : m.role === 'admin' ? 'Yönetici' : 'Personel'}
+                          {m.type === 'pending' ? 'Davet bekliyor' : m.role === 'admin' ? t('personel.s002') : 'Personel'}
                         </Text>
                       </View>
                     </View>

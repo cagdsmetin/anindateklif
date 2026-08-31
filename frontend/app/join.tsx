@@ -17,8 +17,10 @@ import { theme } from '@/src/lib/theme';
 import { api, StaffInviteInfoT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { evaluatePassword, isPasswordValid, PASSWORD_RULE_LABELS, PasswordRuleKey } from '@/src/utils/password-validation';
+import { useLanguage } from '@/src/lib/i18n';
 
 export default function JoinScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams<{ token?: string }>();
   const token = params.token || '';
@@ -38,7 +40,7 @@ export default function JoinScreen() {
     }
     api.getInviteInfo(token)
       .then((res) => setInfo(res))
-      .catch(() => setInfo({ valid: false, reason: 'Davet bilgisi alınamadı' }))
+      .catch(() => setInfo({ valid: false, reason: t('join.s001') }))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -47,15 +49,15 @@ export default function JoinScreen() {
 
   const onSubmit = async () => {
     if (busy) return;
-    if (!name.trim()) { setError('Adınızı girin'); return; }
-    if (!pwValid) { setError('Şifre, aşağıdaki tüm gereksinimleri karşılamalı'); return; }
+    if (!name.trim()) { setError(t('join.s002')); return; }
+    if (!pwValid) { setError(t('join.s003')); return; }
     setError('');
     setBusy(true);
     try {
       await acceptInvite(token, name.trim(), password);
       router.replace('/(tabs)');
     } catch (e: any) {
-      let msg = 'Katılma işlemi başarısız, tekrar deneyin';
+      let msg = t('join.s004');
       if (e?.body) {
         try {
           const parsed = JSON.parse(e.body);
@@ -76,7 +78,7 @@ export default function JoinScreen() {
             <View style={s.logoBadge}>
               <Ionicons name="flash" size={22} color="#fff" />
             </View>
-            <Text style={s.appName}>Anında Teklif</Text>
+            <Text style={s.appName}>{t('join.s005')}</Text>
           </View>
 
           {loading ? (
@@ -84,19 +86,19 @@ export default function JoinScreen() {
           ) : !info?.valid ? (
             <View style={s.card}>
               <Ionicons name="alert-circle-outline" size={30} color={theme.colors.red} />
-              <Text style={s.errorTitle}>Davet geçersiz</Text>
-              <Text style={s.errorBody}>{info?.reason || 'Bu davet bağlantısı geçersiz veya süresi dolmuş.'}</Text>
+              <Text style={s.errorTitle}>{t('join.s006')}</Text>
+              <Text style={s.errorBody}>{info?.reason || t('join.s007')}</Text>
             </View>
           ) : (
             <View style={s.card}>
               <Text style={s.title}>{info.company_name}</Text>
-              <Text style={s.subtitle}>sizi ekibine davet etti</Text>
-              <Text style={s.emailLine}>{info.email} · {info.role === 'admin' ? 'Yönetici' : 'Personel'}</Text>
+              <Text style={s.subtitle}>{t('join.s008')}</Text>
+              <Text style={s.emailLine}>{info.email} · {info.role === 'admin' ? t('join.s010') : 'Personel'}</Text>
 
               <View style={{ marginTop: 20, gap: 12 }}>
                 <TextInput
                   style={s.input}
-                  placeholder="Adınız Soyadınız"
+                  placeholder={t('join.s011')}
                   placeholderTextColor="#94a3b8"
                   value={name}
                   onChangeText={setName}
@@ -104,7 +106,7 @@ export default function JoinScreen() {
                 />
                 <TextInput
                   style={s.input}
-                  placeholder="Şifre belirleyin"
+                  placeholder={t('join.s012')}
                   placeholderTextColor="#94a3b8"
                   value={password}
                   onChangeText={setPassword}
@@ -123,7 +125,7 @@ export default function JoinScreen() {
                 disabled={busy || !pwValid || !name.trim()}
                 testID="join-submit"
               >
-                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Katıl</Text>}
+                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('join.s013')}</Text>}
               </TouchableOpacity>
             </View>
           )}
@@ -134,10 +136,11 @@ export default function JoinScreen() {
 }
 
 function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean> }) {
+  const { t } = useLanguage();
   const RULES: PasswordRuleKey[] = ['lower', 'upper', 'digit', 'symbol', 'length'];
   return (
     <View style={s.pwBlock}>
-      <Text style={s.pwTitle}>Şifre Gereksinimleri</Text>
+      <Text style={s.pwTitle}>{t('join.s014')}</Text>
       <View style={s.pwList}>
         {RULES.map((k) => (
           <View key={k} style={s.pwRow}>
@@ -153,7 +156,7 @@ function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean
           </View>
         ))}
       </View>
-      <Text style={s.pwHint}>Basit şifreler (örn. sadece harf/rakam) güvenlik sebebiyle kabul edilmez.</Text>
+      <Text style={s.pwHint}>{t('join.s015')}</Text>
     </View>
   );
 }

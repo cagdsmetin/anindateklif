@@ -7,6 +7,7 @@ import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Kayıt sırasında gönderilen e-postadaki bağlantı buraya açılır:
@@ -16,6 +17,7 @@ import { useAuth } from '@/src/state/AuthContext';
  * olabilir.
  */
 export default function VerifyEmailScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const params = useLocalSearchParams<{ token?: string }>();
@@ -28,7 +30,7 @@ export default function VerifyEmailScreen() {
     (async () => {
       if (!token) {
         setStatus('error');
-        setError('Doğrulama bağlantısı eksik. Lütfen e-postadaki bağlantıyı tekrar açın.');
+        setError(t('verifyEmail.s001'));
         return;
       }
       try {
@@ -40,7 +42,7 @@ export default function VerifyEmailScreen() {
       } catch (e: any) {
         setStatus('error');
         const bodyMsg = (e?.body || '').match(/"detail":\s*"([^"]+)"/)?.[1];
-        setError(bodyMsg || 'Doğrulama başarısız oldu. Bağlantının süresi dolmuş olabilir.');
+        setError(bodyMsg || t('verifyEmail.s002'));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,19 +54,19 @@ export default function VerifyEmailScreen() {
         <View style={s.logoWrap}>
           <BrandLogo size={72} />
         </View>
-        <Text style={s.title}>E-posta Doğrulama</Text>
+        <Text style={s.title}>{t('verifyEmail.s003')}</Text>
 
         {status === 'checking' && (
           <View style={s.centerBlock}>
             <ActivityIndicator size="large" color={authTheme.primary} />
-            <Text style={s.subtitle}>Doğrulanıyor...</Text>
+            <Text style={s.subtitle}>{t('verifyEmail.s004')}</Text>
           </View>
         )}
 
         {status === 'ok' && (
           <View style={s.successBox}>
             <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
-            <Text style={s.successText}>E-posta adresin başarıyla doğrulandı.</Text>
+            <Text style={s.successText}>{t('verifyEmail.s005')}</Text>
           </View>
         )}
 
@@ -81,7 +83,7 @@ export default function VerifyEmailScreen() {
             onPress={() => router.replace(user ? '/(tabs)' : '/login')}
             testID="verify-email-continue"
           >
-            <Text style={s.ctaText}>{user ? 'Uygulamaya Dön' : 'Giriş Ekranına Git'}</Text>
+            <Text style={s.ctaText}>{user ? t('verifyEmail.s006') : t('verifyEmail.s007')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

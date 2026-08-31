@@ -9,6 +9,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
 import { sumToTRY, RatesLike } from '@/src/lib/tahsilat-utils';
+import { useLanguage } from '@/src/lib/i18n';
 
 const QUOTE_STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'] as const;
 const QUOTE_STATUS_COLORS: Record<string, string> = {
@@ -77,6 +78,7 @@ function urgency(days: number) {
 }
 
 export default function PanelScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, quotes, customers, services, campaigns, kasa, tahsilat } = useApp();
@@ -196,7 +198,7 @@ export default function PanelScreen() {
         items.push({
           key: `t-${q.id}`,
           title: `${q.teklifNo} · ${q.musFirma}`,
-          sub: 'Teklif geçerlilik süresi',
+          sub: t('panel.s020'),
           days: qd,
           onPress: () => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: q.id } } as any),
         });
@@ -244,10 +246,10 @@ export default function PanelScreen() {
   );
   const paymentBreakdown = useMemo(() => {
     const byMethod: Record<string, { paraBirimi: string; tutar: number }[]> = {};
-    tahsilatThisMonth.forEach((t) => {
-      const y = t.yontem || 'Diğer';
+    tahsilatThisMonth.forEach((tx) => {
+      const y = tx.yontem || t('panel.s002');
       if (!byMethod[y]) byMethod[y] = [];
-      byMethod[y].push({ paraBirimi: t.paraBirimi, tutar: t.tutar });
+      byMethod[y].push({ paraBirimi: tx.paraBirimi, tutar: tx.tutar });
     });
     const slices = Object.entries(byMethod)
       .map(([yontem, entries]) => ({
@@ -260,7 +262,7 @@ export default function PanelScreen() {
     // Giderleri de aynı pastaya kırmızı bir dilim olarak ekle -- böylece
     // "genel bakış"ta sadece tahsilat değil, bu ay çıkan para da görünür.
     if (giderBuAy2 > 0) {
-      slices.push({ label: 'Gider', color: theme.colors.red, value: giderBuAy2 });
+      slices.push({ label: t('panel.s022'), color: theme.colors.red, value: giderBuAy2 });
     }
     return slices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,9 +307,9 @@ export default function PanelScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Panel" />
+        <TopHeader title={t('panel.s003')} />
         <View style={s.empty}>
-          <Text style={s.emptyText}>Önce firma seçiniz</Text>
+          <Text style={s.emptyText}>{t('panel.s023')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -315,7 +317,7 @@ export default function PanelScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Panel" />
+      <TopHeader title={t('panel.s003')} />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <Text style={s.dateLabel}>{todayLabel()}</Text>
@@ -324,14 +326,14 @@ export default function PanelScreen() {
           <View style={s.ratesBlock}>
             <View style={s.ratesHeader}>
               <LiveDot />
-              <Text style={s.ratesHeaderText}>CANLI PİYASA</Text>
+              <Text style={s.ratesHeaderText}>{t('panel.s024')}</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.ratesRow}>
-              <RatePill label="USD" value={rates.usd_try} icon="cash-outline" accent={theme.colors.primary} />
-              <RatePill label="EUR" value={rates.eur_try} icon="cash-outline" accent={theme.colors.primary} />
+              <RatePill label={t('panel.s025')} value={rates.usd_try} icon="cash-outline" accent={theme.colors.primary} />
+              <RatePill label={t('panel.s026')} value={rates.eur_try} icon="cash-outline" accent={theme.colors.primary} />
               {rates.altin_gram_try != null && (
                 <RatePill
-                  label="Gram Altın"
+                  label={t('panel.s027')}
                   value={rates.altin_gram_try}
                   subValue={rates.altin_ons_usd != null ? fmtUSD(rates.altin_ons_usd) + ' (ons)' : null}
                   icon="ellipse"
@@ -340,18 +342,18 @@ export default function PanelScreen() {
               )}
               {rates.gumus_gram_try != null && (
                 <RatePill
-                  label="Gram Gümüş"
+                  label={t('panel.s028')}
                   value={rates.gumus_gram_try}
                   subValue={rates.gumus_ons_usd != null ? fmtUSD(rates.gumus_ons_usd) + ' (ons)' : null}
                   icon="ellipse-outline"
                   accent={theme.colors.textMuted}
                 />
               )}
-              <RatePill label="BTC" value={rates.btc_usd} format="usd" subValue={rates.btc_try != null ? fmtTRY(rates.btc_try) : null} icon="logo-bitcoin" accent={theme.colors.gold} />
-              <RatePill label="ETH" value={rates.eth_usd} format="usd" subValue={rates.eth_try != null ? fmtTRY(rates.eth_try) : null} icon="diamond-outline" accent={theme.colors.gold} />
-              {rates.bist100 != null && <RatePill label="BIST 100" value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
-              {rates.bist50 != null && <RatePill label="BIST 50" value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
-              {rates.bist30 != null && <RatePill label="BIST 30" value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              <RatePill label={t('panel.s029')} value={rates.btc_usd} format="usd" subValue={rates.btc_try != null ? fmtTRY(rates.btc_try) : null} icon="logo-bitcoin" accent={theme.colors.gold} />
+              <RatePill label={t('panel.s030')} value={rates.eth_usd} format="usd" subValue={rates.eth_try != null ? fmtTRY(rates.eth_try) : null} icon="diamond-outline" accent={theme.colors.gold} />
+              {rates.bist100 != null && <RatePill label={t('panel.s031')} value={rates.bist100} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist50 != null && <RatePill label={t('panel.s032')} value={rates.bist50} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
+              {rates.bist30 != null && <RatePill label={t('panel.s033')} value={rates.bist30} icon="bar-chart" accent={theme.colors.modules.gecmis} isIndex />}
             </ScrollView>
           </View>
         )}
@@ -360,8 +362,7 @@ export default function PanelScreen() {
           <TouchableOpacity style={s.trialBanner} onPress={() => router.push('/subscription' as any)} activeOpacity={0.85}>
             <Ionicons name="gift-outline" size={18} color={theme.colors.primaryDark} />
             <Text style={s.trialText}>
-              <Text style={{ fontWeight: '900' }}>{Math.max(subStatus.remaining_free ?? 0, 0)} ücretsiz teklif hakkınız</Text> kaldı. Devamı için abone olun.
-            </Text>
+              <Text style={{ fontWeight: '900' }}>{Math.max(subStatus.remaining_free ?? 0, 0)} {t('panel.s034')}</Text> {t('panel.s035')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.primaryDark} />
           </TouchableOpacity>
         )}
@@ -371,9 +372,7 @@ export default function PanelScreen() {
             <Ionicons name="time-outline" size={18} color={theme.colors.goldDark} />
             <Text style={s.alertText}>
               <Text style={{ fontWeight: '900' }}>
-                Aboneliğiniz {Math.max(subStatus.days_left ?? 0, 0)} gün sonra sona eriyor.
-              </Text> Kesintisiz devam etmek için yenileyin.
-            </Text>
+                {t('panel.s036')}{Math.max(subStatus.days_left ?? 0, 0)} {t('panel.s037')}</Text> {t('panel.s038')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.goldDark} />
           </TouchableOpacity>
         )}
@@ -382,8 +381,7 @@ export default function PanelScreen() {
           <TouchableOpacity style={s.alertBanner} onPress={() => router.push('/reminders' as any)} activeOpacity={0.85}>
             <Ionicons name="alert-circle" size={18} color={theme.colors.goldDark} />
             <Text style={s.alertText}>
-              <Text style={{ fontWeight: '900' }}>{overdueCount} hatırlatma</Text> süresi doldu / bugün doluyor. Kontrol et
-            </Text>
+              <Text style={{ fontWeight: '900' }}>{overdueCount} {t('panel.s039')}</Text> {t('panel.s040')}</Text>
             <Ionicons name="chevron-forward" size={16} color={theme.colors.goldDark} />
           </TouchableOpacity>
         )}
@@ -396,7 +394,7 @@ export default function PanelScreen() {
             onPress={() => router.push('/(tabs)/history')}
             testID="hero-hacim-card"
           >
-            <Text style={s.heroLabel}>BU AY HACİM{hacimTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={s.heroLabel}>{t('panel.s041')}{hacimTRY == null ? ' (USD)' : ''}</Text>
             <Text style={s.heroValue} numberOfLines={1}>
               {hacimTRY != null ? fmt(hacimTRY, 'TRY') : fmt(hacimBuAy, 'USD')}
             </Text>
@@ -413,7 +411,7 @@ export default function PanelScreen() {
             onPress={() => router.push({ pathname: '/(tabs)/history', params: { filter: 'bekleyen' } } as any)}
             testID="hero-bekleyen-card"
           >
-            <Text style={[s.heroLabel, { color: theme.colors.gold }]}>YANIT BEKLEYEN</Text>
+            <Text style={[s.heroLabel, { color: theme.colors.gold }]}>{t('panel.s042')}</Text>
             <Text style={[s.heroValue, { color: '#fff' }]}>{yanitBekleyen}</Text>
             <Text style={[s.heroSub, { color: theme.colors.textOnDark }]}>teklif</Text>
           </TouchableOpacity>
@@ -421,18 +419,18 @@ export default function PanelScreen() {
 
         {/* İkincil istatistikler */}
         <View style={s.statGrid}>
-          <StatCard icon="people" label="Müşteri" value={String(customers.length)} color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
-          <StatCard icon="construct" label="Aktif Servis" value={String(aktifServis)} color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
-          <StatCard icon="shield-checkmark" label="Garanti Aktif" value={String(garantiAktif)} color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/services')} />
-          <StatCard icon="megaphone" label="Kampanya" value={String(campaigns.length)} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
+          <StatCard icon="people" label={t('panel.s005')} value={String(customers.length)} color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
+          <StatCard icon="construct" label={t('panel.s043')} value={String(aktifServis)} color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
+          <StatCard icon="shield-checkmark" label={t('panel.s044')} value={String(garantiAktif)} color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/services')} />
+          <StatCard icon="megaphone" label={t('panel.s006')} value={String(campaigns.length)} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
         </View>
 
         {/* Genel Bakış — nakit durumu + teklif durumları */}
-        <SectionHeader icon="pie-chart-outline" title="Genel Bakış" />
+        <SectionHeader icon="pie-chart-outline" title={t('panel.s045')} />
         <View style={s.overviewRow}>
           {user?.is_staff ? (
             <View style={[s.card, s.overviewCard]}>
-              <Text style={s.overviewTitle}>TEKLİFLERİM (BU AY)</Text>
+              <Text style={s.overviewTitle}>{t('panel.s046')}</Text>
               {myQuoteStatusTotal > 0 ? (
                 <>
                   <View style={s.stackBar}>
@@ -450,22 +448,22 @@ export default function PanelScreen() {
                   </View>
                 </>
               ) : (
-                <Text style={s.emptyLineText}>Bu ay henüz teklif oluşturmadın.</Text>
+                <Text style={s.emptyLineText}>{t('panel.s047')}</Text>
               )}
             </View>
           ) : (
             <View style={[s.card, s.overviewCard]}>
-              <Text style={s.overviewTitle}>NAKİT DURUMU (BU AY)</Text>
+              <Text style={s.overviewTitle}>{t('panel.s048')}</Text>
               {paymentTotal > 0 ? (
                 <CashPieChart data={paymentBreakdown} total={paymentTotal} />
               ) : (
-                <Text style={s.emptyLineText}>Bu ay tahsil edilen ödeme yok.</Text>
+                <Text style={s.emptyLineText}>{t('panel.s049')}</Text>
               )}
             </View>
           )}
 
           <View style={[s.card, s.overviewCard]}>
-            <Text style={s.overviewTitle}>TEKLİF DURUMLARI</Text>
+            <Text style={s.overviewTitle}>{t('panel.s050')}</Text>
             {quoteStatusTotal > 0 ? (
               <CashPieChart
                 data={QUOTE_STATUSES.filter((st) => (quoteStatusCounts[st] || 0) > 0).map((st) => ({
@@ -476,34 +474,34 @@ export default function PanelScreen() {
                   amountLabel: fmtTRY(quoteStatusValues[st] || 0),
                 }))}
                 total={quoteStatusTotal}
-                centerLabel="TEKLİF"
+                centerLabel={t('panel.s051')}
                 formatValue={(n) => String(n)}
                 formatCenter={(n) => String(n)}
               />
             ) : (
-              <Text style={s.emptyLineText}>Henüz teklif oluşturulmadı.</Text>
+              <Text style={s.emptyLineText}>{t('panel.s007')}</Text>
             )}
           </View>
         </View>
 
         {/* Hızlı işlemler */}
-        <SectionHeader icon="flash-outline" title="Hızlı İşlemler" />
+        <SectionHeader icon="flash-outline" title={t('panel.s052')} />
         <View style={s.quickGrid}>
-          <QuickAction icon="add-circle" label="Yeni Teklif" color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/teklif')} />
-          <QuickAction icon="person-add" label="Yeni Müşteri" color={theme.colors.modules.musteri} onPress={() => router.push('/customer-add' as any)} />
-          <QuickAction icon="build" label="Yeni Servis" color={theme.colors.modules.servis} onPress={() => router.push('/service-add' as any)} />
-          <QuickAction icon="megaphone" label="Yeni Kampanya" color={theme.colors.modules.kampanya} onPress={() => router.push('/campaign-add' as any)} />
+          <QuickAction icon="add-circle" label={t('panel.s053')} color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/teklif')} />
+          <QuickAction icon="person-add" label={t('panel.s054')} color={theme.colors.modules.musteri} onPress={() => router.push('/customer-add' as any)} />
+          <QuickAction icon="build" label={t('panel.s055')} color={theme.colors.modules.servis} onPress={() => router.push('/service-add' as any)} />
+          <QuickAction icon="megaphone" label={t('panel.s056')} color={theme.colors.modules.kampanya} onPress={() => router.push('/campaign-add' as any)} />
         </View>
 
         {/* Yaklaşan işler */}
-        <SectionHeaderWithAction icon="time-outline" title="Yaklaşan İşler" actionLabel="Tümünü Gör" onAction={() => router.push('/reminders' as any)} />
+        <SectionHeaderWithAction icon="time-outline" title={t('panel.s057')} actionLabel={t('panel.s008')} onAction={() => router.push('/reminders' as any)} />
         <View style={s.card}>
           {upcoming.length === 0 ? (
-            <Text style={s.emptyLineText}>Yaklaşan garanti, bakım ya da teklif süresi yok.</Text>
+            <Text style={s.emptyLineText}>{t('panel.s058')}</Text>
           ) : (
             upcoming.map((it, idx) => {
               const u = urgency(it.days);
-              const label = it.days < 0 ? `${Math.abs(it.days)} gün önce doldu` : it.days === 0 ? 'Bugün' : `${it.days} gün`;
+              const label = it.days < 0 ? `${Math.abs(it.days)} gün önce doldu` : it.days === 0 ? t('panel.s059') : `${it.days} gün`;
               return (
                 <TouchableOpacity
                   key={it.key}
@@ -524,10 +522,10 @@ export default function PanelScreen() {
         </View>
 
         {/* Son teklifler */}
-        <SectionHeaderWithAction icon="document-text-outline" title="Son Teklifler" actionLabel="Tümünü Gör" onAction={() => router.push('/(tabs)/history')} />
+        <SectionHeaderWithAction icon="document-text-outline" title={t('panel.s060')} actionLabel={t('panel.s008')} onAction={() => router.push('/(tabs)/history')} />
         <View style={s.card}>
           {sonTeklifler.length === 0 ? (
-            <Text style={s.emptyLineText}>Henüz teklif oluşturulmadı.</Text>
+            <Text style={s.emptyLineText}>{t('panel.s007')}</Text>
           ) : (
             sonTeklifler.map((q, idx) => (
               <TouchableOpacity
@@ -536,7 +534,7 @@ export default function PanelScreen() {
                 onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: q.id } } as any)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={s.rowTitle} numberOfLines={1}>{q.musFirma || '(İsimsiz)'}</Text>
+                  <Text style={s.rowTitle} numberOfLines={1}>{q.musFirma || t('panel.s061')}</Text>
                   <Text style={s.rowSub} numberOfLines={1}>{q.teklifNo} · {trDate(q.tarih)}</Text>
                 </View>
                 <Text style={s.rowAmount} numberOfLines={1}>{fmt(q.genelToplam, q.paraBirimi)}</Text>
@@ -546,27 +544,27 @@ export default function PanelScreen() {
         </View>
 
         {/* Modüller */}
-        <SectionHeader icon="grid-outline" title="Modüller" />
+        <SectionHeader icon="grid-outline" title={t('panel.s063')} />
         <View style={s.moduleGrid}>
-          <ModuleTile icon="create" label="Teklif" color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/teklif')} />
-          <ModuleTile icon="library" label="Katalog" color={theme.colors.modules.katalog} onPress={() => router.push('/(tabs)/catalog')} />
-          <ModuleTile icon="time" label="Geçmiş" color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/history')} />
-          <ModuleTile icon="people" label="Müşteri" color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
-          <ModuleTile icon="construct" label="Servis" color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
-          <ModuleTile icon="megaphone" label="Kampanya" color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
-          <ModuleTile icon="search" label="Müşteri Avcısı" color={theme.colors.modules.lead} onPress={() => router.push('/(tabs)/leads' as any)} />
-          <ModuleTile icon="calendar" label="Takvim" color={theme.colors.modules.hatirlatma} onPress={() => router.push('/(tabs)/calendar' as any)} />
-          <ModuleTile icon="notifications" label="Hatırlatmalar" color={theme.colors.modules.hatirlatma} onPress={() => router.push('/reminders' as any)} />
-          <ModuleTile icon="bar-chart" label="Raporlar" color={theme.colors.modules.raporlar} onPress={() => router.push('/reports' as any)} />
-          <ModuleTile icon="wallet" label="Kasa" color={theme.colors.modules.kasa} onPress={() => router.push('/(tabs)/kasa')} />
-          <ModuleTile icon="cash" label="Tahsilat" color={theme.colors.modules.tahsilat} onPress={() => router.push('/(tabs)/tahsilat')} />
-          <ModuleTile icon="business" label="Firma" color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
-          <ModuleTile icon="chatbubbles" label="Ekip Sohbeti" color={theme.colors.modules.mesaj} onPress={() => router.push('/(tabs)/team-chat' as any)} />
+          <ModuleTile icon="create" label={t('panel.s064')} color={theme.colors.modules.teklif} onPress={() => router.push('/(tabs)/teklif')} />
+          <ModuleTile icon="library" label={t('panel.s065')} color={theme.colors.modules.katalog} onPress={() => router.push('/(tabs)/catalog')} />
+          <ModuleTile icon="time" label={t('panel.s066')} color={theme.colors.modules.gecmis} onPress={() => router.push('/(tabs)/history')} />
+          <ModuleTile icon="people" label={t('panel.s005')} color={theme.colors.modules.musteri} onPress={() => router.push('/(tabs)/customers')} />
+          <ModuleTile icon="construct" label={t('panel.s067')} color={theme.colors.modules.servis} onPress={() => router.push('/(tabs)/services')} />
+          <ModuleTile icon="megaphone" label={t('panel.s006')} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
+          <ModuleTile icon="search" label={t('panel.s068')} color={theme.colors.modules.lead} onPress={() => router.push('/(tabs)/leads' as any)} />
+          <ModuleTile icon="calendar" label={t('panel.s069')} color={theme.colors.modules.hatirlatma} onPress={() => router.push('/(tabs)/calendar' as any)} />
+          <ModuleTile icon="notifications" label={t('panel.s070')} color={theme.colors.modules.hatirlatma} onPress={() => router.push('/reminders' as any)} />
+          <ModuleTile icon="bar-chart" label={t('panel.s071')} color={theme.colors.modules.raporlar} onPress={() => router.push('/reports' as any)} />
+          <ModuleTile icon="wallet" label={t('panel.s072')} color={theme.colors.modules.kasa} onPress={() => router.push('/(tabs)/kasa')} />
+          <ModuleTile icon="cash" label={t('panel.s073')} color={theme.colors.modules.tahsilat} onPress={() => router.push('/(tabs)/tahsilat')} />
+          <ModuleTile icon="business" label={t('panel.s074')} color={theme.colors.modules.firma} onPress={() => router.push('/(tabs)/company')} />
+          <ModuleTile icon="chatbubbles" label={t('panel.s075')} color={theme.colors.modules.mesaj} onPress={() => router.push('/(tabs)/team-chat' as any)} />
           {!user?.is_staff ? (
-            <ModuleTile icon="person-add" label="Personel" color={theme.colors.gold} onPress={() => router.push('/(tabs)/personel' as any)} />
+            <ModuleTile icon="person-add" label={t('panel.s076')} color={theme.colors.gold} onPress={() => router.push('/(tabs)/personel' as any)} />
           ) : null}
           {(user?.email || '').toLowerCase() === 'ncagdasm@gmail.com' ? (
-            <ModuleTile icon="gift" label="Hediye Kodu" color={theme.colors.gold} onPress={() => router.push('/(tabs)/promo-admin' as any)} />
+            <ModuleTile icon="gift" label={t('panel.s077')} color={theme.colors.gold} onPress={() => router.push('/(tabs)/promo-admin' as any)} />
           ) : null}
         </View>
       </ScrollView>

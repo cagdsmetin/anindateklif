@@ -15,6 +15,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { ManualReminderT } from '@/src/lib/api';
 import { getHolidaysForYears } from '@/src/lib/holidays';
+import { useLanguage } from '@/src/lib/i18n';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
@@ -66,6 +67,7 @@ function todayIso() {
 }
 
 export default function CalendarScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { services, quotes, activeCompany, reminders, createReminder, updateReminder, deleteReminder } = useApp();
@@ -115,7 +117,7 @@ export default function CalendarScreen() {
           add(q.gecerlilik, {
             id: `t-${q.id}`,
             kind: 'teklif',
-            title: q.musFirma || '(İsimsiz)',
+            title: q.musFirma || t('calendar.s016'),
             sub: q.teklifNo || '',
             onPress: () => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: q.id } } as any),
           });
@@ -137,7 +139,7 @@ export default function CalendarScreen() {
         id: `h-${h.kind}-${h.date}-${h.title}`,
         kind: h.kind,
         title: h.title,
-        sub: h.kind === 'resmi' ? 'Resmi Tatil' : 'Dini Gün',
+        sub: h.kind === 'resmi' ? 'Resmi Tatil' : t('calendar.s017'),
       });
     });
     return map;
@@ -210,10 +212,10 @@ export default function CalendarScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Takvim</Text>
+          <Text style={s.headerTitle}>{t('calendar.s001')}</Text>
           <View style={s.headerBtn} />
         </View>
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <View style={s.empty}><Text style={s.emptyText}>{t('calendar.s018')}</Text></View>
       </SafeAreaView>
     );
   }
@@ -224,7 +226,7 @@ export default function CalendarScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Takvim</Text>
+        <Text style={s.headerTitle}>{t('calendar.s001')}</Text>
         <TouchableOpacity onPress={goToday} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="today-outline" size={20} color={theme.colors.primary} />
         </TouchableOpacity>
@@ -294,16 +296,16 @@ export default function CalendarScreen() {
         </View>
 
         <View style={s.sectionRow}>
-          <Text style={s.sectionTitle}>{selectedDate === tIso ? 'Bugün' : selectedDate}</Text>
+          <Text style={s.sectionTitle}>{selectedDate === tIso ? t('calendar.s019') : selectedDate}</Text>
           <TouchableOpacity style={s.addNoteBtn} onPress={openAddReminder} testID="cal-add-reminder">
             <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
-            <Text style={s.addNoteText}>Not / Hatırlatıcı Ekle</Text>
+            <Text style={s.addNoteText}>{t('calendar.s002')}</Text>
           </TouchableOpacity>
         </View>
         {selectedEvents.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="calendar-outline" size={26} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Bu tarihte bir şey yok.</Text>
+            <Text style={s.emptyTextBox}>{t('calendar.s020')}</Text>
           </View>
         ) : (
           selectedEvents.map((ev) => (
@@ -325,23 +327,23 @@ export default function CalendarScreen() {
       <Modal visible={showReminderModal} transparent animationType="fade" onRequestClose={() => setShowReminderModal(false)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowReminderModal(false)}>
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
-            <Text style={s.modalTitle}>{editingReminder ? 'Notu Düzenle' : 'Not / Hatırlatıcı Ekle'}</Text>
+            <Text style={s.modalTitle}>{editingReminder ? t('calendar.s021') : t('calendar.s002')}</Text>
             <Text style={s.modalDate}>{trDateLabel(editingReminder ? editingReminder.tarih : selectedDate)}</Text>
-            <Text style={s.modalLabel}>Başlık</Text>
+            <Text style={s.modalLabel}>{t('calendar.s022')}</Text>
             <TextInput
               style={s.modalInput}
               value={formBaslik}
               onChangeText={setFormBaslik}
-              placeholder="örn: Müşteriyi ara"
+              placeholder={t('calendar.s023')}
               placeholderTextColor="#94a3b8"
               testID="reminder-baslik-input"
             />
-            <Text style={s.modalLabel}>Not (opsiyonel)</Text>
+            <Text style={s.modalLabel}>{t('calendar.s024')}</Text>
             <TextInput
               style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]}
               value={formNotu}
               onChangeText={setFormNotu}
-              placeholder="Detay ekleyin"
+              placeholder={t('calendar.s025')}
               placeholderTextColor="#94a3b8"
               multiline
               testID="reminder-notu-input"
@@ -353,7 +355,7 @@ export default function CalendarScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowReminderModal(false)}>
-                <Text style={s.modalCancelText}>Vazgeç</Text>
+                <Text style={s.modalCancelText}>{t('calendar.s026')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.modalSaveBtn} onPress={saveReminder} disabled={savingReminder} testID="reminder-save-btn">
                 <Text style={s.modalSaveText}>{savingReminder ? 'Kaydediliyor...' : 'Kaydet'}</Text>

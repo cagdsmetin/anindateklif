@@ -17,6 +17,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
+import { useLanguage } from '@/src/lib/i18n';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -38,11 +39,12 @@ function trDate(iso: string): string {
 }
 
 export default function ServicesScreen() {
+  const { t } = useLanguage();
   const { services, activeCompany, deleteService, updateServiceStatus, showToast } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string>('Tümü');
+  const [filter, setFilter] = useState<string>(t('services.s001'));
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -70,7 +72,7 @@ export default function ServicesScreen() {
 
   const remind = (svc: ServiceT) => {
     const cleaned = normalizePhoneForWhatsApp(svc.musTelefon || '');
-    const musteri = svc.musYetkili || svc.musFirma || 'Değerli Müşterimiz';
+    const musteri = svc.musYetkili || svc.musFirma || t('services.s005');
     const parts: string[] = [`Merhaba ${musteri},`, ''];
     const gDays = daysUntil(svc.garantiBitis);
     const bDays = daysUntil(svc.bakimTarihi);
@@ -85,32 +87,32 @@ export default function ServicesScreen() {
     } else {
       parts.push(`${svc.baslik} ile ilgili sizi bilgilendirmek isteriz.`);
     }
-    parts.push('', 'İyi günler dileriz,', activeCompany?.sirketAdi || 'Firmamız');
+    parts.push('', t('services.s006'), activeCompany?.sirketAdi || t('services.s007'));
     const text = encodeURIComponent(parts.join('\n'));
     const url = cleaned ? `https://wa.me/${cleaned}?text=${text}` : `https://wa.me/?text=${text}`;
-    Linking.openURL(url).catch(() => showToast('WhatsApp açılamadı'));
+    Linking.openURL(url).catch(() => showToast(t('services.s008')));
   };
 
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Servis" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <TopHeader title={t('services.s009')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('services.s010')}</Text></View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Servis & Garanti" />
+      <TopHeader title={t('services.s011')} />
       <View style={{ padding: 14, paddingBottom: 6 }}>
         <View style={s.statsRow}>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Toplam Servis</Text>
+            <Text style={s.statLabel}>{t('services.s012')}</Text>
             <Text style={s.statValue}>{services.length}</Text>
           </View>
           <View style={[s.statCard, garantiYaklasan > 0 && { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.goldBorder }]}>
-            <Text style={[s.statLabel, garantiYaklasan > 0 && { color: theme.colors.goldDark }]}>Garanti Yaklaşan</Text>
+            <Text style={[s.statLabel, garantiYaklasan > 0 && { color: theme.colors.goldDark }]}>{t('services.s013')}</Text>
             <Text style={[s.statValue, garantiYaklasan > 0 && { color: theme.colors.goldDark }]}>{garantiYaklasan}</Text>
           </View>
         </View>
@@ -119,7 +121,7 @@ export default function ServicesScreen() {
           <TextInput
             testID="services-search"
             style={s.searchInput}
-            placeholder="Müşteri, başlık ara..."
+            placeholder={t('services.s014')}
             placeholderTextColor="#94a3b8"
             value={q}
             onChangeText={setQ}
@@ -127,7 +129,7 @@ export default function ServicesScreen() {
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
-        {['Tümü', ...STATUSES].map((st) => (
+        {[t('services.s001'), ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
             <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
           </TouchableOpacity>
@@ -137,7 +139,7 @@ export default function ServicesScreen() {
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="construct-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Kayıtlı servis kaydı yok.</Text>
+            <Text style={s.emptyTextBox}>{t('services.s015')}</Text>
           </View>
         ) : filtered.map((svc) => {
           const c = statusColor(svc.durum);
@@ -151,7 +153,7 @@ export default function ServicesScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.hTitle} numberOfLines={1}>{svc.baslik}</Text>
                   <Text style={s.hFirma} numberOfLines={1}>{svc.musFirma || svc.musYetkili || '-'}</Text>
-                  <Text style={s.hDate}>Servis: {trDate(svc.servisTarihi)}</Text>
+                  <Text style={s.hDate}>{t('services.s016')}{trDate(svc.servisTarihi)}</Text>
                 </View>
                 <TouchableOpacity testID={`svc-status-${svc.id}`} onPress={() => setStatusMenuFor(svc.id)} style={[s.statusBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
                   <Text style={[s.statusText, { color: c.text }]}>{svc.durum}</Text>
@@ -164,13 +166,13 @@ export default function ServicesScreen() {
                   {svc.garantiBitis ? (
                     <View style={[s.dateChip, gWarn && s.dateChipWarn]}>
                       <Ionicons name="shield-checkmark-outline" size={12} color={gWarn ? theme.colors.goldDark : theme.colors.textMuted} />
-                      <Text style={[s.dateChipText, gWarn && s.dateChipTextWarn]}>Garanti: {trDate(svc.garantiBitis)}</Text>
+                      <Text style={[s.dateChipText, gWarn && s.dateChipTextWarn]}>{t('services.s017')}{trDate(svc.garantiBitis)}</Text>
                     </View>
                   ) : null}
                   {svc.bakimTarihi ? (
                     <View style={[s.dateChip, bWarn && s.dateChipWarn]}>
                       <Ionicons name="build-outline" size={12} color={bWarn ? theme.colors.goldDark : theme.colors.textMuted} />
-                      <Text style={[s.dateChipText, bWarn && s.dateChipTextWarn]}>Bakım: {trDate(svc.bakimTarihi)}</Text>
+                      <Text style={[s.dateChipText, bWarn && s.dateChipTextWarn]}>{t('services.s018')}{trDate(svc.bakimTarihi)}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -181,11 +183,11 @@ export default function ServicesScreen() {
               <View style={s.actionBar}>
                 <TouchableOpacity style={s.actBtn} onPress={() => openEdit(svc.id)} testID={`svc-edit-${svc.id}`}>
                   <Ionicons name="pencil-outline" size={14} color={theme.colors.primary} />
-                  <Text style={s.actText}>Düzenle</Text>
+                  <Text style={s.actText}>{t('services.s019')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => remind(svc)} testID={`svc-remind-${svc.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-                  <Text style={[s.actText, { color: '#16a34a' }]}>Hatırlat</Text>
+                  <Text style={[s.actText, { color: '#16a34a' }]}>{t('services.s020')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtnIcon} onPress={() => deleteService(svc.id)} testID={`svc-delete-${svc.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
@@ -206,7 +208,7 @@ export default function ServicesScreen() {
       <Modal visible={!!statusMenuFor} transparent animationType="fade">
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setStatusMenuFor(null)}>
           <View style={s.menu}>
-            <Text style={s.menuTitle}>Durum Seç</Text>
+            <Text style={s.menuTitle}>{t('services.s021')}</Text>
             {STATUSES.map((st) => {
               const cc = statusColor(st);
               return (
@@ -215,7 +217,7 @@ export default function ServicesScreen() {
                   testID={`svc-set-status-${st}`}
                   style={[s.menuItem, { backgroundColor: cc.bg, borderColor: cc.border }]}
                   onPress={async () => {
-                    if (statusMenuFor) { await updateServiceStatus(statusMenuFor, st); showToast('Durum güncellendi'); }
+                    if (statusMenuFor) { await updateServiceStatus(statusMenuFor, st); showToast(t('services.s022')); }
                     setStatusMenuFor(null);
                   }}
                 >

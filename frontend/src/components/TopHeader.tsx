@@ -6,8 +6,10 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useRouter } from 'expo-router';
 import NavDrawer from '@/src/components/NavDrawer';
+import { useLanguage } from '@/src/lib/i18n';
 
 export default function TopHeader({ title }: { title?: string }) {
+  const { t } = useLanguage();
   const { activeCompany, companies, setActiveCompanyId, toast } = useApp();
   const { user, signOut } = useAuth();
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -49,9 +51,9 @@ export default function TopHeader({ title }: { title?: string }) {
             <Ionicons name="flash" size={17} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.appName} numberOfLines={1}>Anında Teklif</Text>
+            <Text style={s.appName} numberOfLines={1}>{t('topHeader.s003')}</Text>
             <Text style={s.appSubtitle} numberOfLines={1}>
-              {title || activeCompany?.sirketAdi || 'Firma seçiniz'}
+              {title || activeCompany?.sirketAdi || t('topHeader.s004')}
             </Text>
           </View>
         </TouchableOpacity>
@@ -84,7 +86,7 @@ export default function TopHeader({ title }: { title?: string }) {
       <Modal visible={pickerVisible} transparent animationType="fade">
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setPickerVisible(false)}>
           <View style={s.pickerCard}>
-            <Text style={s.pickerTitle}>Aktif Firma Seç</Text>
+            <Text style={s.pickerTitle}>{t('topHeader.s005')}</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               {companies.map((c) => {
                 const active = c.id === activeCompany?.id;
@@ -119,7 +121,7 @@ export default function TopHeader({ title }: { title?: string }) {
               }}
             >
               <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
-              <Text style={s.addNewText}>Firma Yönetimi</Text>
+              <Text style={s.addNewText}>{t('topHeader.s006')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -139,7 +141,7 @@ export default function TopHeader({ title }: { title?: string }) {
                   </Text>
                 </View>
               )}
-              <Text style={s.userName} numberOfLines={1}>{user?.name || 'Kullanıcı'}</Text>
+              <Text style={s.userName} numberOfLines={1}>{user?.name || t('topHeader.s007')}</Text>
               <Text style={s.userEmail} numberOfLines={1}>{user?.email}</Text>
             </View>
             <TouchableOpacity
@@ -152,17 +154,17 @@ export default function TopHeader({ title }: { title?: string }) {
                 // out by accident.
                 if (Platform.OS === 'web') {
                   // eslint-disable-next-line no-alert
-                  if (window.confirm('Çıkış yapmak istediğinize emin misiniz?')) signOut();
+                  if (window.confirm(t('topHeader.s002'))) signOut();
                   return;
                 }
-                Alert.alert('Çıkış Yap', 'Çıkış yapmak istediğinize emin misiniz?', [
-                  { text: 'Vazgeç', style: 'cancel' },
-                  { text: 'Çıkış Yap', style: 'destructive', onPress: () => signOut() },
+                Alert.alert(t('topHeader.s001'), t('topHeader.s002'), [
+                  { text: t('topHeader.s008'), style: 'cancel' },
+                  { text: t('topHeader.s001'), style: 'destructive', onPress: () => signOut() },
                 ]);
               }}
             >
               <Ionicons name="log-out-outline" size={16} color={theme.colors.red} />
-              <Text style={s.signoutText}>Çıkış Yap</Text>
+              <Text style={s.signoutText}>{t('topHeader.s001')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

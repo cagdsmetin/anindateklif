@@ -15,16 +15,18 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { CustomerT } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 
 
-function renderCampaignMessage(mesaj: string, musteri: string, firma: string): string {
+function renderCampaignMessage(t: (k: string) => string, mesaj: string, musteri: string, firma: string): string {
   return mesaj
-    .split('{musteri}').join(musteri || 'Değerli Müşterimiz')
+    .split('{musteri}').join(musteri || t('campaignDetail.s001'))
     .split('{firma}').join(firma || '');
 }
 
 export default function CampaignDetailScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { campaigns, customers, quotes, activeCompany, markCampaignSent, showToast, toast } = useApp();
@@ -60,9 +62,9 @@ export default function CampaignDetailScreen() {
     return Array.from(set).sort();
   }, [customerSystemTypes]);
 
-  const AUDIENCE_FILTERS = useMemo(() => ['Tümü', ...availableSegments], [availableSegments]);
+  const AUDIENCE_FILTERS = useMemo(() => [t('campaignDetail.s002'), ...availableSegments], [availableSegments]);
 
-  const [audienceFilter, setAudienceFilter] = useState('Tümü');
+  const [audienceFilter, setAudienceFilter] = useState(t('campaignDetail.s002'));
   const [search, setSearch] = useState('');
 
   const allCustomersWithPhone = useMemo(
@@ -101,21 +103,21 @@ export default function CampaignDetailScreen() {
   const pct = total > 0 ? Math.min(1, sentCount / total) : 0;
 
   const openWhatsApp = (customer: CustomerT) => {
-    const musteri = customer.yetkili || customer.firma || 'Değerli Müşterimiz';
-    const text = renderCampaignMessage(campaign?.mesaj || '', musteri, firmaAdi);
+    const musteri = customer.yetkili || customer.firma || t('campaignDetail.s001');
+    const text = renderCampaignMessage(t, campaign?.mesaj || '', musteri, firmaAdi);
     const cleaned = normalizePhoneForWhatsApp(customer.telefon || '');
     if (!cleaned) {
-      showToast('Geçerli bir telefon numarası yok');
+      showToast(t('campaignDetail.s003'));
       return;
     }
     const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
-    Linking.openURL(url).catch(() => showToast('WhatsApp açılamadı'));
+    Linking.openURL(url).catch(() => showToast(t('campaignDetail.s004')));
   };
 
   const markSent = async (customer: CustomerT) => {
     if (!campaign) return;
     await markCampaignSent(campaign.id, customer.id);
-    showToast('Gönderildi olarak işaretlendi');
+    showToast(t('campaignDetail.s005'));
   };
 
   if (!campaign) {
@@ -125,17 +127,17 @@ export default function CampaignDetailScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Kampanya</Text>
+          <Text style={s.headerTitle}>{t('campaignDetail.s006')}</Text>
           <View style={s.headerBtn} />
         </View>
-        <View style={s.empty}><Text style={s.emptyText}>Kampanya bulunamadı</Text></View>
+        <View style={s.empty}><Text style={s.emptyText}>{t('campaignDetail.s007')}</Text></View>
       </SafeAreaView>
     );
   }
 
   const previewText = previewCustomer
-    ? renderCampaignMessage(campaign.mesaj, previewCustomer.yetkili || previewCustomer.firma, firmaAdi)
-    : renderCampaignMessage(campaign.mesaj, 'Değerli Müşterimiz', firmaAdi);
+    ? renderCampaignMessage(t, campaign.mesaj, previewCustomer.yetkili || previewCustomer.firma, firmaAdi)
+    : renderCampaignMessage(t, campaign.mesaj, t('campaignDetail.s001'), firmaAdi);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -158,29 +160,28 @@ export default function CampaignDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <View style={s.progressCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={s.progressLabel}>Gönderim Durumu</Text>
-            <Text style={s.progressCount}>{sentCount}/{total} müşteri</Text>
+            <Text style={s.progressLabel}>{t('campaignDetail.s008')}</Text>
+            <Text style={s.progressCount}>{sentCount}/{total} {t('campaignDetail.s010')}</Text>
           </View>
           <View style={s.progressTrack}>
             <View style={[s.progressFill, { width: `${pct * 100}%` }]} />
           </View>
         </View>
 
-        <Text style={s.sectionTitle}>Mesaj Önizleme</Text>
+        <Text style={s.sectionTitle}>{t('campaignDetail.s011')}</Text>
         <View style={s.bubbleWrap}>
           <View style={s.bubble}>
             <Text style={s.bubbleText}>{previewText}</Text>
           </View>
           {previewCustomer ? (
             <Text style={s.bubbleCaption}>
-              {previewCustomer.yetkili || previewCustomer.firma} için önizleme
-            </Text>
+              {previewCustomer.yetkili || previewCustomer.firma} {t('campaignDetail.s012')}</Text>
           ) : (
-            <Text style={s.bubbleCaption}>Telefonlu müşteri bulunamadı</Text>
+            <Text style={s.bubbleCaption}>{t('campaignDetail.s013')}</Text>
           )}
         </View>
 
-        <Text style={s.sectionTitle}>Hedef Kitle</Text>
+        <Text style={s.sectionTitle}>{t('campaignDetail.s014')}</Text>
         <View style={s.filterRow}>
           {AUDIENCE_FILTERS.map((f) => (
             <TouchableOpacity
@@ -195,8 +196,7 @@ export default function CampaignDetailScreen() {
         </View>
         {availableSegments.length === 0 && (
           <Text style={s.helperTinyMuted}>
-            Müşteriler teklif aldıkları hizmete göre otomatik gruplanır (örn. "Pergola"). Henüz eşleşen teklif yok, bu yüzden şimdilik sadece "Tümü" var.
-          </Text>
+            {t('campaignDetail.s015')}</Text>
         )}
         <View style={s.searchBox}>
           <Ionicons name="search-outline" size={16} color={theme.colors.textMuted} />
@@ -204,17 +204,17 @@ export default function CampaignDetailScreen() {
             style={s.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Müşteri adı veya telefon ile ara..."
+            placeholder={t('campaignDetail.s016')}
             placeholderTextColor={theme.colors.textMuted}
             testID="campdetail-search"
           />
         </View>
 
-        <Text style={s.sectionTitle}>Müşteriler ({audienceCustomers.length})</Text>
+        <Text style={s.sectionTitle}>{t('campaignDetail.s017')}{audienceCustomers.length})</Text>
         {audienceCustomers.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={26} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Telefon numarası kayıtlı müşteri yok.</Text>
+            <Text style={s.emptyTextBox}>{t('campaignDetail.s019')}</Text>
           </View>
         ) : audienceCustomers.map((c) => {
           const send = sends[c.id];
@@ -238,7 +238,7 @@ export default function CampaignDetailScreen() {
                   testID={`campdetail-wa-${c.id}`}
                 >
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-                  <Text style={s.waBtnText}>WhatsApp</Text>
+                  <Text style={s.waBtnText}>{t('campaignDetail.s021')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.sentBtn, isSent && s.sentBtnDone]}
@@ -247,7 +247,7 @@ export default function CampaignDetailScreen() {
                   testID={`campdetail-sent-${c.id}`}
                 >
                   <Ionicons name={isSent ? 'checkmark-circle' : 'checkmark-circle-outline'} size={14} color={isSent ? '#fff' : theme.colors.primary} />
-                  <Text style={[s.sentBtnText, isSent && s.sentBtnTextDone]}>{isSent ? 'Gönderildi' : 'Gönderdim'}</Text>
+                  <Text style={[s.sentBtnText, isSent && s.sentBtnTextDone]}>{isSent ? t('campaignDetail.s022') : t('campaignDetail.s023')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

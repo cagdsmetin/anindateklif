@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, LeadSearchRequestT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -45,6 +46,7 @@ function parseBulkText(text: string) {
 }
 
 export default function LeadAdminScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -61,7 +63,7 @@ export default function LeadAdminScreen() {
       const res = await api.adminListLeadSearchRequests();
       setRequests(res || []);
     } catch {
-      setError('Talep listesi alınamadı');
+      setError(t('leadAdmin.s005'));
     }
   }, []);
 
@@ -75,7 +77,7 @@ export default function LeadAdminScreen() {
   const onSubmitBulk = async () => {
     if (!selected || busy) return;
     if (previewItems.length === 0) {
-      setError('En az bir firma satırı gir (Firma | Bölge | Kategori | Telefon)');
+      setError(t('leadAdmin.s006'));
       return;
     }
     setError('');
@@ -84,7 +86,7 @@ export default function LeadAdminScreen() {
       const res = await api.adminBulkAddLeads(selected.companyId, previewItems);
       setLastAddedCount(res?.length || 0);
       setBulkText('');
-      await api.adminUpdateLeadSearchRequest(selected.id, 'Tamamlandı');
+      await api.adminUpdateLeadSearchRequest(selected.id, t('leadAdmin.s001'));
       await load();
       setSelected(null);
     } catch (e: any) {
@@ -110,11 +112,11 @@ export default function LeadAdminScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Firma Arama Talepleri</Text>
+          <Text style={s.headerTitle}>{t('leadAdmin.s002')}</Text>
           <View style={s.headerBtn} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Bu sayfayı görüntüleme yetkiniz yok.</Text>
+          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>{t('leadAdmin.s007')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -129,7 +131,7 @@ export default function LeadAdminScreen() {
         <TouchableOpacity onPress={() => (selected ? setSelected(null) : router.back())} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="lead-admin-back">
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Firma Arama Talepleri</Text>
+        <Text style={s.headerTitle}>{t('leadAdmin.s002')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -142,35 +144,35 @@ export default function LeadAdminScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
             <View style={s.card}>
-              <Text style={s.fieldLabel}>FİRMA</Text>
+              <Text style={s.fieldLabel}>{t('leadAdmin.s008')}</Text>
               <Text style={s.reqTitle}>{selected.companyName}</Text>
-              <Text style={s.fieldLabel}>SEKTÖR / BÖLGE</Text>
+              <Text style={s.fieldLabel}>{t('leadAdmin.s009')}</Text>
               <Text style={s.reqTitle}>{selected.sektor}{selected.bolge ? ` · ${selected.bolge}` : ''}</Text>
               {!!selected.aciklama && (
                 <>
-                  <Text style={s.fieldLabel}>AÇIKLAMA</Text>
+                  <Text style={s.fieldLabel}>{t('leadAdmin.s010')}</Text>
                   <Text style={s.reqDesc}>{selected.aciklama}</Text>
                 </>
               )}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>Bulunan Firmaları Yapıştır</Text>
-            <Text style={s.hint}>Her satıra bir firma: Firma Adı | Bölge | Kategori | Telefon</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('leadAdmin.s011')}</Text>
+            <Text style={s.hint}>{t('leadAdmin.s012')}</Text>
             <TextInput
               style={s.textarea}
               multiline
               value={bulkText}
               onChangeText={setBulkText}
-              placeholder={'QaraQalem İç Mimarlık | Ataşehir | Mimar | +905343003040\nA Proje Yapı | Şişli | Mimar | +905321680015'}
+              placeholder={t('leadAdmin.s013')}
               placeholderTextColor="#94a3b8"
               testID="lead-admin-bulk-input"
             />
-            <Text style={s.hint}>{previewItems.length} firma algılandı</Text>
+            <Text style={s.hint}>{previewItems.length} {t('leadAdmin.s014')}</Text>
 
             {error ? <Text style={s.errorText}>{error}</Text> : null}
 
             <TouchableOpacity style={[s.cta, busy && { opacity: 0.6 }]} onPress={onSubmitBulk} disabled={busy} testID="lead-admin-submit">
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Listeye Ekle ve Talebi Kapat</Text>}
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('leadAdmin.s015')}</Text>}
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -178,13 +180,13 @@ export default function LeadAdminScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {lastAddedCount > 0 && (
             <View style={s.successBox}>
-              <Text style={s.successText}>{lastAddedCount} firma eklendi ✓</Text>
+              <Text style={s.successText}>{lastAddedCount} {t('leadAdmin.s016')}</Text>
             </View>
           )}
 
-          <Text style={s.sectionLabel}>Bekleyen Talepler ({pending.length})</Text>
+          <Text style={s.sectionLabel}>{t('leadAdmin.s017')}{pending.length})</Text>
           {pending.length === 0 ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginBottom: 20 }}>Bekleyen talep yok.</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginBottom: 20 }}>{t('leadAdmin.s018')}</Text>
           ) : (
             pending.map((r) => (
               <TouchableOpacity key={r.id} style={s.reqRow} onPress={() => setSelected(r)} testID={`lead-admin-req-${r.id}`}>
@@ -197,9 +199,9 @@ export default function LeadAdminScreen() {
             ))
           )}
 
-          <Text style={[s.sectionLabel, { marginTop: 22 }]}>Tamamlanmış ({done.length})</Text>
+          <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('leadAdmin.s019')}{done.length})</Text>
           {done.length === 0 ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Henüz tamamlanan talep yok.</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('leadAdmin.s020')}</Text>
           ) : (
             done.map((r) => (
               <View key={r.id} style={[s.reqRow, { opacity: 0.6 }]}>
@@ -207,7 +209,7 @@ export default function LeadAdminScreen() {
                   <Text style={s.reqRowTitle} numberOfLines={1}>{r.companyName} — {r.sektor}{r.bolge ? ` · ${r.bolge}` : ''}</Text>
                   <Text style={s.reqRowMeta} numberOfLines={1}>{fmtDate(r.createdAt)}</Text>
                 </View>
-                <View style={s.badgeDone}><Text style={s.badgeDoneText}>Tamamlandı</Text></View>
+                <View style={s.badgeDone}><Text style={s.badgeDoneText}>{t('leadAdmin.s001')}</Text></View>
               </View>
             ))
           )}

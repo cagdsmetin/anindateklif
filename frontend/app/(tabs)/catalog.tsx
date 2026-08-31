@@ -21,6 +21,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
 import { shareFileViaWhatsApp } from '@/src/lib/file-share';
+import { useLanguage } from '@/src/lib/i18n';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
   { value: 'text', label: 'Metin', icon: 'text-outline' },
@@ -153,6 +154,7 @@ function fmtFileSize(bytes: number): string {
 }
 
 export default function CatalogScreen() {
+  const { t } = useLanguage();
   const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, updateCompany, showToast } = useApp();
   const { user: me } = useAuth();
   // Katalog ve Yapılandırıcı sadece firma sahibi tarafından yönetilir --
@@ -198,10 +200,10 @@ export default function CatalogScreen() {
       const mime = asset.mimeType || (asset.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
       const dataUri = `data:${mime};base64,${b64}`;
       await api.uploadCatalogFile(activeCompany.id, asset.name || 'katalog', dataUri);
-      showToast('Katalog dosyası yüklendi');
+      showToast(t('catalog.s007'));
       await loadCatalogFiles();
     } catch (e: any) {
-      showToast('Yüklenemedi: ' + (e?.message || ''));
+      showToast(t('catalog.s008') + (e?.message || ''));
     } finally {
       setUploadingFile(false);
     }
@@ -217,7 +219,7 @@ export default function CatalogScreen() {
       const full = await api.downloadCatalogFile(f.id);
       await shareFileViaWhatsApp({ name: full.name, mime: full.mime, dataBase64: full.dataBase64 });
     } catch (e: any) {
-      showToast('Paylaşılamadı: ' + (e?.message || ''));
+      showToast(t('catalog.s009') + (e?.message || ''));
     }
   };
 
@@ -226,11 +228,11 @@ export default function CatalogScreen() {
     setSharingEmail(true);
     try {
       await api.shareCatalogFileEmail(emailShareFor.id, shareEmail.trim());
-      showToast('E-posta gönderildi');
+      showToast(t('catalog.s010'));
       setEmailShareFor(null);
       setShareEmail('');
     } catch (e: any) {
-      showToast('Gönderilemedi: ' + (e?.message || ''));
+      showToast(t('catalog.s011') + (e?.message || ''));
     } finally {
       setSharingEmail(false);
     }
@@ -279,7 +281,7 @@ export default function CatalogScreen() {
     };
     persistSystems([...sistemTipleri, copy]);
     setExpandedSystem(copy.id);
-    showToast('Hizmet/Ürün kopyalandı');
+    showToast(t('catalog.s012'));
   };
 
   const openAddField = (sysId: string) => {
@@ -293,8 +295,8 @@ export default function CatalogScreen() {
     setNewField({ label: field.label, type: field.type, options: field.options || [], optionInput: '' });
   };
   const commitAddField = () => {
-    if (!showAddField || !newField.label.trim()) { showToast('Alan adı zorunlu'); return; }
-    if (newField.type === 'select' && newField.options.length === 0) { showToast('Liste tipi için en az bir seçenek ekleyin'); return; }
+    if (!showAddField || !newField.label.trim()) { showToast(t('catalog.s013')); return; }
+    if (newField.type === 'select' && newField.options.length === 0) { showToast(t('catalog.s014')); return; }
     if (editingField && editingField.sysId === showAddField) {
       // Editing an existing field: keep its id (and therefore any values
       // already saved against it on past quotes) and just update label/type/options.
@@ -378,7 +380,7 @@ export default function CatalogScreen() {
 
   const save = async () => {
     if (!f.urunAdi.trim()) {
-      showToast('Ürün adı zorunlu');
+      showToast(t('catalog.s015'));
       return;
     }
     try {
@@ -391,7 +393,7 @@ export default function CatalogScreen() {
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
         });
-        showToast('Ürün güncellendi');
+        showToast(t('catalog.s016'));
       } else {
         await addCatalogItem({
           kategori: f.kategori,
@@ -401,7 +403,7 @@ export default function CatalogScreen() {
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
         });
-        showToast('Ürün eklendi');
+        showToast(t('catalog.s017'));
       }
       setShowForm(false);
     } catch (e: any) {
@@ -414,12 +416,12 @@ export default function CatalogScreen() {
   const doBulk = async () => {
     const rows = textToRows(bulkText);
     if (!rows.length) {
-      showToast('CSV boş');
+      showToast(t('catalog.s018'));
       return;
     }
     const items = rowsToItems(rows);
     if (!items.length) {
-      showToast('Geçerli satır yok. Format: kategori,ürün,birim,fiyat,para birimi');
+      showToast(t('catalog.s019'));
       return;
     }
     try {
@@ -478,7 +480,7 @@ export default function CatalogScreen() {
 
       const items = rowsToItems(rows);
       if (!items.length) {
-        showToast('Dosyada geçerli ürün satırı bulunamadı');
+        showToast(t('catalog.s020'));
         return;
       }
       await bulkAddCatalog(items);
@@ -486,7 +488,7 @@ export default function CatalogScreen() {
       setBulkText('');
       setShowBulk(false);
     } catch (e: any) {
-      showToast('Dosya okunamadı: ' + (e?.message || ''));
+      showToast(t('catalog.s021') + (e?.message || ''));
     } finally {
       setImporting(false);
     }
@@ -503,9 +505,9 @@ export default function CatalogScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Katalog" />
+        <TopHeader title={t('catalog.s022')} />
         <View style={s.empty}>
-          <Text style={s.emptyText}>Önce firma seçiniz</Text>
+          <Text style={s.emptyText}>{t('catalog.s023')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -513,14 +515,14 @@ export default function CatalogScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Ürün / Hizmet Kataloğu" />
+      <TopHeader title={t('catalog.s024')} />
       <View style={{ padding: 14 }}>
         <View style={s.searchWrap}>
           <Ionicons name="search" size={16} color={theme.colors.textMuted} />
           <TextInput
             testID="catalog-search-input"
             style={s.searchInput}
-            placeholder="Ürün / Kategori ara..."
+            placeholder={t('catalog.s025')}
             placeholderTextColor="#94a3b8"
             value={q}
             onChangeText={setQ}
@@ -530,11 +532,11 @@ export default function CatalogScreen() {
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <TouchableOpacity style={[s.btnAcc, { flex: 1 }]} onPress={openNew} testID="new-catalog-btn">
               <Ionicons name="add-circle" size={16} color="#fff" />
-              <Text style={s.btnAccText}>Yeni Ürün</Text>
+              <Text style={s.btnAccText}>{t('catalog.s001')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.btnAcc, { flex: 1, backgroundColor: theme.colors.navy }]} onPress={() => setShowBulk(true)} testID="bulk-import-btn">
               <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-              <Text style={s.btnAccText}>Toplu İçe Aktar</Text>
+              <Text style={s.btnAccText}>{t('catalog.s002')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -544,8 +546,8 @@ export default function CatalogScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* System Configurator — the star of the show */}
-        <Text style={s.sectionH}>🎯 HİZMET / ÜRÜN YAPILANDIRICI</Text>
-        <Text style={s.hint}>{"Her hizmeti veya ürünü bir kere tanımlayın (Örn: Cam Balkon → Cam Tipi, Profil Rengi, Ölçü, Motor). Teklif oluştururken sadece seçenekleri tıklayarak ilerleyeceksiniz. Alanları sürükleme tutamağıyla yeniden sıralayabilirsiniz — bu sıra hem form hem PDF'de birebir kullanılır."}</Text>
+        <Text style={s.sectionH}>{t('catalog.s026')}</Text>
+        <Text style={s.hint}>{t('catalog.s027')}</Text>
 
         {sistemTipleri.map((sys) => {
           const isExpanded = expandedSystem === sys.id;
@@ -554,8 +556,8 @@ export default function CatalogScreen() {
               <TouchableOpacity style={s.systemHdr} onPress={() => setExpandedSystem(isExpanded ? null : sys.id)}>
                 <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.colors.primary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.systemName}>{sys.name || '(Adsız Hizmet / Ürün)'}</Text>
-                  <Text style={s.systemMeta}>{(sys.fields || []).length} alan tanımlı</Text>
+                  <Text style={s.systemName}>{sys.name || t('catalog.s028')}</Text>
+                  <Text style={s.systemMeta}>{(sys.fields || []).length} {t('catalog.s029')}</Text>
                 </View>
                 <TouchableOpacity onPress={() => duplicateSystemType(sys)} testID={`duplicate-system-${sys.id}`}>
                   <Ionicons name="copy-outline" size={18} color={theme.colors.textMuted} />
@@ -569,27 +571,27 @@ export default function CatalogScreen() {
 
               {isExpanded && (
                 <View style={s.systemBody}>
-                  <FieldGroup label="Hizmet / Ürün Adı">
+                  <FieldGroup label={t('catalog.s030')}>
                     <TextInput
                       style={s.input}
                       value={sys.name}
                       onChangeText={(v) => updateSystemName(sys.id, v)}
                       onEndEditing={commitSystemName}
                       onBlur={commitSystemName}
-                      placeholder="Örn: Cam Balkon"
+                      placeholder={t('catalog.s031')}
                       placeholderTextColor="#94a3b8"
                       editable={!isStaffUser}
                     />
                   </FieldGroup>
-                  <Text style={s.subLabel}>ALT ALANLAR ({(sys.fields || []).length})</Text>
-                  {(sys.fields || []).length === 0 && <Text style={s.hintMuted}>Henüz alan eklenmedi</Text>}
+                  <Text style={s.subLabel}>{t('catalog.s032')}{(sys.fields || []).length})</Text>
+                  {(sys.fields || []).length === 0 && <Text style={s.hintMuted}>{t('catalog.s034')}</Text>}
                   {(sys.fields || []).map((f, fi) => {
                     const typeMeta = FIELD_TYPES.find((t) => t.value === f.type);
                     const isFirst = fi === 0;
                     const isLast = fi === (sys.fields || []).length - 1;
                     return (
                       <View key={f.id} style={s.fieldRow} testID={`field-${f.id}`}>
-                        <View style={s.dragHandle} accessibilityLabel="Sıralama tutamağı">
+                        <View style={s.dragHandle} accessibilityLabel={t('catalog.s035')}>
                           <Ionicons name="reorder-two" size={18} color={theme.colors.textMuted} />
                         </View>
                         <Ionicons name={(typeMeta?.icon as any) || 'square-outline'} size={14} color={theme.colors.primary} />
@@ -637,7 +639,7 @@ export default function CatalogScreen() {
                   {!isStaffUser && (
                     <TouchableOpacity style={s.addFieldBtn} onPress={() => openAddField(sys.id)} testID={`add-field-${sys.id}`}>
                       <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
-                      <Text style={s.addFieldText}>+ Alt Alan Ekle</Text>
+                      <Text style={s.addFieldText}>{t('catalog.s036')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -647,15 +649,15 @@ export default function CatalogScreen() {
         })}
         {!isStaffUser && (
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 }}>
-            <TextInput style={[s.input, { flex: 1 }]} placeholder="Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)" placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
+            <TextInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s037')} placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
             <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
           </View>
         )}
 
         {/* Flat product/service list */}
         {/* Firma Kataloğu — hazır PDF/görsel dosyalar, doğrudan paylaşım için */}
-        <Text style={[s.sectionH, { marginTop: 20 }]}>📄 FİRMA KATALOĞU</Text>
-        <Text style={s.hint}>Kendi hazırladığınız katalog/broşür dosyalarını (PDF, PNG, JPG — maksimum 8MB) yükleyin, müşterinize doğrudan WhatsApp veya e-posta ile gönderin.</Text>
+        <Text style={[s.sectionH, { marginTop: 20 }]}>{t('catalog.s038')}</Text>
+        <Text style={s.hint}>{t('catalog.s039')}</Text>
         {catalogFiles.map((f) => (
           <View key={f.id} style={s.fileCard} testID={`catalog-file-${f.id}`}>
             <Ionicons name={f.mime === 'application/pdf' ? 'document-text-outline' : 'image-outline'} size={22} color={theme.colors.primary} />
@@ -676,14 +678,14 @@ export default function CatalogScreen() {
         ))}
         <TouchableOpacity style={[s.addDashed, { marginTop: catalogFiles.length ? 8 : 0 }]} onPress={pickCatalogFile} disabled={uploadingFile} testID="upload-catalog-file-btn">
           <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
-          <Text style={s.addDashedText}>{uploadingFile ? 'Yükleniyor...' : 'Katalog Dosyası Yükle'}</Text>
+          <Text style={s.addDashedText}>{uploadingFile ? t('catalog.s040') : t('catalog.s041')}</Text>
         </TouchableOpacity>
 
-        <Text style={[s.sectionH, { marginTop: 20 }]}>DÜZ ÜRÜN / HİZMET LİSTESİ</Text>
+        <Text style={[s.sectionH, { marginTop: 20 }]}>{t('catalog.s042')}</Text>
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="cube-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Katalog boş. Yeni ürün ekleyin veya toplu içe aktarın.</Text>
+            <Text style={s.emptyTextBox}>{t('catalog.s043')}</Text>
           </View>
         ) : (
           filtered.map((c) => (
@@ -719,30 +721,30 @@ export default function CatalogScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>{editing ? 'Ürünü Düzenle' : 'Yeni Ürün'}</Text>
+              <Text style={s.modalTitle}>{editing ? t('catalog.s045') : t('catalog.s001')}</Text>
               <TouchableOpacity onPress={() => setShowForm(false)}>
                 <Ionicons name="close" size={22} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView>
-              <FieldGroup label="Kategori">
+              <FieldGroup label={t('catalog.s046')}>
                 <TextInput style={s.input} value={f.kategori} onChangeText={(v) => setF({ ...f, kategori: v })} testID="cat-kategori" />
               </FieldGroup>
-              <FieldGroup label="Ürün / Hizmet Adı">
+              <FieldGroup label={t('catalog.s047')}>
                 <TextInput style={s.input} value={f.urunAdi} onChangeText={(v) => setF({ ...f, urunAdi: v })} testID="cat-urunadi" />
               </FieldGroup>
-              <FieldGroup label="Açıklama (opsiyonel)">
+              <FieldGroup label={t('catalog.s048')}>
                 <TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={f.aciklama} onChangeText={(v) => setF({ ...f, aciklama: v })} />
               </FieldGroup>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <FieldGroup label="Birim" flex={1}>
+                <FieldGroup label={t('catalog.s049')} flex={1}>
                   <TextInput style={s.input} value={f.birim} onChangeText={(v) => setF({ ...f, birim: v })} testID="cat-birim" />
                 </FieldGroup>
-                <FieldGroup label="Birim Fiyat" flex={1.2}>
+                <FieldGroup label={t('catalog.s050')} flex={1.2}>
                   <TextInput style={s.input} keyboardType="numeric" value={f.birimFiyat} onChangeText={(v) => setF({ ...f, birimFiyat: v.replace(',', '.') })} testID="cat-fiyat" />
                 </FieldGroup>
               </View>
-              <FieldGroup label="Para Birimi">
+              <FieldGroup label={t('catalog.s051')}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {['USD', 'EUR', 'TRY'].map((cur) => (
                     <TouchableOpacity
@@ -757,7 +759,7 @@ export default function CatalogScreen() {
               </FieldGroup>
               <TouchableOpacity style={s.btnAccBig} onPress={save} testID="save-catalog-btn">
                 <Ionicons name="checkmark-done" size={18} color="#fff" />
-                <Text style={s.btnAccText}>{editing ? 'Güncelle' : 'Kaydet'}</Text>
+                <Text style={s.btnAccText}>{editing ? t('catalog.s052') : 'Kaydet'}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -769,7 +771,7 @@ export default function CatalogScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Toplu İçe Aktar</Text>
+              <Text style={s.modalTitle}>{t('catalog.s002')}</Text>
               <TouchableOpacity onPress={() => setShowBulk(false)}>
                 <Ionicons name="close" size={22} color={theme.colors.text} />
               </TouchableOpacity>
@@ -781,14 +783,12 @@ export default function CatalogScreen() {
               testID="bulk-file-pick-btn"
             >
               <Ionicons name="document-attach-outline" size={18} color="#fff" />
-              <Text style={s.btnAccText}>{importing ? 'Yükleniyor…' : 'Excel / CSV Dosyası Yükle'}</Text>
+              <Text style={s.btnAccText}>{importing ? t('catalog.s053') : t('catalog.s054')}</Text>
             </TouchableOpacity>
             <Text style={s.hint}>
-              .xlsx, .xls veya .csv dosyanızı doğrudan yükleyebilirsiniz. Dosyada başlık satırı varsa
-              (ör. Kategori, Ürün Adı, Birim, Fiyat, Para Birimi) sütunlar otomatik eşleştirilir.
-              {"\n\n"}Ya da aşağıya yapıştırın — her satır bir ürün. Format: {"\n"}
-              <Text style={s.hintCode}>kategori,ürün adı,birim,fiyat,para birimi</Text>
-              {"\n"}Örnek: <Text style={s.hintCode}>Yazılım,Mobil Uygulama,Proje,3500,USD</Text>
+              {t('catalog.s055')}{"\n\n"}{t('catalog.s056')}{"\n"}
+              <Text style={s.hintCode}>{t('catalog.s057')}</Text>
+              {"\n"}{t('catalog.s058')}<Text style={s.hintCode}>{t('catalog.s059')}</Text>
             </Text>
             <TextInput
               testID="bulk-csv-input"
@@ -796,12 +796,12 @@ export default function CatalogScreen() {
               multiline
               value={bulkText}
               onChangeText={setBulkText}
-              placeholder={'Yazılım,Mobil Uygulama,Proje,3500,USD\nDanışmanlık,UI/UX Tasarım,Ay,1200,EUR'}
+              placeholder={t('catalog.s060')}
               placeholderTextColor="#94a3b8"
             />
             <TouchableOpacity style={s.btnAccBig} onPress={doBulk} testID="bulk-save-btn">
               <Ionicons name="cloud-upload" size={18} color="#fff" />
-              <Text style={s.btnAccText}>Yapıştırılan Metni Ekle</Text>
+              <Text style={s.btnAccText}>{t('catalog.s061')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -812,14 +812,14 @@ export default function CatalogScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>{editingField ? 'Alanı Düzenle' : 'Yeni Alan Ekle'}</Text>
+              <Text style={s.modalTitle}>{editingField ? t('catalog.s062') : 'Yeni Alan Ekle'}</Text>
               <TouchableOpacity onPress={() => { setShowAddField(null); setEditingField(null); }}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
-              <FieldGroup label="Alan Adı">
-                <TextInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder="Örn: Cam Tipi, Motor Çeşidi" placeholderTextColor="#94a3b8" testID="field-label-input" />
+              <FieldGroup label={t('catalog.s063')}>
+                <TextInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder={t('catalog.s064')} placeholderTextColor="#94a3b8" testID="field-label-input" />
               </FieldGroup>
-              <FieldGroup label="Alan Tipi">
+              <FieldGroup label={t('catalog.s065')}>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
                   {FIELD_TYPES.map((t) => {
                     const active = newField.type === t.value;
@@ -834,7 +834,7 @@ export default function CatalogScreen() {
               </FieldGroup>
               {newField.type === 'select' && (
                 <>
-                  <FieldGroup label="Seçenekler">
+                  <FieldGroup label={t('catalog.s066')}>
                     <View style={s.chipList}>
                       {newField.options.map((op) => (
                         <View key={op} style={s.emChip}>
@@ -844,10 +844,10 @@ export default function CatalogScreen() {
                           </TouchableOpacity>
                         </View>
                       ))}
-                      {newField.options.length === 0 && <Text style={s.hintMuted}>En az bir seçenek ekleyin</Text>}
+                      {newField.options.length === 0 && <Text style={s.hintMuted}>{t('catalog.s067')}</Text>}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                      <TextInput style={[s.input, { flex: 1 }]} placeholder="örn: Isıcam" placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
+                      <TextInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s068')} placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
                       <TouchableOpacity style={s.addPlusBtn} testID="add-option-btn" onPress={() => {
                         const v = newField.optionInput.trim();
                         if (!v || newField.options.includes(v)) return;
@@ -859,7 +859,7 @@ export default function CatalogScreen() {
               )}
               <TouchableOpacity style={s.btnAccBig} onPress={commitAddField} testID="save-field-btn">
                 <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={s.btnAccText}>{editingField ? 'Değişiklikleri Kaydet' : 'Alanı Ekle'}</Text>
+                <Text style={s.btnAccText}>{editingField ? t('catalog.s069') : t('catalog.s070')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -871,7 +871,7 @@ export default function CatalogScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>E-posta ile Paylaş</Text>
+              <Text style={s.modalTitle}>{t('catalog.s071')}</Text>
               <TouchableOpacity onPress={() => setEmailShareFor(null)}>
                 <Ionicons name="close" size={22} color={theme.colors.text} />
               </TouchableOpacity>
@@ -879,7 +879,7 @@ export default function CatalogScreen() {
             <Text style={s.hint} numberOfLines={1}>{emailShareFor?.name}</Text>
             <TextInput
               style={s.input}
-              placeholder="musteri@firma.com"
+              placeholder={t('catalog.s072')}
               placeholderTextColor="#94a3b8"
               value={shareEmail}
               onChangeText={setShareEmail}
@@ -889,7 +889,7 @@ export default function CatalogScreen() {
             />
             <TouchableOpacity style={[s.btnAccBig, sharingEmail && { opacity: 0.6 }]} disabled={sharingEmail} onPress={submitEmailShare} testID="catalog-file-share-email-submit">
               <Ionicons name="send" size={16} color="#fff" />
-              <Text style={s.btnAccText}>{sharingEmail ? 'Gönderiliyor...' : 'Gönder'}</Text>
+              <Text style={s.btnAccText}>{sharingEmail ? t('catalog.s073') : t('catalog.s074')}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

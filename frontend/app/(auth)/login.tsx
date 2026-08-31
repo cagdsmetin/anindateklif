@@ -17,8 +17,10 @@ import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 export default function LoginScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
@@ -32,7 +34,7 @@ export default function LoginScreen() {
     setError(null);
     const em = email.trim().toLowerCase();
     if (!em || !password) {
-      setError('E-posta ve şifre gereklidir');
+      setError(t('login.s001'));
       return;
     }
     setBusy(true);
@@ -43,13 +45,13 @@ export default function LoginScreen() {
       // eslint-disable-next-line no-console
       console.warn('[login] failed', { kind: e?.kind, status: e?.status, msg: e?.message });
       if (e instanceof ApiError) {
-        if (e.kind === 'network') setError('Sunucuya bağlanılamıyor. İnternet bağlantınızı kontrol edin.');
-        else if (e.kind === 'timeout') setError('Sunucu yanıt vermedi. Tekrar deneyin.');
-        else if (e.status === 401) setError('E-posta veya şifre hatalı');
-        else if (typeof e.status === 'number' && e.status >= 500) setError('Sunucu şu anda meşgul. Birazdan tekrar deneyin.');
+        if (e.kind === 'network') setError(t('login.s002'));
+        else if (e.kind === 'timeout') setError(t('login.s003'));
+        else if (e.status === 401) setError(t('login.s004'));
+        else if (typeof e.status === 'number' && e.status >= 500) setError(t('login.s005'));
         else setError(`Giriş yapılamadı (${e.status || '?'}).`);
       } else {
-        setError('Giriş yapılamadı. Lütfen tekrar deneyin.');
+        setError(t('login.s006'));
       }
     } finally {
       setBusy(false);
@@ -70,8 +72,8 @@ export default function LoginScreen() {
           <View style={s.logoWrap}>
             <BrandLogo size={92} />
           </View>
-          <Text style={s.title}>Tekrar Hoşgeldin!</Text>
-          <Text style={s.subtitle}>Devam etmek için kurumsal hesabınıza giriş yapın.</Text>
+          <Text style={s.title}>{t('login.s007')}</Text>
+          <Text style={s.subtitle}>{t('login.s008')}</Text>
 
           {error ? (
             <View style={s.errorBox}>
@@ -82,7 +84,7 @@ export default function LoginScreen() {
 
           <InputRow
             icon="mail-outline"
-            placeholder="E-posta Adresi"
+            placeholder={t('login.s009')}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -92,7 +94,7 @@ export default function LoginScreen() {
           />
           <InputRow
             icon="lock-closed-outline"
-            placeholder="Şifre"
+            placeholder={t('login.s010')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPw}
@@ -111,7 +113,7 @@ export default function LoginScreen() {
             onPress={() => router.push('/forgot-password')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={s.forgotText}>Şifremi Unuttum</Text>
+            <Text style={s.forgotText}>{t('login.s011')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -124,14 +126,14 @@ export default function LoginScreen() {
             {busy ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={s.ctaText}>Giriş Yap</Text>
+              <Text style={s.ctaText}>{t('login.s012')}</Text>
             )}
           </TouchableOpacity>
 
           <View style={s.footer}>
-            <Text style={s.footerText}>Kurumsal hesabınız yok mu? </Text>
+            <Text style={s.footerText}>{t('login.s013')}</Text>
             <TouchableOpacity onPress={() => router.replace('/register')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={s.footerLink}>Hesap Oluştur</Text>
+              <Text style={s.footerLink}>{t('login.s014')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

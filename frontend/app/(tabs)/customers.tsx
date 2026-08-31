@@ -12,12 +12,14 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
+import { useLanguage } from '@/src/lib/i18n';
 
 const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
 const formatMoney = (n: number) =>
   new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(n || 0);
 
 export default function CustomersScreen() {
+  const { t } = useLanguage();
   const { customers, quotes, deleteCustomer, activeCompany } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -38,9 +40,9 @@ export default function CustomersScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Müşteriler" />
+        <TopHeader title={t('customers.s001')} />
         <View style={s.empty}>
-          <Text style={s.emptyText}>Önce firma seçiniz</Text>
+          <Text style={s.emptyText}>{t('customers.s002')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -48,7 +50,7 @@ export default function CustomersScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Müşteriler" />
+      <TopHeader title={t('customers.s001')} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
@@ -62,13 +64,13 @@ export default function CustomersScreen() {
           testID="customer-add-btn"
         >
           <Ionicons name="person-add" size={20} color="#fff" />
-          <Text style={s.addBtnText}>Yeni Müşteri Ekle</Text>
+          <Text style={s.addBtnText}>{t('customers.s003')}</Text>
         </TouchableOpacity>
 
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Henüz müşteri yok. Yukarıdaki mavi buton ile ekleyebilirsin.</Text>
+            <Text style={s.emptyTextBox}>{t('customers.s004')}</Text>
           </View>
         ) : (
           enriched.map((c) => {
@@ -81,11 +83,11 @@ export default function CustomersScreen() {
                     <Text style={s.avatarLetter}>{letter}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.name} numberOfLines={1}>{c.firma || '(İsimsiz)'}</Text>
+                    <Text style={s.name} numberOfLines={1}>{c.firma || t('customers.s005')}</Text>
                     {c.telefon ? (
                       <Text style={s.phone} numberOfLines={1}>{c.telefon}</Text>
                     ) : (
-                      <Text style={s.phoneMuted}>Telefon yok</Text>
+                      <Text style={s.phoneMuted}>{t('customers.s006')}</Text>
                     )}
                   </View>
                   <TouchableOpacity
@@ -112,11 +114,11 @@ export default function CustomersScreen() {
                 {/* Bottom stats row */}
                 <View style={s.statsRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.statLabel}>TOPLAM TEKLİF</Text>
-                    <Text style={s.statValue}>{c.count} Adet</Text>
+                    <Text style={s.statLabel}>{t('customers.s007')}</Text>
+                    <Text style={s.statValue}>{c.count} {t('customers.s008')}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.statLabel}>TOPLAM HACİM</Text>
+                    <Text style={s.statLabel}>{t('customers.s009')}</Text>
                     <Text style={[s.statValue, { color: theme.colors.primary }]}>
                       {currencySymbol(c.currency)}
                       {formatMoney(c.total)}

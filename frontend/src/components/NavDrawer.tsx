@@ -53,7 +53,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
               <View style={s.brandIcon}>
                 <Ionicons name="flash" size={16} color="#fff" />
               </View>
-              <Text style={s.brandText} numberOfLines={1}>Anında Teklif</Text>
+              <Text style={s.brandText} numberOfLines={1}>{t('navDrawer.s001')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.reorderToggle, reordering && s.reorderToggleActive]}
@@ -68,7 +68,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
             </TouchableOpacity>
           </View>
           {reordering && (
-            <Text style={s.reorderHint}>Oklarla menü sırasını istediğin gibi değiştirebilirsin.</Text>
+            <Text style={s.reorderHint}>{t('navDrawer.s002')}</Text>
           )}
           <ScrollView style={s.navList} showsVerticalScrollIndicator={false}>
             {orderedItems.map((it, idx) => {

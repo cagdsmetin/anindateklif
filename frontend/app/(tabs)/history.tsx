@@ -26,6 +26,7 @@ import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canS
 import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
+import { useLanguage } from '@/src/lib/i18n';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -49,6 +50,7 @@ const STATUSES = ['Beklemede', 'Görüldü', 'Onaylandı', 'Reddedildi'];
 const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
+  const { t } = useLanguage();
   const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
@@ -60,7 +62,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : 'Tümü');
+  const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : t('history.s003'));
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -184,12 +186,12 @@ export default function HistoryScreen() {
       }
       const avail = await Sharing.isAvailableAsync();
       if (avail) {
-        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: 'Teklifiniz ekte yer almaktadır. İyi çalışmalar dileriz.', UTI: 'com.adobe.pdf' });
+        await Sharing.shareAsync(result.uri, { mimeType: 'application/pdf', dialogTitle: t('history.s007'), UTI: 'com.adobe.pdf' });
       } else {
         await downloadFileWeb(result.uri, result.fileName);
         showToast('PDF indirildi');
       }
-    } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+    } catch (e: any) { showToast(t('history.s008') + (e?.message || '')); }
   };
 
   const doWhatsApp = async (quote: QuoteT, message?: string) => {
@@ -205,11 +207,11 @@ export default function HistoryScreen() {
       const r = await shareQuoteViaWhatsApp({ pdfUri: result.uri, fileName: result.fileName, quote, companyName: activeCompany.sirketAdi, message, waWindow });
       if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
       if (r.messageCopied) {
-        showToast('Müşterinin kayıtlı telefonu yok — mesaj metni panoya kopyalandı, WhatsApp\'ta sohbete yapıştır');
+        showToast(t('history.s009'));
       }
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
-      showToast('WhatsApp hatası: ' + (e?.message || ''));
+      showToast(t('history.s005') + (e?.message || ''));
     }
   };
 
@@ -221,7 +223,7 @@ export default function HistoryScreen() {
     try {
       await openWhatsAppChat(quote.musTelefon || '', message);
     } catch (e: any) {
-      showToast('WhatsApp hatası: ' + (e?.message || ''));
+      showToast(t('history.s005') + (e?.message || ''));
     }
   };
 
@@ -230,27 +232,27 @@ export default function HistoryScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Geçmiş" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <TopHeader title={t('history.s010')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('history.s011')}</Text></View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Geçmiş Teklifler" />
+      <TopHeader title={t('history.s012')} />
       <View style={{ padding: 14, paddingBottom: 6 }}>
         <View style={s.statsRow}>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Toplam Teklif</Text>
+            <Text style={s.statLabel}>{t('history.s013')}</Text>
             <Text style={s.statValue}>{quotes.length}</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Bekleyen Teklif</Text>
+            <Text style={s.statLabel}>{t('history.s014')}</Text>
             <Text style={s.statValue}>{pendingCount}</Text>
           </View>
           <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-            <Text style={[s.statLabel, { color: '#166534' }]}>Onaylanan{approvedTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={[s.statLabel, { color: '#166534' }]}>{t('history.s015')}{approvedTRY == null ? ' (USD)' : ''}</Text>
             <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>
               {approvedTRY != null ? fmt(approvedTRY, 'TRY') : fmt(totalValueUSDOnly, 'USD')}
             </Text>
@@ -261,11 +263,11 @@ export default function HistoryScreen() {
             ) : null}
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Bu Ay Oluşturulan</Text>
+            <Text style={s.statLabel}>{t('history.s016')}</Text>
             <Text style={s.statValue}>{thisMonthCount}</Text>
           </View>
           <View style={s.statCard}>
-            <Text style={s.statLabel}>Bu Ay Toplam Hacim{monthVolumeTRY == null ? ' (USD)' : ''}</Text>
+            <Text style={s.statLabel}>{t('history.s017')}{monthVolumeTRY == null ? ' (USD)' : ''}</Text>
             <Text style={s.statValue} numberOfLines={1}>
               {monthVolumeTRY != null ? fmt(monthVolumeTRY, 'TRY') : fmt(monthVolumeUSD, 'USD')}
             </Text>
@@ -279,7 +281,7 @@ export default function HistoryScreen() {
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <View style={[s.searchWrap, { flex: 1 }]}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput testID="history-search" style={s.searchInput} placeholder="Firma, teklif no, proje ara..." placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
+            <TextInput testID="history-search" style={s.searchInput} placeholder={t('history.s018')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
           </View>
           <TouchableOpacity
             style={s.trashEntryBtn}
@@ -292,7 +294,7 @@ export default function HistoryScreen() {
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
-        {['Tümü', ...STATUSES].map((st) => (
+        {[t('history.s003'), ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
             <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
           </TouchableOpacity>
@@ -302,7 +304,7 @@ export default function HistoryScreen() {
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="document-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Kayıtlı teklif yok.</Text>
+            <Text style={s.emptyTextBox}>{t('history.s019')}</Text>
           </View>
         ) : filtered.map((quote) => {
           const c = statusColor(quote.durum);
@@ -326,15 +328,15 @@ export default function HistoryScreen() {
               <View style={s.actionBar}>
                 <TouchableOpacity style={s.actBtn} onPress={() => openEdit(quote.id)} testID={`edit-quote-${quote.id}`}>
                   <Ionicons name="pencil-outline" size={14} color={theme.colors.primary} />
-                  <Text style={s.actText}>Düzenle</Text>
+                  <Text style={s.actText}>{t('history.s021')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtn} onPress={() => doShare(quote)} testID={`pdf-${quote.id}`}>
                   <Ionicons name="document-text-outline" size={14} color={theme.colors.primary} />
-                  <Text style={s.actText}>PDF</Text>
+                  <Text style={s.actText}>{t('history.s022')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-                  <Text style={[s.actText, { color: '#16a34a' }]}>WA</Text>
+                  <Text style={[s.actText, { color: '#16a34a' }]}>{t('history.s023')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtnIcon} onPress={() => setDeleteTarget(quote.id)} testID={`delete-quote-${quote.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
@@ -351,18 +353,16 @@ export default function HistoryScreen() {
             <View style={s.confirmIconWrap}>
               <Ionicons name="trash-outline" size={22} color={theme.colors.red} />
             </View>
-            <Text style={s.menuTitle}>Teklifi sil</Text>
+            <Text style={s.menuTitle}>{t('history.s024')}</Text>
             <Text style={s.confirmBody}>
-              Bu teklifi silmek istediğinize emin misiniz? Silinen teklifler 30 gün boyunca
-              Çöp Kutusu'ndan geri alınabilir.
-            </Text>
+              {t('history.s025')}</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
               <TouchableOpacity
                 style={[s.confirmBtn, s.confirmBtnGhost]}
                 onPress={() => setDeleteTarget(null)}
                 testID="delete-quote-cancel"
               >
-                <Text style={s.confirmBtnGhostText}>Vazgeç</Text>
+                <Text style={s.confirmBtnGhostText}>{t('history.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.confirmBtn, s.confirmBtnDanger]}
@@ -390,7 +390,7 @@ export default function HistoryScreen() {
                 }}
                 testID="delete-quote-confirm"
               >
-                <Text style={s.confirmBtnDangerText}>Sil</Text>
+                <Text style={s.confirmBtnDangerText}>{t('history.s026')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -400,7 +400,7 @@ export default function HistoryScreen() {
       <Modal visible={!!statusMenuFor} transparent animationType="fade">
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setStatusMenuFor(null)}>
           <View style={s.menu}>
-            <Text style={s.menuTitle}>Durum Seç</Text>
+            <Text style={s.menuTitle}>{t('history.s027')}</Text>
             {STATUSES.map((st) => {
               const cc = statusColor(st);
               const targetQuote = quotes.find((q) => q.id === statusMenuFor);
@@ -410,7 +410,7 @@ export default function HistoryScreen() {
                   <TouchableOpacity
                     key={st}
                     style={[s.menuItem, { backgroundColor: '#F1F5F9', borderColor: theme.colors.line }]}
-                    onPress={() => showToast('Onaylı bir teklifi sadece firma sahibi reddedebilir')}
+                    onPress={() => showToast(t('history.s028'))}
                   >
                     <Ionicons name="lock-closed" size={13} color={theme.colors.textMuted} style={{ marginRight: 6 }} />
                     <Text style={[s.menuItemText, { color: theme.colors.textMuted }]}>{st}</Text>
@@ -428,7 +428,7 @@ export default function HistoryScreen() {
                     return;
                   }
                   await updateQuoteStatus(statusMenuFor, st);
-                  showToast('Durum güncellendi');
+                  showToast(t('history.s029'));
                   setStatusMenuFor(null);
                 }}>
                   <Text style={[s.menuItemText, { color: cc.text }]}>{st}</Text>
@@ -445,18 +445,16 @@ export default function HistoryScreen() {
             <View style={s.confirmIconWrap}>
               <Ionicons name="warning" size={22} color={theme.colors.red} />
             </View>
-            <Text style={s.menuTitle}>Onaylı teklifi reddet</Text>
+            <Text style={s.menuTitle}>{t('history.s030')}</Text>
             <Text style={s.confirmBody}>
-              Bu teklif zaten onaylanmıştı. Şimdi reddedersen, bu teklif için Tahsilat'a
-              otomatik işlenmiş olan borç kaydı da iptal edilip silinecek. Bu işlem geri alınamaz. Emin misin?
-            </Text>
+              {t('history.s031')}</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
               <TouchableOpacity
                 style={[s.confirmBtn, s.confirmBtnGhost]}
                 onPress={() => setRejectConfirmFor(null)}
                 testID="reject-approved-cancel"
               >
-                <Text style={s.confirmBtnGhostText}>Vazgeç</Text>
+                <Text style={s.confirmBtnGhostText}>{t('history.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.confirmBtn, s.confirmBtnDanger]}
@@ -464,7 +462,7 @@ export default function HistoryScreen() {
                   if (rejectConfirmFor) {
                     try {
                       await updateQuoteStatus(rejectConfirmFor, 'Reddedildi');
-                      showToast('Teklif reddedildi, borç kaydı iptal edildi');
+                      showToast(t('history.s032'));
                     } catch (e: any) {
                       showToast('Hata: ' + (e?.message || ''));
                     }
@@ -473,7 +471,7 @@ export default function HistoryScreen() {
                 }}
                 testID="reject-approved-confirm"
               >
-                <Text style={s.confirmBtnDangerText}>Evet, Reddet</Text>
+                <Text style={s.confirmBtnDangerText}>{t('history.s033')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -483,7 +481,7 @@ export default function HistoryScreen() {
       <Modal visible={!!waMenuFor} transparent animationType="fade" onRequestClose={() => setWaMenuFor(null)}>
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setWaMenuFor(null)}>
           <View style={s.waMenu} onStartShouldSetResponder={() => true}>
-            <Text style={s.menuTitle}>Mesaj Şablonu Seç</Text>
+            <Text style={s.menuTitle}>{t('history.s034')}</Text>
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
               {WHATSAPP_TEMPLATES.map((tpl) => {
                 const preview = waMenuQuote ? renderWhatsAppTemplate(tpl.body, waMenuQuote, activeCompany?.sirketAdi) : tpl.body;
@@ -513,7 +511,7 @@ export default function HistoryScreen() {
               })}
             </ScrollView>
             <TouchableOpacity style={s.waCancelBtn} onPress={() => setWaMenuFor(null)}>
-              <Text style={s.waCancelText}>Vazgeç</Text>
+              <Text style={s.waCancelText}>{t('history.s004')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

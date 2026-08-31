@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Opened via the link inside the password-reset email:
@@ -24,6 +25,7 @@ import { useAuth } from '@/src/state/AuthContext';
  * present in the URL (e.g. pasted by hand from a non-clickable context).
  */
 export default function ResetPasswordScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { resetPassword } = useAuth();
   const params = useLocalSearchParams<{ token?: string }>();
@@ -41,15 +43,15 @@ export default function ResetPasswordScreen() {
     if (busy) return;
     setError(null);
     if (!token.trim()) {
-      setError('Sıfırlama bağlantısındaki kod eksik. Lütfen e-postadaki bağlantıyı tekrar açın.');
+      setError(t('resetPassword.s001'));
       return;
     }
     if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      setError('Şifre en az 8 karakter olmalı; büyük/küçük harf, rakam ve sembol içermelidir');
+      setError(t('resetPassword.s002'));
       return;
     }
     if (password !== confirm) {
-      setError('Şifreler eşleşmiyor');
+      setError(t('resetPassword.s003'));
       return;
     }
     setBusy(true);
@@ -57,7 +59,7 @@ export default function ResetPasswordScreen() {
       await resetPassword(token.trim(), password);
       setDone(true);
     } catch (e: any) {
-      setError(e?.body ? 'Bağlantının süresi dolmuş olabilir. Lütfen yeniden sıfırlama isteği gönderin.' : 'İşlem başarısız. Lütfen tekrar deneyin.');
+      setError(e?.body ? t('resetPassword.s004') : t('resetPassword.s005'));
     } finally {
       setBusy(false);
     }
@@ -74,17 +76,17 @@ export default function ResetPasswordScreen() {
           <View style={s.logoWrap}>
             <BrandLogo size={72} />
           </View>
-          <Text style={s.title}>Yeni Şifre Belirle</Text>
+          <Text style={s.title}>{t('resetPassword.s006')}</Text>
           <Text style={s.subtitle}>
             {done
-              ? 'Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.'
-              : 'E-postana gelen bağlantı bu ekranı otomatik olarak doldurur. Aşağıya yeni şifreni gir.'}
+              ? t('resetPassword.s007')
+              : t('resetPassword.s008')}
           </Text>
 
           {done ? (
             <View style={s.successBox}>
               <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
-              <Text style={s.successText}>Şifreniz başarıyla güncellendi.</Text>
+              <Text style={s.successText}>{t('resetPassword.s009')}</Text>
             </View>
           ) : (
             <>
@@ -101,7 +103,7 @@ export default function ResetPasswordScreen() {
                   <TextInput
                     value={token}
                     onChangeText={setToken}
-                    placeholder="Sıfırlama Kodu (e-postadaki bağlantıdan)"
+                    placeholder={t('resetPassword.s010')}
                     placeholderTextColor={authTheme.textMuted}
                     style={s.input}
                     autoCapitalize="none"
@@ -115,7 +117,7 @@ export default function ResetPasswordScreen() {
                 <TextInput
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Yeni Şifre"
+                  placeholder={t('resetPassword.s011')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   secureTextEntry={!showPw}
@@ -132,7 +134,7 @@ export default function ResetPasswordScreen() {
                 <TextInput
                   value={confirm}
                   onChangeText={setConfirm}
-                  placeholder="Yeni Şifre (Tekrar)"
+                  placeholder={t('resetPassword.s012')}
                   placeholderTextColor={authTheme.textMuted}
                   style={s.input}
                   secureTextEntry={!showPw}
@@ -142,8 +144,7 @@ export default function ResetPasswordScreen() {
               </View>
 
               <Text style={s.helperText}>
-                En az 8 karakter; büyük harf, küçük harf, rakam ve sembol içermelidir.
-              </Text>
+                {t('resetPassword.s013')}</Text>
 
               <TouchableOpacity
                 style={[s.cta, busy && s.ctaDisabled]}
@@ -151,14 +152,14 @@ export default function ResetPasswordScreen() {
                 disabled={busy}
                 testID="rp-submit"
               >
-                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Şifreyi Güncelle</Text>}
+                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('resetPassword.s014')}</Text>}
               </TouchableOpacity>
             </>
           )}
 
           <View style={s.footer}>
             <TouchableOpacity onPress={() => router.replace('/login')}>
-              <Text style={s.footerLink}>← Giriş Ekranına Dön</Text>
+              <Text style={s.footerLink}>{t('resetPassword.s015')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

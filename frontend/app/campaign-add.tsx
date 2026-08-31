@@ -15,12 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Standalone "Yeni Kampanya" creation screen — mirrors service-add.tsx's layout
  * (back-arrow header, card of icon-prefixed fields, sticky footer CTA).
  */
 export default function CampaignAddScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, createCampaign, showToast, toast } = useApp();
@@ -38,20 +40,20 @@ export default function CampaignAddScreen() {
     setErrBaslik(!bOk);
     setErrMesaj(!mOk);
     if (!bOk || !mOk) {
-      showToast('Başlık ve Mesaj zorunludur');
+      showToast(t('campaignAdd.s002'));
       return;
     }
     if (!activeCompany) {
-      showToast('Önce firma seçiniz');
+      showToast(t('campaignAdd.s003'));
       return;
     }
     setBusy(true);
     try {
       await createCampaign({ baslik: baslik.trim(), mesaj: mesaj.trim() });
-      showToast('Kampanya oluşturuldu');
+      showToast(t('campaignAdd.s004'));
       router.back();
     } catch (e: any) {
-      showToast('Kayıt hatası: ' + (e?.message || ''));
+      showToast(t('campaignAdd.s005') + (e?.message || ''));
     } finally {
       setBusy(false);
     }
@@ -70,7 +72,7 @@ export default function CampaignAddScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Yeni Kampanya</Text>
+        <Text style={s.headerTitle}>{t('campaignAdd.s006')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -85,19 +87,19 @@ export default function CampaignAddScreen() {
             <View style={s.heroCircle}>
               <Ionicons name="megaphone" size={36} color={theme.colors.primary} />
             </View>
-            <Text style={s.heroCaption}>Müşterilerinize kişiselleştirilmiş kampanya mesajı hazırlayın</Text>
+            <Text style={s.heroCaption}>{t('campaignAdd.s007')}</Text>
           </View>
 
           <View style={s.card}>
             <View style={s.field}>
-              <Text style={s.fieldLabel}>Başlık <Text style={{ color: theme.colors.red }}>*</Text></Text>
+              <Text style={s.fieldLabel}>{t('campaignAdd.s008')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
               <View style={[s.inputWrap, errBaslik && s.inputWrapError]}>
                 <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10 }} />
                 <TextInput
                   testID="campadd-baslik"
                   value={baslik}
                   onChangeText={(v) => { setBaslik(v); if (errBaslik) setErrBaslik(false); }}
-                  placeholder="Örn: Yaz Kampanyası"
+                  placeholder={t('campaignAdd.s009')}
                   placeholderTextColor="#94a3b8"
                   style={s.input}
                 />
@@ -105,14 +107,14 @@ export default function CampaignAddScreen() {
             </View>
 
             <View style={[s.field, { marginBottom: 0 }]}>
-              <Text style={s.fieldLabel}>Mesaj <Text style={{ color: theme.colors.red }}>*</Text></Text>
+              <Text style={s.fieldLabel}>{t('campaignAdd.s010')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
               <View style={[s.inputWrap, s.inputWrapMultiline, errMesaj && s.inputWrapError]}>
                 <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: 2 }} />
                 <TextInput
                   testID="campadd-mesaj"
                   value={mesaj}
                   onChangeText={(v) => { setMesaj(v); if (errMesaj) setErrMesaj(false); }}
-                  placeholder={'Merhaba {musteri}, {firma} olarak size özel bir kampanyamız var...'}
+                  placeholder={t('campaignAdd.s011')}
                   placeholderTextColor="#94a3b8"
                   style={[s.input, s.inputMultiline]}
                   multiline
@@ -120,9 +122,7 @@ export default function CampaignAddScreen() {
                 />
               </View>
               <Text style={s.helperText}>
-                Mesajınızda <Text style={s.helperCode}>{'{musteri}'}</Text> ve <Text style={s.helperCode}>{'{firma}'}</Text> yazarak
-                her müşteri için otomatik olarak müşteri adı ve firma adınızla değiştirilecek kişisel bir mesaj hazırlayabilirsiniz.
-              </Text>
+                {t('campaignAdd.s012')}<Text style={s.helperCode}>{'{musteri}'}</Text> ve <Text style={s.helperCode}>{'{firma}'}</Text> {t('campaignAdd.s013')}</Text>
             </View>
           </View>
         </ScrollView>
@@ -136,7 +136,7 @@ export default function CampaignAddScreen() {
               activeOpacity={0.85}
               testID="campadd-cancel"
             >
-              <Text style={s.ctaSecondaryText}>Vazgeç</Text>
+              <Text style={s.ctaSecondaryText}>{t('campaignAdd.s014')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.cta, busy && s.ctaDisabled]}
@@ -145,7 +145,7 @@ export default function CampaignAddScreen() {
               activeOpacity={0.9}
               testID="campadd-create"
             >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Oluştur</Text>}
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('campaignAdd.s015')}</Text>}
             </TouchableOpacity>
           </View>
         </View>

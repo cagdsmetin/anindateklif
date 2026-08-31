@@ -9,6 +9,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
+import { useLanguage } from '@/src/lib/i18n';
 
 const HIDDEN_KEY = 'hiddenReminders';
 
@@ -29,14 +30,15 @@ function trDate(iso: string): string {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : iso || '-';
 }
 
-function urgency(days: number) {
+function urgency(t: (k: string) => string, days: number) {
   if (days < 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b', label: `${Math.abs(days)} gün önce doldu` };
-  if (days === 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b', label: 'Bugün doluyor' };
+  if (days === 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b', label: t('remindersPage.s001') };
   if (days <= 7) return { bg: theme.colors.goldSoft, border: theme.colors.goldBorder, text: theme.colors.goldDark, label: `${days} gün kaldı` };
   return { bg: theme.colors.primarySoft, border: theme.colors.primaryBorder, text: theme.colors.primaryDark, label: `${days} gün kaldı` };
 }
 
 export default function RemindersScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { services, quotes, campaigns, customers, activeCompany, reminders, createReminder, updateReminder, deleteReminder } = useApp();
@@ -162,7 +164,7 @@ export default function RemindersScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Hatırlatmalar</Text>
+        <Text style={s.headerTitle}>{t('remindersPage.s003')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={openAdd} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-add-btn">
             <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
@@ -178,14 +180,14 @@ export default function RemindersScreen() {
         {loaded && totalCount === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={28} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Şu an bekleyen hatırlatma yok. Her şey güncel!</Text>
+            <Text style={s.emptyTextBox}>{t('remindersPage.s004')}</Text>
           </View>
         ) : null}
 
         {/* Manuel not / hatırlatıcılar -- kullanıcının kendi eklediği */}
-        <SectionHeader icon="bookmark-outline" title="Notlarım / Hatırlatıcılarım" count={manualList.length} color={theme.colors.gold} />
+        <SectionHeader icon="bookmark-outline" title={t('remindersPage.s005')} count={manualList.length} color={theme.colors.gold} />
         {manualList.length === 0 ? (
-          <EmptyLine text="Henüz eklediğiniz bir not/hatırlatıcı yok. Sağ üstteki + ile ekleyebilirsiniz." />
+          <EmptyLine text={t('remindersPage.s006')} />
         ) : (
           manualList.map(({ r, days }) => (
             <ReminderRow
@@ -194,8 +196,8 @@ export default function RemindersScreen() {
               categoryColor={theme.colors.gold}
               title={r.baslik}
               sub={`${trDate(r.tarih)}${r.notu ? ' · ' + r.notu : ''}`}
-              badge={urgency(days)}
-              label={days === 9999 ? '' : urgency(days).label}
+              badge={urgency(t, days)}
+              label={days === 9999 ? '' : urgency(t, days).label}
               onPress={() => openEdit(r)}
               onHide={() => removeManualReminder(r.id)}
             />
@@ -203,9 +205,9 @@ export default function RemindersScreen() {
         )}
 
         {/* Garanti bitiş tarihleri */}
-        <SectionHeader icon="shield-checkmark-outline" title="Garanti Bitiş Tarihleri" count={garantiList.length} color={theme.colors.modules.gecmis} />
+        <SectionHeader icon="shield-checkmark-outline" title={t('remindersPage.s007')} count={garantiList.length} color={theme.colors.modules.gecmis} />
         {garantiList.length === 0 ? (
-          <EmptyLine text="Yaklaşan garanti bitişi yok." />
+          <EmptyLine text={t('remindersPage.s008')} />
         ) : (
           garantiList.map(({ s: svc, days }) => (
             <ReminderRow
@@ -214,8 +216,8 @@ export default function RemindersScreen() {
               categoryColor={theme.colors.modules.gecmis}
               title={svc.baslik}
               sub={`${svc.musFirma || svc.musYetkili || '-'} · ${trDate(svc.garantiBitis)}`}
-              badge={urgency(days)}
-              label={urgency(days).label}
+              badge={urgency(t, days)}
+              label={urgency(t, days).label}
               onPress={() => router.push({ pathname: '/service-add', params: { id: svc.id } } as any)}
               phone={svc.musTelefon}
               waMessage={`Merhaba ${svc.musYetkili || svc.musFirma || ''},\n\n${svc.baslik} için garanti süreniz ${trDate(svc.garantiBitis)} tarihinde sona eriyor. Bilgi almak isterseniz bize ulaşabilirsiniz.\n\nİyi çalışmalar dileriz,\n${sirketAdi}`}
@@ -225,19 +227,19 @@ export default function RemindersScreen() {
         )}
 
         {/* Bakım tarihleri */}
-        <SectionHeader icon="build-outline" title="Bakım Tarihleri" count={bakimList.length} color={theme.colors.modules.servis} />
+        <SectionHeader icon="build-outline" title={t('remindersPage.s009')} count={bakimList.length} color={theme.colors.modules.servis} />
         {bakimList.length === 0 ? (
-          <EmptyLine text="Yaklaşan bakım tarihi yok." />
+          <EmptyLine text={t('remindersPage.s010')} />
         ) : (
           bakimList.map(({ s: svc, days }) => (
             <ReminderRow
               key={svc.id}
-              category="Bakım"
+              category={t('remindersPage.s011')}
               categoryColor={theme.colors.modules.servis}
               title={svc.baslik}
               sub={`${svc.musFirma || svc.musYetkili || '-'} · ${trDate(svc.bakimTarihi)}`}
-              badge={urgency(days)}
-              label={urgency(days).label}
+              badge={urgency(t, days)}
+              label={urgency(t, days).label}
               onPress={() => router.push({ pathname: '/service-add', params: { id: svc.id } } as any)}
               phone={svc.musTelefon}
               waMessage={`Merhaba ${svc.musYetkili || svc.musFirma || ''},\n\n${svc.baslik} için bakım tarihiniz ${trDate(svc.bakimTarihi)}. Randevu oluşturmak isterseniz bize ulaşabilirsiniz.\n\nİyi çalışmalar dileriz,\n${sirketAdi}`}
@@ -247,9 +249,9 @@ export default function RemindersScreen() {
         )}
 
         {/* Teklif geçerlilik süresi dolanlar */}
-        <SectionHeader icon="document-text-outline" title="Teklif Geçerlilik Süresi" count={teklifList.length} color={theme.colors.modules.teklif} />
+        <SectionHeader icon="document-text-outline" title={t('remindersPage.s012')} count={teklifList.length} color={theme.colors.modules.teklif} />
         {teklifList.length === 0 ? (
-          <EmptyLine text="Süresi yaklaşan bekleyen teklif yok." />
+          <EmptyLine text={t('remindersPage.s013')} />
         ) : (
           teklifList.map(({ q, days }) => (
             <ReminderRow
@@ -258,8 +260,8 @@ export default function RemindersScreen() {
               categoryColor={theme.colors.modules.teklif}
               title={`${q.teklifNo} · ${q.musFirma}`}
               sub={`Geçerlilik: ${trDate(q.gecerlilik)}`}
-              badge={urgency(days)}
-              label={urgency(days).label}
+              badge={urgency(t, days)}
+              label={urgency(t, days).label}
               onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: q.id } } as any)}
               phone={q.musTelefon}
               waMessage={`Merhaba ${q.musYetkili || q.musFirma || ''},\n\n${q.teklifNo} numaralı teklifinizin geçerlilik süresi ${trDate(q.gecerlilik)} tarihinde sona eriyor. Teklifi onaylamak veya güncellemek isterseniz bize ulaşabilirsiniz.\n\nİyi çalışmalar dileriz,\n${sirketAdi}`}
@@ -269,9 +271,9 @@ export default function RemindersScreen() {
         )}
 
         {/* Kampanya gönderim durumu */}
-        <SectionHeader icon="megaphone-outline" title="Kampanya Gönderim Durumu" count={kampanyaList.length} color={theme.colors.modules.kampanya} />
+        <SectionHeader icon="megaphone-outline" title={t('remindersPage.s014')} count={kampanyaList.length} color={theme.colors.modules.kampanya} />
         {kampanyaList.length === 0 ? (
-          <EmptyLine text="Tüm kampanyalar tamamlandı ya da aktif kampanya yok." />
+          <EmptyLine text={t('remindersPage.s015')} />
         ) : (
           kampanyaList.map(({ camp, sentCount, total, remaining }) => (
             <ReminderRow
@@ -293,13 +295,13 @@ export default function RemindersScreen() {
       <Modal visible={showAdd} transparent animationType="fade" onRequestClose={() => setShowAdd(false)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowAdd(false)}>
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
-            <Text style={s.modalTitle}>{editingReminder ? 'Notu Düzenle' : 'Not / Hatırlatıcı Ekle'}</Text>
-            <Text style={s.modalLabel}>Başlık</Text>
-            <TextInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder="örn: Müşteriyi ara" placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
-            <Text style={s.modalLabel}>Tarih (YYYY-AA-GG)</Text>
+            <Text style={s.modalTitle}>{editingReminder ? t('remindersPage.s016') : t('remindersPage.s017')}</Text>
+            <Text style={s.modalLabel}>{t('remindersPage.s018')}</Text>
+            <TextInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder={t('remindersPage.s019')} placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
+            <Text style={s.modalLabel}>{t('remindersPage.s020')}</Text>
             <TextInput style={s.modalInput} value={formTarih} onChangeText={setFormTarih} placeholder="2026-09-01" placeholderTextColor="#94a3b8" testID="manual-reminder-tarih" />
-            <Text style={s.modalLabel}>Not (opsiyonel)</Text>
-            <TextInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder="Detay ekleyin" placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
+            <Text style={s.modalLabel}>{t('remindersPage.s022')}</Text>
+            <TextInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder={t('remindersPage.s023')} placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
             <View style={s.modalBtnRow}>
               {editingReminder && (
                 <TouchableOpacity style={s.modalDeleteBtn} onPress={() => removeManualReminder(editingReminder.id)} testID="manual-reminder-delete">
@@ -307,7 +309,7 @@ export default function RemindersScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowAdd(false)}>
-                <Text style={s.modalCancelText}>Vazgeç</Text>
+                <Text style={s.modalCancelText}>{t('remindersPage.s024')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.modalSaveBtn} onPress={saveManualReminder} disabled={savingReminder} testID="manual-reminder-save">
                 <Text style={s.modalSaveText}>{savingReminder ? 'Kaydediliyor...' : 'Kaydet'}</Text>
@@ -363,6 +365,7 @@ function ReminderRow({
   waMessage?: string;
   onHide: () => void;
 }) {
+  const { t } = useLanguage();
   const cleanedPhone = normalizePhoneForWhatsApp(phone || '');
   return (
     <View style={s.row}>
@@ -386,14 +389,14 @@ function ReminderRow({
             activeOpacity={0.85}
           >
             <Ionicons name="logo-whatsapp" size={13} color="#fff" />
-            <Text style={s.waBtnText}>WhatsApp'tan Hatırlat</Text>
+            <Text style={s.waBtnText}>{t('remindersPage.s025')}</Text>
           </TouchableOpacity>
         ) : (
           <View />
         )}
         <TouchableOpacity style={s.hideBtn} onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
           <Ionicons name="checkmark" size={12} color={theme.colors.textMuted} />
-          <Text style={s.hideBtnText}>Gizle</Text>
+          <Text style={s.hideBtnText}>{t('remindersPage.s026')}</Text>
         </TouchableOpacity>
       </View>
     </View>

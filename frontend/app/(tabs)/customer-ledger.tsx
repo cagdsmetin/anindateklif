@@ -17,6 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Müşteri bazlı cari hesap (para akışı) ekranı.
@@ -29,6 +30,7 @@ import { api, RatesT } from '@/src/lib/api';
  *   "Çek" de var (tahsilat-utils.ts üzerinden Tahsilat ekranıyla ortak liste).
  */
 export default function CustomerLedgerScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, showToast } = useApp();
@@ -79,13 +81,13 @@ export default function CustomerLedgerScreen() {
   const isDiger = yontem === 'Diğer';
 
   const call = () => {
-    if (!musteriTelefon) { showToast('Telefon numarası kayıtlı değil'); return; }
-    Linking.openURL(`tel:${musteriTelefon.replace(/\s+/g, '')}`).catch(() => showToast('Arama başlatılamadı'));
+    if (!musteriTelefon) { showToast(t('customerLedger.s002')); return; }
+    Linking.openURL(`tel:${musteriTelefon.replace(/\s+/g, '')}`).catch(() => showToast(t('customerLedger.s003')));
   };
 
   const save = async () => {
     if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
-    if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
+    if (isDiger && !notlar.trim()) { showToast(t('customerLedger.s004')); return; }
     setSaving(true);
     try {
       let finalTutar = Number(tutar);
@@ -109,7 +111,7 @@ export default function CustomerLedgerScreen() {
             const orijinalNot = `(${fmt(Number(tutar), paraBirimi)} olarak alındı)`;
             finalNotlar = notlar ? `${notlar} ${orijinalNot}` : orijinalNot;
           } else {
-            showToast('Kur bilgisi alınamadı, tutar girildiği para biriminde kaydedildi');
+            showToast(t('customerLedger.s005'));
           }
         }
       }
@@ -126,7 +128,7 @@ export default function CustomerLedgerScreen() {
         notlar: finalNotlar,
         tarih: new Date().toISOString().split('T')[0],
       });
-      showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : 'Borç eklendi');
+      showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : t('customerLedger.s006'));
       setTutar(''); setVadeTarihi(''); setNotlar(''); setFormOpen(false);
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
@@ -136,7 +138,7 @@ export default function CustomerLedgerScreen() {
   };
 
   const remove = async (id: string) => {
-    try { await deleteTahsilatEntry(id); showToast('Kayıt silindi'); }
+    try { await deleteTahsilatEntry(id); showToast(t('customerLedger.s007')); }
     catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
   };
 
@@ -158,8 +160,8 @@ export default function CustomerLedgerScreen() {
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle} numberOfLines={1}>{musteriAdi || 'Müşteri'}</Text>
-          <Text style={s.headerSub}>Para Akışı</Text>
+          <Text style={s.headerTitle} numberOfLines={1}>{musteriAdi || t('customerLedger.s008')}</Text>
+          <Text style={s.headerSub}>{t('customerLedger.s009')}</Text>
         </View>
         <TouchableOpacity onPress={call} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="call-outline" size={20} color={theme.colors.modules.tahsilat} />
@@ -171,16 +173,16 @@ export default function CustomerLedgerScreen() {
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           <View style={s.balanceCard}>
-            <Text style={s.balanceLabel}>GÜNCEL BAKİYE</Text>
+            <Text style={s.balanceLabel}>{t('customerLedger.s010')}</Text>
             {balancesByCurrency.length === 0 ? (
-              <Text style={s.balanceZero}>Bakiye yok, hesap kapalı.</Text>
+              <Text style={s.balanceZero}>{t('customerLedger.s011')}</Text>
             ) : (
               balancesByCurrency.map((b) => (
                 <View key={b.paraBirimi} style={s.balanceRow}>
                   <Text style={[s.balanceValue, { color: b.bakiye > 0 ? theme.colors.text : '#059669' }]}>
                     {fmt(Math.abs(b.bakiye), b.paraBirimi)}
                   </Text>
-                  <Text style={s.balanceTag}>{b.bakiye > 0 ? 'bize borçlu' : 'bizden alacaklı'}</Text>
+                  <Text style={s.balanceTag}>{b.bakiye > 0 ? t('customerLedger.s012') : t('customerLedger.s013')}</Text>
                 </View>
               ))
             )}
@@ -189,23 +191,23 @@ export default function CustomerLedgerScreen() {
           {!formOpen ? (
             <TouchableOpacity style={s.addBtn} onPress={() => setFormOpen(true)} testID="ledger-add-open">
               <Ionicons name="add-circle" size={18} color="#fff" />
-              <Text style={s.addBtnText}>Yeni Kayıt Ekle</Text>
+              <Text style={s.addBtnText}>{t('customerLedger.s014')}</Text>
             </TouchableOpacity>
           ) : (
             <View style={s.card}>
               <View style={s.turRow}>
                 <TouchableOpacity style={[s.turBtn, tur === 'tahsilat' && s.turBtnActiveGreen]} onPress={() => setTur('tahsilat')}>
-                  <Text style={[s.turBtnText, tur === 'tahsilat' && s.turBtnTextActive]}>Tahsilat Aldım</Text>
+                  <Text style={[s.turBtnText, tur === 'tahsilat' && s.turBtnTextActive]}>{t('customerLedger.s015')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.turBtn, tur === 'borc' && s.turBtnActiveRed]} onPress={() => setTur('borc')}>
-                  <Text style={[s.turBtnText, tur === 'borc' && s.turBtnTextActive]}>Borç Ekle</Text>
+                  <Text style={[s.turBtnText, tur === 'borc' && s.turBtnTextActive]}>{t('customerLedger.s016')}</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={s.amountRow}>
                 <TextInput
                   style={s.amountInput}
-                  placeholder="Tutar"
+                  placeholder={t('customerLedger.s017')}
                   keyboardType="decimal-pad"
                   value={tutar}
                   onChangeText={setTutar}
@@ -231,7 +233,7 @@ export default function CustomerLedgerScreen() {
               ) : (
                 <TextInput
                   style={s.input}
-                  placeholder="Vade tarihi (YYYY-AA-GG, opsiyonel)"
+                  placeholder={t('customerLedger.s018')}
                   value={vadeTarihi}
                   onChangeText={setVadeTarihi}
                   placeholderTextColor={theme.colors.textMuted}
@@ -240,7 +242,7 @@ export default function CustomerLedgerScreen() {
 
               <TextInput
                 style={[s.input, { marginTop: 10 }, isDiger && s.inputHighlight]}
-                placeholder={isDiger ? 'Açıklama giriniz (zorunlu)' : 'Not (opsiyonel)'}
+                placeholder={isDiger ? t('customerLedger.s019') : 'Not (opsiyonel)'}
                 value={notlar}
                 onChangeText={setNotlar}
                 placeholderTextColor={theme.colors.textMuted}
@@ -248,7 +250,7 @@ export default function CustomerLedgerScreen() {
 
               <View style={s.formActions}>
                 <TouchableOpacity style={s.cancelBtn} onPress={() => setFormOpen(false)}>
-                  <Text style={s.cancelBtnText}>Vazgeç</Text>
+                  <Text style={s.cancelBtnText}>{t('customerLedger.s020')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
                   <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
@@ -257,27 +259,27 @@ export default function CustomerLedgerScreen() {
             </View>
           )}
 
-          <Text style={s.sectionH}>GEÇMİŞ</Text>
+          <Text style={s.sectionH}>{t('customerLedger.s021')}</Text>
           {entries.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="time-outline" size={28} color={theme.colors.textMuted} />
-              <Text style={s.emptyText}>Henüz kayıt yok.</Text>
+              <Text style={s.emptyText}>{t('customerLedger.s022')}</Text>
             </View>
           ) : (
             <View style={s.card}>
-              {entries.map((t, i) => (
-                <View key={t.id} style={[s.entryRow, i === entries.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
-                  <View style={[s.entryIcon, { backgroundColor: t.tur === 'borc' ? '#FEF2F2' : '#ECFDF5' }]}>
-                    <Ionicons name={t.tur === 'borc' ? 'arrow-up' : 'arrow-down'} size={15} color={t.tur === 'borc' ? '#DC2626' : '#059669'} />
+              {entries.map((tx, i) => (
+                <View key={tx.id} style={[s.entryRow, i === entries.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
+                  <View style={[s.entryIcon, { backgroundColor: tx.tur === 'borc' ? '#FEF2F2' : '#ECFDF5' }]}>
+                    <Ionicons name={tx.tur === 'borc' ? 'arrow-up' : 'arrow-down'} size={15} color={tx.tur === 'borc' ? '#DC2626' : '#059669'} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.entryTitle}>{t.tur === 'borc' ? 'Borç' : 'Tahsilat'} · {t.yontem}</Text>
-                    <Text style={s.entryMeta}>{trDate(t.tarih)}{t.notlar ? ' · ' + t.notlar : ''}</Text>
+                    <Text style={s.entryTitle}>{tx.tur === 'borc' ? t('customerLedger.s023') : t('nav.tahsilat')} · {tx.yontem}</Text>
+                    <Text style={s.entryMeta}>{trDate(tx.tarih)}{tx.notlar ? ' · ' + tx.notlar : ''}</Text>
                   </View>
-                  <Text style={[s.entryAmount, { color: t.tur === 'borc' ? '#DC2626' : '#059669' }]}>
-                    {t.tur === 'borc' ? '+' : '-'}{fmt(t.tutar, t.paraBirimi)}
+                  <Text style={[s.entryAmount, { color: tx.tur === 'borc' ? '#DC2626' : '#059669' }]}>
+                    {tx.tur === 'borc' ? '+' : '-'}{fmt(tx.tutar, tx.paraBirimi)}
                   </Text>
-                  <TouchableOpacity style={s.deleteBtn} onPress={() => remove(t.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity style={s.deleteBtn} onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name="trash-outline" size={15} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </View>

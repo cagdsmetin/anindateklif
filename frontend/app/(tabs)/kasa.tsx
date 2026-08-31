@@ -16,6 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, RatesT } from '@/src/lib/api';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
+import { useLanguage } from '@/src/lib/i18n';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
@@ -31,6 +32,7 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 function monthKey(d: string) { return (d || '').slice(0, 7); }
 
 export default function KasaScreen() {
+  const { t } = useLanguage();
   const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
 
@@ -126,7 +128,7 @@ export default function KasaScreen() {
 
   const save = async () => {
     if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
-    if (isDiger && !notlar.trim()) { showToast("'Diğer' seçtiniz, lütfen açıklama yazın"); return; }
+    if (isDiger && !notlar.trim()) { showToast(t('kasa.s007')); return; }
     setSaving(true);
     try {
       await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates) });
@@ -143,7 +145,7 @@ export default function KasaScreen() {
   const remove = async (id: string) => {
     try {
       await deleteKasaEntry(id);
-      showToast('Kayıt silindi');
+      showToast(t('kasa.s008'));
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
     }
@@ -152,8 +154,8 @@ export default function KasaScreen() {
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Kasa" />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <TopHeader title={t('kasa.s009')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('kasa.s010')}</Text></View>
       </SafeAreaView>
     );
   }
@@ -162,12 +164,12 @@ export default function KasaScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Kasa (Gelir / Gider)" />
+      <TopHeader title={t('kasa.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={s.statsRow}>
             <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft }]}>
-              <Text style={[s.statLabel, { color: '#166534' }]}>BU AY GELİR</Text>
+              <Text style={[s.statLabel, { color: '#166534' }]}>{t('kasa.s012')}</Text>
               <Text style={[s.statValue, { color: '#166534' }]} numberOfLines={1}>{fmt(gelirToplam, 'TRY')}</Text>
               {gelirByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
                 <Text style={[s.statSubValue, { color: '#166534' }]} numberOfLines={1}>
@@ -176,7 +178,7 @@ export default function KasaScreen() {
               )}
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.redSoft }]}>
-              <Text style={[s.statLabel, { color: '#991b1b' }]}>BU AY GİDER</Text>
+              <Text style={[s.statLabel, { color: '#991b1b' }]}>{t('kasa.s013')}</Text>
               <Text style={[s.statValue, { color: '#991b1b' }]} numberOfLines={1}>{fmt(giderToplam, 'TRY')}</Text>
               {giderByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
                 <Text style={[s.statSubValue, { color: '#991b1b' }]} numberOfLines={1}>
@@ -185,30 +187,30 @@ export default function KasaScreen() {
               )}
             </View>
             <View style={[s.statCard, { backgroundColor: net >= 0 ? theme.colors.primarySoft : theme.colors.redSoft }]}>
-              <Text style={[s.statLabel, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>BU AY NET</Text>
+              <Text style={[s.statLabel, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>{t('kasa.s014')}</Text>
               <Text style={[s.statValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>{fmt(net, 'TRY')}</Text>
               {netByCurrency.length > 0 ? (
                 <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>
                   {netByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
                 </Text>
               ) : dovizliVar ? (
-                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>canlı kurla</Text>
+                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>{t('kasa.s015')}</Text>
               ) : null}
             </View>
           </View>
 
-          <Text style={s.sectionH}>YENİ KAYIT</Text>
+          <Text style={s.sectionH}>{t('kasa.s016')}</Text>
           <View style={s.card}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
               <TouchableOpacity style={[s.turBtn, tur === 'gelir' && s.turBtnGelirActive]} onPress={() => setTurAndKategori('gelir')} testID="kasa-tur-gelir">
-                <Text style={[s.turBtnText, tur === 'gelir' && { color: '#166534' }]}>Gelir (+)</Text>
+                <Text style={[s.turBtnText, tur === 'gelir' && { color: '#166534' }]}>{t('kasa.s017')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.turBtn, tur === 'gider' && s.turBtnGiderActive]} onPress={() => setTurAndKategori('gider')} testID="kasa-tur-gider">
-                <Text style={[s.turBtnText, tur === 'gider' && { color: '#991b1b' }]}>Gider (-)</Text>
+                <Text style={[s.turBtnText, tur === 'gider' && { color: '#991b1b' }]}>{t('kasa.s018')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={s.label}>KATEGORİ</Text>
+            <Text style={s.label}>{t('kasa.s019')}</Text>
             <View style={s.chipRow}>
               {kategoriler.map((k) => (
                 <TouchableOpacity key={k} style={[s.chip, kategori === k && s.chipActive]} onPress={() => setKategori(k)} testID={`kasa-kategori-${k}`}>
@@ -219,11 +221,11 @@ export default function KasaScreen() {
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1.4 }}>
-                <Text style={s.label}>TUTAR</Text>
+                <Text style={s.label}>{t('kasa.s020')}</Text>
                 <TextInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="kasa-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>PARA BİRİMİ</Text>
+                <Text style={s.label}>{t('kasa.s021')}</Text>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {CURRENCIES.map((c) => (
                     <TouchableOpacity key={c} style={[s.curChip, paraBirimi === c && s.curChipActive]} onPress={() => setParaBirimi(c)}>
@@ -234,7 +236,7 @@ export default function KasaScreen() {
               </View>
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>YÖNTEM</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{t('kasa.s022')}</Text>
             <View style={s.chipRow}>
               {YONTEMLER.map((y) => (
                 <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
@@ -243,12 +245,12 @@ export default function KasaScreen() {
               ))}
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? "NOT (zorunlu — 'Diğer' seçtiniz)" : 'NOT (opsiyonel)'}</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? t('kasa.s023') : 'NOT (opsiyonel)'}</Text>
             <TextInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
               onChangeText={setNotlar}
-              placeholder={isDiger ? "Ne için olduğunu açıklayın..." : 'Açıklama...'}
+              placeholder={isDiger ? t('kasa.s024') : t('kasa.s025')}
               placeholderTextColor="#94a3b8"
               testID="kasa-not-input"
             />
@@ -261,7 +263,7 @@ export default function KasaScreen() {
 
           {kategoriDagilimi.length > 0 && (
             <>
-              <Text style={s.sectionH}>BU AY KATEGORİ DAĞILIMI</Text>
+              <Text style={s.sectionH}>{t('kasa.s026')}</Text>
               <View style={s.card}>
                 {kategoriDagilimi.map((k) => (
                   <View key={k.kategori} style={{ marginBottom: 12 }}>
@@ -276,15 +278,15 @@ export default function KasaScreen() {
             </>
           )}
 
-          <Text style={s.sectionH}>SON HAREKETLER</Text>
+          <Text style={s.sectionH}>{t('kasa.s027')}</Text>
           <View style={s.searchWrap}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput style={s.searchInput} placeholder="Kategori veya not ara..." placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="kasa-search-input" />
+            <TextInput style={s.searchInput} placeholder={t('kasa.s028')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="kasa-search-input" />
           </View>
           {filtered.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="wallet-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyTextBox}>Henüz kayıt yok. Yukarıdan ilk hareketi ekleyin.</Text>
+              <Text style={s.emptyTextBox}>{t('kasa.s029')}</Text>
             </View>
           ) : (
             filtered.map((k) => (

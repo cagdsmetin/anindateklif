@@ -17,6 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
 import type { AssistantActionT, SystemTypeDefT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 type ChatMsg = {
   id: string;
@@ -37,7 +38,7 @@ const FALLBACK_SYSTEM_NAMES = ['Cam Balkon', 'Pergola'];
  * (ör. sadece 'Pergola') tanımladıysa artık 'Cam Balkon' değil 'Pergola'
  * örneği gösterilir.
  */
-function buildSuggestions(sistemTipleri?: { name: string }[], catalog?: { kategori: string }[]) {
+function buildSuggestions(t: (k: string) => string, sistemTipleri?: { name: string }[], catalog?: { kategori: string }[]) {
   const fromSystems = (sistemTipleri || []).map((s) => (s.name || '').trim()).filter(Boolean);
   const fromCatalog = Array.from(new Set((catalog || []).map((c) => (c.kategori || '').trim()).filter(Boolean)));
   const pool = fromSystems.length ? fromSystems : fromCatalog.length ? fromCatalog : FALLBACK_SYSTEM_NAMES;
@@ -45,10 +46,10 @@ function buildSuggestions(sistemTipleri?: { name: string }[], catalog?: { katego
   const secondary = pool[1] || pool[0] || FALLBACK_SYSTEM_NAMES[1];
 
   return [
-    'Bu uygulamayı nasıl kullanırım?',
+    t('assistant.s001'),
     `${primary} için teklif kalemi metni öner`,
     `${secondary} için müşteriden alınacak ölçü/detay listesi hazırla`,
-    'Fiyatlandırma notu nasıl yazılır?',
+    t('assistant.s002'),
   ];
 }
 
@@ -65,13 +66,14 @@ function newId() {
 const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
 export default function AssistantScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { activeCompany, updateCompany, showToast, catalog } = useApp();
 
   const suggestions = useMemo(
-    () => buildSuggestions(activeCompany?.sistemTipleri, catalog),
+    () => buildSuggestions(t, activeCompany?.sistemTipleri, catalog),
     [activeCompany?.sistemTipleri, catalog]
   );
 
@@ -111,11 +113,11 @@ export default function AssistantScreen() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     try {
       const res = await api.assistantChat({ message: text });
-      const reply = (res && res.reply) || 'Üzgünüm, şu anda bir yanıt oluşturamadım.';
+      const reply = (res && res.reply) || t('assistant.s005');
       setMessages((prev) => [...prev, { id: newId(), role: 'assistant', text: reply, action: res?.action || null }]);
     } catch (e: any) {
-      let msg = 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.';
-      if (e?.status === 503) msg = 'Yapay zeka asistanı henüz yapılandırılmadı.';
+      let msg = t('assistant.s006');
+      if (e?.status === 503) msg = t('assistant.s007');
       else if (e?.body) {
         try {
           const parsed = JSON.parse(e.body);
@@ -130,7 +132,7 @@ export default function AssistantScreen() {
   };
 
   const applyAction = async (msgId: string, action: AssistantActionT) => {
-    if (!activeCompany) { showToast('Önce firma seçiniz'); return; }
+    if (!activeCompany) { showToast(t('assistant.s008')); return; }
     setApplyingId(msgId);
     try {
       const sys: SystemTypeDefT = {
@@ -159,7 +161,7 @@ export default function AssistantScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="assistant-back">
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>AI Asistan</Text>
+        <Text style={s.headerTitle}>{t('assistant.s009')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -175,10 +177,9 @@ export default function AssistantScreen() {
               <View style={s.emptyIcon}>
                 <Ionicons name="sparkles" size={30} color={theme.colors.primary} />
               </View>
-              <Text style={s.emptyTitle}>Size nasıl yardımcı olabilirim?</Text>
+              <Text style={s.emptyTitle}>{t('assistant.s010')}</Text>
               <Text style={s.emptyText}>
-                Uygulamayı kullanma konusunda soru sorabilir, ya da bir teklif hazırlarken ürün açıklaması, fiyatlandırma notu veya teklif notu taslağı isteyebilirsiniz. Sattığınız ürün/hizmeti ve hangi alanları (ölçü, marka, renk vb.) girdiğinizi anlatırsanız, Katalog yapılandırıcısını sizin için otomatik hazırlayabilirim.
-              </Text>
+                {t('assistant.s011')}</Text>
               <View style={s.suggestWrap}>
                 {suggestions.map((sug) => (
                   <TouchableOpacity key={sug} style={s.suggestChip} onPress={() => send(sug)} testID="assistant-suggestion">
@@ -201,17 +202,16 @@ export default function AssistantScreen() {
                       <View style={s.actionAppliedRow}>
                         <Ionicons name="checkmark-circle" size={18} color={theme.colors.green} />
                         <Text style={s.actionAppliedText} numberOfLines={2}>
-                          '{m.action.name}' Katalog'a eklendi
-                        </Text>
+                          '{m.action.name}{t('assistant.s013')}</Text>
                         <TouchableOpacity onPress={() => router.push('/(tabs)/catalog')} testID={`assistant-goto-catalog-${m.id}`}>
-                          <Text style={s.actionGotoLink}>Katalog'u Aç</Text>
+                          <Text style={s.actionGotoLink}>{t('assistant.s014')}</Text>
                         </TouchableOpacity>
                       </View>
                     ) : (
                       <>
                         <View style={s.actionHeaderRow}>
                           <Ionicons name="cube-outline" size={16} color={theme.colors.modules.katalog} />
-                          <Text style={s.actionTitle} numberOfLines={2}>Katalog Önerisi: {m.action.name}</Text>
+                          <Text style={s.actionTitle} numberOfLines={2}>{t('assistant.s015')}{m.action.name}</Text>
                         </View>
                         <View style={s.actionFieldList}>
                           {m.action.fields.map((f, i) => (
@@ -238,12 +238,12 @@ export default function AssistantScreen() {
                             ) : (
                               <>
                                 <Ionicons name="add-circle" size={16} color="#fff" />
-                                <Text style={s.actionApplyBtnText}>Katalog'a Ekle</Text>
+                                <Text style={s.actionApplyBtnText}>{t('assistant.s016')}</Text>
                               </>
                             )}
                           </TouchableOpacity>
                           <TouchableOpacity style={s.actionDismissBtn} onPress={() => dismissAction(m.id)} testID={`assistant-dismiss-action-${m.id}`}>
-                            <Text style={s.actionDismissBtnText}>Hayır</Text>
+                            <Text style={s.actionDismissBtnText}>{t('assistant.s017')}</Text>
                           </TouchableOpacity>
                         </View>
                       </>
@@ -257,7 +257,7 @@ export default function AssistantScreen() {
             <View style={[s.bubbleRow, s.bubbleRowAssistant]}>
               <View style={[s.bubble, s.bubbleAssistant, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
                 <ActivityIndicator size="small" color={theme.colors.primary} />
-                <Text style={s.bubbleText}>Yazıyor...</Text>
+                <Text style={s.bubbleText}>{t('assistant.s018')}</Text>
               </View>
             </View>
           ) : null}
@@ -268,7 +268,7 @@ export default function AssistantScreen() {
             value={input}
             onChangeText={setInput}
             onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
-            placeholder="Bir şey sorun..."
+            placeholder={t('assistant.s019')}
             placeholderTextColor="#94a3b8"
             style={s.input}
             multiline

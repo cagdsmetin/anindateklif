@@ -33,6 +33,7 @@ import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
+import { useLanguage } from '@/src/lib/i18n';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -55,6 +56,7 @@ const DURUM_COLORS: Record<string, string> = {
 };
 
 export default function EditorScreen() {
+  const { t } = useLanguage();
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
@@ -63,7 +65,7 @@ export default function EditorScreen() {
     setSavingDefaultNotes(true);
     try {
       await updateCompany(activeCompany.id, { ...activeCompany, ozelNotlar: notlar });
-      showToast('Varsayılan not olarak kaydedildi');
+      showToast(t('teklifPage.s007'));
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || 'Kaydedilemedi'));
     } finally {
@@ -90,9 +92,9 @@ export default function EditorScreen() {
   const [projeAdi, setProjeAdi] = useState('');
   const [nakliye, setNakliye] = useState('EXW');
   const [paraBirimi, setParaBirimi] = useState('USD');
-  const [odemeSekli, setOdemeSekli] = useState('%50 Peşin - %50 Fab. Teslim');
-  const [mensei, setMensei] = useState('TÜRKİYE');
-  const [teslimGun, setTeslimGun] = useState('15-20 GÜN');
+  const [odemeSekli, setOdemeSekli] = useState(t('teklifPage.s008'));
+  const [mensei, setMensei] = useState(t('teklifPage.s009'));
+  const [teslimGun, setTeslimGun] = useState(t('teklifPage.s010'));
   const [iskonto, setIskonto] = useState('0');
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
@@ -185,7 +187,7 @@ export default function EditorScreen() {
       if (res.canceled) return;
       const picked = res.assets || [];
       const wordCount = picked.filter((a) => /\.(docx?|)$/i.test(a.name) && (a.mimeType || '').includes('word')).length;
-      if (wordCount > 0) showToast('Word dosyaları PDF\'e otomatik eklenemez — atlanacak');
+      if (wordCount > 0) showToast(t('teklifPage.s011'));
       const additions: AttachmentT[] = picked
         .filter((a) => {
           const m = (a.mimeType || '').toLowerCase();
@@ -199,12 +201,12 @@ export default function EditorScreen() {
           size: (a as any).size,
         }));
       if (additions.length === 0 && wordCount === 0) {
-        showToast('Desteklenmeyen dosya türü'); return;
+        showToast(t('teklifPage.s012')); return;
       }
       setAttachments((prev) => [...prev, ...additions]);
       if (additions.length > 0) showToast(`${additions.length} dosya eklendi`);
     } catch (e: any) {
-      showToast('Dosya seçilemedi: ' + (e?.message || ''));
+      showToast(t('teklifPage.s013') + (e?.message || ''));
     }
   };
 
@@ -287,7 +289,7 @@ export default function EditorScreen() {
   const fillFromCustomer = (id: string) => {
     const c = customers.find((x) => x.id === id); if (!c) return;
     setMusFirma(c.firma); setMusYetkili(c.yetkili); setMusTelefon(c.telefon); setMusEmail(c.email); setMusAdres(c.adres);
-    setShowCustomerPicker(false); setShowFirmaSuggestions(false); showToast('Müşteri bilgileri dolduruldu');
+    setShowCustomerPicker(false); setShowFirmaSuggestions(false); showToast(t('teklifPage.s014'));
   };
 
   const selectSystemType = (itemId: string, sys: SystemTypeDefT) => {
@@ -306,7 +308,7 @@ export default function EditorScreen() {
 
   const handleSave = async (): Promise<QuoteT | null> => {
     if (!activeCompany) return null;
-    if (!musFirma.trim()) { showToast('Müşteri firma adı zorunlu'); return null; }
+    if (!musFirma.trim()) { showToast(t('teklifPage.s015')); return null; }
     setSaving(true);
     try {
       const saved = await saveQuote(currentQuote(), editingId);
@@ -317,11 +319,11 @@ export default function EditorScreen() {
       showToast('Teklif kaydedildi'); return saved;
     } catch (e: any) {
       if (e?.status === 402) {
-        showToast('Ücretsiz teklif hakkınız bu ay doldu');
+        showToast(t('teklifPage.s016'));
         router.push('/subscription');
         return null;
       }
-      showToast('Kayıt hatası: ' + (e?.message || ''));
+      showToast(t('teklifPage.s017') + (e?.message || ''));
       return null;
     }
     finally { setSaving(false); }
@@ -378,7 +380,7 @@ export default function EditorScreen() {
         await downloadFileWeb(uri, fileName);
         showToast('PDF indirildi');
       }
-    } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
+    } catch (e: any) { showToast(t('teklifPage.s018') + (e?.message || '')); }
   };
 
   // Direct WhatsApp: open the customer's chat pre-filled, then trigger the share sheet
@@ -401,7 +403,7 @@ export default function EditorScreen() {
       if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
-      showToast('WhatsApp hatası: ' + (e?.message || ''));
+      showToast(t('teklifPage.s019') + (e?.message || ''));
     }
   };
 
@@ -424,7 +426,7 @@ export default function EditorScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title={editingId ? 'Teklif Düzenle' : 'Yeni Teklif'} />
+      <TopHeader title={editingId ? t('teklifPage.s020') : 'Yeni Teklif'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Grand total sticky */}
@@ -435,7 +437,7 @@ export default function EditorScreen() {
             style={s.totalBanner}
           >
             <View style={{ flex: 1 }}>
-              <Text style={s.totalLabel}>GENEL TOPLAM ({cur})</Text>
+              <Text style={s.totalLabel}>{t('teklifPage.s021')}{cur})</Text>
               <Text style={s.totalValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
             </View>
             <View style={s.miniStats}>
@@ -444,23 +446,23 @@ export default function EditorScreen() {
                 <Text style={s.durumBadgeText}>{durum}</Text>
               </View>
               <Text style={s.miniStat}>{items.length} kalem</Text>
-              <Text style={s.miniStatSub}>KDV %{kdvOr}</Text>
+              <Text style={s.miniStatSub}>{t('teklifPage.s023')}{kdvOr}</Text>
             </View>
           </LinearGradient>
 
-          <SectionHeader title="TEKLİF BİLGİLERİ" icon="document-text" />
+          <SectionHeader title={t('teklifPage.s024')} icon="document-text" />
           <Row>
-            <FGroup label="Teklif No" flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
-            <FGroup label="Tarih" flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s025')} flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
+            <FGroup label={t('teklifPage.s026')} flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
           </Row>
-          <FGroup label="Geçerlilik Tarihi"><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" /></FGroup>
+          <FGroup label={t('teklifPage.s027')}><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
 
-          <SectionHeaderWithAction title="MÜŞTERİ BİLGİLERİ" actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
+          <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
-            <Text style={s.label}>Firma Adı</Text>
+            <Text style={s.label}>{t('teklifPage.s029')}</Text>
             <TextInput
               style={s.input}
-              placeholder="Müşteri firma adı"
+              placeholder={t('teklifPage.s030')}
               placeholderTextColor="#94a3b8"
               value={musFirma}
               onChangeText={(v) => { setMusFirma(v); setShowFirmaSuggestions(true); }}
@@ -488,23 +490,23 @@ export default function EditorScreen() {
             ) : null}
           </View>
           <Row>
-            <FGroup label="Müşteri Adı" flex={1}><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder="Ad Soyad" placeholderTextColor="#94a3b8" /></FGroup>
-            <FGroup label="Telefon" flex={1}><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder="Telefon" placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
+            <FGroup label={t('teklifPage.s031')} flex={1}><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s002')} flex={1}><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
           </Row>
-          <FGroup label="E-Mail"><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder="ornek@firma.com" placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
-          <FGroup label="Adres"><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder="Açık adres" placeholderTextColor="#94a3b8" /></FGroup>
+          <FGroup label={t('teklifPage.s033')}><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+          <FGroup label={t('teklifPage.s035')}><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder={t('teklifPage.s036')} placeholderTextColor="#94a3b8" /></FGroup>
 
-          <SectionHeader title="SİPARİŞ BİLGİLERİ" icon="cart" />
-          <FGroup label="Proje Adı"><TextInput style={s.input} value={projeAdi} onChangeText={setProjeAdi} placeholder="Proje / iş adı" placeholderTextColor="#94a3b8" /></FGroup>
+          <SectionHeader title={t('teklifPage.s037')} icon="cart" />
+          <FGroup label={t('teklifPage.s038')}><TextInput style={s.input} value={projeAdi} onChangeText={setProjeAdi} placeholder={t('teklifPage.s039')} placeholderTextColor="#94a3b8" /></FGroup>
           <Row>
-            <FGroup label="Para Birimi" flex={1}>
+            <FGroup label={t('teklifPage.s040')} flex={1}>
               <View style={s.chipRow}>{['USD', 'EUR', 'TRY'].map((c) => (
                 <TouchableOpacity key={c} testID={`cur-${c}`} style={[s.chip, paraBirimi === c && s.chipActive]} onPress={() => setParaBirimi(c)}>
                   <Text style={[s.chipText, paraBirimi === c && s.chipTextActive]}>{c}</Text>
                 </TouchableOpacity>
               ))}</View>
             </FGroup>
-            <FGroup label="Nakliye" flex={1}>
+            <FGroup label={t('teklifPage.s041')} flex={1}>
               <View style={s.chipRow}>{['EXW', 'FOB', 'CIF', 'DAP'].map((c) => (
                 <TouchableOpacity key={c} style={[s.chip, nakliye === c && s.chipActive]} onPress={() => setNakliye(c)}>
                   <Text style={[s.chipText, nakliye === c && s.chipTextActive]}>{c}</Text>
@@ -512,14 +514,14 @@ export default function EditorScreen() {
               ))}</View>
             </FGroup>
           </Row>
-          <FGroup label="Ödeme Şekli"><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
+          <FGroup label={t('teklifPage.s042')}><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
           <Row>
-            <FGroup label="Menşei" flex={1}><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
-            <FGroup label="Teslim" flex={1}><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
+            <FGroup label={t('teklifPage.s043')} flex={1}><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
+            <FGroup label={t('teklifPage.s044')} flex={1}><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
           </Row>
           <Row>
-            <FGroup label="İskonto (%)" flex={1}><TextInput style={s.input} keyboardType="numeric" value={iskonto} onChangeText={setIskonto} /></FGroup>
-            <FGroup label="KDV (%)" flex={1}><TextInput style={s.input} keyboardType="numeric" value={kdvOrani} onChangeText={setKdvOrani} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={iskonto} onChangeText={setIskonto} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={kdvOrani} onChangeText={setKdvOrani} /></FGroup>
           </Row>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
@@ -528,8 +530,8 @@ export default function EditorScreen() {
               <View style={s.emptyIconCircle}>
                 <Ionicons name="add" size={26} color={theme.colors.primary} />
               </View>
-              <Text style={s.emptyTitle}>Henüz kalem eklenmedi</Text>
-              <Text style={s.emptyText}>Başlamak için dokunun, hizmet/ürün, manuel bilgi ya da genel ürün ekleyin.</Text>
+              <Text style={s.emptyTitle}>{t('teklifPage.s047')}</Text>
+              <Text style={s.emptyText}>{t('teklifPage.s048')}</Text>
             </TouchableOpacity>
           )}
 
@@ -554,11 +556,11 @@ export default function EditorScreen() {
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
             <TouchableOpacity style={[s.addBtn, { flex: 1.2 }]} onPress={() => setShowModeSheet(true)} testID="add-item-btn">
               <Ionicons name="add-circle" size={18} color={theme.colors.primary} />
-              <Text style={s.addBtnText}>Kalem Ekle</Text>
+              <Text style={s.addBtnText}>{t('teklifPage.s049')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.addBtnAlt, { flex: 1 }]} onPress={() => setShowCatalogPicker(true)} testID="add-from-catalog-btn">
               <Ionicons name="library-outline" size={16} color={theme.colors.navy} />
-              <Text style={s.addBtnAltText}>Katalog</Text>
+              <Text style={s.addBtnAltText}>{t('teklifPage.s050')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -566,14 +568,13 @@ export default function EditorScreen() {
             <View style={s.warningBox}>
               <Ionicons name="warning" size={16} color={theme.colors.gold} />
               <Text style={s.warningText}>
-                Henüz hizmet / ürün tanımlamadınız. <Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/catalog')}>Katalog sekmesinden</Text> Hizmet / Ürün Yapılandırıcı ile tanımlayın.
-              </Text>
+                {t('teklifPage.s051')}<Text style={{ fontWeight: '900' }} onPress={() => router.push('/(tabs)/catalog')}>{t('teklifPage.s052')}</Text> {t('teklifPage.s053')}</Text>
             </View>
           )}
 
-          <SectionHeader title="ÖZEL NOTLAR" icon="chatbox-ellipses" />
+          <SectionHeader title={t('teklifPage.s054')} icon="chatbox-ellipses" />
           <FGroup>
-            <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder="Notlar, garanti, koşullar..." placeholderTextColor="#94a3b8" />
+            <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder={t('teklifPage.s055')} placeholderTextColor="#94a3b8" />
             {!user?.is_staff && (
               <TouchableOpacity
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, opacity: savingDefaultNotes ? 0.6 : 1 }}
@@ -583,7 +584,7 @@ export default function EditorScreen() {
               >
                 <Ionicons name="bookmark-outline" size={14} color={theme.colors.primary} />
                 <Text style={{ fontSize: 11.5, fontWeight: '700', color: theme.colors.primary }}>
-                  {savingDefaultNotes ? 'Kaydediliyor...' : 'Bu notu her yeni teklifte varsayılan yap'}
+                  {savingDefaultNotes ? 'Kaydediliyor...' : t('teklifPage.s056')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -596,8 +597,8 @@ export default function EditorScreen() {
               devam eder, sadece yeni ek ekleme arayüzü gizlendi. */}
 
           {/* EK DOSYALAR — user-uploaded PDFs / images, merged into the outgoing PDF */}
-          <SectionHeader title="EK DOSYALAR (PDF · GÖRSEL)" icon="attach" />
-          <Text style={s.helperTinyMuted}>{"Yüklediğin dosyalar teklif PDF'inin sonuna otomatik eklenir (PDF: sayfa sayfa, görsel: A4 sayfa olarak). Word dosyaları desteklenmez."}</Text>
+          <SectionHeader title={t('teklifPage.s057')} icon="attach" />
+          <Text style={s.helperTinyMuted}>{t('teklifPage.s058')}</Text>
           {attachments.map((att, ai) => {
             const isImg = (att.mime || '').startsWith('image/') || /\.(png|jpe?g)$/i.test(att.name);
             const kb = att.size ? Math.round(att.size / 1024) : null;
@@ -608,7 +609,7 @@ export default function EditorScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.attachName} numberOfLines={1}>{att.name}</Text>
-                  <Text style={s.attachMeta}>{isImg ? 'Görsel' : 'PDF'}{kb ? ` · ${kb} KB` : ''}</Text>
+                  <Text style={s.attachMeta}>{isImg ? t('teklifPage.s059') : 'PDF'}{kb ? ` · ${kb} KB` : ''}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setAttachments(attachments.filter((_, i) => i !== ai))}
@@ -622,26 +623,26 @@ export default function EditorScreen() {
           })}
           <TouchableOpacity style={s.addBtn} onPress={pickAttachments} testID="pick-attachment-btn">
             <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.addBtnText}>Dosya Yükle (PDF · Görsel)</Text>
+            <Text style={s.addBtnText}>{t('teklifPage.s060')}</Text>
           </TouchableOpacity>
 
           {/* LIVE PDF PREVIEW */}
           <View style={s.livePreviewSection}>
             <View style={s.livePreviewHdr}>
               <Ionicons name="eye" size={16} color="#fff" />
-              <Text style={s.livePreviewHdrText}>CANLI PDF ÖNİZLEME</Text>
+              <Text style={s.livePreviewHdrText}>{t('teklifPage.s061')}</Text>
               <View style={s.liveDot} />
               <Text style={s.livePreviewCount}>{items.length} kalem</Text>
             </View>
             <View style={s.miniTable}>
               <View style={s.miniTHead}>
                 <Text style={[s.miniTh, { width: 22, textAlign: 'center' }]}>#</Text>
-                <Text style={[s.miniTh, { flex: 1 }]}>HİZMET / ÜRÜN</Text>
-                <Text style={[s.miniTh, { width: 38, textAlign: 'center' }]}>ADET</Text>
-                <Text style={[s.miniTh, { width: 66, textAlign: 'right' }]}>TOPLAM</Text>
+                <Text style={[s.miniTh, { flex: 1 }]}>{t('teklifPage.s004')}</Text>
+                <Text style={[s.miniTh, { width: 38, textAlign: 'center' }]}>{t('teklifPage.s062')}</Text>
+                <Text style={[s.miniTh, { width: 66, textAlign: 'right' }]}>{t('teklifPage.s063')}</Text>
               </View>
               {items.length === 0 ? (
-                <Text style={s.miniEmpty}>Kalem eklendikçe burada görüntülenecek.</Text>
+                <Text style={s.miniEmpty}>{t('teklifPage.s064')}</Text>
               ) : items.map((it, i) => {
                 const line = (it.adet || 0) * (it.birimFiyat || 0);
                 const desc = buildItemDescription(it);
@@ -658,11 +659,11 @@ export default function EditorScreen() {
           </View>
 
           <View style={s.totalsCard}>
-            <TotRow label="Ara Toplam" value={fmt(subtotal, cur)} />
+            <TotRow label={t('teklifPage.s066')} value={fmt(subtotal, cur)} />
             {iskontoOr > 0 && <TotRow label={`İskonto (%${iskontoOr})`} value={`-${fmt(iskontoTutar, cur)}`} negative />}
             <TotRow label={`KDV (%${kdvOr})`} value={fmt(kdvTutar, cur)} />
             <View style={s.grand}>
-              <Text style={s.grandLabel}>GENEL TOPLAM</Text>
+              <Text style={s.grandLabel}>{t('teklifPage.s067')}</Text>
               <Text style={s.grandValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
             </View>
           </View>
@@ -670,21 +671,21 @@ export default function EditorScreen() {
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
             <TouchableOpacity style={[s.btnGhost, { flex: 0.8 }]} onPress={resetForm}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSoft} />
-              <Text style={s.btnGhostText}>Sıfırla</Text>
+              <Text style={s.btnGhostText}>{t('teklifPage.s068')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.btnSecondary, { flex: 1 }]} onPress={handlePreview} disabled={saving} testID="preview-btn">
               <Ionicons name="eye-outline" size={16} color="#fff" />
-              <Text style={s.btnSecondaryText}>Önizle</Text>
+              <Text style={s.btnSecondaryText}>{t('teklifPage.s069')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <TouchableOpacity style={[s.btnPrimary, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
-              {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet & PDF</Text></>)}
+              {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s070')}</Text></>)}
             </TouchableOpacity>
             <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving} testID="share-whatsapp-btn">
               <Ionicons name="logo-whatsapp" size={17} color="#fff" />
-              <Text style={s.btnPrimaryText}>WhatsApp Gönder</Text>
+              <Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -694,10 +695,10 @@ export default function EditorScreen() {
       <Modal visible={showModeSheet} transparent animationType="slide">
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowModeSheet(false)}>
           <View style={s.modalSheet}>
-            <Text style={s.modalTitle}>Kalem Tipi Seçin</Text>
-            <ModeChoice icon="construct" title="Hizmet / Ürün" desc="Firma ayarlarında tanımlı hizmet/ürün tiplerinden seçin" onPress={() => addItem('technical')} tid="add-technical" />
-            <ModeChoice icon="list" title="Manuel Bilgi" desc="Kendi Key: Value çiftlerinizi ekleyin" onPress={() => addItem('manual')} tid="add-manual" />
-            <ModeChoice icon="pricetag" title="Genel Ürün" desc="İsim + adet + fiyat" onPress={() => addItem('general')} tid="add-general" />
+            <Text style={s.modalTitle}>{t('teklifPage.s072')}</Text>
+            <ModeChoice icon="construct" title={t('teklifPage.s005')} desc={t('teklifPage.s073')} onPress={() => addItem('technical')} tid="add-technical" />
+            <ModeChoice icon="list" title={t('teklifPage.s074')} desc={t('teklifPage.s075')} onPress={() => addItem('manual')} tid="add-manual" />
+            <ModeChoice icon="pricetag" title={t('teklifPage.s076')} desc={t('teklifPage.s077')} onPress={() => addItem('general')} tid="add-general" />
           </View>
         </TouchableOpacity>
       </Modal>
@@ -707,10 +708,10 @@ export default function EditorScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Katalogdan Ekle</Text>
+              <Text style={s.modalTitle}>{t('teklifPage.s078')}</Text>
               <TouchableOpacity onPress={() => setShowCatalogPicker(false)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
-            {catalog.length === 0 ? <Text style={s.emptyMuted}>Katalog boş.</Text> : (
+            {catalog.length === 0 ? <Text style={s.emptyMuted}>{t('teklifPage.s079')}</Text> : (
               <ScrollView style={{ maxHeight: 500 }}>{catalog.map((c) => (
                 <TouchableOpacity key={c.id} style={s.catalogRow} onPress={() => addFromCatalog(c.id)}>
                   <View style={{ flex: 1 }}>
@@ -731,7 +732,7 @@ export default function EditorScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Müşteri Geçmişi</Text>
+              <Text style={s.modalTitle}>{t('teklifPage.s081')}</Text>
               <TouchableOpacity onPress={() => setShowCustomerPicker(false)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 500 }}>{customers.map((c) => (
@@ -752,20 +753,20 @@ export default function EditorScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalSheet}>
             <View style={s.modalHdr}>
-              <Text style={s.modalTitle}>Hizmet / Ürün Seç</Text>
+              <Text style={s.modalTitle}>{t('teklifPage.s082')}</Text>
               <TouchableOpacity onPress={() => setShowSystemPicker(null)}><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             {(activeCompany?.sistemTipleri || []).length === 0 ? (
               <View style={{ padding: 20, alignItems: 'center' }}>
                 <Ionicons name="warning-outline" size={32} color={theme.colors.gold} />
-                <Text style={s.emptyMuted}>Henüz sistem tipi tanımlamadınız. Firma sekmesinden ekleyin.</Text>
+                <Text style={s.emptyMuted}>{t('teklifPage.s083')}</Text>
               </View>
             ) : (
               <ScrollView style={{ maxHeight: 500 }}>{(activeCompany?.sistemTipleri || []).map((sys) => (
                 <TouchableOpacity key={sys.id} style={s.catalogRow} onPress={() => showSystemPicker && selectSystemType(showSystemPicker, sys)} testID={`sys-pick-${sys.id}`}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.catName} numberOfLines={1}>{sys.name}</Text>
-                    <Text style={s.catPrice}>{sys.fields?.length || 0} teknik alan</Text>
+                    <Text style={s.catPrice}>{sys.fields?.length || 0} {t('teklifPage.s084')}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={22} color={theme.colors.primary} />
                 </TouchableOpacity>
@@ -779,7 +780,7 @@ export default function EditorScreen() {
       <Modal visible={!!showSelectPicker} transparent animationType="fade">
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowSelectPicker(null)}>
           <View style={s.pickerSheet}>
-            <Text style={s.modalTitle}>{showSelectPicker?.title || 'Seç'}</Text>
+            <Text style={s.modalTitle}>{showSelectPicker?.title || t('teklifPage.s085')}</Text>
             <ScrollView style={{ maxHeight: 320 }}>
               {(showSelectPicker?.options || []).map((op) => (
                 <TouchableOpacity key={op} style={s.emailRow} onPress={() => {
@@ -821,6 +822,7 @@ function ItemCard({
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
   leaving?: boolean;
 }) {
+  const { t } = useLanguage();
   // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
   // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -835,9 +837,9 @@ function ItemCard({
   }, [leaving]);
   const line = (item.adet || 0) * (item.birimFiyat || 0);
   const modeMeta =
-    item.mode === 'technical' ? { label: 'HİZMET / ÜRÜN', color: theme.colors.primary, icon: 'construct' as const } :
-    item.mode === 'manual' ? { label: 'MANUEL', color: theme.colors.gold, icon: 'create' as const } :
-    { label: 'GENEL ÜRÜN', color: theme.colors.textMuted, icon: 'cube' as const };
+    item.mode === 'technical' ? { label: t('teklifPage.s004'), color: theme.colors.primary, icon: 'construct' as const } :
+    item.mode === 'manual' ? { label: t('teklifPage.s086'), color: theme.colors.gold, icon: 'create' as const } :
+    { label: t('teklifPage.s087'), color: theme.colors.textMuted, icon: 'cube' as const };
   const preview = buildItemDescription(item);
   const selectedSys = sistemTipleri.find((s) => s.id === item.sistemTipiId);
   // Kartlar accordion mantığıyla çalışır -- açık/kapalı durumu parent'ta
@@ -847,7 +849,7 @@ function ItemCard({
   const collapsed = !expanded;
   const itemTitle = item.mode === 'technical' ? (item.sistemTipi || '') : (item.urunAdi || '');
   const summaryBits = [itemTitle, preview].filter(Boolean);
-  const summaryText = summaryBits.join(' — ') || 'Detaylar için dokunun';
+  const summaryText = summaryBits.join(' — ') || t('teklifPage.s088');
 
   const animatedCardStyle = {
     opacity: enterAnim,
@@ -888,10 +890,10 @@ function ItemCard({
       {/* TECHNICAL MODE — dynamic fields based on selected system */}
       {item.mode === 'technical' && (
         <>
-          <FieldGroup label="Hizmet / Ürün">
+          <FieldGroup label={t('teklifPage.s005')}>
             <TouchableOpacity style={[itemStyles.select, !item.sistemTipiId && itemStyles.selectHighlight]} onPress={onOpenSystemPicker} testID={`item-${idx}-syspick`}>
               <Text style={[itemStyles.selectText, !item.sistemTipiId && { color: theme.colors.primary, fontWeight: '800' }]} numberOfLines={1}>
-                {item.sistemTipi || '👆 Bir Hizmet / Ürün Seçin'}
+                {item.sistemTipi || t('teklifPage.s089')}
               </Text>
               <Ionicons name="chevron-down" size={14} color={theme.colors.primary} />
             </TouchableOpacity>
@@ -908,7 +910,7 @@ function ItemCard({
                     onPress={() => onOpenSelectPicker(`f-${fi}`, f.options, f.label)}
                     testID={`item-${idx}-field-${fi}`}
                   >
-                    <Text style={itemStyles.selectText} numberOfLines={1}>{currentVal || 'Seçiniz'}</Text>
+                    <Text style={itemStyles.selectText} numberOfLines={1}>{currentVal || t('teklifPage.s090')}</Text>
                     <Ionicons name="chevron-down" size={14} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </FieldGroup>
@@ -920,7 +922,7 @@ function ItemCard({
                 <FieldGroup key={f.id} label={f.label}>
                   <TouchableOpacity style={itemStyles.checkboxRow} onPress={() => onUpdateSystemFieldValue(fi, on ? '' : 'Evet')} testID={`item-${idx}-field-${fi}`}>
                     <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? theme.colors.primary : theme.colors.textMuted} />
-                    <Text style={itemStyles.checkboxText}>{on ? 'Evet' : 'Hayır'}</Text>
+                    <Text style={itemStyles.checkboxText}>{on ? 'Evet' : t('teklifPage.s091')}</Text>
                   </TouchableOpacity>
                 </FieldGroup>
               );
@@ -945,15 +947,15 @@ function ItemCard({
       {/* MANUAL MODE */}
       {item.mode === 'manual' && (
         <>
-          <FieldGroup label="Başlık / Ürün Adı">
-            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder="örn: Elektrik Kablosu" placeholderTextColor="#94a3b8" />
+          <FieldGroup label={t('teklifPage.s092')}>
+            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s093')} placeholderTextColor="#94a3b8" />
           </FieldGroup>
           {(item.customFields || []).map((cf, ci) => (
             <View key={ci} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-              <TextInput style={[itemStyles.input, { flex: 1 }]} placeholder="Anahtar" placeholderTextColor="#94a3b8" value={cf.key} onChangeText={(v) => {
+              <TextInput style={[itemStyles.input, { flex: 1 }]} placeholder={t('teklifPage.s094')} placeholderTextColor="#94a3b8" value={cf.key} onChangeText={(v) => {
                 const next = [...item.customFields]; next[ci] = { ...cf, key: v }; onChange({ customFields: next });
               }} />
-              <TextInput style={[itemStyles.input, { flex: 1.5 }]} placeholder="Değer" placeholderTextColor="#94a3b8" value={cf.value} onChangeText={(v) => {
+              <TextInput style={[itemStyles.input, { flex: 1.5 }]} placeholder={t('teklifPage.s095')} placeholderTextColor="#94a3b8" value={cf.value} onChangeText={(v) => {
                 const next = [...item.customFields]; next[ci] = { ...cf, value: v }; onChange({ customFields: next });
               }} />
               <TouchableOpacity style={itemStyles.removeKv} onPress={() => onChange({ customFields: item.customFields.filter((_, i) => i !== ci) })}>
@@ -963,7 +965,7 @@ function ItemCard({
           ))}
           <TouchableOpacity style={itemStyles.addKv} onPress={() => onChange({ customFields: [...(item.customFields || []), { key: '', value: '' }] })} testID={`add-kv-${idx}`}>
             <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
-            <Text style={itemStyles.addKvText}>+ Özel Bilgi Ekle</Text>
+            <Text style={itemStyles.addKvText}>{t('teklifPage.s096')}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -971,10 +973,10 @@ function ItemCard({
       {/* GENERAL MODE */}
       {item.mode === 'general' && (
         <>
-          <FieldGroup label="Ürün / Hizmet Adı">
-            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder="örn: Danışmanlık" placeholderTextColor="#94a3b8" testID={`item-name-${idx}`} />
+          <FieldGroup label={t('teklifPage.s097')}>
+            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s098')} placeholderTextColor="#94a3b8" testID={`item-name-${idx}`} />
           </FieldGroup>
-          <FieldGroup label="Açıklama (opsiyonel)">
+          <FieldGroup label={t('teklifPage.s099')}>
             <TextInput style={[itemStyles.input, { minHeight: 40, textAlignVertical: 'top' }]} multiline value={item.aciklama} onChangeText={(v) => onChange({ aciklama: v })} />
           </FieldGroup>
         </>
@@ -982,16 +984,16 @@ function ItemCard({
 
       {/* Quantity / Unit / Price */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <FieldGroup label="Adet" flex={1}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.adet)} onChangeText={(v) => onChange({ adet: Number(v.replace(',', '.')) || 0 })} testID={`item-qty-${idx}`} /></FieldGroup>
-        <FieldGroup label="Birim" flex={1}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
-        <FieldGroup label="Birim Fiyat" flex={1.4}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.birimFiyat)} onChangeText={(v) => onChange({ birimFiyat: Number(v.replace(',', '.')) || 0 })} testID={`item-price-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s100')} flex={1}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.adet)} onChangeText={(v) => onChange({ adet: Number(v.replace(',', '.')) || 0 })} testID={`item-qty-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s101')} flex={1}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s102')} flex={1.4}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.birimFiyat)} onChangeText={(v) => onChange({ birimFiyat: Number(v.replace(',', '.')) || 0 })} testID={`item-price-${idx}`} /></FieldGroup>
       </View>
 
       {/* Per-item PDF cell preview */}
       {(item.mode === 'technical' || item.mode === 'manual') && (
         <View style={itemStyles.previewBox}>
-          <Text style={itemStyles.previewLabel}>PDF HÜCRESİ</Text>
-          <Text style={itemStyles.previewText}>{preview || <Text style={{ color: theme.colors.textMuted }}>Boş kalem</Text>}</Text>
+          <Text style={itemStyles.previewLabel}>{t('teklifPage.s103')}</Text>
+          <Text style={itemStyles.previewText}>{preview || <Text style={{ color: theme.colors.textMuted }}>{t('teklifPage.s104')}</Text>}</Text>
         </View>
       )}
       </>

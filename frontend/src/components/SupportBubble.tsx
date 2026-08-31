@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 // Global "Nasıl yardımcı olabiliriz?" baloncuğu — her sayfanın sağ altında
 // sabit görünsün diye kök layout'ta (app/_layout.tsx) bir kez render edilir,
@@ -12,6 +13,7 @@ import { api } from '@/src/lib/api';
 // WhatsApp/e-posta seçeneklerinin altında artık gerçek numara/adres YAZILMIYOR
 // (sadece uygulama içinde açılıyor) — sade görünmesi istendi.
 export default function SupportBubble() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -35,7 +37,7 @@ export default function SupportBubble() {
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
           <View style={[s.sheet, { marginBottom: insets.bottom + 88 }]}>
-            <Text style={s.title}>Nasıl yardımcı olabiliriz?</Text>
+            <Text style={s.title}>{t('supportBubble.s001')}</Text>
             <TouchableOpacity
               style={s.option}
               onPress={() => { setOpen(false); router.push('/(tabs)/assistant' as any); }}
@@ -45,8 +47,8 @@ export default function SupportBubble() {
                 <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.optionTitle}>AI Asistan'a Sor</Text>
-                <Text style={s.optionSub}>Kullanım soruları, teklif metni önerisi</Text>
+                <Text style={s.optionTitle}>{t('supportBubble.s002')}</Text>
+                <Text style={s.optionSub}>{t('supportBubble.s003')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
             </TouchableOpacity>
@@ -60,21 +62,21 @@ export default function SupportBubble() {
                   <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.optionTitle}>WhatsApp ile Destek</Text>
+                  <Text style={s.optionTitle}>{t('supportBubble.s004')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
               </TouchableOpacity>
             )}
             <TouchableOpacity
               style={s.option}
-              onPress={() => { setOpen(false); Linking.openURL('mailto:ncagdasm@gmail.com?subject=Anında%20Teklif%20Destek'); }}
+              onPress={() => { setOpen(false); Linking.openURL(t('supportBubble.s005')); }}
               testID="support-email"
             >
               <View style={[s.icon, { backgroundColor: theme.colors.surfaceSoft }]}>
                 <Ionicons name="mail-outline" size={18} color={theme.colors.textSoft} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.optionTitle}>E-posta ile Destek</Text>
+                <Text style={s.optionTitle}>{t('supportBubble.s006')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
             </TouchableOpacity>

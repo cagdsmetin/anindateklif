@@ -19,6 +19,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
+import { useLanguage } from '@/src/lib/i18n';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
 const DURUM_COLORS: Record<string, string> = {
@@ -65,6 +66,7 @@ const WHATSAPP_TEMPLATES: WaTemplate[] = [
 type Tab = 'bugun' | 'tumu' | 'talep';
 
 export default function LeadsScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, showToast } = useApp();
@@ -74,7 +76,7 @@ export default function LeadsScreen() {
   // hepsi alt alta dizilirse Aranacaklar uzun oldukça diğerleri ekranın çok
   // aşağısında kalıyordu -- bunun yerine küçük filtre çipleriyle tek seferde
   // sadece bir grup gösteriyoruz.
-  const [tumuFilter, setTumuFilter] = useState<string>('Aranmadı');
+  const [tumuFilter, setTumuFilter] = useState<string>(t('leads.s001'));
   const [reorderingTabs, setReorderingTabs] = useState(false);
   const { order: tabOrder, moveLeft: moveTabLeft, moveRight: moveTabRight } = useOrderedNames(
     'leadsTabOrder_v1',
@@ -117,7 +119,7 @@ export default function LeadsScreen() {
   // diye -- personel sadece adminse veya sahip değilse bu butonu göremez.
   const [assignFor, setAssignFor] = useState<LeadCompanyT | null>(null);
   const [assignStaffId, setAssignStaffId] = useState('');
-  const [assignNote, setAssignNote] = useState('Ara, iletişime geç');
+  const [assignNote, setAssignNote] = useState(t('leads.s003'));
   const [assignSaving, setAssignSaving] = useState(false);
 
   const companyId = activeCompany?.id;
@@ -152,7 +154,7 @@ export default function LeadsScreen() {
         if (all.length === 0) setTab('talep');
       }
     } catch (e: any) {
-      showToast('Yüklenemedi: ' + (e?.message || ''));
+      showToast(t('leads.s017') + (e?.message || ''));
     } finally {
       setLoading(false);
     }
@@ -221,30 +223,30 @@ export default function LeadsScreen() {
   const openWhatsApp = (lead: LeadCompanyT) => {
     const cleaned = normalizePhoneForWhatsApp(lead.telefon || '');
     if (!cleaned) {
-      showToast('Geçerli bir telefon numarası yok');
+      showToast(t('leads.s009'));
       return;
     }
     const first = WHATSAPP_TEMPLATES[0];
     setWaLead(lead);
     setWaTemplateId(first.id);
-    setWaText(first.text(activeCompany?.sirketAdi || 'firmamız', lead.firma));
+    setWaText(first.text(activeCompany?.sirketAdi || t('leads.s010'), lead.firma));
   };
 
   const pickWaTemplate = (id: string) => {
     setWaTemplateId(id);
     const tpl = WHATSAPP_TEMPLATES.find((t) => t.id === id);
-    if (tpl && waLead) setWaText(tpl.text(activeCompany?.sirketAdi || 'firmamız', waLead.firma));
+    if (tpl && waLead) setWaText(tpl.text(activeCompany?.sirketAdi || t('leads.s010'), waLead.firma));
   };
 
   const sendWaText = () => {
     if (!waLead) return;
     const cleaned = normalizePhoneForWhatsApp(waLead.telefon || '');
     if (!cleaned) {
-      showToast('Geçerli bir telefon numarası yok');
+      showToast(t('leads.s009'));
       return;
     }
     const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(waText)}`;
-    Linking.openURL(url).catch(() => showToast('WhatsApp açılamadı'));
+    Linking.openURL(url).catch(() => showToast(t('leads.s018')));
     setWaLead(null);
   };
 
@@ -252,7 +254,7 @@ export default function LeadsScreen() {
     if (!companyId) return;
     const n = parseInt(dailyCount, 10);
     if (!n || n < 1) {
-      showToast('Geçerli bir sayı gir');
+      showToast(t('leads.s019'));
       return;
     }
     setSavingDaily(true);
@@ -273,7 +275,7 @@ export default function LeadsScreen() {
   const submitRequest = async () => {
     if (!companyId) return;
     if (!reqSektor.trim()) {
-      showToast('Hangi sektörde firma aradığını yaz');
+      showToast(t('leads.s020'));
       return;
     }
     setSendingReq(true);
@@ -287,8 +289,8 @@ export default function LeadsScreen() {
       await load();
     } catch (e: any) {
       const msg = e?.status === 404
-        ? 'Uygun firma bulunamadı, farklı bir sektör/bölge dene'
-        : 'Şu anda firma bulunamadı, lütfen tekrar dene';
+        ? t('leads.s021')
+        : t('leads.s022');
       showToast(msg);
     } finally {
       setSendingReq(false);
@@ -298,7 +300,7 @@ export default function LeadsScreen() {
   const addLeadManual = async () => {
     if (!companyId) return;
     if (!addFirma.trim()) {
-      showToast('Firma adı gerekli');
+      showToast(t('leads.s023'));
       return;
     }
     setAddSaving(true);
@@ -329,20 +331,20 @@ export default function LeadsScreen() {
   const openAssign = (lead: LeadCompanyT) => {
     setAssignFor(lead);
     setAssignStaffId(lead.atananKullaniciId || '');
-    setAssignNote(lead.atananNot || 'Ara, iletişime geç');
+    setAssignNote(lead.atananNot || t('leads.s003'));
   };
 
   const saveAssign = async () => {
     if (!assignFor) return;
     if (!assignStaffId) {
-      showToast('Bir personel seç');
+      showToast(t('leads.s024'));
       return;
     }
     setAssignSaving(true);
     try {
       await api.updateLead(assignFor.id, { atananKullaniciId: assignStaffId, atananNot: assignNote });
       setAssignFor(null);
-      showToast('Firma personele atandı');
+      showToast(t('leads.s025'));
       await load();
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
@@ -357,7 +359,7 @@ export default function LeadsScreen() {
     try {
       await api.updateLead(assignFor.id, { atananKullaniciId: '', atananNot: '' });
       setAssignFor(null);
-      showToast('Atama kaldırıldı');
+      showToast(t('leads.s026'));
       await load();
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
@@ -391,10 +393,10 @@ export default function LeadsScreen() {
   const callLead = (lead: LeadCompanyT) => {
     const raw = (lead.telefon || '').replace(/[^0-9+]/g, '');
     if (!raw) {
-      showToast('Telefon numarası yok');
+      showToast(t('leads.s027'));
       return;
     }
-    Linking.openURL(`tel:${raw}`).catch(() => showToast('Arama başlatılamadı'));
+    Linking.openURL(`tel:${raw}`).catch(() => showToast(t('leads.s028')));
   };
 
   if (!activeCompany) {
@@ -404,10 +406,10 @@ export default function LeadsScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Müşteri Avcısı</Text>
+          <Text style={s.headerTitle}>{t('leads.s011')}</Text>
           <View style={s.headerBtn} />
         </View>
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <View style={s.empty}><Text style={s.emptyText}>{t('leads.s029')}</Text></View>
       </SafeAreaView>
     );
   }
@@ -419,8 +421,8 @@ export default function LeadsScreen() {
       <View style={{ flex: 1 }}>
         <Text style={s.leadName} numberOfLines={1}>{lead.firma}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
-          <View style={s.tagPill}><Text style={s.tagPillText}>Bölge: {lead.bolge || '-'}</Text></View>
-          <View style={s.tagPill}><Text style={s.tagPillText}>Sektör: {lead.kategori || '-'}</Text></View>
+          <View style={s.tagPill}><Text style={s.tagPillText}>{t('leads.s030')}{lead.bolge || '-'}</Text></View>
+          <View style={s.tagPill}><Text style={s.tagPillText}>{t('leads.s031')}{lead.kategori || '-'}</Text></View>
         </View>
         {lead.telefon ? (
           <TouchableOpacity style={s.phoneRow} onPress={() => callLead(lead)} testID={`lead-call-${lead.id}`}>
@@ -428,14 +430,14 @@ export default function LeadsScreen() {
             <Text style={s.phoneRowText}>{lead.telefon}</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={s.leadSub}>telefon yok</Text>
+          <Text style={s.leadSub}>{t('leads.s032')}</Text>
         )}
         {!!lead.website && (
           <TouchableOpacity
             style={s.phoneRow}
             onPress={() => {
               const url = /^https?:\/\//i.test(lead.website) ? lead.website : `https://${lead.website}`;
-              Linking.openURL(url).catch(() => showToast('Site açılamadı'));
+              Linking.openURL(url).catch(() => showToast(t('leads.s033')));
             }}
           >
             <Ionicons name="globe-outline" size={13} color={theme.colors.primary} />
@@ -443,7 +445,7 @@ export default function LeadsScreen() {
           </TouchableOpacity>
         )}
         {!!lead.email && (
-          <TouchableOpacity style={s.phoneRow} onPress={() => Linking.openURL(`mailto:${lead.email}`).catch(() => showToast('E-posta açılamadı'))}>
+          <TouchableOpacity style={s.phoneRow} onPress={() => Linking.openURL(`mailto:${lead.email}`).catch(() => showToast(t('leads.s034')))}>
             <Ionicons name="mail-outline" size={13} color={theme.colors.primary} />
             <Text style={s.phoneRowText} numberOfLines={1}>{lead.email}</Text>
           </TouchableOpacity>
@@ -462,19 +464,19 @@ export default function LeadsScreen() {
         {!!lead.tekrarTarihi && (
           <View style={s.reminderBadge}>
             <Ionicons name="alarm-outline" size={12} color="#b45309" />
-            <Text style={s.reminderBadgeText}>Tekrar ara: {trDateShort(lead.tekrarTarihi)}</Text>
+            <Text style={s.reminderBadgeText}>{t('leads.s035')}{trDateShort(lead.tekrarTarihi)}</Text>
           </View>
         )}
         {!!lead.atananKullaniciId && !isStaffUser && (
           <View style={s.assignBadge}>
             <Ionicons name="person-outline" size={12} color="#5b21b6" />
-            <Text style={s.assignBadgeText}>{staffLabelById[lead.atananKullaniciId] || 'Personel'}: {lead.atananNot || 'Ara, iletişime geç'}</Text>
+            <Text style={s.assignBadgeText}>{staffLabelById[lead.atananKullaniciId] || 'Personel'}: {lead.atananNot || t('leads.s003')}</Text>
           </View>
         )}
         {assignedToMe && (
           <View style={[s.assignBadge, { backgroundColor: '#FEF3C7' }]}>
             <Ionicons name="notifications-outline" size={12} color="#b45309" />
-            <Text style={[s.assignBadgeText, { color: '#b45309' }]}>Sana atandı: {lead.atananNot || 'Ara, iletişime geç'}</Text>
+            <Text style={[s.assignBadgeText, { color: '#b45309' }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
           </View>
         )}
         {!!lead.notlar && <Text style={s.leadNote} numberOfLines={2}>📝 {lead.notlar}</Text>}
@@ -505,17 +507,17 @@ export default function LeadsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Müşteri Avcısı</Text>
+        <Text style={s.headerTitle}>{t('leads.s011')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
         <View style={s.statGrid}>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.total}</Text><Text style={s.statLabel}>TOPLAM FİRMA</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.aranan}</Text><Text style={s.statLabel}>ARANAN</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.olumlu}</Text><Text style={s.statLabel}>OLUMLU DÖNÜŞ</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.kapanan}</Text><Text style={s.statLabel}>KAPANAN İŞ</Text></View>
+          <View style={s.statCard}><Text style={s.statValue}>{stats.total}</Text><Text style={s.statLabel}>{t('leads.s039')}</Text></View>
+          <View style={s.statCard}><Text style={s.statValue}>{stats.aranan}</Text><Text style={s.statLabel}>{t('leads.s040')}</Text></View>
+          <View style={s.statCard}><Text style={s.statValue}>{stats.olumlu}</Text><Text style={s.statLabel}>{t('leads.s041')}</Text></View>
+          <View style={s.statCard}><Text style={s.statValue}>{stats.kapanan}</Text><Text style={s.statLabel}>{t('leads.s042')}</Text></View>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: reorderingTabs ? 4 : 0 }}>
@@ -566,7 +568,7 @@ export default function LeadsScreen() {
           </TouchableOpacity>
         </View>
         {reorderingTabs && (
-          <Text style={[s.helperTinyMuted, { marginBottom: 10 }]}>Oklarla sekmelerin sırasını değiştirebilirsin.</Text>
+          <Text style={[s.helperTinyMuted, { marginBottom: 10 }]}>{t('leads.s043')}</Text>
         )}
 
         {loading && <ActivityIndicator style={{ marginVertical: 20 }} color={theme.colors.primary} />}
@@ -574,7 +576,7 @@ export default function LeadsScreen() {
         {!loading && tab === 'bugun' && (
           <>
             <View style={s.dailyBox}>
-              <Text style={s.dailyLabel}>Günlük kaç firma eklensin?</Text>
+              <Text style={s.dailyLabel}>{t('leads.s044')}</Text>
               <TextInput
                 style={s.dailyInput}
                 value={dailyCount}
@@ -587,15 +589,14 @@ export default function LeadsScreen() {
               </TouchableOpacity>
             </View>
             <Text style={s.helperTinyMuted}>
-              Aramadığın veya "Cevap Yok" işaretlediğin firmalar bir sonraki listede yine karşına çıkar, kaybolmaz.
-            </Text>
+              {t('leads.s045')}</Text>
             {todayLeads.length === 0 ? (
               <View style={s.emptyBox}>
                 <Ionicons name="checkmark-done-circle-outline" size={26} color={theme.colors.textMuted} />
-                <Text style={s.emptyTextBox}>Bugün aranacak firma yok.</Text>
+                <Text style={s.emptyTextBox}>{t('leads.s046')}</Text>
                 <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep">
                   <Ionicons name="add-circle" size={16} color="#fff" />
-                  <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
+                  <Text style={s.ctaTalepBtnText}>{t('leads.s006')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -608,15 +609,15 @@ export default function LeadsScreen() {
           <>
             <TouchableOpacity style={s.addManualBtn} onPress={() => setAddOpen(true)} testID="lead-add-manual-open">
               <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
-              <Text style={s.addManualBtnText}>Kendi bulduğun bir firmayı ekle</Text>
+              <Text style={s.addManualBtnText}>{t('leads.s047')}</Text>
             </TouchableOpacity>
             {allLeads.length === 0 ? (
               <View style={s.emptyBox}>
                 <Ionicons name="business-outline" size={26} color={theme.colors.textMuted} />
-                <Text style={s.emptyTextBox}>Henüz firma eklenmedi.</Text>
+                <Text style={s.emptyTextBox}>{t('leads.s048')}</Text>
                 <TouchableOpacity style={s.ctaTalepBtn} onPress={() => setTab('talep')} testID="lead-empty-cta-talep-2">
                   <Ionicons name="add-circle" size={16} color="#fff" />
-                  <Text style={s.ctaTalepBtnText}>Aranacak Firmaları Bul</Text>
+                  <Text style={s.ctaTalepBtnText}>{t('leads.s006')}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -625,7 +626,7 @@ export default function LeadsScreen() {
                   <View style={{ marginBottom: 16 }}>
                     <View style={s.assignSectionHeader}>
                       <Ionicons name="notifications" size={14} color="#b45309" />
-                      <Text style={s.assignSectionTitle}>Sana Atananlar ({myAssignedLeads.length})</Text>
+                      <Text style={s.assignSectionTitle}>{t('leads.s049')}{myAssignedLeads.length})</Text>
                     </View>
                     {myAssignedLeads.map(renderLeadRow)}
                   </View>
@@ -643,7 +644,7 @@ export default function LeadsScreen() {
                   ))}
                 </View>
                 {(tumuGroups[tumuFilter] || []).length === 0 ? (
-                  <Text style={s.helperTinyMuted}>Bu grupta firma yok.</Text>
+                  <Text style={s.helperTinyMuted}>{t('leads.s051')}</Text>
                 ) : (
                   (tumuGroups[tumuFilter] || []).map(renderLeadRow)
                 )}
@@ -654,13 +655,12 @@ export default function LeadsScreen() {
 
         {!loading && tab === 'talep' && (
           <View>
-            <Text style={s.sectionTitle}>Aranacak Firmaları Bul</Text>
+            <Text style={s.sectionTitle}>{t('leads.s006')}</Text>
             <Text style={s.helperTinyMuted}>
-              Hangi sektörde ve hangi bölgede firma aramamı istiyorsan yaz — yapay zeka hemen internetten gerçek firmaları arayıp bulduklarını doğrudan listene ekler (10-40 saniye sürebilir).
-            </Text>
+              {t('leads.s052')}</Text>
             <TextInput
               style={s.input}
-              placeholder="Sektör (örn: Pergola, Cam Balkon, Peyzaj Mimarlığı)"
+              placeholder={t('leads.s053')}
               placeholderTextColor="#94a3b8"
               value={reqSektor}
               onChangeText={setReqSektor}
@@ -668,7 +668,7 @@ export default function LeadsScreen() {
             />
             <TextInput
               style={s.input}
-              placeholder="Bölge (örn: İstanbul Anadolu Yakası)"
+              placeholder={t('leads.s054')}
               placeholderTextColor="#94a3b8"
               value={reqBolge}
               onChangeText={setReqBolge}
@@ -676,7 +676,7 @@ export default function LeadsScreen() {
             />
             <TextInput
               style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]}
-              placeholder="Ek açıklama (isteğe bağlı)"
+              placeholder={t('leads.s055')}
               placeholderTextColor="#94a3b8"
               multiline
               value={reqAciklama}
@@ -689,7 +689,7 @@ export default function LeadsScreen() {
               ) : (
                 <Ionicons name="sparkles" size={16} color="#fff" />
               )}
-              <Text style={s.submitBtnText}>{sendingReq ? 'Yapay zeka araştırıyor...' : 'Yapay Zekaya Buldur'}</Text>
+              <Text style={s.submitBtnText}>{sendingReq ? t('leads.s056') : 'Yapay Zekaya Buldur'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -698,45 +698,45 @@ export default function LeadsScreen() {
       <Modal visible={!!notesFor} transparent animationType="fade" onRequestClose={() => setNotesFor(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>{notesFor?.firma} — Not</Text>
+            <Text style={s.modalTitle}>{notesFor?.firma} {t('leads.s057')}</Text>
             <TextInput
               style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]}
               multiline
               value={noteText}
               onChangeText={setNoteText}
-              placeholder="Görüşme notu..."
+              placeholder={t('leads.s058')}
               placeholderTextColor="#94a3b8"
               autoFocus
             />
-            <Text style={s.modalSubLabel}>Tekrar ne zaman arayalım? (unutmamak için)</Text>
+            <Text style={s.modalSubLabel}>{t('leads.s059')}</Text>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
               <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(1))}>
-                <Text style={s.reminderPresetText}>Yarın</Text>
+                <Text style={s.reminderPresetText}>{t('leads.s060')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(3))}>
-                <Text style={s.reminderPresetText}>3 gün sonra</Text>
+                <Text style={s.reminderPresetText}>{t('leads.s061')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(7))}>
-                <Text style={s.reminderPresetText}>1 hafta sonra</Text>
+                <Text style={s.reminderPresetText}>{t('leads.s062')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.reminderPreset} onPress={() => setReminderDate(isoDatePlusDays(30))}>
-                <Text style={s.reminderPresetText}>1 ay sonra</Text>
+                <Text style={s.reminderPresetText}>{t('leads.s063')}</Text>
               </TouchableOpacity>
               {!!reminderDate && (
                 <TouchableOpacity style={[s.reminderPreset, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]} onPress={() => setReminderDate('')}>
-                  <Text style={[s.reminderPresetText, { color: '#dc2626' }]}>Temizle</Text>
+                  <Text style={[s.reminderPresetText, { color: '#dc2626' }]}>{t('leads.s064')}</Text>
                 </TouchableOpacity>
               )}
             </View>
             {!!reminderDate && (
-              <Text style={s.reminderChosenText}>Seçilen tarih: {trDateShort(reminderDate)} — o tarihe kadar "Bugün Aranacaklar" listesinde tekrar çıkmayacak.</Text>
+              <Text style={s.reminderChosenText}>{t('leads.s065')}{trDateShort(reminderDate)} {t('leads.s066')}</Text>
             )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setNotesFor(null)}>
-                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveNote}>
-                <Text style={[s.modalBtnText, { color: '#fff' }]}>Kaydet</Text>
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>{t('leads.s067')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -746,7 +746,7 @@ export default function LeadsScreen() {
       <Modal visible={!!waLead} transparent animationType="fade" onRequestClose={() => setWaLead(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>{waLead?.firma} — WhatsApp Mesajı</Text>
+            <Text style={s.modalTitle}>{waLead?.firma} {t('leads.s068')}</Text>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
               {WHATSAPP_TEMPLATES.map((t) => (
                 <TouchableOpacity
@@ -759,22 +759,22 @@ export default function LeadsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={s.modalSubLabel}>Göndermeden önce metni düzenleyebilirsin</Text>
+            <Text style={s.modalSubLabel}>{t('leads.s069')}</Text>
             <TextInput
               style={[s.input, { minHeight: 110, textAlignVertical: 'top' }]}
               multiline
               value={waText}
               onChangeText={setWaText}
-              placeholder="Mesaj..."
+              placeholder={t('leads.s070')}
               placeholderTextColor="#94a3b8"
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setWaLead(null)}>
-                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#16a34a', flexDirection: 'row', gap: 6 }]} onPress={sendWaText} testID="wa-send-btn">
                 <Ionicons name="logo-whatsapp" size={15} color="#fff" />
-                <Text style={[s.modalBtnText, { color: '#fff' }]}>Gönder</Text>
+                <Text style={[s.modalBtnText, { color: '#fff' }]}>{t('leads.s071')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -784,10 +784,10 @@ export default function LeadsScreen() {
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>Firma Ekle</Text>
+            <Text style={s.modalTitle}>{t('leads.s072')}</Text>
             <TextInput
               style={s.input}
-              placeholder="Firma adı (zorunlu)"
+              placeholder={t('leads.s073')}
               placeholderTextColor="#94a3b8"
               value={addFirma}
               onChangeText={setAddFirma}
@@ -796,7 +796,7 @@ export default function LeadsScreen() {
             />
             <TextInput
               style={s.input}
-              placeholder="Bölge (örn: Beykoz / İstanbul)"
+              placeholder={t('leads.s074')}
               placeholderTextColor="#94a3b8"
               value={addBolge}
               onChangeText={setAddBolge}
@@ -804,7 +804,7 @@ export default function LeadsScreen() {
             />
             <TextInput
               style={s.input}
-              placeholder="Sektör (örn: Mimarlık, Peyzaj)"
+              placeholder={t('leads.s075')}
               placeholderTextColor="#94a3b8"
               value={addKategori}
               onChangeText={setAddKategori}
@@ -812,7 +812,7 @@ export default function LeadsScreen() {
             />
             <TextInput
               style={s.input}
-              placeholder="Telefon (opsiyonel)"
+              placeholder={t('leads.s076')}
               placeholderTextColor="#94a3b8"
               value={addTelefon}
               onChangeText={setAddTelefon}
@@ -821,7 +821,7 @@ export default function LeadsScreen() {
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAddOpen(false)}>
-                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={addLeadManual} disabled={addSaving} testID="lead-add-save">
                 <Text style={[s.modalBtnText, { color: '#fff' }]}>{addSaving ? '...' : 'Ekle'}</Text>
@@ -834,12 +834,12 @@ export default function LeadsScreen() {
       <Modal visible={!!assignFor} transparent animationType="fade" onRequestClose={() => setAssignFor(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>{assignFor?.firma} — Personele Ata</Text>
+            <Text style={s.modalTitle}>{assignFor?.firma} {t('leads.s077')}</Text>
             {staffMembers.filter((m) => m.type === 'active').length === 0 ? (
-              <Text style={s.helperTinyMuted}>Henüz eklenmiş bir personelin yok. Önce Personel ekranından ekip üyesi ekle.</Text>
+              <Text style={s.helperTinyMuted}>{t('leads.s078')}</Text>
             ) : (
               <>
-                <Text style={s.modalSubLabel}>Kime atansın?</Text>
+                <Text style={s.modalSubLabel}>{t('leads.s079')}</Text>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6, marginBottom: 10 }}>
                   {staffMembers.filter((m) => m.type === 'active').map((m) => (
                     <TouchableOpacity
@@ -856,18 +856,18 @@ export default function LeadsScreen() {
                   multiline
                   value={assignNote}
                   onChangeText={setAssignNote}
-                  placeholder="Not (örn: Ara, iletişime geç)"
+                  placeholder={t('leads.s080')}
                   placeholderTextColor="#94a3b8"
                 />
               </>
             )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAssignFor(null)}>
-                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
+                <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               {!!assignFor?.atananKullaniciId && (
                 <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#fee2e2' }]} onPress={clearAssign} disabled={assignSaving}>
-                  <Text style={[s.modalBtnText, { color: '#dc2626' }]}>Kaldır</Text>
+                  <Text style={[s.modalBtnText, { color: '#dc2626' }]}>{t('leads.s081')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveAssign} disabled={assignSaving}>

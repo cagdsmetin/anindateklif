@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
+import { useLanguage } from '@/src/lib/i18n';
 
 type Slide = {
   key: string;
@@ -41,6 +42,7 @@ const SLIDES: Slide[] = [
 ];
 
 export default function SplashOnboarding() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const [index, setIndex] = useState(0);
@@ -64,16 +66,16 @@ export default function SplashOnboarding() {
       {/* Header */}
       <View style={s.topBar}>
         <View style={s.brandRow}>
-          <Text style={s.brand}>Anında</Text>
-          <Text style={s.brandAccent}> Teklif</Text>
+          <Text style={s.brand}>{t('splash.s008')}</Text>
+          <Text style={s.brandAccent}> {t('splash.s009')}</Text>
         </View>
         <TouchableOpacity
           onPress={goLogin}
-          accessibilityLabel="Geç"
+          accessibilityLabel={t('splash.s001')}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           testID="splash-skip"
         >
-          <Text style={s.skip}>Geç</Text>
+          <Text style={s.skip}>{t('splash.s001')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -132,14 +134,14 @@ export default function SplashOnboarding() {
           testID="splash-cta"
         >
           <Text style={s.ctaText}>
-            {index === SLIDES.length - 1 ? 'Ücretsiz Başla' : 'İleri'}
+            {index === SLIDES.length - 1 ? t('splash.s010') : t('splash.s011')}
           </Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
         </TouchableOpacity>
 
         <View style={s.trust}>
           <Ionicons name="lock-closed" size={12} color={authTheme.textMuted} />
-          <Text style={s.trustText}>256-bit SSL ile güvendedir</Text>
+          <Text style={s.trustText}>{t('splash.s012')}</Text>
         </View>
       </View>
     </SafeAreaView>

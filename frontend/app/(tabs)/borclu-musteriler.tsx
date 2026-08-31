@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
+import { useLanguage } from '@/src/lib/i18n';
 
 /**
  * Tahsilat ekranındaki "BORÇLU MÜŞTERİ" kartına tıklanınca açılan liste.
@@ -26,6 +27,7 @@ function fmt(n: number, cur: string) {
 }
 
 export default function BorcluMusterilerScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { tahsilat, activeCompany } = useApp();
 
@@ -45,11 +47,11 @@ export default function BorcluMusterilerScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Borçlu Müşteriler</Text>
+          <Text style={s.headerTitle}>{t('borcluMusteriler.s001')}</Text>
           <View style={s.headerBtn} />
         </View>
         <View style={s.divider} />
-        <View style={s.empty}><Text style={s.emptyText}>Önce firma seçiniz</Text></View>
+        <View style={s.empty}><Text style={s.emptyText}>{t('borcluMusteriler.s002')}</Text></View>
       </SafeAreaView>
     );
   }
@@ -60,7 +62,7 @@ export default function BorcluMusterilerScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Borçlu Müşteriler</Text>
+        <Text style={s.headerTitle}>{t('borcluMusteriler.s001')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -71,7 +73,7 @@ export default function BorcluMusterilerScreen() {
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>Borçlu müşteri yok.</Text>
+            <Text style={s.emptyTextBox}>{t('borcluMusteriler.s003')}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -84,8 +86,8 @@ export default function BorcluMusterilerScreen() {
               {item.musteriTelefon ? <Text style={s.rowPhone}>{item.musteriTelefon}</Text> : null}
               {item.perCurrency.map((x) => (
                 <View key={x.paraBirimi} style={s.curRow}>
-                  <Text style={s.curLabel}>Toplam Borç: <Text style={s.curValue}>{fmt(x.toplamBorc, x.paraBirimi)}</Text></Text>
-                  <Text style={s.curLabel}>Kalan Borç: <Text style={[s.curValue, { color: theme.colors.red }]}>{fmt(x.kalanBorc, x.paraBirimi)}</Text></Text>
+                  <Text style={s.curLabel}>{t('borcluMusteriler.s004')}<Text style={s.curValue}>{fmt(x.toplamBorc, x.paraBirimi)}</Text></Text>
+                  <Text style={s.curLabel}>{t('borcluMusteriler.s005')}<Text style={[s.curValue, { color: theme.colors.red }]}>{fmt(x.kalanBorc, x.paraBirimi)}</Text></Text>
                 </View>
               ))}
             </View>

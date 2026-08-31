@@ -20,6 +20,7 @@ import { api } from '@/src/lib/api';
 import type { TeamConversationT, TeamDirectoryMemberT, TeamMessageT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Firma Sahibi',
@@ -42,6 +43,7 @@ function fmtTime(iso: string): string {
 type Pane = { kind: 'list' } | { kind: 'admin-list' } | { kind: 'thread'; withId: string; withName: string } | { kind: 'admin-thread'; a: string; b: string; aName: string; bName: string };
 
 export default function TeamChatScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -171,7 +173,7 @@ export default function TeamChatScreen() {
   conversations.forEach((c) => { if (c.otherUserId) convByOther[c.otherUserId] = c; });
 
   const title = pane.kind === 'list' ? 'Ekip Sohbeti'
-    : pane.kind === 'admin-list' ? 'Tüm Konuşmalar'
+    : pane.kind === 'admin-list' ? t('teamChat.s002')
     : pane.kind === 'thread' ? pane.withName
     : `${pane.aName} · ${pane.bName}`;
 
@@ -221,13 +223,12 @@ export default function TeamChatScreen() {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowDeleteConfirm(false)}>
           <View style={s.confirmBox}>
             <Ionicons name="warning" size={28} color={theme.colors.red} />
-            <Text style={s.confirmTitle}>Konuşmayı Sil?</Text>
+            <Text style={s.confirmTitle}>{t('teamChat.s003')}</Text>
             <Text style={s.confirmText}>
-              Bu konuşma kendi listenizden hemen kaldırılır. Firma sahibinin oversight görünümünde kayıt 30 gün daha tutulur.
-            </Text>
+              {t('teamChat.s004')}</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 14, width: '100%' }}>
               <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowDeleteConfirm(false)}>
-                <Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text>
+                <Text style={{ fontWeight: '800', color: theme.colors.text }}>{t('teamChat.s005')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.confirmBtn, { backgroundColor: theme.colors.red }, deletingThread && { opacity: 0.6 }]}
@@ -252,7 +253,7 @@ export default function TeamChatScreen() {
           {otherMembers.length === 0 ? (
             <View style={s.emptyWrap}>
               <Ionicons name="people-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyText}>Ekibinizde henüz başka biri yok. Personel ekleyince burada listelenir.</Text>
+              <Text style={s.emptyText}>{t('teamChat.s006')}</Text>
             </View>
           ) : (
             otherMembers.map((m) => {
@@ -290,12 +291,11 @@ export default function TeamChatScreen() {
           contentContainerStyle={{ padding: 16 }}
         >
           <Text style={s.adminNote}>
-            Firma sahibi olarak ekibinizdeki herkesin birbiriyle olan yazışmalarını buradan görebilirsiniz.
-          </Text>
+            {t('teamChat.s007')}</Text>
           {allConversations.length === 0 ? (
             <View style={s.emptyWrap}>
               <Ionicons name="chatbubbles-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyText}>Ekipte henüz hiç mesajlaşma yok.</Text>
+              <Text style={s.emptyText}>{t('teamChat.s008')}</Text>
             </View>
           ) : (
             allConversations.map((c, i) => (
@@ -328,7 +328,7 @@ export default function TeamChatScreen() {
           {pane.kind === 'admin-thread' ? (
             <View style={s.adminBanner}>
               <Ionicons name="eye-outline" size={14} color={theme.colors.modules.mesaj} />
-              <Text style={s.adminBannerText}>Salt okunur yönetici görünümü</Text>
+              <Text style={s.adminBannerText}>{t('teamChat.s010')}</Text>
             </View>
           ) : null}
           <ScrollView
@@ -339,7 +339,7 @@ export default function TeamChatScreen() {
             {thread.length === 0 ? (
               <View style={s.emptyWrap}>
                 <Ionicons name="chatbubble-outline" size={26} color={theme.colors.textMuted} />
-                <Text style={s.emptyText}>Henüz mesaj yok. İlk mesajı gönderin.</Text>
+                <Text style={s.emptyText}>{t('teamChat.s011')}</Text>
               </View>
             ) : (
               thread.map((m) => {
@@ -367,7 +367,7 @@ export default function TeamChatScreen() {
                 value={input}
                 onChangeText={setInput}
                 onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)}
-                placeholder="Mesaj yazın..."
+                placeholder={t('teamChat.s012')}
                 placeholderTextColor="#94a3b8"
                 style={s.input}
                 multiline

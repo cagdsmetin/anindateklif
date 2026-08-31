@@ -4,98 +4,75 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
+import { useLanguage } from '@/src/lib/i18n';
 
 // Public, unauthenticated page — required by Google Play (Data Safety form)
 // and the App Store (App Privacy). Kept outside the auth-gated navigator;
 // see app/_layout.tsx RouteGuard `isPublic` check.
 export default function PrivacyPolicy() {
+  const { t } = useLanguage();
   const router = useRouter();
 
   return (
     <SafeAreaView style={s.root} edges={['top', 'bottom']}>
       <View style={s.header}>
         <Text style={s.headerTitle} onPress={() => router.push('/')}>
-          Anında Teklif
-        </Text>
+          {t('privacy.s001')}</Text>
       </View>
       <ScrollView style={s.scroll} contentContainerStyle={s.content}>
-        <Text style={s.h1}>Gizlilik Politikası</Text>
-        <Text style={s.updated}>Son güncelleme: 23 Ağustos 2026</Text>
+        <Text style={s.h1}>{t('privacy.s002')}</Text>
+        <Text style={s.updated}>{t('privacy.s003')}</Text>
 
         <Text style={s.p}>
-          Bu gizlilik politikası, "Anında Teklif" mobil uygulamasını ve web sitesini
-          (www.anindateklif.co) kullanırken toplanan, işlenen ve saklanan kişisel
-          verileri açıklar. Uygulamayı kullanarak bu politikayı kabul etmiş olursunuz.
-        </Text>
+          {t('privacy.s004')}</Text>
 
-        <Section title="1. Veri Sorumlusu">
+        <Section title={t('privacy.s005')}>
           <Text style={s.p}>
-            Anında Teklif, esnaf ve küçük işletmelerin teklif, katalog, müşteri ve kasa
-            yönetimini kolaylaştıran bir SaaS uygulamasıdır. Uygulama, sizin
-            (işletme sahibi/kullanıcı) kendi müşterilerinize ait verileri kendi
-            hesabınızda yönetmenizi sağlar; bu verilerin veri sorumlusu sizsiniz, biz
-            veri işleyen sıfatıyla altyapıyı sağlarız.
-          </Text>
+            {t('privacy.s006')}</Text>
         </Section>
 
-        <Section title="2. Topladığımız Veriler">
-          <Bullet>Hesap bilgileri: ad soyad, e-posta, telefon, şifre (şifrelenmiş olarak saklanır).</Bullet>
-          <Bullet>Firma bilgileri: firma unvanı, adres, vergi bilgisi, logo (fotoğraf galerisinden seçtiğiniz görsel).</Bullet>
-          <Bullet>Kullanıcı tarafından girilen iş verileri: müşteri kayıtları, teklifler, katalog/ürün-hizmet tanımları, kasa (gelir/gider) ve tahsilat (alacak/borç) kayıtları, kampanya ve hatırlatma verileri.</Bullet>
-          <Bullet>AI Asistan sohbet içeriği: yapay zeka asistanına yazdığınız mesajlar, yanıt üretmek amacıyla Anthropic (Claude API) altyapısına iletilir.</Bullet>
-          <Bullet>Teknik veriler: cihaz/tarayıcı bilgisi, IP adresi, uygulama kullanım günlükleri (hata ayıklama ve güvenlik amacıyla).</Bullet>
+        <Section title={t('privacy.s007')}>
+          <Bullet>{t('privacy.s008')}</Bullet>
+          <Bullet>{t('privacy.s009')}</Bullet>
+          <Bullet>{t('privacy.s010')}</Bullet>
+          <Bullet>{t('privacy.s011')}</Bullet>
+          <Bullet>{t('privacy.s012')}</Bullet>
         </Section>
 
-        <Section title="3. Verileri Kullanma Amaçlarımız">
-          <Bullet>Uygulamanın temel işlevlerini sunmak (teklif oluşturma, katalog, müşteri/kasa/tahsilat takibi).</Bullet>
-          <Bullet>PDF teklif oluşturma ve WhatsApp üzerinden paylaşım.</Bullet>
-          <Bullet>AI Asistan üzerinden ürün/hizmet yapılandırma önerileri sunmak.</Bullet>
-          <Bullet>Hesap güvenliği, kimlik doğrulama ve dolandırıcılığın önlenmesi.</Bullet>
-          <Bullet>Yasal yükümlülüklerin yerine getirilmesi.</Bullet>
+        <Section title={t('privacy.s013')}>
+          <Bullet>{t('privacy.s014')}</Bullet>
+          <Bullet>{t('privacy.s015')}</Bullet>
+          <Bullet>{t('privacy.s016')}</Bullet>
+          <Bullet>{t('privacy.s017')}</Bullet>
+          <Bullet>{t('privacy.s018')}</Bullet>
         </Section>
 
-        <Section title="4. Verilerin Paylaşımı">
+        <Section title={t('privacy.s019')}>
           <Text style={s.p}>
-            Verileriniz, uygulamayı çalıştırmak için gerekli alt yüklenicilerle (barındırma
-            sağlayıcısı Railway, veritabanı MongoDB, yapay zeka altyapısı Anthropic)
-            sınırlı ölçüde paylaşılır. Verileriniz reklam amacıyla üçüncü taraflara
-            satılmaz veya kiralanmaz.
-          </Text>
+            {t('privacy.s020')}</Text>
         </Section>
 
-        <Section title="5. Veri Saklama ve Güvenlik">
+        <Section title={t('privacy.s021')}>
           <Text style={s.p}>
-            Verileriniz, hesabınız aktif olduğu sürece saklanır. Hesabınızı silmek
-            istediğinizde uygulama içinden veya aşağıdaki e-posta adresinden talepte
-            bulunabilirsiniz; talebiniz makul bir süre içinde işleme alınır. Şifreler
-            geri döndürülemez biçimde (hash) saklanır, veri iletimi şifreli bağlantı
-            (HTTPS) üzerinden yapılır.
-          </Text>
+            {t('privacy.s022')}</Text>
         </Section>
 
-        <Section title="6. Haklarınız">
+        <Section title={t('privacy.s023')}>
           <Text style={s.p}>
-            KVKK ve ilgili mevzuat kapsamında verilerinize erişme, düzeltme, silme ve
-            işlenmesine itiraz etme hakkına sahipsiniz. Taleplerinizi aşağıdaki
-            iletişim adresinden bize iletebilirsiniz.
-          </Text>
+            {t('privacy.s024')}</Text>
         </Section>
 
-        <Section title="7. Çocukların Gizliliği">
+        <Section title={t('privacy.s025')}>
           <Text style={s.p}>
-            Anında Teklif, işletme sahiplerine yönelik bir iş uygulamasıdır ve 18 yaş
-            altındaki kullanıcılara yönelik değildir; bilerek çocuklardan veri
-            toplamayız.
-          </Text>
+            {t('privacy.s026')}</Text>
         </Section>
 
-        <Section title="8. İletişim">
+        <Section title={t('privacy.s027')}>
           <Text style={s.p}>
-            Gizlilikle ilgili sorularınız için: ncagdasm@gmail.com
-          </Text>
+            {t('privacy.s028')}</Text>
         </Section>
 
-        <Text style={s.footer}>© {new Date().getFullYear()} Anında Teklif — Tüm hakları saklıdır.</Text>
+        <Text style={s.footer}>© {new Date().getFullYear()} {t('privacy.s030')}</Text>
       </ScrollView>
     </SafeAreaView>
   );

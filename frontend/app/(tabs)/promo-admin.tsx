@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, PromoCodeT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
+import { useLanguage } from '@/src/lib/i18n';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -27,6 +28,7 @@ function fmtDate(iso?: string | null): string {
 }
 
 export default function PromoAdminScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -45,7 +47,7 @@ export default function PromoAdminScreen() {
       const res = await api.listPromoCodes();
       setCodes(res || []);
     } catch {
-      setError('Kod listesi alınamadı');
+      setError(t('promoAdmin.s003'));
     }
   }, []);
 
@@ -67,7 +69,7 @@ export default function PromoAdminScreen() {
       setNote('');
       await load();
     } catch (e: any) {
-      let msg = 'Kod oluşturulamadı';
+      let msg = t('promoAdmin.s004');
       if (e?.body) {
         try {
           const parsed = JSON.parse(e.body);
@@ -99,11 +101,11 @@ export default function PromoAdminScreen() {
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Hediye Kodu</Text>
+          <Text style={s.headerTitle}>{t('promoAdmin.s001')}</Text>
           <View style={s.headerBtn} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Bu sayfayı görüntüleme yetkiniz yok.</Text>
+          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>{t('promoAdmin.s005')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -115,7 +117,7 @@ export default function PromoAdminScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="promo-admin-back">
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Hediye Kodu</Text>
+        <Text style={s.headerTitle}>{t('promoAdmin.s001')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -127,11 +129,11 @@ export default function PromoAdminScreen() {
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-            <Text style={s.sectionLabel}>Yeni Kod Üret</Text>
+            <Text style={s.sectionLabel}>{t('promoAdmin.s006')}</Text>
             <View style={s.card}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLabel}>Süre (gün)</Text>
+                  <Text style={s.fieldLabel}>{t('promoAdmin.s007')}</Text>
                   <TextInput
                     style={s.input}
                     value={durationDays}
@@ -141,7 +143,7 @@ export default function PromoAdminScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLabel}>Adet</Text>
+                  <Text style={s.fieldLabel}>{t('promoAdmin.s008')}</Text>
                   <TextInput
                     style={s.input}
                     value={count}
@@ -151,10 +153,10 @@ export default function PromoAdminScreen() {
                   />
                 </View>
               </View>
-              <Text style={[s.fieldLabel, { marginTop: 12 }]}>Not (opsiyonel)</Text>
+              <Text style={[s.fieldLabel, { marginTop: 12 }]}>{t('promoAdmin.s009')}</Text>
               <TextInput
                 style={s.input}
-                placeholder="ör. Ahmet Bey'e hediye"
+                placeholder={t('promoAdmin.s010')}
                 placeholderTextColor="#94a3b8"
                 value={note}
                 onChangeText={setNote}
@@ -164,18 +166,18 @@ export default function PromoAdminScreen() {
               {error ? <Text style={s.errorText}>{error}</Text> : null}
 
               <TouchableOpacity style={[s.cta, busy && { opacity: 0.6 }]} onPress={onGenerate} disabled={busy} testID="promo-generate-submit">
-                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Kod Üret</Text>}
+                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('promoAdmin.s011')}</Text>}
               </TouchableOpacity>
 
               {lastCreated.length > 0 ? (
                 <View style={s.linkBox}>
-                  <Text style={s.linkHint}>Oluşturulan {lastCreated.length} kod — müşterine paylaş:</Text>
+                  <Text style={s.linkHint}>{t('promoAdmin.s012')}{lastCreated.length} {t('promoAdmin.s013')}</Text>
                   {lastCreated.map((c) => (
                     <View key={c.code} style={s.newCodeRow}>
                       <Text style={s.newCodeText}>{c.code}</Text>
                       <TouchableOpacity style={s.copyBtn} onPress={() => onCopy(c.code)} testID={`promo-copy-${c.code}`}>
                         <Ionicons name={copiedCode === c.code ? 'checkmark' : 'copy-outline'} size={14} color={theme.colors.primary} />
-                        <Text style={s.copyBtnText}>{copiedCode === c.code ? 'Kopyalandı' : 'Kopyala'}</Text>
+                        <Text style={s.copyBtnText}>{copiedCode === c.code ? t('promoAdmin.s014') : 'Kopyala'}</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -183,23 +185,23 @@ export default function PromoAdminScreen() {
               ) : null}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>Tüm Kodlar ({codes.length})</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('promoAdmin.s015')}{codes.length})</Text>
             {codes.length === 0 ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Henüz kod oluşturulmadı.</Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('promoAdmin.s017')}</Text>
             ) : (
               codes.map((c) => (
                 <View key={c.code} style={s.codeRow} testID={`promo-row-${c.code}`}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.codeText} numberOfLines={1}>{c.code}</Text>
                     <Text style={s.codeMeta} numberOfLines={1}>
-                      {c.duration_days} gün{c.note ? ` · ${c.note}` : ''} · {fmtDate(c.created_at)}
+                      {c.duration_days} {t('promoAdmin.s018')}{c.note ? ` · ${c.note}` : ''} · {fmtDate(c.created_at)}
                     </Text>
                     {c.used ? (
-                      <Text style={s.codeUsedBy} numberOfLines={1}>Kullanıldı: {c.used_by_email} · {fmtDate(c.used_at)}</Text>
+                      <Text style={s.codeUsedBy} numberOfLines={1}>{t('promoAdmin.s019')}{c.used_by_email} · {fmtDate(c.used_at)}</Text>
                     ) : null}
                   </View>
                   <View style={[s.badge, c.used ? s.badgeUsed : s.badgeFree]}>
-                    <Text style={[s.badgeText, c.used ? s.badgeTextUsed : s.badgeTextFree]}>{c.used ? 'Kullanıldı' : 'Aktif'}</Text>
+                    <Text style={[s.badgeText, c.used ? s.badgeTextUsed : s.badgeTextFree]}>{c.used ? t('promoAdmin.s020') : 'Aktif'}</Text>
                   </View>
                 </View>
               ))

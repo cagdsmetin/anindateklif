@@ -15,6 +15,7 @@ import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { QuoteT } from '@/src/lib/api';
+import { useLanguage } from '@/src/lib/i18n';
 
 const RETENTION_DAYS = 30;
 
@@ -33,6 +34,7 @@ function daysLeft(deletedAt?: string | null): number {
 }
 
 export default function TrashScreen() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { activeCompany, reloadQuotes, showToast } = useApp();
 
@@ -49,7 +51,7 @@ export default function TrashScreen() {
       setItems((res as QuoteT[]) || []);
       setError('');
     } catch (e: any) {
-      setError('Silinenler listesi alınamadı');
+      setError(t('trash.s001'));
     }
   }, [activeCompany]);
 
@@ -71,9 +73,9 @@ export default function TrashScreen() {
       await api.restoreQuote(id);
       setItems((prev) => prev.filter((q) => q.id !== id));
       await reloadQuotes();
-      showToast('Teklif geri alındı');
+      showToast(t('trash.s002'));
     } catch (e: any) {
-      showToast('Geri alınamadı, tekrar deneyin');
+      showToast(t('trash.s003'));
     } finally {
       setRestoringId(null);
     }
@@ -85,7 +87,7 @@ export default function TrashScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="trash-back">
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Çöp Kutusu</Text>
+        <Text style={s.headerTitle}>{t('trash.s004')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />
@@ -100,15 +102,14 @@ export default function TrashScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <Text style={s.infoNote}>
-            Silinen teklifler {RETENTION_DAYS} gün boyunca burada saklanır, süre dolunca kalıcı olarak silinir.
-          </Text>
+            {t('trash.s005')}{RETENTION_DAYS} {t('trash.s006')}</Text>
 
           {error ? <Text style={s.errorText}>{error}</Text> : null}
 
           {items.length === 0 && !error ? (
             <View style={s.emptyWrap}>
               <Ionicons name="trash-outline" size={30} color={theme.colors.textMuted} />
-              <Text style={s.emptyText}>Çöp kutusu boş</Text>
+              <Text style={s.emptyText}>{t('trash.s007')}</Text>
             </View>
           ) : (
             items.map((q) => {
@@ -116,12 +117,12 @@ export default function TrashScreen() {
               return (
                 <View key={q.id} style={s.card} testID={`trash-item-${q.id}`}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.cardTitle} numberOfLines={1}>{q.musFirma || q.musYetkili || 'Müşteri'}</Text>
+                    <Text style={s.cardTitle} numberOfLines={1}>{q.musFirma || q.musYetkili || t('trash.s008')}</Text>
                     <Text style={s.cardSub} numberOfLines={1}>
-                      Teklif No: {q.teklifNo} · {fmt(q.genelToplam, q.paraBirimi)}
+                      {t('trash.s009')}{q.teklifNo} · {fmt(q.genelToplam, q.paraBirimi)}
                     </Text>
                     <Text style={s.cardMeta}>
-                      {left > 0 ? `${left} gün sonra kalıcı olarak silinecek` : 'Bugün kalıcı olarak silinecek'}
+                      {left > 0 ? `${left} gün sonra kalıcı olarak silinecek` : t('trash.s011')}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -135,7 +136,7 @@ export default function TrashScreen() {
                     ) : (
                       <>
                         <Ionicons name="refresh-outline" size={15} color={theme.colors.primary} />
-                        <Text style={s.restoreText}>Geri Al</Text>
+                        <Text style={s.restoreText}>{t('trash.s012')}</Text>
                       </>
                     )}
                   </TouchableOpacity>

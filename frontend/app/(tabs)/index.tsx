@@ -234,16 +234,34 @@ export default function PanelScreen() {
     () => tahsilat.filter((t) => t.tur === 'tahsilat' && (t.tarih || '').slice(0, 7) === thisMonthKey),
     [tahsilat, thisMonthKey]
   );
+  // Nakit Durumu pastası: Gelir tek yığın yerine ödeme yöntemine göre
+  // (Nakit/Kart/Havale/Çek/Diğer) ayrı dilimlere bölünüyor, yanına bu ayki
+  // Gider ve bugüne kadar biriken toplam Borç dilimleri ekleniyor -- böylece
+  // tek pastada hem paranın hangi yöntemle geldiği hem de genel nakit
+  // durumu görülüyor.
+  const METHOD_SLICE_COLORS: Record<string, string> = {
+    'Nakit': '#10B981',
+    'Kart': '#6366F1',
+    'Havale/EFT': '#0EA5E9',
+    'Çek': '#8B5CF6',
+    'Diğer': '#94A3B8',
+  };
   const paymentBreakdown = useMemo(() => {
-    // Nakit Durumu pastası: yöntem (Nakit/Kart/vb.) yerine 3 basit dilim --
-    // Gelir (bu ay tahsil edilen), Gider (bu ay kasadan çıkan) ve Borç
-    // (bugüne kadar biriken, hâlâ tahsil edilmemiş toplam alacak -- Borçlu
-    // Müşteriler ekranıyla aynı hesap). Böylece kart hem bu ayki nakit
-    // akışını hem de genel borç durumunu tek bakışta gösterir.
-    const gelirTutar = sumToTRY(
-      tahsilatThisMonth.map((tx) => ({ paraBirimi: tx.paraBirimi, tutar: tx.tutar })),
-      rates as RatesLike
-    ) || 0;
+    const byMethod: Record<string, { paraBirimi: string; tutar: number }[]> = {};
+    tahsilatThisMonth.forEach((tx) => {
+      const y = tx.yontem || t('panel.s002');
+      if (!byMethod[y]) byMethod[y] = [];
+      byMethod[y].push({ paraBirimi: tx.paraBirimi, tutar: tx.tutar });
+    });
+    const slices = Object.entries(byMethod)
+      .map(([yontem, entries]) => ({
+        label: statusLabel(lang, yontem),
+        color: METHOD_SLICE_COLORS[yontem] || theme.colors.textMuted,
+        value: sumToTRY(entries, rates as RatesLike) || 0,
+      }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value);
+
     const debtSummaries = computeCustomerDebtSummaries(tahsilat);
     const borcEntries: { paraBirimi: string; tutar: number }[] = [];
     debtSummaries.forEach((d) => {
@@ -252,13 +270,11 @@ export default function PanelScreen() {
       });
     });
     const borcTutar = sumToTRY(borcEntries, rates as RatesLike) || 0;
-    const slices: { label: string; color: string; value: number }[] = [];
-    if (gelirTutar > 0) slices.push({ label: t('panel.gelirLabel'), color: theme.colors.green, value: gelirTutar });
-    if (giderBuAy2 > 0) slices.push({ label: t('panel.s022'), color: theme.colors.red, value: giderBuAy2 });
-    if (borcTutar > 0) slices.push({ label: t('panel.borcLabel'), color: theme.colors.gold, value: borcTutar });
+    if (giderBuAy2 > 0) slices.push({ label: t('panel.s022'), color: '#EF4444', value: giderBuAy2 });
+    if (borcTutar > 0) slices.push({ label: t('panel.borcLabel'), color: '#F59E0B', value: borcTutar });
     return slices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tahsilatThisMonth, tahsilat, rates, giderBuAy2]);
+  }, [tahsilatThisMonth, tahsilat, rates, giderBuAy2, lang]);
   const paymentTotal = paymentBreakdown.reduce((a, x) => a + x.value, 0);
 
   const quoteStatusCounts = useMemo(() => {
@@ -683,7 +699,15 @@ function CashPieChart({
     return (
       <View style={{ gap: 6 }}>
         {data.map((d, i) => (
-          <LegendDot key={i} color={d.color} label={d.label} value={d.valueLabel || formatValue(d.value)} countLabel={d.countLabel} amountLabel={d.amountLabel} />
+          <LegendDot
+            key={i}
+            color={d.color}
+            label={d.label}
+            value={d.valueLabel || formatValue(d.value)}
+            countLabel={d.countLabel}
+            amountLabel={d.amountLabel}
+            pctLabel={d.countLabel === undefined && total > 0 ? `${Math.round((d.value / total) * 100)}%` : undefined}
+          />
         ))}
       </View>
     );
@@ -740,7 +764,14 @@ function CashPieChart({
             };
             return (
               <View key={i} {...hoverHandlers}>
-                <LegendDot color={sl.color} label={sl.label} value={sl.valueLabel || formatValue(sl.value)} countLabel={sl.countLabel} amountLabel={sl.amountLabel} />
+                <LegendDot
+                  color={sl.color}
+                  label={sl.label}
+                  value={sl.valueLabel || formatValue(sl.value)}
+                  countLabel={sl.countLabel}
+                  amountLabel={sl.amountLabel}
+                  pctLabel={sl.countLabel === undefined && total > 0 ? `${Math.round((sl.value / total) * 100)}%` : undefined}
+                />
               </View>
             );
           })
@@ -756,12 +787,14 @@ function LegendDot({
   value,
   countLabel,
   amountLabel,
+  pctLabel,
 }: {
   color: string;
   label: string;
   value: string;
   countLabel?: string;
   amountLabel?: string;
+  pctLabel?: string;
 }) {
   return (
     <View style={s.legendItem}>
@@ -773,7 +806,14 @@ function LegendDot({
           <Text style={s.legendValue} numberOfLines={1}>{amountLabel}</Text>
         </View>
       ) : (
-        <Text style={s.legendValue} numberOfLines={1}>{value}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+          {pctLabel ? (
+            <View style={[s.legendPctBadge, { backgroundColor: color + '1A' }]}>
+              <Text style={[s.legendPctText, { color }]} numberOfLines={1}>{pctLabel}</Text>
+            </View>
+          ) : null}
+          <Text style={s.legendValue} numberOfLines={1}>{value}</Text>
+        </View>
       )}
     </View>
   );
@@ -894,6 +934,8 @@ const s = StyleSheet.create({
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
   legendLabelFixed: { width: 84, fontSize: 12, color: theme.colors.textSoft, marginRight: 8 },
   legendValue: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
+  legendPctBadge: { paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 8 },
+  legendPctText: { fontSize: 10.5, fontWeight: '800' },
   legendCountAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, textAlign: 'left' },
 

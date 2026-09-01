@@ -16,6 +16,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.musteri': 'Musteri', 'nav.servis': 'Servis', 'nav.kampanya': 'Kampanya', 'nav.musteriAvcisi': 'Musteri Avcisi',
       'nav.hatirlatmalar': 'Hatirlatmalar', 'nav.takvim': 'Takvim', 'nav.kasa': 'Kasa', 'nav.tahsilat': 'Tahsilat',
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
+      'nav.raporlar': 'Raporlar',
     };
     return fallback[k] || k;
   });
@@ -30,6 +31,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'leads', title: tt('nav.musteriAvcisi'), icon: 'search', color: m.lead },
     { name: 'reminders', title: tt('nav.hatirlatmalar'), icon: 'notifications', color: m.hatirlatma },
     { name: 'calendar', title: tt('nav.takvim'), icon: 'calendar', color: m.hatirlatma },
+    { name: 'reports', title: tt('nav.raporlar'), icon: 'bar-chart', color: m.raporlar },
   ];
   // Kısıtlı personel (staff_role !== 'admin') Kasa/Tahsilat'ı hiç göremesin —
   // gerçek erişim engeli backend'de (403), bu sadece o sekmeleri gizliyor.

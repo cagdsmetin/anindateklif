@@ -21,6 +21,8 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
 import { shareFileViaWhatsApp } from '@/src/lib/file-share';
+import { downloadFileWeb } from '@/src/lib/web-download';
+import * as Sharing from 'expo-sharing';
 import { useLanguage } from '@/src/lib/i18n';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
@@ -170,6 +172,7 @@ export default function CatalogScreen() {
   // --- Firma Kataloğu (kendi hazırladıkları hazır PDF/görsel dosyalar) -----
   const [catalogFiles, setCatalogFiles] = useState<CatalogFileT[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [exportingCatalog, setExportingCatalog] = useState(false);
   const [emailShareFor, setEmailShareFor] = useState<CatalogFileT | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [sharingEmail, setSharingEmail] = useState(false);
@@ -268,6 +271,41 @@ export default function CatalogScreen() {
   const updateSystemName = (id: string, name: string) => setSistemTipleri(sistemTipleri.map((s) => (s.id === id ? { ...s, name } : s)));
   const commitSystemName = () => persistSystems(sistemTipleri);
   const removeSystemType = (id: string) => persistSystems(sistemTipleri.filter((s) => s.id !== id));
+
+  const exportCatalogJson = async () => {
+      if (!activeCompany) return;
+      setExportingCatalog(true);
+      try {
+            const payload = {
+                    exportedAt: new Date().toISOString(),
+                    firma: activeCompany.sirketAdi || '',
+                    sistemTipleri,
+                    catalog,
+                    catalogFiles: catalogFiles.map((f) => ({ id: f.id, name: f.name })),
+            };
+            const json = JSON.stringify(payload, null, 2);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const fileName = `katalog-yedek-${dateStr}.json`;
+            if (Platform.OS === 'web') {
+                    const blobUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+                    await downloadFileWeb(blobUrl, fileName);
+                    showToast('Katalog bilgisayarınıza indirildi');
+            } else {
+                    const fileUri = FileSystem.documentDirectory + fileName;
+                    await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+                    const avail = await Sharing.isAvailableAsync();
+                    if (avail) {
+                              await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Kataloğu Paylaş' });
+                    } else {
+                              showToast('Katalog kaydedildi: ' + fileUri);
+                    }
+            }
+      } catch (e: any) {
+            showToast('İndirme başarısız: ' + (e?.message || ''));
+      } finally {
+            setExportingCatalog(false);
+      }
+  };
 
   // Var olan bir Hizmet/Ürün sistemini (tüm alt alanlarıyla birlikte)
   // kopyalar -- kullanıcı benzer bir ürünü sıfırdan tanımlamak yerine
@@ -540,6 +578,17 @@ export default function CatalogScreen() {
             </TouchableOpacity>
           </View>
         )}
+{!isStaffUser && (
+  <TouchableOpacity
+    style={[s.addDashed, { marginTop: 8 }]}
+    onPress={exportCatalogJson}
+    disabled={exportingCatalog}
+    testID="export-catalog-btn"
+  >
+    <Ionicons name="download-outline" size={16} color={theme.colors.primary} />
+    <Text style={s.addDashedText}>{exportingCatalog ? 'İndiriliyor...' : 'Kataloğu Bilgisayara İndir (Yedek)'}</Text>
+  </TouchableOpacity>
+)}
       </View>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}

@@ -166,7 +166,7 @@ export default function KasaScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('kasa.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={s.statsRow}>
             <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft }]}>
               <Text style={[s.statLabel, { color: '#166534' }]}>{t('kasa.s012')}</Text>

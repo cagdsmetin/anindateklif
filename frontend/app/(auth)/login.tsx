@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
+import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
@@ -69,6 +70,9 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={s.langRow}>
+            <LanguageFlagSwitcher />
+          </View>
           <View style={s.logoWrap}>
             <BrandLogo size={92} />
           </View>
@@ -166,6 +170,7 @@ function InputRow({
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1, justifyContent: 'center' },
+  langRow: { alignItems: 'center', marginBottom: 14 },
   logoWrap: { alignItems: 'center', marginBottom: 20 },
   title: {
     color: authTheme.text,

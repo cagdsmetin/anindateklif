@@ -26,6 +26,7 @@ const TOTAL_STEPS = 6;
 type Country = { code: string; flag: string; name: string; currency: string; taxLabel: string };
 const COUNTRIES: Country[] = [
   { code: 'TR', flag: '🇹🇷', name: 'Türkiye', currency: 'TRY', taxLabel: 'KDV' },
+  { code: 'IT', flag: '🇮🇹', name: 'İtalya', currency: 'EUR', taxLabel: 'IVA' },
   { code: 'GB', flag: '🇬🇧', name: 'İngiltere', currency: 'GBP', taxLabel: 'KDV' },
   { code: 'US', flag: '🇺🇸', name: 'Amerika Birleşik Devletleri', currency: 'USD', taxLabel: 'Satış Vergisi' },
   { code: 'CA', flag: '🇨🇦', name: 'Kanada', currency: 'CAD', taxLabel: 'GST/HST' },
@@ -378,7 +379,7 @@ function updateBank(banks: BankRow[], setBanks: (b: BankRow[]) => void, idx: num
 }
 
 function currencySymbol(c: string): string {
-  return { TRY: '₺', USD: '$', GBP: '£', CAD: 'C$' }[c] || c;
+  return { TRY: '₺', USD: '$', GBP: '£', CAD: 'C$', EUR: '€' }[c] || c;
 }
 
 function cryptoRandom(): string {

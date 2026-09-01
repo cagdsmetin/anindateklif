@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { useLanguage } from '@/src/lib/i18n';
+import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 
 type Slide = {
   key: string;
@@ -20,32 +21,20 @@ type Slide = {
   desc: string;
 };
 
-const SLIDES: Slide[] = [
-  {
-    key: '1',
-    icon: 'rocket-outline',
-    title: 'Saniyeler İçinde Teklif Ver',
-    desc: 'Müşterilerinizi bekletmeyin. Profesyonel tekliflerinizi anında hazırlayıp rakiplerinizin bir adım önüne geçin.',
-  },
-  {
-    key: '2',
-    icon: 'document-text-outline',
-    title: 'Profesyonel PDF Teklifler',
-    desc: 'Şık, kurumsal tasarımlı PDF çıktılarını tek dokunuşla oluşturun ve WhatsApp üzerinden hemen paylaşın.',
-  },
-  {
-    key: '3',
-    icon: 'people-outline',
-    title: 'Müşterilerini Tek Yerden Yönet',
-    desc: 'Tüm müşterilerin, teklif geçmişin ve şirket ayarların tek bir kurumsal panelde güvende.',
-  },
-];
+function useSlides(t: (k: string) => string): Slide[] {
+  return [
+    { key: '1', icon: 'rocket-outline', title: t('splash.s002'), desc: t('splash.s003') },
+    { key: '2', icon: 'document-text-outline', title: t('splash.s004'), desc: t('splash.s005') },
+    { key: '3', icon: 'people-outline', title: t('splash.s006'), desc: t('splash.s007') },
+  ];
+}
 
 export default function SplashOnboarding() {
   const { t } = useLanguage();
   const router = useRouter();
   const { height } = useWindowDimensions();
   const [index, setIndex] = useState(0);
+  const SLIDES = useSlides(t);
 
   const goRegister = () => router.replace('/register');
   const goLogin = () => router.replace('/login');
@@ -69,14 +58,17 @@ export default function SplashOnboarding() {
           <Text style={s.brand}>{t('splash.s008')}</Text>
           <Text style={s.brandAccent}> {t('splash.s009')}</Text>
         </View>
-        <TouchableOpacity
-          onPress={goLogin}
-          accessibilityLabel={t('splash.s001')}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          testID="splash-skip"
-        >
-          <Text style={s.skip}>{t('splash.s001')}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <LanguageFlagSwitcher />
+          <TouchableOpacity
+            onPress={goLogin}
+            accessibilityLabel={t('splash.s001')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            testID="splash-skip"
+          >
+            <Text style={s.skip}>{t('splash.s001')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Slide body */}

@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { storage } from '@/src/utils/storage';
+import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 
 // ============================================================================
@@ -3232,8 +3233,24 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       setLangState(user.language as Lang);
       return;
     }
-    storage.getItem<string>(STORAGE_KEY, 'tr').then((v) => {
-      if (v === 'en' || v === 'it' || v === 'tr') setLangState(v);
+    // '' -> cihazda daha önce hiç seçim yapılmamış (ilk ziyaret). Böyle bir
+    // durumda IP'nin ülkesine göre bir öneri sorulur (İtalya->it, Türkiye->tr,
+    // diğer tüm ülkeler->en); ağ hatası olursa sessizce 'tr' varsayılanında
+    // kalınır. Daha önce açıkça seçim yapılmışsa (tr/en/it) o hep kullanılır,
+    // bir daha IP'ye bakılmaz.
+    storage.getItem<string>(STORAGE_KEY, '').then((v) => {
+      if (v === 'en' || v === 'it' || v === 'tr') {
+        setLangState(v);
+        return;
+      }
+      api.geoLang().then((res) => {
+        if (res?.lang === 'en' || res?.lang === 'it' || res?.lang === 'tr') {
+          setLangState(res.lang);
+          storage.setItem(STORAGE_KEY, res.lang);
+        }
+      }).catch(() => {
+        // varsayılan 'tr' state'i kalır
+      });
     });
   }, [user?.language]);
 

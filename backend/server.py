@@ -2806,6 +2806,38 @@ async def _fetch_yahoo_index(symbol: str) -> Optional[float]:
         return None
 
 
+# ============ GİRİŞ ÖNCESİ OTOMATİK DİL (IP -> ÜLKE) ============
+# splash/login/register ekranları, kullanıcı daha önce hiç dil seçmemişse
+# (cihazda kayıtlı bir seçim yoksa) IP'sinin ülkesine göre karşılanır:
+# İtalya -> it, Türkiye -> tr, diğer tüm ülkeler -> en. Üçüncü parti servise
+# ulaşılamazsa ya da ülke tespit edilemezse sessizce 'tr' varsayılanına döner
+# (mevcut davranışla aynı, hiçbir regresyona yol açmaz).
+def _lang_for_country(country: Optional[str]) -> str:
+    if country == "IT":
+        return "it"
+    if country == "TR":
+        return "tr"
+    if country:
+        return "en"
+    return "tr"
+
+
+@api_router.get("/geo-lang")
+async def geo_lang(request: Request):
+    ip = _client_ip(request)
+    country = None
+    if ip and ip != "unknown" and not ip.startswith(("10.", "192.168.", "127.", "172.")):
+        try:
+            resp = await asyncio.to_thread(requests.get, f"https://ipapi.co/{ip}/country/", timeout=3)
+            if resp.status_code == 200:
+                candidate = resp.text.strip().upper()
+                if len(candidate) == 2 and candidate.isalpha():
+                    country = candidate
+        except Exception:
+            country = None
+    return {"lang": _lang_for_country(country), "country": country}
+
+
 @api_router.get("/rates", response_model=RatesResponse)
 async def get_rates():
     now = _time.time()

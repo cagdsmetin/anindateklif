@@ -154,6 +154,10 @@ export const api = {
   resetPassword: (token: string, new_password: string) =>
     req('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) }),
   me: () => req('/auth/me'),
+  // Giriş yapılmadan önceki ekranlar (splash/login/register) için: IP'nin
+  // ülkesine göre önerilen dil -- kullanıcı daha önce hiç seçim yapmadıysa
+  // kullanılır (bkz. i18n.tsx LanguageProvider).
+  geoLang: (): Promise<{ lang: 'tr' | 'en' | 'it'; country: string | null }> => req('/geo-lang'),
   updateMe: (data: Partial<Pick<UserT, 'name' | 'phone' | 'country' | 'currency' | 'tax_label' | 'language' | 'onboarding_completed'>>) =>
     req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),

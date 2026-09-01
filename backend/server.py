@@ -17,7 +17,7 @@ import jwt
 import requests
 from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -83,6 +83,31 @@ SEAT_TIERS = [
 ]
 DEFAULT_SUBSCRIPTION_PLAN = "yearly"
 
+# İngilizce (USD) / İtalyanca (EUR) kullanan müşteriler için SABİT fiyatlar --
+# kur ne olursa olsun hep aynı $/€ tutarı ödenir (TL kullanıcıları etkilenmez,
+# onlar hep yukarıdaki *_try fiyatlarını öder). Taban (1-5 koltuk) tier için
+# haftalık $10/€10, yıllık $400/€400 (liste fiyatı $480/€480, TL'deki
+# 2400/2000=1.2 indirim oranıyla aynı) -- üst tier'lar TL tier'larıyla aynı
+# oranda ölçeklenir (örn. 70/50=1.4x tier'da $14/€14 haftalık gibi).
+BASE_WEEKLY_TRY = SEAT_TIERS[0]["weekly_price"]
+BASE_YEARLY_TRY = SEAT_TIERS[0]["yearly_price"]
+BASE_WEEKLY_USD = 10.0
+BASE_WEEKLY_EUR = 10.0
+BASE_YEARLY_USD = 400.0
+BASE_YEARLY_EUR = 400.0
+BASE_YEARLY_LIST_USD = 480.0
+BASE_YEARLY_LIST_EUR = 480.0
+
+for _tier in SEAT_TIERS:
+    _wr = _tier["weekly_price"] / BASE_WEEKLY_TRY
+    _yr = _tier["yearly_price"] / BASE_YEARLY_TRY
+    _tier["weekly_price_usd"] = round(BASE_WEEKLY_USD * _wr, 2)
+    _tier["weekly_price_eur"] = round(BASE_WEEKLY_EUR * _wr, 2)
+    _tier["yearly_price_usd"] = round(BASE_YEARLY_USD * _yr, 2)
+    _tier["yearly_price_eur"] = round(BASE_YEARLY_EUR * _yr, 2)
+    _tier["yearly_list_price_usd"] = round(BASE_YEARLY_LIST_USD * _yr, 2)
+    _tier["yearly_list_price_eur"] = round(BASE_YEARLY_LIST_EUR * _yr, 2)
+
 
 def _seat_tier(seats: int) -> Dict[str, Any]:
     for tier in SEAT_TIERS:
@@ -101,6 +126,8 @@ def _plans_for_tier(tier: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     return {
         "weekly": {
             "price_try": tier["weekly_price"],
+            "price_usd": tier["weekly_price_usd"],
+            "price_eur": tier["weekly_price_eur"],
             "duration_days": 7,
             "label": "Haftalık Abonelik",
             "iyzico_item_id": "anindateklif_weekly",
@@ -108,11 +135,36 @@ def _plans_for_tier(tier: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         "yearly": {
             "price_try": tier["yearly_price"],
             "list_price_try": tier["yearly_list_price"],
+            "price_usd": tier["yearly_price_usd"],
+            "list_price_usd": tier["yearly_list_price_usd"],
+            "price_eur": tier["yearly_price_eur"],
+            "list_price_eur": tier["yearly_list_price_eur"],
             "duration_days": 365,
             "label": "Yıllık Abonelik",
             "iyzico_item_id": "anindateklif_yearly",
         },
     }
+
+
+def currencyForLang(lang: Optional[str]) -> str:
+    """Frontend'deki src/lib/i18n.tsx -> currencyForLang ile birebir aynı
+    eşleme: İtalyanca -> EUR, İngilizce -> USD, diğer her şey (Türkçe dahil)
+    -> TRY."""
+    if lang == "it":
+        return "EUR"
+    if lang == "en":
+        return "USD"
+    return "TRY"
+
+
+def _plan_price_for_currency(plan_cfg: Dict[str, Any], currency: str) -> Tuple[float, str]:
+    """(tutar, iyzico_para_birimi) -- kullanıcının dilinden gelen currency
+    'USD'/'EUR' ise sabit $/€ fiyatı, aksi halde (varsayılan) TL fiyatı."""
+    if currency == "USD" and plan_cfg.get("price_usd") is not None:
+        return float(plan_cfg["price_usd"]), "USD"
+    if currency == "EUR" and plan_cfg.get("price_eur") is not None:
+        return float(plan_cfg["price_eur"]), "EUR"
+    return float(plan_cfg["price_try"]), "TRY"
 
 
 # Base (1-5 seat) tier — used wherever a seat count isn't known yet (e.g. the
@@ -2853,6 +2905,10 @@ class PlanOut(BaseModel):
     label: str
     price_try: float
     list_price_try: Optional[float] = None
+    price_usd: Optional[float] = None
+    list_price_usd: Optional[float] = None
+    price_eur: Optional[float] = None
+    list_price_eur: Optional[float] = None
     duration_days: int
 
 
@@ -2878,6 +2934,10 @@ def _plans_out(plans: Dict[str, Dict[str, Any]]) -> List[PlanOut]:
             label=cfg["label"],
             price_try=cfg["price_try"],
             list_price_try=cfg.get("list_price_try"),
+            price_usd=cfg.get("price_usd"),
+            list_price_usd=cfg.get("list_price_usd"),
+            price_eur=cfg.get("price_eur"),
+            list_price_eur=cfg.get("list_price_eur"),
             duration_days=cfg["duration_days"],
         )
         for plan_id, cfg in plans.items()
@@ -2931,7 +2991,12 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     plans = _plans_for_tier(_seat_tier(seats))
     plan_id = payload.plan if payload.plan in plans else DEFAULT_SUBSCRIPTION_PLAN
     plan_cfg = plans[plan_id]
-    plan_price = plan_cfg["price_try"]
+    # Kullanıcının uygulama dili İngilizce ise $, İtalyanca ise € ile sabit
+    # fiyattan tahsil edilir; Türkçe (veya bilinmeyen bir dil) için her zaman
+    # TL. Ekranda gösterilen fiyatla (subscription.tsx) burada tahsil edilen
+    # tutar birebir aynı olmalı.
+    billing_currency = currencyForLang(user.get("language", "tr"))
+    plan_price, iyzico_currency = _plan_price_for_currency(plan_cfg, billing_currency)
     import iyzipay
 
     name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
@@ -2947,7 +3012,7 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
         "conversationId": conversation_id,
         "price": f"{plan_price:.2f}",
         "paidPrice": f"{plan_price:.2f}",
-        "currency": "TRY",
+        "currency": iyzico_currency,
         "basketId": f"sub_{user['user_id']}_{plan_id}_{uuid.uuid4().hex[:8]}",
         "paymentGroup": "SUBSCRIPTION",
         "callbackUrl": f"{BACKEND_BASE_URL.rstrip('/')}/api/subscription/callback",
@@ -2996,6 +3061,8 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
         "token": response["token"],
         "conversation_id": conversation_id,
         "plan": plan_id,
+        "amount": plan_price,
+        "currency": iyzico_currency,
         "status": "pending",
         "created_at": utc_now_iso(),
     })

@@ -18,13 +18,17 @@ import { theme } from '@/src/lib/theme';
 import { api, RatesT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
-import { useLanguage, currencyForLang } from '@/src/lib/i18n';
+import { useLanguage } from '@/src/lib/i18n';
 
 type PlanT = {
   id: string;
   label: string;
   price_try: number;
   list_price_try?: number | null;
+  price_usd?: number | null;
+  list_price_usd?: number | null;
+  price_eur?: number | null;
+  list_price_eur?: number | null;
   duration_days: number;
 };
 
@@ -46,8 +50,18 @@ type StatusT = {
 const BILLING_INFO_KEY = 'sub_billing_info_v1';
 
 const FALLBACK_PLANS: PlanT[] = [
-  { id: 'weekly', label: 'Haftalık Abonelik', price_try: 50, duration_days: 7 },
-  { id: 'yearly', label: 'Yıllık Abonelik', price_try: 2000, list_price_try: 2400, duration_days: 365 },
+  { id: 'weekly', label: 'Haftalık Abonelik', price_try: 50, price_usd: 10, price_eur: 10, duration_days: 7 },
+  {
+    id: 'yearly',
+    label: 'Yıllık Abonelik',
+    price_try: 2000,
+    list_price_try: 2400,
+    price_usd: 400,
+    list_price_usd: 480,
+    price_eur: 400,
+    list_price_eur: 480,
+    duration_days: 365,
+  },
 ];
 
 function planUnitLabel(durationDays: number): string {
@@ -57,18 +71,31 @@ function planUnitLabel(durationDays: number): string {
   return `/ ${durationDays} gün`;
 }
 
-// Ödeme her zaman TL olarak (iyzico) tahsil edilir -- burada değişen yalnızca
-// EKRANDAKİ yaklaşık karşılık: İngilizce kullanan kullanıcıya $ karşılığı,
-// İtalyanca kullanan kullanıcıya € karşılığı küçük bir "≈" notu olarak
-// gösterilir. Türkçe'de not gösterilmez, gerçek tahsilat tutarı zaten TL.
-function approxPriceLabel(priceTry: number, lang: 'tr' | 'en' | 'it', rates: RatesT | null): string | null {
-  if (lang === 'tr' || !priceTry) return null;
-  const cur = currencyForLang(lang);
-  const rate = cur === 'USD' ? rates?.usd_try : rates?.eur_try;
+// İngilizce kullanan müşteri $, İtalyanca kullanan müşteri € ile SABİT
+// fiyattan tahsil edilir (kur ne olursa olsun hep aynı $/€ tutarı --
+// backend'deki price_usd/price_eur alanlarıyla birebir aynı, gerçekten
+// tahsil edilen tutar budur). Türkçe'de değişen bir şey yok, hep TL.
+// planPrimaryPrice: o dilde BÜYÜK gösterilecek asıl tutar + sembolü.
+function planPrimaryPrice(plan: PlanT, lang: 'tr' | 'en' | 'it'): { amount: number; listAmount?: number | null; sym: string } {
+  if (lang === 'en' && plan.price_usd != null) {
+    return { amount: plan.price_usd, listAmount: plan.list_price_usd, sym: '$' };
+  }
+  if (lang === 'it' && plan.price_eur != null) {
+    return { amount: plan.price_eur, listAmount: plan.list_price_eur, sym: '€' };
+  }
+  return { amount: plan.price_try, listAmount: plan.list_price_try, sym: '₺' };
+}
+
+// Asıl tahsilat $/€ olduğunda ekranın altında bilgi amaçlı "≈ ₺X" notu --
+// o günün kuruyla yaklaşık TL karşılığı, sadece fikir vermek için.
+function approxTryLabel(plan: PlanT, lang: 'tr' | 'en' | 'it', rates: RatesT | null): string | null {
+  if (lang === 'tr') return null;
+  const primary = planPrimaryPrice(plan, lang);
+  if (primary.sym === '₺') return null; // fallback zaten TL, not gerekmiyor
+  const rate = lang === 'en' ? rates?.usd_try : rates?.eur_try;
   if (!rate) return null;
-  const val = priceTry / rate;
-  const sym = cur === 'USD' ? '$' : '€';
-  return `≈ ${sym}${val.toFixed(2)}`;
+  const val = primary.amount * rate;
+  return `≈ ₺${val.toFixed(2)}`;
 }
 
 export default function SubscriptionScreen() {
@@ -307,17 +334,23 @@ export default function SubscriptionScreen() {
                             </View>
                           )}
                         </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                          {plan.list_price_try ? (
-                            <Text style={s.planListPrice}>₺{plan.list_price_try.toFixed(0)}</Text>
-                          ) : null}
-                          <Text style={s.planPrice}>
-                            ₺{plan.price_try.toFixed(0)} <Text style={s.planPriceUnit}>{planUnitLabel(plan.duration_days)}</Text>
-                          </Text>
-                        </View>
-                        {approxPriceLabel(plan.price_try, lang, rates) ? (
-                          <Text style={s.planApprox}>{approxPriceLabel(plan.price_try, lang, rates)}</Text>
-                        ) : null}
+                        {(() => {
+                          const pp = planPrimaryPrice(plan, lang);
+                          const approx = approxTryLabel(plan, lang, rates);
+                          return (
+                            <>
+                              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                                {pp.listAmount ? (
+                                  <Text style={s.planListPrice}>{pp.sym}{pp.listAmount.toFixed(0)}</Text>
+                                ) : null}
+                                <Text style={s.planPrice}>
+                                  {pp.sym}{pp.amount.toFixed(pp.sym === '₺' ? 0 : 2)} <Text style={s.planPriceUnit}>{planUnitLabel(plan.duration_days)}</Text>
+                                </Text>
+                              </View>
+                              {approx ? <Text style={s.planApprox}>{approx}</Text> : null}
+                            </>
+                          );
+                        })()}
                         <View style={{ marginTop: 12, gap: 8 }}>
                           <PlanBullet text="Sınırsız teklif oluşturma" />
                           <PlanBullet text={isYearly ? 'Yıllık otomatik yenileme' : 'Haftalık otomatik yenileme'} />
@@ -347,12 +380,16 @@ export default function SubscriptionScreen() {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={s.ctaText}>
-                      {dueSoon ? 'Yenile' : 'Abone Ol'} — ₺{(activePlan?.price_try ?? 0).toFixed(0)}{activePlan ? planUnitLabel(activePlan.duration_days) : ''}
+                      {(() => {
+                        if (!activePlan) return dueSoon ? 'Yenile' : 'Abone Ol';
+                        const pp = planPrimaryPrice(activePlan, lang);
+                        return `${dueSoon ? 'Yenile' : 'Abone Ol'} — ${pp.sym}${pp.amount.toFixed(pp.sym === '₺' ? 0 : 2)}${planUnitLabel(activePlan.duration_days)}`;
+                      })()}
                     </Text>
                   )}
                 </TouchableOpacity>
-                {approxPriceLabel(activePlan?.price_try ?? 0, lang, rates) ? (
-                  <Text style={s.ctaApprox}>{approxPriceLabel(activePlan?.price_try ?? 0, lang, rates)}</Text>
+                {activePlan && approxTryLabel(activePlan, lang, rates) ? (
+                  <Text style={s.ctaApprox}>{approxTryLabel(activePlan, lang, rates)}</Text>
                 ) : null}
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>

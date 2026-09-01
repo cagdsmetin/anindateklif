@@ -125,6 +125,55 @@ function Sidebar({ items }: { items: NavItem[] }) {
   );
 }
 
+// Admin bir müşteri hesabına "Müşteri olarak gir" ile girdiğinde her
+// ekranın üstünde sabit kalan uyarı şeridi — hem yanlışlıkla o firma adına
+// işlem yapmayı unutmayı önler hem de tek tıkla admin kendi hesabına
+// dönebilir. UserT.is_impersonated backend'den (JWT'deki "imp" claim'i
+// üzerinden) /auth/me ile geliyor, sayfa yenilense bile kaybolmaz.
+function ImpersonationBanner() {
+  const { user, returnToOwnAccount } = useAuth();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  if (!user?.is_impersonated) return null;
+
+  const onReturn = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await returnToOwnAccount();
+      router.replace('/(tabs)/admin-customers');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={ib.bar}>
+      <Ionicons name="shield-checkmark" size={15} color="#fff" />
+      <Text style={ib.text} numberOfLines={1}>
+        Destek modu: {user.name || user.email} hesabını görüntülüyorsun
+      </Text>
+      <TouchableOpacity onPress={onReturn} disabled={busy} style={ib.btn}>
+        <Text style={ib.btnText}>{busy ? '...' : 'Kendi hesabına dön'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const ib = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#B45309',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  text: { flex: 1, color: '#fff', fontSize: 12.5, fontWeight: '700' },
+  btn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  btnText: { color: '#fff', fontSize: 11.5, fontWeight: '800' },
+});
+
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -185,16 +234,27 @@ export default function TabsLayout() {
       <Tabs.Screen name="borclu-musteriler" options={{ href: null }} />
       <Tabs.Screen name="subscription" options={{ href: null }} />
       <Tabs.Screen name="reports" options={{ href: null }} />
+      <Tabs.Screen name="admin-customers" options={{ href: null }} />
     </Tabs>
   );
 
-  if (!isDesktopWeb) return tabs;
+  if (!isDesktopWeb) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ImpersonationBanner />
+        <View style={{ flex: 1 }}>{tabs}</View>
+      </View>
+    );
+  }
 
   return (
-    <View style={sb.desktopRow}>
-      <Sidebar items={navItems} />
-      <View style={sb.contentOuter}>
-        <View style={sb.contentInner}>{tabs}</View>
+    <View style={{ flex: 1 }}>
+      <ImpersonationBanner />
+      <View style={sb.desktopRow}>
+        <Sidebar items={navItems} />
+        <View style={sb.contentOuter}>
+          <View style={sb.contentInner}>{tabs}</View>
+        </View>
       </View>
     </View>
   );

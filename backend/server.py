@@ -572,6 +572,8 @@ class UserOut(BaseModel):
     is_staff: bool = False
     staff_role: Optional[str] = None
     staff_company_id: Optional[str] = None
+    is_impersonated: bool = False
+    impersonated_by: Optional[str] = None
 
 
 class AuthResponse(BaseModel):
@@ -623,6 +625,12 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
     if not account:
         raise HTTPException(status_code=401, detail="User not found")
 
+    # Admin destek/impersonasyon oturumu ise (bkz. /admin/impersonate) bu
+    # bilgiyi çözümlenen kullanıcı sözlüğüne taşı ki auth/me üzerinden
+    # frontend'e "destek modundasın" banner'ı için ulaşabilsin.
+    imp_flag = bool(payload.get("imp"))
+    imp_by = payload.get("imp_by") if imp_flag else None
+
     owner_id = account.get("staff_owner_user_id")
     if owner_id:
         # Staff account — every company-scoped query (quotes/customers/kasa/
@@ -640,9 +648,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         resolved["staff_role"] = account.get("staff_role", "staff")
         resolved["staff_of_company_id"] = account.get("staff_of_company_id", "")
         resolved["actual_user_id"] = account["user_id"]
+        resolved["_impersonated"] = imp_flag
+        resolved["_impersonated_by"] = imp_by
         return resolved
 
     account["is_staff"] = False
+    account["_impersonated"] = imp_flag
+    account["_impersonated_by"] = imp_by
     return account
 
 
@@ -671,6 +683,8 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         is_staff=bool(u.get("staff_owner_user_id")),
         staff_role=u.get("staff_role"),
         staff_company_id=u.get("staff_of_company_id"),
+        is_impersonated=bool(u.get("_impersonated")),
+        impersonated_by=u.get("_impersonated_by"),
     )
 
 
@@ -3550,6 +3564,137 @@ async def list_promo_codes(user=Depends(get_current_user)):
     cursor = db.promo_codes.find({}, {"_id": 0}).sort("created_at", -1).limit(500)
     docs = await cursor.to_list(500)
     return [PromoCodeOut(**{k: v for k, v in d.items() if k in PromoCodeOut.model_fields}) for d in docs]
+
+
+# ============ MÜŞTERİ OLARAK GİR (ADMIN IMPERSONATION) ============
+# Uygulamayı satan/kuran admin (ADMIN_EMAILS), bir müşterinin şifresini
+# görmeden/sormadan, o firmanın hesabına KISA SÜRELİ ve KAYIT ALTINA ALINAN
+# (audit) bir destek erişimi açabilir. Mekanizma: normal login ile birebir
+# aynı yapıda bir access token üretilir (get_current_user'da hiçbir özel
+# kod yolu gerekmez), sadece "imp"/"imp_by" claim'leri eklenir ve süresi
+# çok kısa tutulur (30 dk). Bu token'la yapılan HER işlem, o müşterinin
+# kendi hesabıyla girmiş gibi işler (kalem/katalog düzenleme dahil) — ama
+# admin kendi şifresini asla görmez/kullanmaz, müşteri de hiçbir şey yapmaz.
+IMPERSONATION_TOKEN_MINUTES = 30
+
+
+def _make_impersonation_token(target_user: Dict[str, Any], admin_email: str) -> Tuple[str, str]:
+    now = _utc()
+    jti = str(uuid.uuid4())
+    payload = {
+        "sub": target_user["user_id"],
+        "email": target_user["email"],
+        "type": "access",
+        "jti": jti,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "iat": now,
+        "exp": now + timedelta(minutes=IMPERSONATION_TOKEN_MINUTES),
+        "imp": True,
+        "imp_by": admin_email,
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM), jti
+
+
+class AdminCustomerOut(BaseModel):
+    user_id: str
+    email: str
+    name: str = ""
+    phone: str = ""
+    company_name: str = ""
+    created_at: Optional[str] = None
+    subscription_active: bool = False
+
+
+class ImpersonateResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+    company_name: str = ""
+
+
+@api_router.get("/admin/customers", response_model=List[AdminCustomerOut])
+async def admin_list_customers(user=Depends(get_current_user)):
+    _require_admin(user)
+    # Sadece gerçek firma sahibi hesapları (personel hesapları hariç) —
+    # personelin hesabına değil, doğrudan firma sahibine girilir.
+    docs = await db.users.find(
+        {"staff_owner_user_id": {"$in": [None, ""]}},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "phone": 1, "createdAt": 1, "subscription_expires_at": 1},
+    ).sort("createdAt", -1).to_list(2000)
+    out: List[AdminCustomerOut] = []
+    for d in docs:
+        email = (d.get("email") or "").strip().lower()
+        if email in ADMIN_EMAILS:
+            continue
+        company = await db.companies.find_one({"userId": d["user_id"]}, {"_id": 0, "sirketAdi": 1})
+        out.append(AdminCustomerOut(
+            user_id=d["user_id"],
+            email=d.get("email", ""),
+            name=d.get("name", ""),
+            phone=d.get("phone", ""),
+            company_name=(company or {}).get("sirketAdi", ""),
+            created_at=d.get("createdAt"),
+            subscription_active=_is_subscription_active(d),
+        ))
+    return out
+
+
+@api_router.post("/admin/impersonate/{target_user_id}", response_model=ImpersonateResponse)
+async def admin_impersonate(target_user_id: str, user=Depends(get_current_user)):
+    _require_admin(user)
+    target = await db.users.find_one({"user_id": target_user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    if target.get("staff_owner_user_id"):
+        raise HTTPException(status_code=400, detail="Bu bir personel hesabı — doğrudan firma sahibine giriş yapın")
+    target_email = (target.get("email") or "").strip().lower()
+    if target_email in ADMIN_EMAILS:
+        raise HTTPException(status_code=400, detail="Admin hesabına giriş yapılamaz")
+    token, jti = _make_impersonation_token(target, user["email"])
+    company = await db.companies.find_one({"userId": target_user_id}, {"_id": 0, "sirketAdi": 1})
+    await db.admin_impersonation_log.insert_one({
+        "id": str(uuid.uuid4()),
+        "admin_user_id": user["user_id"],
+        "admin_email": user["email"],
+        "target_user_id": target_user_id,
+        "target_email": target.get("email"),
+        "jti": jti,
+        "started_at": utc_now_iso(),
+        "ended_at": None,
+    })
+    target_out = dict(target)
+    target_out["is_staff"] = False
+    target_out["_impersonated"] = True
+    target_out["_impersonated_by"] = user["email"]
+    return ImpersonateResponse(
+        access_token=token,
+        user=_user_out(target_out),
+        company_name=(company or {}).get("sirketAdi", ""),
+    )
+
+
+@api_router.post("/admin/impersonate/end")
+async def admin_impersonate_end(authorization: Optional[str] = Header(None)):
+    # Bilinçli olarak get_current_user KULLANMIYOR: o fonksiyon "imp" token'ını
+    # zaten hedef müşteriye çözümler, admin kimliğine değil. Burada tek amaç,
+    # elimizdeki (Authorization header'daki) impersonation token'ının kendisini
+    # sunucu tarafında iptal etmek -- bunun için token'ın kendisi (jti) yeterli
+    # kanıttır, başka bir yetki kontrolüne gerek yok.
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization[7:].strip()
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER, audience=JWT_AUDIENCE)
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not payload.get("imp"):
+        raise HTTPException(status_code=400, detail="Bu bir destek (impersonation) oturumu değil")
+    jti = payload.get("jti")
+    if jti:
+        await db.revoked_tokens.insert_one({"jti": jti, "revoked_at": utc_now_iso(), "reason": "impersonation_end"})
+        await db.admin_impersonation_log.update_one({"jti": jti}, {"$set": {"ended_at": utc_now_iso()}})
+    return {"ok": True}
 
 
 class PromoRedeemRequest(BaseModel):

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, getSessionToken, setSessionToken, UserT } from '@/src/lib/api';
+import { api, getSessionToken, setSessionToken, getAdminReturnToken, setAdminReturnToken, UserT } from '@/src/lib/api';
 
 type LoginArgs = { email: string; password: string };
 type RegisterArgs = { email: string; password: string; name: string; phone: string };
@@ -15,6 +15,8 @@ type AuthState = {
   updateUser: (patch: Partial<UserT>) => Promise<UserT>;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
+  enterAsCustomer: (userId: string) => Promise<string>;
+  returnToOwnAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -113,9 +115,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  // Admin "Müşteri olarak gir": kendi (admin) oturum token'ını bir kenara
+  // kaldırıp, backend'in ürettiği kısa süreli/audit'li müşteri token'ına
+  // geçer. Şifre görülmez/sorulmaz.
+  const enterAsCustomer = useCallback(async (userId: string) => {
+    const currentToken = await getSessionToken();
+    const res: { access_token: string; user: UserT; company_name: string } = await api.impersonateCustomer(userId);
+    if (currentToken) {
+      await setAdminReturnToken(currentToken);
+    }
+    await setSessionToken(res.access_token);
+    setUser(res.user);
+    return res.company_name;
+  }, []);
+
+  // Destek modundan çıkıp admin kendi hesabına geri döner.
+  const returnToOwnAccount = useCallback(async () => {
+    const returnToken = await getAdminReturnToken();
+    try { await api.endImpersonation(); } catch {}
+    await setAdminReturnToken(null);
+    if (returnToken) {
+      await setSessionToken(returnToken);
+      try {
+        const me: UserT = await api.me();
+        setUser(me);
+        return;
+      } catch {
+        // Admin'in kendi token'ı da geçersizse (ör. süresi dolmuş) düz çıkış yap.
+      }
+    }
+    await setSessionToken(null);
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut }),
-    [loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut]
+    () => ({
+      loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut,
+      enterAsCustomer, returnToOwnAccount,
+    }),
+    [loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut, enterAsCustomer, returnToOwnAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -16,7 +16,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.musteri': 'Musteri', 'nav.servis': 'Servis', 'nav.kampanya': 'Kampanya', 'nav.musteriAvcisi': 'Musteri Avcisi',
       'nav.hatirlatmalar': 'Hatirlatmalar', 'nav.takvim': 'Takvim', 'nav.kasa': 'Kasa', 'nav.tahsilat': 'Tahsilat',
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
-      'nav.raporlar': 'Raporlar',
+      'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir',
     };
     return fallback[k] || k;
   });
@@ -53,6 +53,9 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.
   if (opts?.isAdmin) {
     items.push({ name: 'promo-admin', title: tt('nav.hediyeKodu'), icon: 'gift', color: theme.colors.gold });
+    // Müşteri olarak gir: admin, şifre görmeden/sormadan bir müşteri
+    // hesabına destek amaçlı geçici erişim açabilir.
+    items.push({ name: 'admin-customers', title: tt('nav.musteriOlarakGir'), icon: 'key', color: theme.colors.gold });
   }
   return items;
 }

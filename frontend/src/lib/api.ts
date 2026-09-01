@@ -47,6 +47,30 @@ export async function getSessionToken(): Promise<string | null> {
   return tokenCache;
 }
 
+// Admin "Müşteri olarak gir" (impersonation) akışında, admin kendi oturum
+// token'ını kaybetmesin diye buraya geçici olarak saklanır -- müşteri
+// hesabından "Kendi hesabına dön" dendiğinde buradan geri okunup asıl
+// session olarak geri yüklenir.
+export const ADMIN_RETURN_TOKEN_KEY = 'admin_return_token_v1';
+
+export async function setAdminReturnToken(token: string | null) {
+  if (Platform.OS === 'web') {
+    if (token) window.localStorage.setItem(ADMIN_RETURN_TOKEN_KEY, token);
+    else window.localStorage.removeItem(ADMIN_RETURN_TOKEN_KEY);
+  } else {
+    if (token) await storage.secureSet(ADMIN_RETURN_TOKEN_KEY, token);
+    else await storage.secureRemove(ADMIN_RETURN_TOKEN_KEY);
+  }
+}
+
+export async function getAdminReturnToken(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return window.localStorage.getItem(ADMIN_RETURN_TOKEN_KEY);
+  }
+  const v = (await storage.secureGet<string>(ADMIN_RETURN_TOKEN_KEY, '')) || null;
+  return v === '' ? null : v;
+}
+
 /**
  * Structured API error so screens can distinguish network vs HTTP status errors.
  * `.kind` is the primary signal callers should switch on:
@@ -153,6 +177,13 @@ export const api = {
     req('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) }),
   listPromoCodes: (): Promise<PromoCodeT[]> => req('/admin/promo-codes'),
   redeemPromoCode: (code: string) => req('/promo/redeem', { method: 'POST', body: JSON.stringify({ code }) }),
+
+  // Müşteri olarak gir (admin impersonation) — sadece ADMIN_EMAILS'teki
+  // hesaba açık. Şifre görülmeden/sorulmadan, kısa süreli ve audit'li erişim.
+  listAdminCustomers: (): Promise<AdminCustomerT[]> => req('/admin/customers'),
+  impersonateCustomer: (userId: string): Promise<{ access_token: string; user: UserT; company_name: string }> =>
+    req(`/admin/impersonate/${userId}`, { method: 'POST' }),
+  endImpersonation: () => req('/admin/impersonate/end', { method: 'POST' }),
 
   // Companies
   listCompanies: () => req('/companies'),
@@ -294,6 +325,18 @@ export type UserT = {
   is_staff?: boolean;
   staff_role?: string | null;
   staff_company_id?: string | null;
+  is_impersonated?: boolean;
+  impersonated_by?: string | null;
+};
+
+export type AdminCustomerT = {
+  user_id: string;
+  email: string;
+  name: string;
+  phone: string;
+  company_name: string;
+  created_at?: string | null;
+  subscription_active: boolean;
 };
 
 export type StaffMemberT = {

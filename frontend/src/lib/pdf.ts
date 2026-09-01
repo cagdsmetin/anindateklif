@@ -970,7 +970,7 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   .page { display:flex; min-height: 1120px; }
 
   .strip { width:180px; flex-shrink:0; background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%); color:#fff; padding:28px 20px; }
-  .strip-logo-img { max-width:110px; max-height:80px; object-fit:contain; display:block; margin-bottom:16px; }
+  .strip-logo-img { max-width:145px; max-height:110px; object-fit:contain; display:block; margin-bottom:16px; }
   .strip-logo-fallback { width:56px; height:56px; border-radius:14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:19pt; margin-bottom:16px; }
   .strip-company { font-size:12.5pt; font-weight:800; line-height:1.35; margin-bottom:3px; }
   .strip-tagline { font-size:7.6pt; color:#94A3B8; margin-bottom:11px; }
@@ -1169,8 +1169,8 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
 
   .head-card { display:flex; align-items:center; justify-content:space-between; }
   .head-left { display:flex; align-items:center; gap:12px; }
-  .logo-badge-img { max-width:70px; max-height:56px; object-fit:contain; border-radius:10px; }
-  .logo-badge { width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#6366F1,#A855F7); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:14pt; }
+  .logo-badge-img { max-width:130px; max-height:96px; object-fit:contain; border-radius:10px; }
+  .logo-badge { width:64px; height:64px; border-radius:14px; background:linear-gradient(135deg,#6366F1,#A855F7); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:20pt; }
   .head-company { font-size:12pt; font-weight:800; color:#1E1B4B; }
   .head-sub { font-size:7.6pt; color:#7C7A9C; margin-top:2px; }
   .head-right { text-align:right; }

@@ -131,7 +131,7 @@ export default function ServicesScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
         {[t('services.s001'), ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
+            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st === t('services.s001') ? st : statusLabel(lang, st)}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -221,7 +221,7 @@ export default function ServicesScreen() {
                     setStatusMenuFor(null);
                   }}
                 >
-                  <Text style={[s.menuItemText, { color: cc.text }]}>{st}</Text>
+                  <Text style={[s.menuItemText, { color: cc.text }]}>{statusLabel(lang, st)}</Text>
                 </TouchableOpacity>
               );
             })}

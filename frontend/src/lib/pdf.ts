@@ -1,5 +1,5 @@
 import type { CompanyT, QuoteT } from './api';
-import { buildItemDescription } from './quote-utils';
+import { buildItemDescription, parseNoteSegments } from './quote-utils';
 
 export type PdfTemplateId = 'classic' | 'modern' | 'minimal' | 'kurumsal' | 'renkli';
 
@@ -19,6 +19,16 @@ const esc = (s: string) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/\n/g, '<br/>');
+
+const escNotes = (s: string) =>
+  parseNoteSegments(String(s ?? ''))
+    .map((seg) => {
+      const t = esc(seg.text);
+      return seg.emphasis
+        ? '<span style="font-weight:800;color:#000;text-decoration:underline;font-size:1.18em">' + t + '</span>'
+        : t;
+    })
+    .join('');
 
 // Turns a raw website value ("firma.com", "www.firma.com", "https://firma.com")
 // into a safe absolute https:// href -- so the mailto:/http(s): links below
@@ -365,7 +375,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   <div class="bottom">
     <div class="bt-left">
       <div class="notes-hdr">ÖZEL NOTLAR &amp; SATIŞ DETAYLARI</div>
-      <div class="notes-body">${esc(quote.notlar || company.ozelNotlar || '-')}</div>
+      <div class="notes-body">${escNotes(quote.notlar || company.ozelNotlar || '-')}</div>
     </div>
     <div class="bt-right">
       <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
@@ -614,9 +624,9 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
     <div class="bottom">
       <div class="notes-card">
         <div class="sub-title">Özel Notlar</div>
-        <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
-        <div class="sub-title">Satış Detayları</div>
-        <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+        <div class="sub-body">${escNotes(quote.notlar || company.ozelNotlar || '-')}</div>
+        
+        
         <div class="sign-box">
           <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
           <div class="sign-line"></div>
@@ -868,9 +878,9 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
   <div class="bottom">
     <div class="notes-col">
       <div class="sub-title">Özel Notlar</div>
-      <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
-      <div class="sub-title">Satış Detayları</div>
-      <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+      <div class="sub-body">${escNotes(quote.notlar || company.ozelNotlar || '-')}</div>
+      
+      
       <div class="sign-box">
         <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
         <div class="sign-line"></div>
@@ -1075,9 +1085,9 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
       <div class="bottom-row">
         <div class="notes-card">
           <div class="sub-title">Özel Notlar</div>
-          <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
-          <div class="sub-title">Satış Detayları</div>
-          <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+          <div class="sub-body">${escNotes(quote.notlar || company.ozelNotlar || '-')}</div>
+          
+          
           <div class="sign-box">
             <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
             <div class="sign-line"></div>
@@ -1266,9 +1276,9 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
 
     <div class="card notes-card">
       <div class="sub-title">Özel Notlar</div>
-      <div class="sub-body">${company.ozelNotlar ? esc(company.ozelNotlar) : '-'}</div>
-      <div class="sub-title">Satış Detayları</div>
-      <div class="sub-body">${quote.notlar ? esc(quote.notlar) : '-'}</div>
+      <div class="sub-body">${escNotes(quote.notlar || company.ozelNotlar || '-')}</div>
+      
+      
       <div class="sign-box">
         <div class="sign-label">${company.imzaMetni ? esc(company.imzaMetni) : 'Onay / İmza :'}</div>
         <div class="sign-line"></div>

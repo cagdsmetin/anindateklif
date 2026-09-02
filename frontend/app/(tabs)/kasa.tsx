@@ -127,16 +127,16 @@ export default function KasaScreen() {
   const isDiger = kategori.startsWith('Diğer') || yontem === 'Diğer';
 
   const save = async () => {
-    if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
+    if (!Number(tutar) || Number(tutar) <= 0) { showToast(t('common.enterAmount')); return; }
     if (isDiger && !notlar.trim()) { showToast(t('kasa.s007')); return; }
     setSaving(true);
     try {
       await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates) });
-      showToast(tur === 'gelir' ? 'Gelir kaydedildi' : 'Gider kaydedildi');
+      showToast(tur === 'gelir' ? t('kasa.s033') : t('kasa.s034'));
       setTutar('');
       setNotlar('');
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || ''));
+      showToast(t('common.errorPrefix') + (e?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -147,7 +147,7 @@ export default function KasaScreen() {
       await deleteKasaEntry(id);
       showToast(t('kasa.s008'));
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || ''));
+      showToast(t('common.errorPrefix') + (e?.message || ''));
     }
   };
 
@@ -214,7 +214,7 @@ export default function KasaScreen() {
             <View style={s.chipRow}>
               {kategoriler.map((k) => (
                 <TouchableOpacity key={k} style={[s.chip, kategori === k && s.chipActive]} onPress={() => setKategori(k)} testID={`kasa-kategori-${k}`}>
-                  <Text style={[s.chipText, kategori === k && s.chipTextActive]}>{k}</Text>
+                  <Text style={[s.chipText, kategori === k && s.chipTextActive]}>{statusLabel(lang, k)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -245,7 +245,7 @@ export default function KasaScreen() {
               ))}
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? t('kasa.s023') : 'NOT (opsiyonel)'}</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? t('kasa.s023') : t('common.notOptional')}</Text>
             <TextInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
@@ -257,7 +257,7 @@ export default function KasaScreen() {
 
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="kasa-save-btn">
               <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
+              <Text style={s.saveBtnText}>{saving ? t('common.saving') : t('common.save')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -268,7 +268,7 @@ export default function KasaScreen() {
                 {kategoriDagilimi.map((k) => (
                   <View key={k.kategori} style={{ marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <Text style={s.katLabel}>{k.kategori} <Text style={s.katSub}>{k.tur}</Text></Text>
+                      <Text style={s.katLabel}>{statusLabel(lang, k.kategori)} <Text style={s.katSub}>{k.tur}</Text></Text>
                       <Text style={[s.katAmount, { color: k.tur === 'gelir' ? '#166534' : '#991b1b' }]}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.toplam, 'TRY')}</Text>
                     </View>
                     <View style={s.barBg}><View style={[s.barFill, { width: `${k.pct}%`, backgroundColor: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} /></View>
@@ -295,7 +295,7 @@ export default function KasaScreen() {
                   <Ionicons name={k.tur === 'gelir' ? 'arrow-down' : 'arrow-up'} size={16} color={k.tur === 'gelir' ? theme.colors.green : theme.colors.red} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.txKat} numberOfLines={1}>{k.kategori}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
+                  <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>{statusLabel(lang, k.yontem)} · {k.tarih}</Text>
                 </View>
                 <Text style={[s.txAmount, { color: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.tutar, k.paraBirimi)}</Text>

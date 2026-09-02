@@ -130,3 +130,53 @@ export function buildTeklifNo(seq: number = 1, d: Date = new Date()): string {
   const nn = String(Math.max(1, seq)).padStart(2, '0');
   return `${yyyy}-${dd}${mm}${nn}`;
 }
+
+
+/**
+ * Lightweight "rich" segment for Ozel Notlar: text wrapped in **double
+ * asterisks** renders bold + black + underlined + slightly larger wherever
+ * notes are shown (editor onizleme and the generated PDF, since preview.tsx
+ * reuses the same PDF HTML).
+ */
+export type NoteSegment = { text: string; emphasis: boolean };
+
+export function parseNoteSegments(raw: string): NoteSegment[] {
+  if (!raw) return [];
+  const segments: NoteSegment[] = [];
+  const re = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw))) {
+    if (m.index > lastIndex) segments.push({ text: raw.slice(lastIndex, m.index), emphasis: false });
+    segments.push({ text: m[1], emphasis: true });
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < raw.length) segments.push({ text: raw.slice(lastIndex), emphasis: false });
+  return segments;
+}
+
+/**
+ * Toggles ** markers around the [start,end) selection so the person can turn
+ * bold/underline emphasis on or off for whatever text they've selected in
+ * the Ozel Notlar field. With no selection, inserts an empty ** ** pair and
+ * places the cursor between the markers so the next typed text is emphasized.
+ */
+export function toggleNoteEmphasis(
+  text: string,
+  start: number,
+  end: number
+): { text: string; start: number; end: number } {
+  if (start === end) {
+    const next = text.slice(0, start) + '****' + text.slice(start);
+    return { text: next, start: start + 2, end: start + 2 };
+  }
+  const before2 = text.slice(Math.max(0, start - 2), start);
+  const after2 = text.slice(end, end + 2);
+  if (before2 === '**' && after2 === '**') {
+    const next = text.slice(0, start - 2) + text.slice(start, end) + text.slice(end + 2);
+    return { text: next, start: start - 2, end: end - 2 };
+  }
+  const selected = text.slice(start, end);
+  const next = text.slice(0, start) + '**' + selected + '**' + text.slice(end);
+  return { text: next, start: start + 2, end: end + 2 };
+}

@@ -28,6 +28,7 @@ const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 export default function CompanyScreen() {
   const router = useRouter();
   const { companies, activeCompany, setActiveCompanyId, createCompany, updateCompany, deleteCompany, showToast } = useApp();
+  const { t } = useLanguage();
   const { user, refreshUser, signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState<CompanyT | null>(null);
@@ -44,39 +45,39 @@ export default function CompanyScreen() {
     setResendBusy(true);
     try {
       await api.resendVerificationEmail();
-      showToast('Doğrulama bağlantısı e-postana tekrar gönderildi');
+      showToast(t('firma.toastVerifyResent'));
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || 'Gönderilemedi'));
+      showToast(t('common.errorPrefix') + (e?.message || t('firma.toastResendFailed')));
     } finally {
       setResendBusy(false);
     }
   };
 
   const sendOtp = async () => {
-    if (!phoneInput.trim()) { showToast('Telefon numarası giriniz'); return; }
+    if (!phoneInput.trim()) { showToast(t('firma.toastEnterPhone')); return; }
     setOtpBusy(true);
     try {
       await api.sendPhoneCode(phoneInput.trim());
       setOtpStep('code_sent');
-      showToast('WhatsApp\'tan doğrulama kodu gönderildi');
+      showToast(t('firma.toastOtpSent'));
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || 'Kod gönderilemedi'));
+      showToast(t('common.errorPrefix') + (e?.message || t('firma.toastOtpSendFailed')));
     } finally {
       setOtpBusy(false);
     }
   };
 
   const verifyOtp = async () => {
-    if (!otpCode.trim()) { showToast('Kodu giriniz'); return; }
+    if (!otpCode.trim()) { showToast(t('firma.toastEnterCode')); return; }
     setOtpBusy(true);
     try {
       await api.verifyPhoneCode(phoneInput.trim(), otpCode.trim());
       await refreshUser();
       setOtpStep('idle');
       setOtpCode('');
-      showToast('Telefon numarası doğrulandı ✓');
+      showToast(t('firma.toastPhoneVerified'));
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || 'Kod hatalı'));
+      showToast(t('common.errorPrefix') + (e?.message || t('firma.toastCodeWrong')));
     } finally {
       setOtpBusy(false);
     }
@@ -89,21 +90,21 @@ export default function CompanyScreen() {
 
   const pickLogo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { showToast('Fotoğraf izni gerekli'); return; }
+    if (!perm.granted) { showToast(t('firma.toastPhotoPermission')); return; }
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7, base64: true });
     if (res.canceled || !res.assets?.[0]) return;
     const asset = res.assets[0];
     const b64 = asset.base64 ? `data:image/${asset.uri.endsWith('.png') ? 'png' : 'jpeg'};base64,${asset.base64}` : '';
-    if (!b64) { showToast('Görsel okunamadı'); return; }
+    if (!b64) { showToast(t('firma.toastImageError')); return; }
     setForm((f) => (f ? { ...f, logoBase64: b64 } : f));
   };
   const removeLogo = () => setForm((f) => (f ? { ...f, logoBase64: '' } : f));
 
   const save = async () => {
     if (!form) return;
-    if (!form.sirketAdi.trim()) { showToast('Firma adı zorunlu'); return; }
-    try { await updateCompany(form.id, form); showToast('Firma bilgileri kaydedildi'); }
-    catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
+    if (!form.sirketAdi.trim()) { showToast(t('firma.toastNameRequired')); return; }
+    try { await updateCompany(form.id, form); showToast(t('firma.toastSaved')); }
+    catch (e: any) { showToast(t('common.errorPrefix') + (e?.message || '')); }
   };
 
   // Bank management
@@ -115,13 +116,13 @@ export default function CompanyScreen() {
   const removeBank = (id: string) => form && setForm({ ...form, banklar: (form.banklar || []).filter((b) => b.id !== id) });
 
   const createNewCompany = async () => {
-    try { const c = await createCompany({ sirketAdi: 'Yeni Firma' }); await setActiveCompanyId(c.id); showToast('Yeni firma oluşturuldu'); }
-    catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
+    try { const c = await createCompany({ sirketAdi: 'Yeni Firma' }); await setActiveCompanyId(c.id); showToast(t('firma.toastCreated')); }
+    catch (e: any) { showToast(t('common.errorPrefix') + (e?.message || '')); }
   };
   const doDelete = async () => {
     if (!form) return;
-    try { await deleteCompany(form.id); setShowConfirmDelete(false); showToast('Firma silindi'); }
-    catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
+    try { await deleteCompany(form.id); setShowConfirmDelete(false); showToast(t('firma.toastDeleted')); }
+    catch (e: any) { showToast(t('common.errorPrefix') + (e?.message || '')); }
   };
 
   const doDeleteAccount = async () => {
@@ -133,7 +134,7 @@ export default function CompanyScreen() {
       await signOut();
       router.replace('/login');
     } catch (e: any) {
-      showToast('Hata: ' + (e?.message || 'Hesap silinemedi'));
+      showToast(t('common.errorPrefix') + (e?.message || t('firma.toastAccountDeleteFailed')));
     } finally {
       setDeleteAccountBusy(false);
     }
@@ -142,15 +143,15 @@ export default function CompanyScreen() {
   if (!form) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <TopHeader title="Firma Yönetimi" />
-        <View style={s.empty}><Text style={s.emptyText}>Yükleniyor...</Text></View>
+        <TopHeader title={t('firma.headerTitle')} />
+        <View style={s.empty}><Text style={s.emptyText}>{t('firma.loading')}</Text></View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <TopHeader title="Firma Yönetimi" />
+      <TopHeader title={t('firma.headerTitle')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled">
           {!user?.is_staff && (
@@ -158,7 +159,7 @@ export default function CompanyScreen() {
             {/* Companies list */}
             <View style={s.companyListBox}>
               <View style={s.compHdr}>
-                <Text style={s.sectionH2}>KAYITLI FİRMALARIM ({companies.length})</Text>
+                <Text style={s.sectionH2}>{t('firma.myCompanies')} ({companies.length})</Text>
                 <TouchableOpacity onPress={createNewCompany} testID="add-company-btn"><Ionicons name="add-circle" size={22} color={theme.colors.primary} /></TouchableOpacity>
               </View>
               {companies.map((c) => {
@@ -177,18 +178,18 @@ export default function CompanyScreen() {
               })}
             </View>
             {/* Logo */}
-            <SectionHeader title="ŞİRKET LOGOSU" />
+            <SectionHeader title={t('firma.companyLogo')} />
             <View style={s.logoBox}>
               {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
                 <View style={s.logoPlaceholder}>
                   <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
-                  <Text style={s.logoHint}>Logo yüklenmedi</Text>
+                  <Text style={s.logoHint}>{t('firma.logoNotUploaded')}</Text>
                 </View>
               )}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                 <TouchableOpacity style={[s.btnPri, { flex: 1 }]} onPress={pickLogo} testID="pick-logo-btn">
                   <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                  <Text style={s.btnPriText}>{form.logoBase64 ? 'Logo Değiştir' : 'Logo Yükle'}</Text>
+                  <Text style={s.btnPriText}>{form.logoBase64 ? t('firma.changeLogo') : t('firma.uploadLogo')}</Text>
                 </TouchableOpacity>
                 {form.logoBase64 && (
                   <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
@@ -199,48 +200,48 @@ export default function CompanyScreen() {
             </View>
 
             {/* Info */}
-            <SectionHeader title="FİRMA BİLGİLERİ" />
-            <Field label="Firma Adı *"><TextInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
-            <Field label="Adres"><TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
+            <SectionHeader title={t('firma.companyInfo')} />
+            <Field label={t('firma.companyName')}><TextInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
+            <Field label={t('firma.address')}><TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Field label="Telefon" flex={1}><TextInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
-              <Field label="Telefon 2" flex={1}><TextInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
+              <Field label={t('firma.phone')} flex={1}><TextInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
+              <Field label={t('firma.phone2')} flex={1}><TextInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
             </View>
-            <Field label="E-Posta"><TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
-            <Field label="Website"><TextInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
+            <Field label={t('firma.email')}><TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
+            <Field label={t('firma.website')}><TextInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Field label="Vergi Dairesi" flex={1}><TextInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
-              <Field label="Vergi No" flex={1}><TextInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
+              <Field label={t('firma.taxOffice')} flex={1}><TextInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
+              <Field label={t('firma.taxNo')} flex={1}><TextInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
             </View>
 
             {/* Bank Accounts */}
-            <SectionHeader title="BANKA HESAPLARI" />
-            <Text style={s.hint}>PDF alt kısmında görünür.</Text>
+            <SectionHeader title={t('firma.bankAccounts')} />
+            <Text style={s.hint}>{t('firma.bankAccountsHint')}</Text>
             {(form.banklar || []).map((b) => (
               <View key={b.id} style={s.bankCard}>
                 <View style={s.bankHdr}>
-                  <Text style={s.bankNo}>BANKA</Text>
+                  <Text style={s.bankNo}>{t('firma.bank')}</Text>
                   <TouchableOpacity onPress={() => removeBank(b.id)}><Ionicons name="close-circle" size={20} color={theme.colors.red} /></TouchableOpacity>
                 </View>
-                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Banka türü (örn: GARANTİ (TL))" placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
-                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder="Hesap Sahibi" placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
-                <TextInput style={s.input} placeholder="IBAN (TR ...)" placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
+                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.bankTypePlaceholder')} placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
+                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.accountHolder')} placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
+                <TextInput style={s.input} placeholder={t('firma.ibanPlaceholder')} placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
               </View>
             ))}
             <TouchableOpacity style={s.addDashed} onPress={addBank} testID="add-bank-btn">
               <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
-              <Text style={s.addDashedText}>Yeni Banka Hesabı Ekle</Text>
+              <Text style={s.addDashedText}>{t('firma.addBankAccount')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
               <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>Firma Bilgilerini Kaydet</Text>
+              <Text style={s.saveBtnText}>{t('firma.saveCompanyInfo')}</Text>
             </TouchableOpacity>
 
             {companies.length > 1 && (
               <TouchableOpacity style={s.deleteCompanyBtn} onPress={() => setShowConfirmDelete(true)} testID="delete-company-btn">
                 <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
-                <Text style={s.deleteCompanyText}>Bu Firmayı Sil</Text>
+                <Text style={s.deleteCompanyText}>{t('firma.deleteThisCompany')}</Text>
               </TouchableOpacity>
             )}
             </>
@@ -248,12 +249,12 @@ export default function CompanyScreen() {
 
           {user?.is_staff && (
             <>
-              <SectionHeader title="ŞİRKET LOGOSU" />
+              <SectionHeader title={t('firma.companyLogo')} />
               <View style={s.logoBox}>
                 {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
                   <View style={s.logoPlaceholder}>
                     <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
-                    <Text style={s.logoHint}>Logo yüklenmedi</Text>
+                    <Text style={s.logoHint}>{t('firma.logoNotUploaded')}</Text>
                   </View>
                 )}
               </View>
@@ -264,24 +265,24 @@ export default function CompanyScreen() {
               seçim backend'e (User.language) kaydedilir, tüm cihazlarda aynı
               dilde açılır. Sıra bilerek TR -> EN -> IT: en tanıdıktan en
               yeni pazara doğru. */}
-          <SectionHeader title="UYGULAMA DİLİ" />
+          <SectionHeader title={t('firma.appLanguage')} />
           <LanguageSwitcher />
 
           {/* Hesabım — e-posta + telefon doğrulama */}
-          <SectionHeader title="HESABIM" />
+          <SectionHeader title={t('firma.myAccount')} />
           {user?.email_verified === false && (
             <View style={[s.supportBox, { marginBottom: 10 }]}>
               <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <Ionicons name="alert-circle-outline" size={16} color={theme.colors.gold} />
-                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>E-posta adresi doğrulanmadı</Text>
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>{t('firma.emailNotVerified')}</Text>
                 </View>
                 <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
-                  {user.email} adresine gönderdiğimiz bağlantıya tıklayarak hesabını doğrula. Göremediysen tekrar gönderebilirsin.
+                  {t('firma.emailVerifyText').replace('{email}', user.email || '')}
                 </Text>
                 <TouchableOpacity style={[s.subscriptionBtn, resendBusy && { opacity: 0.6 }]} disabled={resendBusy} onPress={onResendVerification} testID="resend-email-verify-btn">
                   <Ionicons name="mail-outline" size={18} color={theme.colors.primary} />
-                  <Text style={s.subscriptionBtnText}>{resendBusy ? 'Gönderiliyor...' : 'Doğrulama Bağlantısını Tekrar Gönder'}</Text>
+                  <Text style={s.subscriptionBtnText}>{resendBusy ? t('firma.sending') : t('firma.resendVerifyLink')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -291,36 +292,36 @@ export default function CompanyScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Ionicons name={user?.phone_verified ? 'checkmark-circle' : 'alert-circle-outline'} size={16} color={user?.phone_verified ? theme.colors.green : theme.colors.textMuted} />
                 <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.text }}>
-                  {user?.phone_verified ? 'Telefon numarası doğrulandı' : 'Telefon numarası doğrulanmadı'}
+                  {user?.phone_verified ? t('firma.phoneVerified') : t('firma.phoneNotVerified')}
                 </Text>
               </View>
               <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16 }}>
-                Telefon doğrulama özelliği şu an bakımda, yakında tekrar aktif olacak.
+                {t('firma.phoneMaintenanceText')}
               </Text>
             </View>
           </View>
 
           {/* Support */}
-          <SectionHeader title="DESTEK" />
+          <SectionHeader title={t('firma.support')} />
           <View style={s.supportBox}>
             <TouchableOpacity style={s.remindersBtn} onPress={() => router.push('/reminders')} testID="reminders-btn">
               <Ionicons name="notifications-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.remindersBtnText}>Hatırlatmalar</Text>
+              <Text style={s.remindersBtnText}>{t('firma.reminders')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.reportsBtn} onPress={() => router.push('/reports')} testID="reports-btn">
               <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.reportsBtnText}>Raporlar</Text>
+              <Text style={s.reportsBtnText}>{t('firma.reports')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
-            <Text style={s.whatsappBtnText}>WhatsApp'tan Yaz</Text>
+            <Text style={s.whatsappBtnText}>{t('firma.writeWhatsapp')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/(tabs)/assistant')} testID="ai-assistant-btn">
               <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={s.assistantBtnText}>AI Asistan ile Konuş</Text>
+              <Text style={s.assistantBtnText}>{t('firma.talkToAssistant')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/subscription')} testID="subscription-btn">
               <Ionicons name="star" size={18} color={theme.colors.primary} />
-              <Text style={s.subscriptionBtnText}>Abonelik Yönetimi</Text>
+              <Text style={s.subscriptionBtnText}>{t('firma.subscriptionManagement')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -328,15 +329,15 @@ export default function CompanyScreen() {
               yanlışlıkla dokunulmasın diye ayrı ve son bölüm olarak duruyor. */}
           <View style={[s.supportBox, { marginTop: 10, borderColor: theme.colors.red + '33' }]}>
             <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
-              <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.red, marginBottom: 6 }}>Hesabımı Sil</Text>
+              <Text style={{ fontSize: 12.5, fontWeight: '800', color: theme.colors.red, marginBottom: 6 }}>{t('firma.deleteMyAccount')}</Text>
               <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 16 }}>
                 {user?.is_staff
-                  ? 'Sadece kendi personel girişini kalıcı olarak siler — firma sahibinin verilerine dokunmaz.'
-                  : 'Hesabını ve tüm firma verilerini (teklifler, müşteriler, katalog, kasa/tahsilat kayıtları) kalıcı olarak siler. Bu işlem geri alınamaz.'}
+                  ? t('firma.deleteAccountTextStaff')
+                  : t('firma.deleteAccountTextOwner')}
               </Text>
               <TouchableOpacity style={[s.subscriptionBtn, { borderColor: theme.colors.red }]} onPress={() => setShowConfirmDeleteAccount(true)} testID="delete-account-btn">
                 <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>Hesabımı Kalıcı Olarak Sil</Text>
+                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>{t('firma.deletePermanently')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -348,11 +349,11 @@ export default function CompanyScreen() {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowConfirmDelete(false)}>
           <View style={s.confirmBox}>
             <Ionicons name="warning" size={30} color={theme.colors.red} />
-            <Text style={s.confirmTitle}>Firmayı Sil?</Text>
-            <Text style={s.confirmText}>&quot;{form.sirketAdi}&quot; firmasının tüm verileri silinecek.</Text>
+            <Text style={s.confirmTitle}>{t('firma.deleteCompanyTitle')}</Text>
+            <Text style={s.confirmText}>{t('firma.deleteCompanyText').replace('{name}', form.sirketAdi)}</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDelete(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }]} onPress={doDelete} testID="confirm-delete-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>Evet, Sil</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDelete(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>{t('firma.cancel')}</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }]} onPress={doDelete} testID="confirm-delete-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>{t('firma.yesDelete')}</Text></TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
@@ -363,11 +364,11 @@ export default function CompanyScreen() {
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setShowConfirmDeleteAccount(false)}>
           <View style={s.confirmBox}>
             <Ionicons name="warning" size={30} color={theme.colors.red} />
-            <Text style={s.confirmTitle}>Hesabını Kalıcı Olarak Sil?</Text>
-            <Text style={s.confirmText}>Hesabın ve tüm firma verilerin (teklifler, müşteriler, katalog, kasa/tahsilat) kalıcı olarak silinecek. Bu işlem geri alınamaz.</Text>
+            <Text style={s.confirmTitle}>{t('firma.deleteAccountTitle')}</Text>
+            <Text style={s.confirmText}>{t('firma.deleteAccountConfirmText')}</Text>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDeleteAccount(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>Vazgeç</Text></TouchableOpacity>
-              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }, deleteAccountBusy && { opacity: 0.6 }]} disabled={deleteAccountBusy} onPress={doDeleteAccount} testID="confirm-delete-account-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>{deleteAccountBusy ? 'Siliniyor...' : 'Evet, Hesabımı Sil'}</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.line }]} onPress={() => setShowConfirmDeleteAccount(false)}><Text style={{ fontWeight: '800', color: theme.colors.text }}>{t('firma.cancel')}</Text></TouchableOpacity>
+              <TouchableOpacity style={[s.confirmBtn, { backgroundColor: theme.colors.red }, deleteAccountBusy && { opacity: 0.6 }]} disabled={deleteAccountBusy} onPress={doDeleteAccount} testID="confirm-delete-account-btn"><Text style={{ fontWeight: '900', color: '#fff' }}>{deleteAccountBusy ? t('firma.deleting') : t('firma.yesDeleteAccount')}</Text></TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>

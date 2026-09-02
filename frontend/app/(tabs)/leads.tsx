@@ -528,11 +528,11 @@ export default function LeadsScreen() {
                 tumu: `${t('leads.tabTumu')} (${allLeads.length})`,
                 talep: t('leads.tabYeniTalep'),
               };
-              const t = tName as Tab;
+              const tabKey = tName as Tab;
               return (
-                <View key={t} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <TouchableOpacity style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => (reorderingTabs ? undefined : setTab(t))} testID={`lead-tab-${t}`}>
-                    <Text style={[s.tabText, tab === t && s.tabTextActive]}>{labelMap[t]}</Text>
+                <View key={tabKey} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <TouchableOpacity style={[s.tabBtn, tab === tabKey && s.tabBtnActive]} onPress={() => (reorderingTabs ? undefined : setTab(tabKey))} testID={`lead-tab-${tabKey}`}>
+                    <Text style={[s.tabText, tab === tabKey && s.tabTextActive]}>{labelMap[tabKey]}</Text>
                   </TouchableOpacity>
                   {reorderingTabs && (
                     <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -540,7 +540,7 @@ export default function LeadsScreen() {
                         style={[s.tabReorderBtn, idx === 0 && s.tabReorderBtnDisabled]}
                         disabled={idx === 0}
                         onPress={() => moveTabLeft(tName)}
-                        testID={`lead-tab-move-left-${t}`}
+                        testID={`lead-tab-move-left-${tabKey}`}
                       >
                         <Ionicons name="chevron-back" size={14} color={theme.colors.text} />
                       </TouchableOpacity>
@@ -548,7 +548,7 @@ export default function LeadsScreen() {
                         style={[s.tabReorderBtn, idx === tabOrder.length - 1 && s.tabReorderBtnDisabled]}
                         disabled={idx === tabOrder.length - 1}
                         onPress={() => moveTabRight(tName)}
-                        testID={`lead-tab-move-right-${t}`}
+                        testID={`lead-tab-move-right-${tabKey}`}
                       >
                         <Ionicons name="chevron-forward" size={14} color={theme.colors.text} />
                       </TouchableOpacity>

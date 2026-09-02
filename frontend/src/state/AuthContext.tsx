@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, getSessionToken, setSessionToken, getAdminReturnToken, setAdminReturnToken, UserT } from '@/src/lib/api';
+import { storage } from '@/src/utils/storage';
 
 type LoginArgs = { email: string; password: string };
 type RegisterArgs = { email: string; password: string; name: string; phone: string };
+const LANG_STORAGE_KEY = 'app_language';
 
 type AuthState = {
   loading: boolean;
@@ -63,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Debug hook: `adb logcat *:S ReactNativeJS:V` shows this on Android APK.
     // eslint-disable-next-line no-console
     console.log('[auth] register attempt', { email });
-    const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone });
+    let guestLang = 'tr';
+    try { guestLang = (await storage.getItem<string>(LANG_STORAGE_KEY, '')) || 'tr'; } catch {}
+    const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone, language: guestLang });
     try {
       await setSessionToken(res.access_token);
     } catch (e) {

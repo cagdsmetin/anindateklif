@@ -143,7 +143,7 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
 
 export const api = {
   // Auth
-  register: (data: { email: string; password: string; name: string; phone: string }) =>
+  register: (data: { email: string; password: string; name: string; phone: string; language?: string }) =>
     req('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   verifyEmail: (token: string) => req('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
   resendVerificationEmail: () => req('/auth/resend-verification', { method: 'POST' }),

@@ -114,6 +114,10 @@ type Dict = Record<string, Record<string, string>>;
 // --- TÜRKÇE (kaynak metin -- diğer diller buradan çevrilir) ---------------
 const tr: Dict = {
   common: {
+    notOptional: 'NOT (opsiyonel)',
+    saving: 'Kaydediliyor...',
+    enterAmount: 'Tutar giriniz',
+    errorPrefix: 'Hata: ',
     save: 'Kaydet',
     cancel: 'İptal',
     delete: 'Sil',
@@ -447,6 +451,8 @@ const tr: Dict = {
     s015: 'Basit şifreler (örn. sadece harf/rakam) güvenlik sebebiyle kabul edilmez.',
   },
   kasa: {
+    s033: 'Gelir kaydedildi',
+    s034: 'Gider kaydedildi',
     s001: 'Diğer',
     s002: 'Satış',
     s003: 'Diğer Gelir',
@@ -920,6 +926,8 @@ const tr: Dict = {
     s006: 'E-posta ile Destek',
   },
   tahsilat: {
+    s035: 'Tahsilat kaydedildi',
+    s036: 'Vade:',
     s001: 'Diğer',
     s002: 'Müşteri adı giriniz',
     s003: "'Diğer' seçtiniz, lütfen açıklama yazın",
@@ -1158,6 +1166,10 @@ const tr: Dict = {
 // --- İNGİLİZCE ---------------------------------------------------------
 const en: Dict = {
   common: {
+    notOptional: 'NOTE (optional)',
+    saving: 'Saving...',
+    enterAmount: 'Enter an amount',
+    errorPrefix: 'Error: ',
     save: 'Save',
     cancel: 'Cancel',
     delete: 'Delete',
@@ -1491,6 +1503,8 @@ const en: Dict = {
     s015: 'Simple passwords (e.g., letters/numbers only) are not accepted for security reasons.',
   },
   kasa: {
+    s033: 'Income recorded',
+    s034: 'Expense recorded',
     s001: 'Other',
     s002: 'Sale',
     s003: 'Other Income',
@@ -1964,6 +1978,8 @@ const en: Dict = {
     s006: 'Support via Email',
   },
   tahsilat: {
+    s035: 'Collection recorded',
+    s036: 'Due:',
     s001: 'Other',
     s002: 'Enter customer name',
     s003: "You selected 'Other', please add a description",
@@ -2202,6 +2218,10 @@ const en: Dict = {
 // --- İTALYANCA -----------------------------------------------------------
 const it: Dict = {
   common: {
+    notOptional: 'NOTA (opzionale)',
+    saving: 'Salvataggio...',
+    enterAmount: 'Inserisci un importo',
+    errorPrefix: 'Errore: ',
     save: 'Salva',
     cancel: 'Annulla',
     delete: 'Elimina',
@@ -2535,6 +2555,8 @@ const it: Dict = {
     s015: 'Le password semplici (es. solo lettere/numeri) non vengono accettate per motivi di sicurezza.',
   },
   kasa: {
+    s033: 'Entrata registrata',
+    s034: 'Uscita registrata',
     s001: 'Altro',
     s002: 'Vendita',
     s003: 'Altra Entrata',
@@ -3008,6 +3030,8 @@ const it: Dict = {
     s006: 'Assistenza via E-mail',
   },
   tahsilat: {
+    s035: 'Incasso registrato',
+    s036: 'Scadenza:',
     s001: 'Altro',
     s002: 'Inserisci il nome del cliente',
     s003: 'Hai selezionato "Altro", inserisci una descrizione',

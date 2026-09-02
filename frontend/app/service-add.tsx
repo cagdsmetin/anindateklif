@@ -112,7 +112,7 @@ export default function ServiceAddScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{editingId ? t('serviceAdd.s010') : 'Servis Ekle'}</Text>
+        <Text style={s.headerTitle}>{editingId ? t('serviceAdd.s010') : t('serviceAdd.s028')}</Text>
         <View style={s.headerBtn} />
       </View>
       <View style={s.divider} />

@@ -853,6 +853,7 @@ const tr: Dict = {
     s015: '← Giriş Ekranına Dön',
   },
   serviceAdd: {
+    s028: 'Servis Ekle',
     s001: 'YYYY-AA-GG',
     s002: 'Açık',
     s004: 'Tamamlandı',
@@ -1905,6 +1906,7 @@ const en: Dict = {
     s015: '← Back to Login',
   },
   serviceAdd: {
+    s028: 'Add Service',
     s001: 'YYYY-MM-DD',
     s002: 'Open',
     s004: 'Completed',
@@ -2957,6 +2959,7 @@ const it: Dict = {
     s015: '← Torna alla Schermata di Accesso',
   },
   serviceAdd: {
+    s028: 'Aggiungi Servizio',
     s001: 'AAAA-MM-GG',
     s002: 'Aperto',
     s004: 'Completato',

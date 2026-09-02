@@ -524,6 +524,7 @@ class RegisterRequest(BaseModel):
     password: str
     name: str
     phone: str
+    language: str = "tr"
 
     @field_validator("password")
     @classmethod
@@ -843,7 +844,7 @@ async def register(payload: RegisterRequest, request: Request):
         "country": "",
         "currency": "",
         "tax_label": "",
-        "language": "tr",
+        "language": payload.language if payload.language in ("tr", "en", "it") else "tr",
         "onboarding_completed": False,
         "createdAt": _utc().isoformat(),
     }

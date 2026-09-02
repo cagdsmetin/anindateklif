@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const SERVICE_STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
@@ -51,7 +51,7 @@ function daysUntil(iso: string): number | null {
 }
 
 export default function ReportsScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { quotes, services, customers } = useApp();
@@ -241,7 +241,7 @@ export default function ReportsScreen() {
               return (
                 <View key={st}>
                   <View style={s.convHead}>
-                    <Text style={s.convLabel}>{st}</Text>
+                    <Text style={s.convLabel}>{statusLabel(lang, st)}</Text>
                     <Text style={s.convValue}>{count} {t('reports.s002')}{pct}</Text>
                   </View>
                   <View style={s.convTrack}>

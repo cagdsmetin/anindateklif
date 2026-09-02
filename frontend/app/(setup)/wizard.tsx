@@ -154,7 +154,7 @@ export default function SetupWizard() {
         setLogoBase64(`data:image/jpeg;base64,${res.assets[0].base64}`);
       }
     } catch {
-      Alert.alert('Hata', t('wizard.s011'));
+      Alert.alert(t('wizard.errorTitle'), t('wizard.s011'));
     }
   };
 
@@ -170,7 +170,7 @@ export default function SetupWizard() {
           ) : (
             <View style={s.backBtn} />
           )}
-          <Text style={s.stepLabel}>{`Adım ${step} / ${TOTAL_STEPS}`}</Text>
+          <Text style={s.stepLabel}>{`${t('wizard.stepLabel')} ${step} / ${TOTAL_STEPS}`}</Text>
           <TouchableOpacity
             onPress={() => Alert.alert(t('wizard.s012'), t('wizard.s013'), [
               { text: t('wizard.s014'), style: 'cancel' },
@@ -207,7 +207,7 @@ export default function SetupWizard() {
                   >
                     <Text style={s.flag}>{c.flag}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={s.rowTitle}>{c.name}</Text>
+                      <Text style={s.rowTitle}>{t(`wizard.country${c.code}`)}</Text>
                       <Text style={s.rowSub}>{`${currencySymbol(c.currency)} ${c.currency} · ${c.taxLabel}`}</Text>
                     </View>
                     <View style={[s.radio, sel && s.radioOn]}>
@@ -293,7 +293,7 @@ export default function SetupWizard() {
               {banks.map((b, idx) => (
                 <View key={idx} style={s.bankCard}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={s.bankTitle}>{`Hesap ${idx + 1}`}</Text>
+                    <Text style={s.bankTitle}>{`${t('wizard.accountLabel')} ${idx + 1}`}</Text>
                     <View style={{ flex: 1 }} />
                     {banks.length > 1 ? (
                       <TouchableOpacity onPress={() => setBanks(banks.filter((_, i) => i !== idx))} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -363,7 +363,7 @@ export default function SetupWizard() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={s.ctaText}>{step === TOTAL_STEPS ? 'Kurulumu Tamamla' : t('wizard.s050')}</Text>
+                <Text style={s.ctaText}>{step === TOTAL_STEPS ? t('wizard.finishSetup') : t('wizard.s050')}</Text>
                 <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
               </>
             )}

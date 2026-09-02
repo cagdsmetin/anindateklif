@@ -81,6 +81,18 @@ const ENUM_LABELS: Record<string, { en: string; it: string }> = {
   'Havale/EFT': { en: 'Bank Transfer', it: 'Bonifico' },
   Çek: { en: 'Check', it: 'Assegno' },
   Diğer: { en: 'Other', it: 'Altro' },
+  // Kasa gelir/gider kategorileri
+  Satış: { en: 'Sale', it: 'Vendita' },
+  Hizmet: { en: 'Service', it: 'Servizio' },
+  'Servis Geliri': { en: 'Service Revenue', it: 'Ricavo da Servizio' },
+  'Diğer Gelir': { en: 'Other Income', it: 'Altro Ricavo' },
+  Kira: { en: 'Rent', it: 'Affitto' },
+  Maaş: { en: 'Salary', it: 'Stipendio' },
+  Malzeme: { en: 'Materials', it: 'Materiali' },
+  Fatura: { en: 'Bill', it: 'Bolletta' },
+  Vergi: { en: 'Tax', it: 'Tasse' },
+  Ulaşım: { en: 'Transport', it: 'Trasporto' },
+  'Diğer Gider': { en: 'Other Expense', it: 'Altra Spesa' },
   // Firma Arama Takibi (leads) durumu
   Aranmadı: { en: 'Not Called', it: 'Non chiamato' },
   Arandı: { en: 'Called', it: 'Chiamato' },
@@ -486,6 +498,10 @@ const tr: Dict = {
     s020: 'Henüz tamamlanan talep yok.',
   },
   leads: {
+    tabBugun: 'Bugün Aranacaklar',
+    tabTumu: 'Tüm Firmalar',
+    tabYeniTalep: 'Yeni Talep',
+    findBtn: 'Yapay Zekaya Buldur',
     s001: 'Aranmadı',
     s002: 'Kapandı',
     s003: 'Ara, iletişime geç',
@@ -682,6 +698,8 @@ const tr: Dict = {
     s015: 'Davet linki, girdiğiniz e-posta adresine otomatik olarak gönderildi. Ayrıca WhatsApp gibi başka bir yoldan da paylaşabilirsiniz.',
     s016: 'Ekip (',
     s018: 'Henüz personel eklemediniz.',
+    s019: 'Kopyala',
+    s020: 'Davet bekliyor',
   },
   privacy: {
     s001: 'Anında Teklif',
@@ -938,6 +956,7 @@ const tr: Dict = {
     s034: 'Borç',
   },
   teamChat: {
+    mainTitle: 'Ekip Sohbeti',
     s001: 'Yönetici',
     s002: 'Tüm Konuşmalar',
     s003: 'Konuşmayı Sil?',
@@ -1523,6 +1542,10 @@ const en: Dict = {
     s020: 'No completed requests yet.',
   },
   leads: {
+    tabBugun: 'To Call Today',
+    tabTumu: 'All Companies',
+    tabYeniTalep: 'New Request',
+    findBtn: 'Find with AI',
     s001: 'Not Called',
     s002: 'Closed',
     s003: 'Call, get in touch',
@@ -1719,6 +1742,8 @@ const en: Dict = {
     s015: 'The invitation link has been automatically sent to the email address you entered. You can also share it another way, such as WhatsApp.',
     s016: 'Team (',
     s018: "You haven't added any staff yet.",
+    s019: 'Copy',
+    s020: 'Invitation pending',
   },
   privacy: {
     s001: 'Anında Teklif',
@@ -1975,6 +2000,7 @@ const en: Dict = {
     s034: 'Debt',
   },
   teamChat: {
+    mainTitle: 'Team Chat',
     s001: 'Manager',
     s002: 'All Conversations',
     s003: 'Delete Conversation?',
@@ -2560,6 +2586,10 @@ const it: Dict = {
     s020: 'Nessuna richiesta completata ancora.',
   },
   leads: {
+    tabBugun: 'Da Chiamare Oggi',
+    tabTumu: 'Tutte le Aziende',
+    tabYeniTalep: 'Nuova Richiesta',
+    findBtn: 'Trova con AI',
     s001: 'Non chiamato',
     s002: 'Chiuso',
     s003: 'Chiama, mettiti in contatto',
@@ -2756,6 +2786,8 @@ const it: Dict = {
     s015: "Il link di invito è stato inviato automaticamente all'indirizzo e-mail inserito. Puoi anche condividerlo tramite un altro canale, come WhatsApp.",
     s016: 'Team (',
     s018: 'Non hai ancora aggiunto personale.',
+    s019: 'Copia',
+    s020: 'Invito in sospeso',
   },
   privacy: {
     s001: 'Anında Teklif',
@@ -3012,6 +3044,7 @@ const it: Dict = {
     s034: 'Debito',
   },
   teamChat: {
+    mainTitle: 'Chat di Team',
     s001: 'Amministratore',
     s002: 'Tutte le Conversazioni',
     s003: 'Eliminare la conversazione?',

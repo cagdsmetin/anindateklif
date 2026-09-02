@@ -26,7 +26,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
-import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday } from '@/src/lib/quote-utils';
+import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
 import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
@@ -98,6 +98,16 @@ export default function EditorScreen() {
   const [iskonto, setIskonto] = useState('0');
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
+  const notlarSelRef = useRef({ start: 0, end: 0 });
+  const [notlarForcedSel, setNotlarForcedSel] = useState(undefined);
+  const applyNoteEmphasis = () => {
+    const { start, end } = notlarSelRef.current;
+    const result = toggleNoteEmphasis(notlar, start, end);
+    setNotlar(result.text);
+    notlarSelRef.current = { start: result.start, end: result.end };
+    setNotlarForcedSel({ start: result.start, end: result.end });
+    setTimeout(() => setNotlarForcedSel(undefined), 0);
+  };
   const [items, setItems] = useState<QuoteItemT[]>([]);
   // Kalem kartları için accordion durumu -- her an sadece TEK kart açık
   // olur; yeni bir kalem eklendiğinde önceki kartlar otomatik olarak
@@ -574,7 +584,43 @@ export default function EditorScreen() {
 
           <SectionHeader title={t('teklifPage.s054')} icon="chatbox-ellipses" />
           <FGroup>
-            <TextInput style={[s.input, s.multiline, { minHeight: 90 }]} multiline value={notlar} onChangeText={setNotlar} placeholder={t('teklifPage.s055')} placeholderTextColor="#94a3b8" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8, backgroundColor: theme.colors.primary + '14', borderWidth: 1, borderColor: theme.colors.primary + '33' }}
+                onPress={applyNoteEmphasis}
+                testID="notlar-emphasis-btn"
+              >
+                <Ionicons name="text" size={13} color={theme.colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: theme.colors.primary }}>Kalın / Vurgulu Yap</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 10, color: '#94a3b8', flex: 1 }}>Metni seçip butona basın</Text>
+            </View>
+            <TextInput
+              style={[s.input, s.multiline, { minHeight: 90 }]}
+              multiline
+              value={notlar}
+              onChangeText={setNotlar}
+              onSelectionChange={(e) => { notlarSelRef.current = e.nativeEvent.selection; }}
+              selection={notlarForcedSel}
+              placeholder={t('teklifPage.s055')}
+              placeholderTextColor="#94a3b8"
+              testID="notlar-input"
+            />
+            {!!notlar && (
+              <View style={{ marginTop: 8, padding: 9, backgroundColor: '#f8fafc', borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line }}>
+                <Text style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: '700', marginBottom: 4 }}>ÖNİZLEME</Text>
+                <Text style={{ fontSize: 12, lineHeight: 17, color: '#0f172a' }}>
+                  {parseNoteSegments(notlar).map((seg, i) => (
+                    <Text
+                      key={i}
+                      style={seg.emphasis ? { fontWeight: '800', color: '#000', textDecorationLine: 'underline', fontSize: 13.5 } : undefined}
+                    >
+                      {seg.text}
+                    </Text>
+                  ))}
+                </Text>
+              </View>
+            )}
             {!user?.is_staff && (
               <TouchableOpacity
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, opacity: savingDefaultNotes ? 0.6 : 1 }}

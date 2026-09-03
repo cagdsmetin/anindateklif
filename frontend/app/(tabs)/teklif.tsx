@@ -276,6 +276,19 @@ export default function EditorScreen() {
     }, 190);
   };
 
+  // Kalemi listede bir yukarı ya da bir aşağı taşır (sıralama düzenleme).
+  const moveItem = (id: string, direction: 'up' | 'down') => {
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.id === id);
+      if (idx === -1) return prev;
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      return next;
+    });
+  };
+
   const makeItem = (mode: 'technical' | 'manual' | 'general'): QuoteItemT => ({
     id: newItemId(), mode, urunAdi: '', sistemTipiId: '', sistemTipi: '',
     sistemFields: [], customFields: [], aciklama: '', adet: 1, birim: 'Adet', birimFiyat: 0,
@@ -560,6 +573,10 @@ export default function EditorScreen() {
               onOpenSelectPicker={(fieldId, options, title) => setShowSelectPicker({ itemId: it.id, fieldId, options, title })}
               onUpdateSystemFieldValue={(fi, val) => updateSystemFieldValue(it.id, fi, val)}
               leaving={leavingItemIds.has(it.id)}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < items.length - 1}
+              onMoveUp={() => moveItem(it.id, 'up')}
+              onMoveDown={() => moveItem(it.id, 'down')}
             />
           ))}
 
@@ -854,6 +871,7 @@ export default function EditorScreen() {
 // ============ ITEM CARD ============
 function ItemCard({
   item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   item: QuoteItemT;
   idx: number;
@@ -867,6 +885,10 @@ function ItemCard({
   onOpenSelectPicker: (fieldId: string, options: string[], title: string) => void;
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
   leaving?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const { t, lang } = useLanguage();
   // Adet ve Birim Fiyat alanları için ayrı bir "ham metin" state'i tutulur.
@@ -941,6 +963,24 @@ function ItemCard({
       <TouchableOpacity activeOpacity={0.7} onPress={onToggleExpand} testID={`item-${idx}-toggle`}>
         <View style={itemStyles.hdr}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <View style={itemStyles.moveCol}>
+              <TouchableOpacity
+                disabled={!canMoveUp}
+                onPress={(e) => { e.stopPropagation?.(); onMoveUp?.(); }}
+                hitSlop={{ top: 4, bottom: 4, left: 6, right: 6 }}
+                testID={`item-move-up-${idx}`}
+              >
+                <Ionicons name="chevron-up" size={15} color={canMoveUp ? theme.colors.primary : theme.colors.line} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!canMoveDown}
+                onPress={(e) => { e.stopPropagation?.(); onMoveDown?.(); }}
+                hitSlop={{ top: 4, bottom: 4, left: 6, right: 6 }}
+                testID={`item-move-down-${idx}`}
+              >
+                <Ionicons name="chevron-down" size={15} color={canMoveDown ? theme.colors.primary : theme.colors.line} />
+              </TouchableOpacity>
+            </View>
             <Text style={itemStyles.no}>#{idx + 1}</Text>
             <View style={[itemStyles.modeBadge, { backgroundColor: modeMeta.color + '20', borderColor: modeMeta.color }]}>
               <Ionicons name={modeMeta.icon} size={11} color={modeMeta.color} style={{ marginRight: 3 }} />
@@ -1244,6 +1284,7 @@ const s = StyleSheet.create({
 const itemStyles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, borderLeftWidth: 4, marginBottom: 10, ...theme.shadow.sm },
   hdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  moveCol: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginRight: 2 },
   collapsedSummary: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 2 },
   no: { fontSize: 11, fontWeight: '900', color: theme.colors.textMuted },
   modeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },

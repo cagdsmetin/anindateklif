@@ -225,8 +225,8 @@ export default function EditorScreen() {
   }, [activeCompany, editingId, notlar]);
 
   const subtotal = useMemo(() => items.reduce((a, it) => a + (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0), 0), [items]);
-  const iskontoOr = Number(iskonto) || 0;
-  const kdvOr = Number(kdvOrani) || 0;
+  const iskontoOr = Number(iskonto.replace(',', '.')) || 0;
+  const kdvOr = Number(kdvOrani.replace(',', '.')) || 0;
   const iskontoTutar = (subtotal * iskontoOr) / 100;
   const araToplam = subtotal - iskontoTutar;
   const kdvTutar = (araToplam * kdvOr) / 100;
@@ -530,8 +530,8 @@ export default function EditorScreen() {
             <FGroup label={t('teklifPage.s044')} flex={1}><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
           </Row>
           <Row>
-            <FGroup label={t('teklifPage.s045')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={iskonto} onChangeText={setIskonto} /></FGroup>
-            <FGroup label={t('teklifPage.s046')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={kdvOrani} onChangeText={setKdvOrani} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} flex={1}><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} flex={1}><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
           </Row>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
@@ -869,6 +869,37 @@ function ItemCard({
   leaving?: boolean;
 }) {
   const { t, lang } = useLanguage();
+  // Adet ve Birim Fiyat alanları için ayrı bir "ham metin" state'i tutulur.
+  // Neden: value={String(item.adet)} kullanılırsa, kullanıcı "667," yazdığı anda
+  // Number("667,") -> "667." -> 667 olarak parse edilip state'e yazılır, sonraki
+  // render'da input değeri tekrar String(667) = "667" olur ve daha yeni yazılan
+  // virgül anında silinir; kullanıcı ondalık kısmı hiç yazamaz. Bu yüzden ekranda
+  // gösterilen metin kullanıcının yazdığı ham string, hesaplamalarda kullanılan
+  // sayı ise ayrıca onChange ile parent'a bildirilir.
+  const [adetText, setAdetText] = useState(String(item.adet ?? ''));
+  const [priceText, setPriceText] = useState(String(item.birimFiyat ?? ''));
+  useEffect(() => {
+    const parsed = Number(adetText.replace(',', '.')) || 0;
+    if (parsed !== (item.adet || 0)) setAdetText(String(item.adet ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.adet]);
+  useEffect(() => {
+    const parsed = Number(priceText.replace(',', '.')) || 0;
+    if (parsed !== (item.birimFiyat || 0)) setPriceText(String(item.birimFiyat ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.birimFiyat]);
+  const onAdetTextChange = (v: string) => {
+    const cleaned = v.replace(/[^0-9.,]/g, '');
+    setAdetText(cleaned);
+    const num = Number(cleaned.replace(',', '.'));
+    onChange({ adet: Number.isFinite(num) ? num : 0 });
+  };
+  const onPriceTextChange = (v: string) => {
+    const cleaned = v.replace(/[^0-9.,]/g, '');
+    setPriceText(cleaned);
+    const num = Number(cleaned.replace(',', '.'));
+    onChange({ birimFiyat: Number.isFinite(num) ? num : 0 });
+  };
   // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
   // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -1030,9 +1061,9 @@ function ItemCard({
 
       {/* Quantity / Unit / Price */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <FieldGroup label={t('teklifPage.s100')} flex={1}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.adet)} onChangeText={(v) => onChange({ adet: Number(v.replace(',', '.')) || 0 })} testID={`item-qty-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s100')} flex={1}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
         <FieldGroup label={t('teklifPage.s101')} flex={1}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s102')} flex={1.4}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.birimFiyat)} onChangeText={(v) => onChange({ birimFiyat: Number(v.replace(',', '.')) || 0 })} testID={`item-price-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s102')} flex={1.4}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
       </View>
 
       {/* Per-item PDF cell preview */}

@@ -72,9 +72,7 @@ export default function CustomerAddScreen() {
         adres: adres.trim(),
       };
       if (editingId) {
-        // No backend PUT for customers; delete + re-add is heavy. Keep create-only for MVP.
-        // For an "edit" flow we create a new customer (a limitation acknowledged in scope).
-        await api.createCustomer(payload);
+        await api.updateCustomer(editingId, payload);
       } else {
         await api.createCustomer(payload);
       }
@@ -239,7 +237,7 @@ const s = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
+  headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   hero: { alignItems: 'center', marginBottom: 26 },
   heroCircle: {
@@ -251,7 +249,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  heroCaption: { fontSize: 14, color: theme.colors.textMuted, fontWeight: '600' },
+  heroCaption: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '600' },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -263,7 +261,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.05,
   },
   field: { marginBottom: 16 },
-  fieldLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -278,7 +276,7 @@ const s = StyleSheet.create({
   inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
     color: theme.colors.text,
     paddingVertical: 0,
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
@@ -304,7 +302,7 @@ const s = StyleSheet.create({
     ...theme.shadow.lg,
   },
   ctaDisabled: { opacity: 0.6 },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  ctaText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
   toast: {
     position: 'absolute',
     top: 8,

@@ -172,11 +172,22 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
       return samples > 0;
     };
 
+    // Trim any trailing blank rows at the very bottom of the full canvas
+    // first. Without this, a document whose real content fits on exactly
+    // one page but whose scrollHeight ends up 1-2px taller than the page
+    // (a stray margin, a sub-pixel rounding in the DOM) would still trigger
+    // one more iteration of the loop below purely to render that sliver —
+    // producing an unwanted, essentially empty extra page.
+    let effectiveHeight = canvas.height;
+    if (bgRef) {
+      while (effectiveHeight > 1 && rowIsBackground(effectiveHeight - 1)) effectiveHeight--;
+    }
+
     // Search backward from the naive boundary for the nearest safe (blank) row,
     // within a bounded window. Falls back to the naive cut if nothing is found
     // (e.g. a single block taller than one full page — can't be helped).
     const findSafeCut = (naiveEnd: number): number => {
-      if (naiveEnd >= canvas.height) return naiveEnd;
+      if (naiveEnd >= effectiveHeight) return naiveEnd;
       const maxBack = Math.floor(pxPerPage * 0.25);
       for (let y = naiveEnd; y > naiveEnd - maxBack && y > 0; y--) {
         if (rowIsBackground(y)) return y;
@@ -186,8 +197,8 @@ export async function htmlToPdfBlobWeb(html: string): Promise<Blob> {
 
     let renderedPx = 0;
     let pageIndex = 0;
-    while (renderedPx < canvas.height) {
-      const naiveEnd = Math.min(renderedPx + pxPerPage, canvas.height);
+    while (renderedPx < effectiveHeight) {
+      const naiveEnd = Math.min(renderedPx + pxPerPage, effectiveHeight);
       const cutY = findSafeCut(naiveEnd);
       const sliceHeight = Math.max(1, cutY - renderedPx);
       const pageCanvas = document.createElement('canvas');

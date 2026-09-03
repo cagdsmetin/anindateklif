@@ -977,7 +977,11 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
   body { font-family:'Montserrat','Helvetica Neue',Arial,sans-serif; color:#1E293B; background:#fff; font-size:9.5pt; line-height:1.5; }
-  .page { display:flex; min-height: 1120px; }
+  /* min-height biraz A4'ün tam yüksekliğinin (~1122px) altında tutulur; aksi
+     halde kenarlık/satır yüksekliği yuvarlamaları gibi küçük taşmalar tek
+     sayfaya sığan kısa tekliflerde gereksiz, neredeyse boş bir 2. sayfa
+     açtırabiliyordu. */
+  .page { display:flex; min-height: 1075px; }
 
   .strip { width:180px; flex-shrink:0; background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%); color:#fff; padding:28px 20px; }
   .strip-logo-img { max-width:145px; max-height:110px; object-fit:contain; display:block; margin-bottom:16px; }
@@ -1173,7 +1177,9 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
   body { font-family:'Poppins','Helvetica Neue',Arial,sans-serif; color:#1E1B4B; background:#EEF2FF; font-size:9.5pt; line-height:1.5; }
-  .page { padding:26px; min-height:1120px; box-sizing:border-box; }
+  /* bkz. yukarıdaki Kurumsal şablondaki aynı not: A4 tam yüksekliğinin biraz
+     altında tutup gereksiz boş 2. sayfa açılmasını önlüyoruz. */
+  .page { padding:26px; min-height:1075px; box-sizing:border-box; }
 
   .card { background:#fff; border-radius:14px; padding:16px 18px; margin-bottom:12px; }
 

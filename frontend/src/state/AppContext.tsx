@@ -508,8 +508,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuoteStatus = useCallback(async (id: string, durum: string) => {
     await api.updateQuoteStatus(id, durum);
-    await reloadQuotes();
-  }, [reloadQuotes]);
+    // Teklif onaylanınca (veya reddedilince) backend otomatik olarak Tahsilat
+    // ve Kasa kayıtları oluşturuyor/güncelliyor. Sadece teklifleri yeniden
+    // yüklemek bu ekranların state'ini bayat bırakıyordu — kullanıcı Tahsilat
+    // sekmesine gidince manuel yenilemeden yeni girdiyi göremiyordu. Üçünü de
+    // birlikte tazeleyerek her ekranın anında güncel görünmesini sağlıyoruz.
+    await Promise.all([reloadQuotes(), reloadTahsilat(), reloadKasa()]);
+  }, [reloadQuotes, reloadTahsilat, reloadKasa]);
 
   // Bootstrap when user changes
   useEffect(() => {

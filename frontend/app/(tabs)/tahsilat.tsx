@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -32,12 +32,21 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 
 export default function TahsilatScreen() {
   const { t, lang } = useLanguage();
-  const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast } = useApp();
+  const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast, reloadTahsilat } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const pendingSectionY = useRef(0);
   const [rates, setRates] = useState<RatesT | null>(null);
+
+  // Teklif onaylanınca/reddedilince backend otomatik Tahsilat kaydı
+  // oluşturuyor/güncelliyor; bu sekmeye her gelindiğinde listeyi tazeleyerek
+  // kullanıcının elle yenilemeden en güncel kayıtları görmesini sağlıyoruz.
+  useFocusEffect(
+    useCallback(() => {
+      reloadTahsilat();
+    }, [reloadTahsilat]),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +120,7 @@ export default function TahsilatScreen() {
 
   const save = async () => {
     if (!musteriAdi.trim()) { showToast(t('tahsilat.s002')); return; }
-    if (!Number(tutar) || Number(tutar) <= 0) { showToast(t('common.enterAmount')); return; }
+    if (!Number(tutar) || Number(tutar) <= 0) { showToast('Tutar giriniz'); return; }
     if (isDiger && !notlar.trim()) { showToast(t('tahsilat.s003')); return; }
     setSaving(true);
     try {
@@ -154,10 +163,10 @@ export default function TahsilatScreen() {
         tarih: todayIso(),
         kurTRY: currentRateFor(finalParaBirimi, rates),
       });
-      showToast(tur === 'tahsilat' ? t('tahsilat.s035') : t('tahsilat.s005'));
+      showToast(tur === 'tahsilat' ? 'Tahsilat kaydedildi' : t('tahsilat.s005'));
       resetForm();
     } catch (e: any) {
-      showToast(t('common.errorPrefix') + (e?.message || ''));
+      showToast('Hata: ' + (e?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -165,7 +174,7 @@ export default function TahsilatScreen() {
 
   const remove = async (id: string) => {
     try { await deleteTahsilatEntry(id); showToast(t('tahsilat.s006')); }
-    catch (e: any) { showToast(t('common.errorPrefix') + (e?.message || '')); }
+    catch (e: any) { showToast('Hata: ' + (e?.message || '')); }
   };
 
   const call = (phone: string) => {
@@ -292,7 +301,7 @@ export default function TahsilatScreen() {
               </View>
             )}
 
-            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? t('tahsilat.s024') : t('common.notOptional')}</Text>
+            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? t('tahsilat.s024') : 'NOT (opsiyonel)'}</Text>
             <TextInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
@@ -304,7 +313,7 @@ export default function TahsilatScreen() {
 
             <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="tahsilat-save-btn">
               <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>{saving ? t('common.saving') : t('common.save')}</Text>
+              <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -361,7 +370,7 @@ export default function TahsilatScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.txKat} numberOfLines={1}>{tx.musteriAdi}{tx.notlar ? ` · ${tx.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
-                    {tx.tur === 'tahsilat' ? statusLabel(lang, tx.yontem) : t('tahsilat.s034')}{tx.vadeTarihi ? ` · ${t('tahsilat.s036')} ${tx.vadeTarihi}` : ''} · {tx.tarih}
+                    {tx.tur === 'tahsilat' ? statusLabel(lang, tx.yontem) : t('tahsilat.s034')}{tx.vadeTarihi ? ` · Vade: ${tx.vadeTarihi}` : ''} · {tx.tarih}
                   </Text>
                 </View>
                 <Text style={[s.txAmount, { color: tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>

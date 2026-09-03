@@ -2387,6 +2387,17 @@ async def create_customer(payload: CustomerCreate, user=Depends(get_current_user
     return obj
 
 
+@api_router.put("/customers/{customer_id}", response_model=Customer)
+async def update_customer(customer_id: str, payload: CustomerCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    existing = await db.customers.find_one({"id": customer_id, "userId": user["user_id"]}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    updated = {**existing, **payload.dict()}
+    await db.customers.replace_one({"id": customer_id, "userId": user["user_id"]}, updated)
+    return Customer(**updated)
+
+
 @api_router.delete("/customers/{customer_id}")
 async def delete_customer(customer_id: str, user=Depends(get_current_user)):
     await db.customers.delete_one({"id": customer_id, "userId": user["user_id"]})

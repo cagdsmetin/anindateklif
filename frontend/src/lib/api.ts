@@ -250,6 +250,7 @@ export const api = {
   // Customers
   listCustomers: (companyId: string) => req(`/customers/${companyId}`),
   createCustomer: (data: any) => req('/customers', { method: 'POST', body: JSON.stringify(data) }),
+  updateCustomer: (id: string, data: any) => req(`/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCustomer: (id: string) => req(`/customers/${id}`, { method: 'DELETE' }),
 
   // Services (Servis & Garanti)

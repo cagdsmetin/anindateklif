@@ -55,6 +55,7 @@ type Ctx = {
   saveQuote: (quote: Partial<QuoteT>, existingId?: string) => Promise<QuoteT>;
   deleteQuote: (id: string) => Promise<void>;
   updateQuoteStatus: (id: string, durum: string) => Promise<void>;
+  updateQuoteMaliyet: (id: string, maliyet: number | null) => Promise<void>;
   toast: string | null;
   showToast: (msg: string) => void;
   // Session-only registry of local (unsaved-to-backend) file attachments per quote,
@@ -516,6 +517,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([reloadQuotes(), reloadTahsilat(), reloadKasa()]);
   }, [reloadQuotes, reloadTahsilat, reloadKasa]);
 
+  // Teklif verildikten sonra isteğe bağlı olarak girilen maliyet -- zorunlu
+  // değil, girilirse teklif tutarından düşülerek kâr hesaplanır (history.tsx).
+  const updateQuoteMaliyet = useCallback(async (id: string, maliyet: number | null) => {
+    await api.updateQuoteMaliyet(id, maliyet);
+    await reloadQuotes();
+  }, [reloadQuotes]);
+
   // Bootstrap when user changes
   useEffect(() => {
     if (!user) {
@@ -696,6 +704,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveQuote,
         deleteQuote,
         updateQuoteStatus,
+        updateQuoteMaliyet,
         toast,
         showToast,
         getQuoteAttachments,

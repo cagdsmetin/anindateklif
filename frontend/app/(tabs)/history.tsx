@@ -51,7 +51,7 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, activeCompany, showToast, getQuoteAttachments } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
   // Onaylı bir teklifi reddetmek bağlı Tahsilat borcunu da iptal ediyor --
@@ -64,6 +64,8 @@ export default function HistoryScreen() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : t('history.s003'));
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
+  const [maliyetFor, setMaliyetFor] = useState<string | null>(null);
+  const [maliyetInput, setMaliyetInput] = useState('');
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
@@ -341,6 +343,23 @@ export default function HistoryScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+              <TouchableOpacity
+                style={s.maliyetRow}
+                onPress={() => {
+                  setMaliyetFor(quote.id);
+                  setMaliyetInput(quote.maliyet != null ? String(quote.maliyet).replace('.', ',') : '');
+                }}
+                testID={`maliyet-${quote.id}`}
+              >
+                <Ionicons name="calculator-outline" size={13} color={theme.colors.textMuted} />
+                {quote.maliyet != null ? (
+                  <Text style={s.maliyetText} numberOfLines={1}>
+                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: (quote.genelToplam - quote.maliyet) >= 0 ? '#16a34a' : theme.colors.red, fontWeight: '900' }}>{fmt(quote.genelToplam - quote.maliyet, quote.paraBirimi)}</Text>
+                  </Text>
+                ) : (
+                  <Text style={s.maliyetTextMuted}>{t('history.s037')}</Text>
+                )}
+              </TouchableOpacity>
               <View style={s.actionBar}>
                 <TouchableOpacity style={s.actBtn} onPress={() => openEdit(quote.id)} testID={`edit-quote-${quote.id}`}>
                   <Ionicons name="pencil-outline" size={14} color={theme.colors.primary} />
@@ -455,6 +474,49 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={!!maliyetFor} transparent animationType="fade" onRequestClose={() => setMaliyetFor(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setMaliyetFor(null)}>
+          <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.menuTitle}>{t('history.s035')}</Text>
+            <Text style={[s.confirmBody, { marginBottom: 12 }]}>{t('history.s038')}</Text>
+            <TextInput
+              style={s.maliyetTextInput}
+              keyboardType="decimal-pad"
+              placeholder="0,00"
+              placeholderTextColor="#94a3b8"
+              value={maliyetInput}
+              onChangeText={(txt) => setMaliyetInput(txt.replace(/[^0-9,]/g, ''))}
+              testID="maliyet-text-input"
+            />
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnGhost]}
+                onPress={async () => {
+                  if (maliyetFor) await updateQuoteMaliyet(maliyetFor, null);
+                  setMaliyetFor(null);
+                }}
+                testID="maliyet-clear"
+              >
+                <Text style={s.confirmBtnGhostText}>{t('history.s039')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, { backgroundColor: theme.colors.primary }]}
+                onPress={async () => {
+                  if (maliyetFor) {
+                    const num = Number(maliyetInput.replace(',', '.')) || 0;
+                    await updateQuoteMaliyet(maliyetFor, num);
+                  }
+                  setMaliyetFor(null);
+                }}
+                testID="maliyet-save"
+              >
+                <Text style={s.confirmBtnDangerText}>{t('history.s040')}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <Modal visible={!!rejectConfirmFor} transparent animationType="fade" onRequestClose={() => setRejectConfirmFor(null)}>
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setRejectConfirmFor(null)}>
           <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
@@ -565,6 +627,10 @@ const s = StyleSheet.create({
   hAmount: { fontSize: 14, fontWeight: '900', color: theme.colors.primary },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, marginTop: 6 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
+  maliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
+  maliyetText: { fontSize: 11, color: theme.colors.navy, fontWeight: '700', flexShrink: 1 },
+  maliyetTextMuted: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' },
+  maliyetTextInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: theme.colors.navy, minWidth: 200, textAlign: 'center' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
   actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 10, flex: 1, justifyContent: 'center' },
   actBtnIcon: { width: 40, paddingVertical: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

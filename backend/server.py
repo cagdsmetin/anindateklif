@@ -524,7 +524,6 @@ class RegisterRequest(BaseModel):
     password: str
     name: str
     phone: str
-    language: str = "tr"
 
     @field_validator("password")
     @classmethod
@@ -844,7 +843,7 @@ async def register(payload: RegisterRequest, request: Request):
         "country": "",
         "currency": "",
         "tax_label": "",
-        "language": payload.language if payload.language in ("tr", "en", "it") else "tr",
+        "language": "tr",
         "onboarding_completed": False,
         "createdAt": _utc().isoformat(),
     }
@@ -1472,6 +1471,7 @@ class Quote(BaseModel):
     iskontoTutar: float = 0
     kdvTutar: float = 0
     genelToplam: float = 0
+    maliyet: Optional[float] = None
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
     deletedAt: Optional[str] = None
@@ -1504,6 +1504,10 @@ class QuoteCreate(BaseModel):
 
 class QuoteStatusUpdate(BaseModel):
     durum: str
+
+
+class QuoteMaliyetUpdate(BaseModel):
+    maliyet: Optional[float] = None
 
 
 class CampaignSend(BaseModel):
@@ -2667,6 +2671,19 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
             "tur": "borc",
         })
 
+    return Quote(**doc)
+
+
+@api_router.patch("/quotes/{quote_id}/maliyet", response_model=Quote)
+async def update_quote_maliyet(quote_id: str, payload: QuoteMaliyetUpdate, user=Depends(get_current_user)):
+    """Teklif verildikten sonra girilen isteğe bağlı maliyet -- kar hesabı için.
+    Zorunlu değil: null gönderilirse maliyet temizlenmiş sayılır."""
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    doc["maliyet"] = payload.maliyet
+    doc["updatedAt"] = utc_now_iso()
+    await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
     return Quote(**doc)
 
 

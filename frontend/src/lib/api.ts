@@ -143,7 +143,7 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
 
 export const api = {
   // Auth
-  register: (data: { email: string; password: string; name: string; phone: string; language?: string }) =>
+  register: (data: { email: string; password: string; name: string; phone: string }) =>
     req('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   verifyEmail: (token: string) => req('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
   resendVerificationEmail: () => req('/auth/resend-verification', { method: 'POST' }),
@@ -280,6 +280,8 @@ export const api = {
   updateQuote: (id: string, data: any) => req(`/quotes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateQuoteStatus: (id: string, durum: string) =>
     req(`/quotes/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  updateQuoteMaliyet: (id: string, maliyet: number | null) =>
+    req(`/quotes/${id}/maliyet`, { method: 'PATCH', body: JSON.stringify({ maliyet }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
   listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
   restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
@@ -622,5 +624,6 @@ export type QuoteT = {
   iskontoTutar: number;
   kdvTutar: number;
   genelToplam: number;
+  maliyet?: number | null;
   createdAt: string;
 };

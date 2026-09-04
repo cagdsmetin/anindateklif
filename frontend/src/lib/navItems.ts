@@ -16,7 +16,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.musteri': 'Musteri', 'nav.servis': 'Servis', 'nav.kampanya': 'Kampanya', 'nav.musteriAvcisi': 'Musteri Avcisi',
       'nav.hatirlatmalar': 'Hatirlatmalar', 'nav.takvim': 'Takvim', 'nav.kasa': 'Kasa', 'nav.tahsilat': 'Tahsilat',
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
-      'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir',
+      'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
     };
     return fallback[k] || k;
   });
@@ -49,6 +49,10 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // Personel ekranı sadece firma sahibine gösterilir.
   if (opts?.isOwner) {
     items.push({ name: 'personel', title: tt('nav.personel'), icon: 'person-add', color: theme.colors.gold });
+    // Personel Teklifleri: yönetici, atadığı personel/yöneticilerin verdiği
+    // teklifleri (durum dağılımı + fiyat detayları) izleyebilsin diye --
+    // personel ekranıyla aynı şekilde sadece firma sahibine gösterilir.
+    items.push({ name: 'personel-teklifleri', title: tt('nav.personelTeklifleri'), icon: 'pie-chart', color: theme.colors.modules.raporlar });
   }
   // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.
   if (opts?.isAdmin) {

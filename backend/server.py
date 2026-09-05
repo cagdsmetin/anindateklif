@@ -1440,6 +1440,10 @@ class QuoteItem(BaseModel):
     adet: float = 1
     birim: str = "Adet"
     birimFiyat: float = 0
+    # Teklif verildikten sonra bu kaleme ait isteğe bağlı maliyet girişi --
+    # kalem bazında girilince Quote.maliyet toplamı otomatik hesaplanır
+    # (bkz. update_quote_item_maliyet).
+    maliyet: Optional[float] = None
 
 
 class Quote(BaseModel):
@@ -1507,6 +1511,11 @@ class QuoteStatusUpdate(BaseModel):
 
 
 class QuoteMaliyetUpdate(BaseModel):
+    maliyet: Optional[float] = None
+
+
+class QuoteItemMaliyetUpdate(BaseModel):
+    itemId: str
     maliyet: Optional[float] = None
 
 
@@ -2682,6 +2691,33 @@ async def update_quote_maliyet(quote_id: str, payload: QuoteMaliyetUpdate, user=
     if not doc:
         raise HTTPException(404, "Quote not found")
     doc["maliyet"] = payload.maliyet
+    doc["updatedAt"] = utc_now_iso()
+    await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+    return Quote(**doc)
+
+
+@api_router.patch("/quotes/{quote_id}/item-maliyet", response_model=Quote)
+async def update_quote_item_maliyet(quote_id: str, payload: QuoteItemMaliyetUpdate, user=Depends(get_current_user)):
+    """Kullanıcı "hangi kalemden ne kadar maliyeti oldu" diye tek tek
+    girebilsin diye eklendi -- her kalemin kendi maliyet alanını günceller ve
+    üstteki Quote.maliyet toplamını, en az bir kalemde değer varsa
+    kalemlerin toplamı olacak şekilde otomatik yeniden hesaplar (eski
+    tek-kutulu update_quote_maliyet ile de hâlâ elle geçersiz kılınabilir)."""
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    items = doc.get("items", [])
+    found = False
+    for it in items:
+        if it.get("id") == payload.itemId:
+            it["maliyet"] = payload.maliyet
+            found = True
+            break
+    if not found:
+        raise HTTPException(404, "Quote item not found")
+    doc["items"] = items
+    entered = [it.get("maliyet") for it in items if it.get("maliyet") is not None]
+    doc["maliyet"] = sum(entered) if entered else None
     doc["updatedAt"] = utc_now_iso()
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
     return Quote(**doc)

@@ -56,6 +56,7 @@ type Ctx = {
   deleteQuote: (id: string) => Promise<void>;
   updateQuoteStatus: (id: string, durum: string) => Promise<void>;
   updateQuoteMaliyet: (id: string, maliyet: number | null) => Promise<void>;
+  updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) => Promise<void>;
   toast: string | null;
   showToast: (msg: string) => void;
   // Session-only registry of local (unsaved-to-backend) file attachments per quote,
@@ -524,6 +525,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reloadQuotes();
   }, [reloadQuotes]);
 
+  // Kalem bazında maliyet -- "hangi kalemden ne kadar maliyet oldu" diye tek
+  // tek girilebilsin diye eklendi; backend toplam Quote.maliyet'i kalemlerin
+  // toplamından otomatik hesaplıyor.
+  const updateQuoteItemMaliyet = useCallback(async (id: string, itemId: string, maliyet: number | null) => {
+    await api.updateQuoteItemMaliyet(id, itemId, maliyet);
+    await reloadQuotes();
+  }, [reloadQuotes]);
+
   // Bootstrap when user changes
   useEffect(() => {
     if (!user) {
@@ -702,6 +711,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quotes,
         reloadQuotes,
         saveQuote,
+        updateQuoteItemMaliyet,
         deleteQuote,
         updateQuoteStatus,
         updateQuoteMaliyet,

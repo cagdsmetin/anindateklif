@@ -51,7 +51,7 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, activeCompany, showToast, getQuoteAttachments } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, activeCompany, showToast, getQuoteAttachments } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
   // Onaylı bir teklifi reddetmek bağlı Tahsilat borcunu da iptal ediyor --
@@ -65,7 +65,10 @@ export default function HistoryScreen() {
   const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : t('history.s003'));
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
   const [maliyetFor, setMaliyetFor] = useState<string | null>(null);
-  const [maliyetInput, setMaliyetInput] = useState('');
+  // Kalem bazında maliyet girişi -- teklif kalemi id'sine göre metin kutusu
+  // değerleri (virgüllü, henüz sayıya çevrilmemiş). Modal açılırken quote'un
+  // kalemlerindeki mevcut maliyet değerleriyle dolduruluyor.
+  const [maliyetItemInputs, setMaliyetItemInputs] = useState<Record<string, string>>({});
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
@@ -347,7 +350,11 @@ export default function HistoryScreen() {
                 style={s.maliyetRow}
                 onPress={() => {
                   setMaliyetFor(quote.id);
-                  setMaliyetInput(quote.maliyet != null ? String(quote.maliyet).replace('.', ',') : '');
+                  const init: Record<string, string> = {};
+                  (quote.items || []).forEach((it) => {
+                    if (it.maliyet != null) init[it.id] = String(it.maliyet).replace('.', ',');
+                  });
+                  setMaliyetItemInputs(init);
                 }}
                 testID={`maliyet-${quote.id}`}
               >
@@ -476,43 +483,87 @@ export default function HistoryScreen() {
 
       <Modal visible={!!maliyetFor} transparent animationType="fade" onRequestClose={() => setMaliyetFor(null)}>
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setMaliyetFor(null)}>
-          <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
+          <TouchableOpacity activeOpacity={1} style={[s.confirmBox, { maxWidth: 380 }]} onPress={(e) => e.stopPropagation()}>
             <Text style={s.menuTitle}>{t('history.s035')}</Text>
-            <Text style={[s.confirmBody, { marginBottom: 12 }]}>{t('history.s038')}</Text>
-            <TextInput
-              style={s.maliyetTextInput}
-              keyboardType="decimal-pad"
-              placeholder="0,00"
-              placeholderTextColor="#94a3b8"
-              value={maliyetInput}
-              onChangeText={(txt) => setMaliyetInput(txt.replace(/[^0-9,]/g, ''))}
-              testID="maliyet-text-input"
-            />
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-              <TouchableOpacity
-                style={[s.confirmBtn, s.confirmBtnGhost]}
-                onPress={async () => {
-                  if (maliyetFor) await updateQuoteMaliyet(maliyetFor, null);
-                  setMaliyetFor(null);
-                }}
-                testID="maliyet-clear"
-              >
-                <Text style={s.confirmBtnGhostText}>{t('history.s039')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.confirmBtn, { backgroundColor: theme.colors.primary }]}
-                onPress={async () => {
-                  if (maliyetFor) {
-                    const num = Number(maliyetInput.replace(',', '.')) || 0;
-                    await updateQuoteMaliyet(maliyetFor, num);
-                  }
-                  setMaliyetFor(null);
-                }}
-                testID="maliyet-save"
-              >
-                <Text style={s.confirmBtnDangerText}>{t('history.s040')}</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[s.confirmBody, { marginBottom: 10 }]}>{t('history.s041')}</Text>
+            {(() => {
+              const activeQuote = quotes.find((q) => q.id === maliyetFor);
+              if (!activeQuote) return null;
+              const items = activeQuote.items || [];
+              const total = items.reduce((sum, it) => {
+                const raw = maliyetItemInputs[it.id];
+                const n = raw != null ? Number(raw.replace(',', '.')) : NaN;
+                return sum + (isNaN(n) ? 0 : n);
+              }, 0);
+              const anyEntered = items.some((it) => (maliyetItemInputs[it.id] || '').trim() !== '');
+              const kar = activeQuote.genelToplam - total;
+              return (
+                <>
+                  <ScrollView style={{ maxHeight: 320, width: '100%' }} showsVerticalScrollIndicator={false}>
+                    {items.length === 0 ? (
+                      <Text style={s.emptyText}>{t('history.s042')}</Text>
+                    ) : (
+                      items.map((it) => {
+                        const name = it.mode === 'technical' ? (it.sistemTipi || it.urunAdi || t('history.s043')) : (it.urunAdi || t('history.s043'));
+                        return (
+                          <View key={it.id} style={s.itemMaliyetRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.itemMaliyetName} numberOfLines={1}>{name}</Text>
+                              <Text style={s.itemMaliyetSub}>{it.adet} {it.birim}</Text>
+                            </View>
+                            <TextInput
+                              style={s.itemMaliyetInput}
+                              keyboardType="decimal-pad"
+                              placeholder="0,00"
+                              placeholderTextColor="#94a3b8"
+                              value={maliyetItemInputs[it.id] || ''}
+                              onChangeText={(txt) => setMaliyetItemInputs((prev) => ({ ...prev, [it.id]: txt.replace(/[^0-9,]/g, '') }))}
+                              testID={`maliyet-item-input-${it.id}`}
+                            />
+                          </View>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                  {anyEntered && (
+                    <View style={s.maliyetSummaryBox}>
+                      <Text style={s.maliyetSummaryText}>{t('history.s035')}: {fmt(total, activeQuote.paraBirimi)}</Text>
+                      <Text style={[s.maliyetSummaryText, { color: kar >= 0 ? '#16a34a' : theme.colors.red }]}>{t('history.s036')}: {fmt(kar, activeQuote.paraBirimi)}</Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                    <TouchableOpacity
+                      style={[s.confirmBtn, s.confirmBtnGhost]}
+                      onPress={async () => {
+                        for (const it of items) {
+                          if (it.maliyet != null) await updateQuoteItemMaliyet(activeQuote.id, it.id, null);
+                        }
+                        setMaliyetItemInputs({});
+                        setMaliyetFor(null);
+                      }}
+                      testID="maliyet-clear"
+                    >
+                      <Text style={s.confirmBtnGhostText}>{t('history.s039')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.confirmBtn, { backgroundColor: theme.colors.primary }]}
+                      onPress={async () => {
+                        for (const it of items) {
+                          const raw = maliyetItemInputs[it.id];
+                          const n = raw != null && raw.trim() !== '' ? Number(raw.replace(',', '.')) : null;
+                          const current = it.maliyet != null ? it.maliyet : null;
+                          if (n !== current) await updateQuoteItemMaliyet(activeQuote.id, it.id, n);
+                        }
+                        setMaliyetFor(null);
+                      }}
+                      testID="maliyet-save"
+                    >
+                      <Text style={s.confirmBtnDangerText}>{t('history.s040')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -631,6 +682,12 @@ const s = StyleSheet.create({
   maliyetText: { fontSize: 11, color: theme.colors.navy, fontWeight: '700', flexShrink: 1 },
   maliyetTextMuted: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' },
   maliyetTextInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: theme.colors.navy, minWidth: 200, textAlign: 'center' },
+  itemMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
+  itemMaliyetSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
+  itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.navy, width: 90, textAlign: 'center' },
+  maliyetSummaryBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, gap: 4, width: '100%' },
+  maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy, textAlign: 'right' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
   actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 10, flex: 1, justifyContent: 'center' },
   actBtnIcon: { width: 40, paddingVertical: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

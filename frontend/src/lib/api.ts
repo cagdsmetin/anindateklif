@@ -282,6 +282,8 @@ export const api = {
     req(`/quotes/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
   updateQuoteMaliyet: (id: string, maliyet: number | null) =>
     req(`/quotes/${id}/maliyet`, { method: 'PATCH', body: JSON.stringify({ maliyet }) }),
+  updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) =>
+    req(`/quotes/${id}/item-maliyet`, { method: 'PATCH', body: JSON.stringify({ itemId, maliyet }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
   listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
   restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
@@ -590,6 +592,7 @@ export type QuoteItemT = {
   adet: number;
   birim: string;
   birimFiyat: number;
+  maliyet?: number | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };

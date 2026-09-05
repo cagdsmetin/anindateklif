@@ -156,10 +156,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     ? `<img src="${esc(company.logoBase64)}" class="logo"/>`
     : `<div class="logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
 
-  // Logonun altındaki QR -- taranınca teklifi veren firma ve teklifi alan
-  // musterinin bilgilerini (URL degil, duz metin kart olarak) gosterir.
-  const qrSvg = buildQrSvg(buildQuoteQrText(company, quote), 92);
-
   const bankRows = (company.banklar || [])
     .map(
       (b) => `
@@ -220,9 +216,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
   .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
-  .qr-wrap { margin:6px auto 0; width:92px; text-align:center; }
-  .qr-wrap svg { display:block; width:92px; height:92px; }
-  .qr-cap { font-size:6.5px; color:#94a3b8; letter-spacing:0.04em; margin-top:3px; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 4px 0; line-height:1.15; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.05; margin:0; word-wrap:break-word; overflow-wrap:break-word; }
@@ -233,12 +226,14 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .meta-table td.k { color:#64748b; text-align:right; padding-right:8px; padding-left:0; }
   .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; min-width:80px; word-wrap:break-word; overflow-wrap:break-word; }
 
-  /* INFO BOXES */
+  /* INFO BOXES -- iki kutu artik boşluksuz, tek blok gibi bitişik oturuyor;
+     ortadaki çift çizgiyi tekille indirmek için sağdaki kutunun sol kenarlığı
+     kaldırıldı. */
   .info-grid { display: table; width:100%; margin-bottom:8px; border-spacing: 0 0; }
   .info-cell { display: table-cell; width:50%; vertical-align:top; }
-  .info-cell:first-child { padding-right:7px; }
-  .info-cell:last-child { padding-left:7px; }
   .info-box { border:1px solid #cbd5e1; border-radius:2px; overflow:hidden; }
+  .info-cell:first-child .info-box { border-radius:2px 0 0 2px; }
+  .info-cell:last-child .info-box { border-left:none; border-radius:0 2px 2px 0; }
   .info-box .hdr-cell { background:#1E293B; color:#fff; font-size:11px; font-weight:800; padding:5px 9px; letter-spacing:0.04em; }
   .info-box table { width:100%; border-collapse:collapse; }
   .info-box td { font-size:11px; padding:3.5px 9px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
@@ -311,7 +306,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
       </td>
       <td class="center-col">
         ${logo}
-        ${qrSvg ? `<div class="qr-wrap">${qrSvg}<div class="qr-cap">TEKLİF BİLGİSİ</div></div>` : ''}
       </td>
       <td class="right-col">
         <div class="doc-title">TEKLİF FORMU</div>

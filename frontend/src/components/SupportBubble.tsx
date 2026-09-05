@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,7 @@ export default function SupportBubble() {
   const { t } = useLanguage();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [open, setOpen] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState('');
 
@@ -23,10 +24,19 @@ export default function SupportBubble() {
     api.getAppConfig().then((r: any) => setWhatsappNumber(r?.whatsapp_number || '905415858988')).catch(() => setWhatsappNumber('905415858988'));
   }, []);
 
+  // Masaüstü genişliğinde (>=900) alt sekme çubuğu gizlenip yerine sol sidebar
+  // geliyor (bkz. app/(tabs)/_layout.tsx), o yüzden orada baloncuk ekranın en
+  // altına yakın durabilir. Telefon/dar ekranda ise alt sekme çubuğu (52 +
+  // insets.bottom yüksekliğinde) hâlâ görünür -- baloncuk onun ÜSTÜNE değil,
+  // ÜZERİNE binmesin diye o yüksekliği de hesaba katıyoruz.
+  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
+  const TAB_BAR_HEIGHT = 52;
+  const bubbleBottom = insets.bottom + (isDesktopWeb ? 20 : TAB_BAR_HEIGHT + 16);
+
   return (
     <>
       <TouchableOpacity
-        style={[s.bubble, { bottom: insets.bottom + 20 }]}
+        style={[s.bubble, { bottom: bubbleBottom }]}
         onPress={() => setOpen(true)}
         activeOpacity={0.85}
         testID="support-bubble"
@@ -36,7 +46,7 @@ export default function SupportBubble() {
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={[s.sheet, { marginBottom: insets.bottom + 88 }]}>
+          <View style={[s.sheet, { marginBottom: bubbleBottom + 68 }]}>
             <Text style={s.title}>{t('supportBubble.s001')}</Text>
             <TouchableOpacity
               style={s.option}

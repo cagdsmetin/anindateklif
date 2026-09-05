@@ -211,11 +211,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Panel', tabBarIcon: tabIcon('grid', theme.colors.primary) }} />
       <Tabs.Screen name="teklif" options={{ title: 'Teklif', tabBarIcon: tabIcon('create', m.teklif) }} />
-      <Tabs.Screen name="catalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('library', m.katalog) }} />
+      <Tabs.Screen name="catalog" options={{ title: 'Katalog', href: null }} />
       <Tabs.Screen name="history" options={{ title: 'Geçmiş', tabBarIcon: tabIcon('time', m.gecmis) }} />
       <Tabs.Screen name="customers" options={{ title: 'Müşteri', tabBarIcon: tabIcon('people', m.musteri) }} />
       <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis) }} />
-      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya) }} />
+      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', href: null }} />
       <Tabs.Screen name="reminders" options={{ title: 'Hatırlatmalar', tabBarIcon: tabIcon('notifications', m.hatirlatma) }} />
       <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa), href: restricted ? null : undefined }} />
       <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat), href: restricted ? null : undefined }} />

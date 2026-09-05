@@ -206,11 +206,16 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      into a clean "letterhead" band, so the block reads as one deliberate
      unit even when the left (logo/company) and right (title/meta) columns
      end up different heights. */
-  .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; padding-bottom:9px; margin-bottom:12px; }
+  /* NOT: border-collapse:collapse iken <table>'in kendi padding'i CSS
+     spec'ine gore render edilmiyor (yalniz "separate" modelde calisiyor),
+     bu yuzden alt bosluk tablo degil hucre (td) seviyesinde veriliyor --
+     yoksa telefon numarasi/Gecerlilik Tarihi metni dogrudan alttaki 3px'lik
+     cizgiye yapisiyordu. */
+  .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; margin-bottom:12px; }
   .hdr td { padding:0; vertical-align:top; }
-  .hdr td.left-col { width:34%; padding-right:10px; }
-  .hdr td.center-col { width:32%; padding:0 8px; text-align:center; vertical-align:middle; }
-  .hdr td.right-col { width:34%; padding-left:10px; text-align:right; }
+  .hdr td.left-col { width:34%; padding-right:10px; padding-bottom:16px; }
+  .hdr td.center-col { width:32%; padding:0 8px 16px; text-align:center; vertical-align:middle; }
+  .hdr td.right-col { width:34%; padding-left:10px; padding-bottom:16px; text-align:right; }
 
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors

@@ -63,7 +63,7 @@ export default function CustomersScreen() {
           activeOpacity={0.9}
           testID="customer-add-btn"
         >
-          <Ionicons name="person-add" size={20} color="#fff" />
+          <Ionicons name="person-add" size={17} color="#fff" />
           <Text style={s.addBtnText}>{t('customers.s003')}</Text>
         </TouchableOpacity>
 
@@ -96,7 +96,7 @@ export default function CustomersScreen() {
                     testID={`delete-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.textMuted} />
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => router.push({ pathname: '/customer-add', params: { id: c.id } })}
@@ -104,7 +104,7 @@ export default function CustomersScreen() {
                     testID={`open-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="chevron-forward" size={22} color={theme.colors.textMuted} />
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
@@ -141,16 +141,16 @@ const s = StyleSheet.create({
 
   addBtn: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 14,
+    paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 14,
     ...theme.shadow.lg,
   },
-  addBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  addBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 },
 
   emptyBox: {
     marginTop: 30,
@@ -167,45 +167,45 @@ const s = StyleSheet.create({
 
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 14,
+    borderRadius: 14,
+    paddingVertical: 9,
+    paddingHorizontal: 11,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '900',
     color: theme.colors.primary,
     letterSpacing: 0.5,
   },
-  name: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
-  phone: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
-  phoneMuted: { fontSize: 12, color: theme.colors.lineDark, marginTop: 2, fontStyle: 'italic' },
-  iconBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
+  phone: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
+  phoneMuted: { fontSize: 10.5, color: theme.colors.lineDark, marginTop: 1, fontStyle: 'italic' },
+  iconBtn: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
 
-  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 12 },
+  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 7 },
 
   statsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   statLabel: {
-    fontSize: 10.5,
+    fontSize: 9,
     fontWeight: '700',
     color: theme.colors.textMuted,
-    letterSpacing: 1.1,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 2,
   },
-  statValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text },
+  statValue: { fontSize: 13, fontWeight: '900', color: theme.colors.text },
 });

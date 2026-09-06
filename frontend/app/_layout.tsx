@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { ActivityIndicator, LogBox, View } from 'react-native';
+import { ActivityIndicator, LogBox, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
@@ -30,8 +30,12 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
     if (isPublic) return;
 
     if (!user) {
-      // Not authenticated → force auth group (splash)
-      if (!inAuth) router.replace('/splash');
+      // Not authenticated → force auth group. Web'de gerçek bir tanıtım
+      // (landing) sayfası var -- "Anında Teklif nedir, ne işe yarar,
+      // avantajları neler" burada anlatılıyor; native app'te ise mağazadan
+      // indirilen kullanıcı zaten niyetini biliyor, o yüzden orada eskisi
+      // gibi kısa onboarding carousel'i (splash) gösteriliyor.
+      if (!inAuth) router.replace(Platform.OS === 'web' ? '/landing' : '/splash');
       return;
     }
 

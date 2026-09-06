@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +31,13 @@ export default function RegisterScreen() {
   const { t } = useLanguage();
   const router = useRouter();
   const { register } = useAuth();
+  // Masaüstü web'de form artık tüm genişliğe yayılıp mobil oranlarda ortada
+  // kalmıyor -- daha önce burada hiçbir width>=900 ayrımı yoktu (bir
+  // geliştirici arkadaşın eleştirisi buydu). Projenin diğer yerlerinde
+  // (TopHeader, (tabs)/_layout) zaten kullanılan aynı eşiği burada da
+  // uyguluyoruz: içeriği sabit genişlikte bir karta alıp ortalıyoruz.
+  const { width } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -107,91 +115,99 @@ export default function RegisterScreen() {
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.langRow}>
-            <LanguageFlagSwitcher />
-          </View>
-          <View style={s.logoWrap}>
-            <BrandLogo size={76} />
-          </View>
-          <Text style={s.title}>{t('register.s010')}</Text>
-          <Text style={s.subtitle}>{t('register.s011')}</Text>
-
-          {error ? (
-            <View style={s.errorBox}>
-              <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          <InputRow icon="person-outline" placeholder={t('register.s012')} value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
-          <InputRow
-            icon="call-outline"
-            placeholder={t('register.s013')}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            testID="reg-phone"
-          />
-          <InputRow
-            icon="mail-outline"
-            placeholder={t('register.s014')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            testID="reg-email"
-          />
-          <InputRow
-            icon="lock-closed-outline"
-            placeholder={t('register.s015')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            autoCapitalize="none"
-            testID="reg-password"
-            trailing={
-              <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
-              </TouchableOpacity>
-            }
-          />
-
-          <PasswordChecklist status={pwStatus} />
-
-          <TouchableOpacity
-            style={s.terms}
-            onPress={() => setAcceptedTerms((v) => !v)}
-            activeOpacity={0.7}
-            testID="reg-terms"
-          >
-            <View style={[s.checkbox, acceptedTerms && s.checkboxOn]}>
-              {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
-            </View>
-            <Text style={s.termsText}>
-              {t('register.s016')}<Text style={s.termsLink}>{t('register.s017')}</Text> ve{' '}
-              <Text style={s.termsLink}>{t('register.s018')}</Text> {t('register.s019')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={[s.cta, (busy || !canSubmit) && s.ctaDisabled]}
-            onPress={onSubmit}
-            disabled={busy}
-            testID="reg-submit"
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('register.s020')}</Text>}
-          </TouchableOpacity>
-
-          <View style={s.footer}>
-            <Text style={s.footerText}>{t('register.s021')}</Text>
-            <TouchableOpacity onPress={() => router.replace('/login')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={s.footerLink}>{t('register.s022')}</Text>
+          {isDesktopWeb && (
+            <TouchableOpacity style={s.backHome} onPress={() => router.push('/landing')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={15} color={authTheme.textMuted} />
+              <Text style={s.backHomeText}>{t('landing.s001')} {t('landing.s002')}</Text>
             </TouchableOpacity>
+          )}
+          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+            <View style={s.langRow}>
+              <LanguageFlagSwitcher />
+            </View>
+            <View style={s.logoWrap}>
+              <BrandLogo size={76} />
+            </View>
+            <Text style={s.title}>{t('register.s010')}</Text>
+            <Text style={s.subtitle}>{t('register.s011')}</Text>
+
+            {error ? (
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
+                <Text style={s.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <InputRow icon="person-outline" placeholder={t('register.s012')} value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
+            <InputRow
+              icon="call-outline"
+              placeholder={t('register.s013')}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              testID="reg-phone"
+            />
+            <InputRow
+              icon="mail-outline"
+              placeholder={t('register.s014')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              testID="reg-email"
+            />
+            <InputRow
+              icon="lock-closed-outline"
+              placeholder={t('register.s015')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPw}
+              autoCapitalize="none"
+              testID="reg-password"
+              trailing={
+                <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                </TouchableOpacity>
+              }
+            />
+
+            <PasswordChecklist status={pwStatus} />
+
+            <TouchableOpacity
+              style={s.terms}
+              onPress={() => setAcceptedTerms((v) => !v)}
+              activeOpacity={0.7}
+              testID="reg-terms"
+            >
+              <View style={[s.checkbox, acceptedTerms && s.checkboxOn]}>
+                {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+              </View>
+              <Text style={s.termsText}>
+                {t('register.s016')}<Text style={s.termsLink}>{t('register.s017')}</Text> ve{' '}
+                <Text style={s.termsLink}>{t('register.s018')}</Text> {t('register.s019')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={[s.cta, (busy || !canSubmit) && s.ctaDisabled]}
+              onPress={onSubmit}
+              disabled={busy}
+              testID="reg-submit"
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('register.s020')}</Text>}
+            </TouchableOpacity>
+
+            <View style={s.footer}>
+              <Text style={s.footerText}>{t('register.s021')}</Text>
+              <TouchableOpacity onPress={() => router.replace('/login')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={s.footerLink}>{t('register.s022')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -245,6 +261,23 @@ function InputRow({
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 },
+  scrollDesktop: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
+  backHome: {
+    width: '100%', maxWidth: 440, marginBottom: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  backHomeText: { color: authTheme.textMuted, fontSize: 13, fontWeight: '600' },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.xl,
+    paddingHorizontal: 36,
+    paddingVertical: 32,
+    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
+  },
   langRow: { alignItems: 'center', marginBottom: 10 },
   logoWrap: { alignItems: 'center', marginBottom: 14 },
   title: { color: authTheme.text, fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 4 },

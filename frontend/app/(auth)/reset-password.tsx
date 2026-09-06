@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ export default function ResetPasswordScreen() {
   const { t } = useLanguage();
   const router = useRouter();
   const { resetPassword } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
   const params = useLocalSearchParams<{ token?: string }>();
   const initialToken = typeof params.token === 'string' ? params.token : '';
 
@@ -68,99 +71,101 @@ export default function ResetPasswordScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => router.replace('/login')} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={22} color={authTheme.text} />
-          </TouchableOpacity>
+        <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
+          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+            <TouchableOpacity onPress={() => router.replace('/login')} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="arrow-back" size={22} color={authTheme.text} />
+            </TouchableOpacity>
 
-          <View style={s.logoWrap}>
-            <BrandLogo size={72} />
-          </View>
-          <Text style={s.title}>{t('resetPassword.s006')}</Text>
-          <Text style={s.subtitle}>
-            {done
-              ? t('resetPassword.s007')
-              : t('resetPassword.s008')}
-          </Text>
-
-          {done ? (
-            <View style={s.successBox}>
-              <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
-              <Text style={s.successText}>{t('resetPassword.s009')}</Text>
+            <View style={s.logoWrap}>
+              <BrandLogo size={72} />
             </View>
-          ) : (
-            <>
-              {error ? (
-                <View style={s.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
-                  <Text style={s.errorText}>{error}</Text>
-                </View>
-              ) : null}
+            <Text style={s.title}>{t('resetPassword.s006')}</Text>
+            <Text style={s.subtitle}>
+              {done
+                ? t('resetPassword.s007')
+                : t('resetPassword.s008')}
+            </Text>
 
-              {!initialToken ? (
+            {done ? (
+              <View style={s.successBox}>
+                <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
+                <Text style={s.successText}>{t('resetPassword.s009')}</Text>
+              </View>
+            ) : (
+              <>
+                {error ? (
+                  <View style={s.errorBox}>
+                    <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
+                    <Text style={s.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+
+                {!initialToken ? (
+                  <View style={s.inputRow}>
+                    <Ionicons name="key-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
+                    <TextInput
+                      value={token}
+                      onChangeText={setToken}
+                      placeholder={t('resetPassword.s010')}
+                      placeholderTextColor={authTheme.textMuted}
+                      style={s.input}
+                      autoCapitalize="none"
+                      testID="rp-token"
+                    />
+                  </View>
+                ) : null}
+
                 <View style={s.inputRow}>
-                  <Ionicons name="key-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
+                  <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
                   <TextInput
-                    value={token}
-                    onChangeText={setToken}
-                    placeholder={t('resetPassword.s010')}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder={t('resetPassword.s011')}
                     placeholderTextColor={authTheme.textMuted}
                     style={s.input}
+                    secureTextEntry={!showPw}
                     autoCapitalize="none"
-                    testID="rp-token"
+                    testID="rp-password"
+                  />
+                  <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={s.inputRow}>
+                  <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
+                  <TextInput
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    placeholder={t('resetPassword.s012')}
+                    placeholderTextColor={authTheme.textMuted}
+                    style={s.input}
+                    secureTextEntry={!showPw}
+                    autoCapitalize="none"
+                    testID="rp-confirm"
                   />
                 </View>
-              ) : null}
 
-              <View style={s.inputRow}>
-                <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder={t('resetPassword.s011')}
-                  placeholderTextColor={authTheme.textMuted}
-                  style={s.input}
-                  secureTextEntry={!showPw}
-                  autoCapitalize="none"
-                  testID="rp-password"
-                />
-                <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                <Text style={s.helperText}>
+                  {t('resetPassword.s013')}</Text>
+
+                <TouchableOpacity
+                  style={[s.cta, busy && s.ctaDisabled]}
+                  onPress={onSubmit}
+                  disabled={busy}
+                  testID="rp-submit"
+                >
+                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('resetPassword.s014')}</Text>}
                 </TouchableOpacity>
-              </View>
+              </>
+            )}
 
-              <View style={s.inputRow}>
-                <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-                <TextInput
-                  value={confirm}
-                  onChangeText={setConfirm}
-                  placeholder={t('resetPassword.s012')}
-                  placeholderTextColor={authTheme.textMuted}
-                  style={s.input}
-                  secureTextEntry={!showPw}
-                  autoCapitalize="none"
-                  testID="rp-confirm"
-                />
-              </View>
-
-              <Text style={s.helperText}>
-                {t('resetPassword.s013')}</Text>
-
-              <TouchableOpacity
-                style={[s.cta, busy && s.ctaDisabled]}
-                onPress={onSubmit}
-                disabled={busy}
-                testID="rp-submit"
-              >
-                {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('resetPassword.s014')}</Text>}
+            <View style={s.footer}>
+              <TouchableOpacity onPress={() => router.replace('/login')}>
+                <Text style={s.footerLink}>{t('resetPassword.s015')}</Text>
               </TouchableOpacity>
-            </>
-          )}
-
-          <View style={s.footer}>
-            <TouchableOpacity onPress={() => router.replace('/login')}>
-              <Text style={s.footerLink}>{t('resetPassword.s015')}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -171,6 +176,18 @@ export default function ResetPasswordScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24, flexGrow: 1 },
+  scrollDesktop: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.xl,
+    paddingHorizontal: 36,
+    paddingVertical: 28,
+    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
+  },
   back: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
   logoWrap: { alignItems: 'center', marginTop: 24, marginBottom: 16 },
   title: { color: authTheme.text, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 6 },

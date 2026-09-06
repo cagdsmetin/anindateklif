@@ -20,17 +20,68 @@ import { useLanguage } from '@/src/lib/i18n';
 // Anında Teklif'in web'deki gerçek tanıtım (landing) sayfası -- daha önce
 // giriş yapmamış her ziyaretçi doğrudan register/splash'e düşüyordu, "bu
 // uygulama nedir, ne işe yarar, avantajları neler" diye anlatan hiçbir sayfa
-// yoktu (bkz. RouteGuard: web'de artık buraya yönleniyor, native app'te
-// splash carousel'i aynen kalıyor). İçerik gerçek uygulama özelliklerine
-// dayanıyor: PDF şablonları, WhatsApp paylaşımı, kasa/tahsilat, ekip
-// yönetimi, katalog/yapılandırıcı -- bkz. i18n.tsx "landing" namespace'i.
+// yoktu, ve masaüstünde tek sütun/dar mobil düzeni "mobil uygulama gibi"
+// görünüyordu (geliştirici arkadaş + kullanıcı geri bildirimi). Bu sürümde:
+// masaüstünde hero iki sütuna bölündü (metin + gerçek teklif PDF'ine
+// gönderme yapan bir "belge kartı" görseli -- ürünün ne ürettiğini
+// resmediyor), yeni bir "Nasıl Çalışır" adım adım akışı eklendi, tip
+// ölçeği büyütüldü. Marka renkleri (lacivert/mavi/altın) bilinçli olarak
+// korundu -- bunlar zaten uygulamanın kendi kimliği (bkz. auth-theme.ts),
+// register/login/splash ile aynı kimlikte kalması gerekiyordu.
 function useIsDesktop() {
   const { width } = useWindowDimensions();
-  return Platform.OS === 'web' && width >= 900;
+  return Platform.OS === 'web' && width >= 960;
 }
 
 type Feature = { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string };
 type Advantage = { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string };
+type Step = { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string };
+
+// Hero'daki "belge kartı" -- ürünün ürettiği gerçek çıktının (PDF teklif)
+// stilize bir minyatürü. Gerçek bir ekran görüntüsü yerine, kurumsal
+// kimlikle aynı lacivert/altın paleti kullanan bir kart olarak inşa edildi;
+// böylece metin + soyut ikonlar yerine "bu uygulama ne üretir" sorusu
+// görsel olarak da cevaplanıyor.
+function QuoteMockup() {
+  return (
+    <View style={m.wrap}>
+      <View style={m.badgeTop}>
+        <Ionicons name="flash" size={12} color="#fff" />
+        <Text style={m.badgeTopText}>30 saniyede hazır</Text>
+      </View>
+      <View style={m.card}>
+        <View style={m.cardHdr}>
+          <View style={m.cardHdrLogo}>
+            <Ionicons name="checkmark" size={14} color={authTheme.goldLight} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={[m.line, { width: '58%', height: 7 }]} />
+            <View style={[m.line, { width: '38%', height: 5, marginTop: 5, opacity: 0.6 }]} />
+          </View>
+          <Text style={m.cardHdrTag}>TEKLİF{'\n'}FORMU</Text>
+        </View>
+        <View style={m.cardDivider} />
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={m.row}>
+            <View style={m.rowDot} />
+            <View style={{ flex: 1 }}>
+              <View style={[m.line, { width: i === 0 ? '80%' : i === 1 ? '65%' : '72%', height: 6 }]} />
+            </View>
+            <View style={[m.line, { width: 34, height: 6, opacity: 0.5 }]} />
+          </View>
+        ))}
+        <View style={m.totalRow}>
+          <Text style={m.totalLabel}>TOPLAM</Text>
+          <Text style={m.totalValue}>₺48.750</Text>
+        </View>
+      </View>
+      <View style={m.badgeBottom}>
+        <Ionicons name="logo-whatsapp" size={13} color="#25D366" />
+        <Text style={m.badgeBottomText}>Tek dokunuşla gönder</Text>
+      </View>
+    </View>
+  );
+}
 
 export default function LandingScreen() {
   const { t } = useLanguage();
@@ -39,6 +90,12 @@ export default function LandingScreen() {
 
   const goRegister = () => router.push('/register');
   const goLogin = () => router.push('/login');
+
+  const steps: Step[] = [
+    { icon: 'list-outline', title: t('landing.s043'), desc: t('landing.s044') },
+    { icon: 'document-text-outline', title: t('landing.s045'), desc: t('landing.s046') },
+    { icon: 'logo-whatsapp', title: t('landing.s047'), desc: t('landing.s048') },
+  ];
 
   const features: Feature[] = [
     { icon: 'document-text-outline', title: t('landing.s013'), desc: t('landing.s014') },
@@ -83,26 +140,64 @@ export default function LandingScreen() {
           </View>
 
           {/* HERO */}
-          <View style={[s.hero, isDesktop && s.heroDesktop]}>
+          <View style={[s.hero, isDesktop && s.heroDesktopRow]}>
             <View style={s.heroGlow} pointerEvents="none" />
-            <View style={s.badge}>
-              <Ionicons name="sparkles" size={13} color={authTheme.gold} />
-              <Text style={s.badgeText}>{t('landing.s005')}</Text>
+            <View style={[s.heroCol, isDesktop && s.heroColDesktop]}>
+              <View style={s.badge}>
+                <Ionicons name="sparkles" size={13} color={authTheme.gold} />
+                <Text style={s.badgeText}>{t('landing.s005')}</Text>
+              </View>
+              <Text style={[s.heroTitle, isDesktop && s.heroTitleDesktop, !isDesktop && { textAlign: 'center' }]}>
+                {t('landing.s006')}
+              </Text>
+              <Text style={[s.heroSubtitle, isDesktop && s.heroSubtitleDesktop, !isDesktop && { textAlign: 'center' }]}>
+                {t('landing.s007')}
+              </Text>
+              <View style={[s.heroActions, !isDesktop && { justifyContent: 'center' }]}>
+                <TouchableOpacity style={s.primaryCta} onPress={goRegister} activeOpacity={0.9} testID="landing-hero-cta">
+                  <Text style={s.primaryCtaText}>{t('landing.s008')}</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+                <TouchableOpacity style={s.secondaryCta} onPress={goLogin} activeOpacity={0.85}>
+                  <Text style={s.secondaryCtaText}>{t('landing.s009')}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[s.trustRow, !isDesktop && { justifyContent: 'center' }]}>
+                <Ionicons name="lock-closed" size={12} color={authTheme.textMuted} />
+                <Text style={s.trustText}>{t('landing.s010')}</Text>
+              </View>
             </View>
-            <Text style={[s.heroTitle, isDesktop && s.heroTitleDesktop]}>{t('landing.s006')}</Text>
-            <Text style={[s.heroSubtitle, isDesktop && s.heroSubtitleDesktop]}>{t('landing.s007')}</Text>
-            <View style={s.heroActions}>
-              <TouchableOpacity style={s.primaryCta} onPress={goRegister} activeOpacity={0.9} testID="landing-hero-cta">
-                <Text style={s.primaryCtaText}>{t('landing.s008')}</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
-              </TouchableOpacity>
-              <TouchableOpacity style={s.secondaryCta} onPress={goLogin} activeOpacity={0.85}>
-                <Text style={s.secondaryCtaText}>{t('landing.s009')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={s.trustRow}>
-              <Ionicons name="lock-closed" size={12} color={authTheme.textMuted} />
-              <Text style={s.trustText}>{t('landing.s010')}</Text>
+            {isDesktop && (
+              <View style={s.heroColMockup}>
+                <QuoteMockup />
+              </View>
+            )}
+          </View>
+
+          {/* HOW IT WORKS */}
+          <View style={s.section}>
+            <Text style={s.eyebrow}>{t('landing.s041')}</Text>
+            <Text style={s.sectionTitle}>{t('landing.s042')}</Text>
+            <View style={[s.stepsRow, isDesktop && s.stepsRowDesktop]}>
+              {steps.map((st, i) => (
+                <React.Fragment key={i}>
+                  <View style={[s.stepCard, isDesktop && s.stepCardDesktop]}>
+                    <View style={s.stepNumWrap}>
+                      <Text style={s.stepNum}>{i + 1}</Text>
+                    </View>
+                    <View style={s.stepIconWrap}>
+                      <Ionicons name={st.icon} size={20} color={authTheme.primary} />
+                    </View>
+                    <Text style={s.cardTitle}>{st.title}</Text>
+                    <Text style={s.cardDesc}>{st.desc}</Text>
+                  </View>
+                  {isDesktop && i < steps.length - 1 && (
+                    <View style={s.stepConnector}>
+                      <Ionicons name="arrow-forward" size={16} color={authTheme.cardBorder} />
+                    </View>
+                  )}
+                </React.Fragment>
+              ))}
             </View>
           </View>
 
@@ -173,11 +268,59 @@ export default function LandingScreen() {
   );
 }
 
+// Belge kartı (hero mockup) stilleri -- ana s stilinden ayrı tutuldu, kendi
+// içinde kapalı bir bileşen.
+const m = StyleSheet.create({
+  wrap: { alignItems: 'center', ...Platform.select({ web: { transform: [{ rotate: '-3deg' }] } as any }) },
+  badgeTop: {
+    position: 'absolute', top: -14, right: 6, zIndex: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: authTheme.primary, borderRadius: authRadius.pill,
+    paddingVertical: 6, paddingHorizontal: 12,
+    ...Platform.select({ web: { boxShadow: '0 10px 24px rgba(59,130,246,0.45)' } as any }),
+  },
+  badgeTopText: { color: '#fff', fontSize: 11.5, fontWeight: '800' },
+  card: {
+    width: 300,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.lg,
+    padding: 18,
+    ...Platform.select({ web: { boxShadow: '0 30px 70px rgba(0,0,0,0.55)' } as any }),
+  },
+  cardHdr: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  cardHdrLogo: {
+    width: 26, height: 26, borderRadius: 13, borderWidth: 1.5, borderColor: authTheme.gold,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  cardHdrTag: { color: authTheme.textMuted, fontSize: 7.5, fontWeight: '800', textAlign: 'right', lineHeight: 9, letterSpacing: 0.4 },
+  cardDivider: { height: 2, backgroundColor: authTheme.line, marginVertical: 14, borderRadius: 1 },
+  line: { backgroundColor: authTheme.line, borderRadius: 3 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  rowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: authTheme.primary },
+  totalRow: {
+    marginTop: 6, backgroundColor: authTheme.bg, borderRadius: authRadius.md,
+    paddingVertical: 10, paddingHorizontal: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  totalLabel: { color: authTheme.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  totalValue: { color: authTheme.goldLight, fontSize: 15, fontWeight: '900' },
+  badgeBottom: {
+    position: 'absolute', bottom: -14, left: 4, zIndex: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: authTheme.bgSoft, borderColor: authTheme.cardBorder, borderWidth: 1,
+    borderRadius: authRadius.pill, paddingVertical: 7, paddingHorizontal: 12,
+    ...Platform.select({ web: { boxShadow: '0 14px 30px rgba(0,0,0,0.45)' } as any }),
+  },
+  badgeBottomText: { color: authTheme.textSoft, fontSize: 11, fontWeight: '700' },
+});
+
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { flexGrow: 1 },
   page: { paddingHorizontal: 20, paddingTop: authSpacing.md, paddingBottom: 40 },
-  pageDesktop: { paddingHorizontal: 48, maxWidth: 1120, width: '100%', alignSelf: 'center' },
+  pageDesktop: { paddingHorizontal: 48, maxWidth: 1240, width: '100%', alignSelf: 'center' },
 
   // NAV
   nav: {
@@ -208,7 +351,17 @@ const s = StyleSheet.create({
     paddingBottom: 40,
     position: 'relative',
   },
-  heroDesktop: { paddingTop: 64, paddingBottom: 64 },
+  heroDesktopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 56,
+    paddingBottom: 56,
+    gap: 40,
+  },
+  heroCol: { alignItems: 'center', width: '100%' },
+  heroColDesktop: { alignItems: 'flex-start', width: '52%' },
+  heroColMockup: { width: '40%', alignItems: 'center', justifyContent: 'center' },
   heroGlow: {
     position: 'absolute',
     top: -60,
@@ -235,24 +388,21 @@ const s = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 30,
     fontWeight: '900',
-    textAlign: 'center',
     lineHeight: 38,
     maxWidth: 640,
   },
-  heroTitleDesktop: { fontSize: 46, lineHeight: 54, maxWidth: 780 },
+  heroTitleDesktop: { fontSize: 48, lineHeight: 56, maxWidth: 620, textAlign: 'left', letterSpacing: -0.5 },
   heroSubtitle: {
     color: authTheme.textMuted,
     fontSize: 15,
     lineHeight: 22,
-    textAlign: 'center',
     marginTop: 16,
     maxWidth: 520,
   },
-  heroSubtitleDesktop: { fontSize: 17, lineHeight: 26, maxWidth: 640 },
+  heroSubtitleDesktop: { fontSize: 17, lineHeight: 27, maxWidth: 540, textAlign: 'left' },
   heroActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 12,
     marginTop: 28,
   },
@@ -267,6 +417,7 @@ const s = StyleSheet.create({
     ...Platform.select({
       ios: { shadowColor: authTheme.primary, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
       android: { elevation: 6 },
+      web: { boxShadow: '0 12px 28px rgba(59,130,246,0.35)' } as any,
     }),
   },
   primaryCtaText: { color: '#fff', fontSize: 15.5, fontWeight: '800' },
@@ -299,6 +450,29 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 24,
+  },
+
+  // HOW IT WORKS
+  stepsRow: { gap: 14 },
+  stepsRowDesktop: { flexDirection: 'row', alignItems: 'stretch', gap: 0 },
+  stepCard: {
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.lg,
+    padding: 18,
+    position: 'relative',
+  },
+  stepCardDesktop: { flex: 1 },
+  stepConnector: { alignItems: 'center', justifyContent: 'center', width: 36 },
+  stepNumWrap: {
+    position: 'absolute', top: 14, right: 14,
+  },
+  stepNum: { color: authTheme.textMuted, fontSize: 12, fontWeight: '900' },
+  stepIconWrap: {
+    width: 42, height: 42, borderRadius: 12,
+    backgroundColor: 'rgba(59,130,246,0.12)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
 
   // FEATURES GRID

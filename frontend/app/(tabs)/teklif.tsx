@@ -766,7 +766,13 @@ export default function EditorScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+          {/* İndirmeden/paylaşmadan sadece kaydetme -- bilgiler girildikten sonra
+              PDF/WhatsApp akışına girmeden teklifi kayıt altına almak için. */}
+          <TouchableOpacity style={[s.btnSave, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving} testID="save-only-btn">
+            {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="save-outline" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet</Text></>)}
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <TouchableOpacity style={[s.btnGhost, { flex: 0.8 }]} onPress={resetForm}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSoft} />
               <Text style={s.btnGhostText}>{t('teklifPage.s068')}</Text>
@@ -1283,6 +1289,7 @@ const s = StyleSheet.create({
   grandLabel: { color: '#cbd5e1', fontSize: 11.5, fontWeight: '900', letterSpacing: 0.6 },
   grandValue: { color: '#fff', fontSize: 17, fontWeight: '900' },
   btnPrimary: { marginTop: 12, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
+  btnSave: { marginTop: 14, backgroundColor: theme.colors.green, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.green, shadowOpacity: 0.35 },
   btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
   btnWhatsApp: { marginTop: 12, backgroundColor: '#25D366', paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: '#25D366', shadowOpacity: 0.35 },
   ekCard: { backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },

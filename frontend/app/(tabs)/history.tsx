@@ -352,7 +352,7 @@ export default function HistoryScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
         {[t('history.s003'), ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
+            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false} numberOfLines={1}>{st}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -712,9 +712,9 @@ const s = StyleSheet.create({
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  filterRowOuter: { flexGrow: 0, height: 56 },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center' },
-  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  filterRowOuter: { flexGrow: 0 },
+  filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' },
+  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },

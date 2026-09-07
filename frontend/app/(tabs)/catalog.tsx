@@ -271,6 +271,16 @@ export default function CatalogScreen() {
   const updateSystemName = (id: string, name: string) => setSistemTipleri(sistemTipleri.map((s) => (s.id === id ? { ...s, name } : s)));
   const commitSystemName = () => persistSystems(sistemTipleri);
   const removeSystemType = (id: string) => persistSystems(sistemTipleri.filter((s) => s.id !== id));
+  // Hizmet/Ürün gruplarını (sistem tiplerini) yukarı/aşağı taşır -- bu sıra
+  // hem Teklif ekranındaki "Sistem Tipi Seç" listesinde hem PDF'te aynen
+  // korunur (moveField'daki alan sıralama mantığıyla birebir aynı desen).
+  const moveSystemType = (fromIdx: number, direction: -1 | 1) => {
+    const next = [...sistemTipleri];
+    const toIdx = fromIdx + direction;
+    if (toIdx < 0 || toIdx >= next.length) return;
+    [next[fromIdx], next[toIdx]] = [next[toIdx], next[fromIdx]];
+    persistSystems(next);
+  };
 
   const exportCatalogJson = async () => {
       if (!activeCompany) return;
@@ -598,8 +608,10 @@ export default function CatalogScreen() {
         <Text style={s.sectionH}>{t('catalog.s026')}</Text>
         <Text style={s.hint}>{t('catalog.s027')}</Text>
 
-        {sistemTipleri.map((sys) => {
+        {sistemTipleri.map((sys, si) => {
           const isExpanded = expandedSystem === sys.id;
+          const isFirstSys = si === 0;
+          const isLastSys = si === sistemTipleri.length - 1;
           return (
             <View key={sys.id} style={s.systemCard} testID={`system-${sys.id}`}>
               <TouchableOpacity style={s.systemHdr} onPress={() => setExpandedSystem(isExpanded ? null : sys.id)}>
@@ -608,6 +620,28 @@ export default function CatalogScreen() {
                   <Text style={s.systemName}>{sys.name || t('catalog.s028')}</Text>
                   <Text style={s.systemMeta}>{(sys.fields || []).length} {t('catalog.s029')}</Text>
                 </View>
+                {!isStaffUser && (
+                  <View style={s.reorderCol}>
+                    <TouchableOpacity
+                      disabled={isFirstSys}
+                      onPress={() => moveSystemType(si, -1)}
+                      style={[s.reorderBtn, isFirstSys && s.reorderBtnDisabled]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      testID={`system-${sys.id}-up`}
+                    >
+                      <Ionicons name="chevron-up" size={16} color={isFirstSys ? theme.colors.line : theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={isLastSys}
+                      onPress={() => moveSystemType(si, 1)}
+                      style={[s.reorderBtn, isLastSys && s.reorderBtnDisabled]}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      testID={`system-${sys.id}-down`}
+                    >
+                      <Ionicons name="chevron-down" size={16} color={isLastSys ? theme.colors.line : theme.colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <TouchableOpacity onPress={() => duplicateSystemType(sys)} testID={`duplicate-system-${sys.id}`}>
                   <Ionicons name="copy-outline" size={18} color={theme.colors.textMuted} />
                 </TouchableOpacity>

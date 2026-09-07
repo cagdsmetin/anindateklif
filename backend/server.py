@@ -24,6 +24,7 @@ from datetime import datetime, timezone, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
 
 
 ROOT_DIR = Path(__file__).parent
@@ -2805,181 +2806,340 @@ async def restore_quote(quote_id: str, user=Depends(get_current_user)):
 
 
 # ============ QUOTE EXCEL EXPORT ============
-# Uygulamanın PDF teklifiyle aynı marka görünümünü (lacivert/indigo header,
-# beyaz kalın başlıklar, toplam satırı vurgusu) taşıyan gerçekten STİLLİ bir
-# .xlsx üretir. Frontend'de kullanılan ücretsiz 'xlsx' (SheetJS Community)
-# kütüphanesi hücre rengi/kalın yazı YAZAMIYOR (sadece Pro sürüm destekler) --
-# bu yüzden görsel tasarım burada, openpyxl ile (tam stil desteğine sahip)
-# sunucu tarafında üretiliyor.
-_XLSX_NAVY = "1E293B"
-_XLSX_PRIMARY = "4F46E5"
-_XLSX_PRIMARY_SOFT = "EEF2FF"
-_XLSX_LINE = "E2E8F0"
-_XLSX_TEXT = "0F172A"
-_XLSX_MUTED = "64748B"
-
+# Kullanıcının onayladığı referans tasarıma birebir uyan STİLLİ bir .xlsx
+# üretir (lacivert/gri kurumsal doküman görünümü). Frontend'de kullanılan
+# ücretsiz 'xlsx' (SheetJS Community) kütüphanesi hücre rengi/kalın yazı
+# YAZAMIYOR (sadece Pro sürüm destekler) -- bu yüzden görsel tasarım burada,
+# openpyxl ile (tam stil desteğine sahip) sunucu tarafında üretiliyor.
+#
+# Kalem açıklaması (buildItemDescription) ve **vurgu** notu ayrıştırma
+# (parseNoteSegments) mantığı frontend/src/lib/quote-utils.ts'teki aynı
+# adlı fonksiyonlarla birebir aynı davranacak şekilde Python'a taşınmıştır --
+# biri değişirse diğeri de güncellenmelidir.
+_XLSX_NAVY = "1F2A44"
+_XLSX_GRAY = "D9D9D9"
+_XLSX_RED = "C0392B"
 _CUR_SYMBOL = {"USD": "$", "EUR": "€", "TRY": "₺"}
 
 
 def _xlsx_money_fmt(cur: str) -> str:
     sym = _CUR_SYMBOL.get(cur, cur)
-    # SheetJS/Excel format codes don't reliably render arbitrary currency
-    # symbols before a signed number, so keep the symbol as a literal prefix.
-    return f'"{sym}" #,##0.00'
+    return f'"{sym}"#,##0.00'
+
+
+def _xlsx_normalize_label(s: str) -> str:
+    s = (s or "").lower()
+    s = s.translate(str.maketrans({"ı": "i", "ş": "s", "ğ": "g", "ü": "u", "ö": "o", "ç": "c"}))
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+_XLSX_HEIGHT_LABELS = {"yukseklik", "h", "height"}
+_XLSX_WIDTH_LABELS = {"genislik", "cephe", "en", "width", "w"}
+_XLSX_DEPTH_LABELS = {"derinlik", "uzunluk", "boy", "depth", "length", "d", "l"}
+
+
+def _xlsx_dim_role(label: str) -> Optional[str]:
+    n = _xlsx_normalize_label(label)
+    if n in _XLSX_HEIGHT_LABELS:
+        return "height"
+    if n in _XLSX_WIDTH_LABELS:
+        return "width"
+    if n in _XLSX_DEPTH_LABELS:
+        return "depth"
+    return None
+
+
+def _xlsx_render_dimension_fields(fields: List[Dict[str, str]]) -> List[str]:
+    items = [{"label": (f.get("label") or "").strip(), "value": (f.get("value") or "").strip()} for f in fields]
+    for it in items:
+        it["role"] = _xlsx_dim_role(it["label"])
+    width_has = any(it["role"] == "width" and it["value"] for it in items)
+    depth_has = any(it["role"] == "depth" and it["value"] for it in items)
+    combine = width_has and depth_has
+    parts: List[str] = []
+    emitted = False
+    for it in items:
+        if not it["label"] and not it["value"]:
+            continue
+        if it["role"] == "height" and it["value"]:
+            parts.append(f"H: {it['value']} mm")
+            continue
+        if it["role"] in ("width", "depth") and combine:
+            if not emitted:
+                w = next(x["value"] for x in items if x["role"] == "width")
+                d = next(x["value"] for x in items if x["role"] == "depth")
+                parts.append(f"{w} x {d} mm")
+                emitted = True
+            continue
+        if it["label"] and it["value"]:
+            parts.append(f"{it['label']}: {it['value']}")
+        elif it["value"]:
+            parts.append(it["value"])
+        else:
+            parts.append(it["label"])
+    return parts
+
+
+def _xlsx_build_item_description(it: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    mode = it.get("mode") or "general"
+    if mode == "technical":
+        head = it.get("sistemTipi") or it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        parts.extend(_xlsx_render_dimension_fields(it.get("sistemFields") or []))
+    elif mode == "manual":
+        head = it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        for f in it.get("customFields") or []:
+            key = (f.get("key") or "").strip()
+            value = (f.get("value") or "").strip()
+            if not key and not value:
+                continue
+            if key and value:
+                parts.append(f"{key}: {value}")
+            elif value:
+                parts.append(value)
+            else:
+                parts.append(key)
+    else:
+        head = it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        if it.get("aciklama"):
+            parts.append(it["aciklama"])
+    return (", ".join(parts) + ".") if parts else ""
+
+
+def _xlsx_parse_note_segments(raw: str):
+    if not raw:
+        return []
+    segments = []
+    last_index = 0
+    for m in re.finditer(r"\*\*([^*]+)\*\*", raw):
+        if m.start() > last_index:
+            segments.append((raw[last_index:m.start()], False))
+        segments.append((m.group(1), True))
+        last_index = m.end()
+    if last_index < len(raw):
+        segments.append((raw[last_index:], False))
+    return segments
+
+
+def _xlsx_notes_to_lines(raw: str):
+    segments = _xlsx_parse_note_segments(raw)
+    lines = []
+    cur_text = ""
+    cur_emph = False
+    for text, emph in segments:
+        subparts = text.split("\n")
+        for i, part in enumerate(subparts):
+            cur_text += part
+            if emph and part.strip():
+                cur_emph = True
+            if i < len(subparts) - 1:
+                lines.append((cur_text, cur_emph))
+                cur_text = ""
+                cur_emph = False
+    if cur_text.strip() or cur_emph:
+        lines.append((cur_text, cur_emph))
+    return [(t, e) for t, e in lines if t.strip()]
+
+
+def _xlsx_fmt_date_ddmmyyyy(iso: str) -> str:
+    try:
+        d = datetime.strptime((iso or "")[:10], "%Y-%m-%d")
+        return d.strftime("%d-%m-%Y")
+    except Exception:
+        return iso or ""
 
 
 def build_quote_xlsx(company: Dict[str, Any], quote: Dict[str, Any]) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "Teklif"
+    n_cols = 5  # A..E
 
-    n_cols = 6  # #, Ürün/Hizmet, Açıklama, Adet, Birim Fiyat, Tutar
-    last_col_letter = get_column_letter(n_cols)
+    navy_fill = PatternFill("solid", fgColor=_XLSX_NAVY)
+    gray_fill = PatternFill("solid", fgColor=_XLSX_GRAY)
+    red_fill = PatternFill("solid", fgColor=_XLSX_RED)
 
-    thin = Side(style="thin", color=_XLSX_LINE)
-    border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    def merge_row(row: int, text: str, font: Font, fill: Optional[PatternFill] = None,
-                  align: Alignment = Alignment(horizontal="left", vertical="center"), height: Optional[float] = None):
-        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_cols)
-        cell = ws.cell(row=row, column=1, value=text)
+    def merge_full(row: int, text: str, font: Font, fill: Optional[PatternFill] = None,
+                    align: Optional[Alignment] = None, height: Optional[float] = None,
+                    start_col: int = 1, end_col: Optional[int] = None):
+        end_col = end_col or n_cols
+        ws.merge_cells(start_row=row, start_column=start_col, end_row=row, end_column=end_col)
+        cell = ws.cell(row=row, column=start_col, value=text)
         cell.font = font
-        cell.alignment = align
+        cell.alignment = align or Alignment(horizontal="left", vertical="center", indent=1)
         if fill:
-            for c in range(1, n_cols + 1):
+            for c in range(start_col, end_col + 1):
                 ws.cell(row=row, column=c).fill = fill
         if height:
             ws.row_dimensions[row].height = height
         return cell
 
-    r = 1
-    # ---- Marka başlığı (firma adı + TEKLİF FORMU) — lacivert zemin ----
-    navy_fill = PatternFill("solid", fgColor=_XLSX_NAVY)
-    merge_row(r, company.get("sirketAdi") or "Anında Teklif", Font(bold=True, size=16, color="FFFFFF"),
-              fill=navy_fill, align=Alignment(horizontal="left", vertical="center", indent=1), height=26)
-    r += 1
-    contact_bits = [b for b in [company.get("adres"), company.get("telefon"), company.get("email"), company.get("website")] if b]
-    merge_row(r, "  ".join(contact_bits), Font(size=9.5, color="CBD5E1"),
-              fill=navy_fill, align=Alignment(horizontal="left", vertical="center", indent=1), height=16)
-    r += 1
-    merge_row(r, "FİYAT TEKLİFİ", Font(bold=True, size=11, color=_XLSX_PRIMARY),
-              fill=PatternFill("solid", fgColor=_XLSX_PRIMARY_SOFT),
-              align=Alignment(horizontal="left", vertical="center", indent=1), height=20)
-    r += 1
-    r += 1  # spacer
-
-    # ---- Teklif / Müşteri bilgi bloğu (2 sütunlu etiket-değer tablosu) ----
-    info_pairs = [
-        ("Teklif No", quote.get("teklifNo", "")), ("Tarih", quote.get("tarih", "")),
-        ("Geçerlilik", quote.get("gecerlilik", "")), ("Proje Adı", quote.get("projeAdi", "")),
-        ("Müşteri Firma", quote.get("musFirma", "")), ("Yetkili", quote.get("musYetkili", "")),
-        ("Telefon", quote.get("musTelefon", "")), ("E-posta", quote.get("musEmail", "")),
-        ("Adres", quote.get("musAdres", "")), ("Ödeme Şekli", quote.get("odemeSekli", "")),
-        ("Menşei", quote.get("mensei", "")), ("Teslim Süresi", quote.get("teslimGun", "")),
-    ]
-    label_fill = PatternFill("solid", fgColor="F8FAFC")
-    for label, value in info_pairs:
-        c1 = ws.cell(row=r, column=1, value=label)
-        c1.font = Font(bold=True, size=10, color=_XLSX_MUTED)
-        c1.fill = label_fill
-        c1.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=n_cols)
-        c2 = ws.cell(row=r, column=2, value=value)
-        c2.font = Font(size=10.5, color=_XLSX_TEXT)
-        c2.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-        r += 1
-    r += 1  # spacer
-
-    # ---- Kalemler tablosu ----
-    table_header_row = r
-    headers = ["#", "Ürün / Hizmet", "Açıklama", "Adet", "Birim Fiyat", "Tutar"]
-    for i, h in enumerate(headers, start=1):
-        cell = ws.cell(row=r, column=i, value=h)
-        cell.font = Font(bold=True, size=10.5, color="FFFFFF")
-        cell.fill = PatternFill("solid", fgColor=_XLSX_PRIMARY)
-        cell.alignment = Alignment(horizontal="center" if i in (1, 4) else "left", vertical="center")
-        cell.border = border_all
-    ws.row_dimensions[r].height = 22
-    r += 1
-
     cur = quote.get("paraBirimi", "USD")
     money_fmt = _xlsx_money_fmt(cur)
+
+    r = 1
+    merge_full(r, company.get("sirketAdi") or "Anında Teklif", Font(bold=True, size=14), height=32)
+    header_name_row = r
+    r += 1
+    contact_bits = [b for b in [company.get("adres"), company.get("telefon"), company.get("email"), company.get("website")] if b]
+    merge_full(r, "  ".join(contact_bits), Font(size=9))
+    r += 1
+    merge_full(r, "TEKLİF FORMU", Font(bold=True, size=16), fill=gray_fill, height=20)
+    r += 1
+    r += 1  # spacer
+
+    # ---- Firma logosu (üst-sağ köşe) ----
+    logo_b64 = company.get("logoBase64") or ""
+    if logo_b64.startswith("data:image/"):
+        try:
+            img_bytes = base64.b64decode(logo_b64.split(",", 1)[1])
+            img = XLImage(io.BytesIO(img_bytes))
+            max_h = 60
+            if img.height > max_h:
+                ratio = max_h / img.height
+                img.width = int(img.width * ratio)
+                img.height = max_h
+            ws.add_image(img, f"{get_column_letter(n_cols)}{header_name_row}")
+        except Exception:
+            logger.warning("Excel export: logo gömülemedi", exc_info=True)
+
+    def info_row(row: int, label: str, value: str):
+        c1 = ws.cell(row=row, column=1, value=label)
+        c1.font = Font(bold=True, size=10)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=n_cols)
+        c2 = ws.cell(row=row, column=2, value=value)
+        c2.font = Font(size=10)
+
+    info_row(r, "Teklif No", quote.get("teklifNo", "")); r += 1
+    info_row(r, "Tarih", _xlsx_fmt_date_ddmmyyyy(quote.get("tarih", ""))); r += 1
+    info_row(r, "Geçerlilik Tarihi", _xlsx_fmt_date_ddmmyyyy(quote.get("gecerlilik", ""))); r += 1
+    r += 1  # spacer
+
+    merge_full(r, "MÜŞTERİ BİLGİLERİ / SİPARİŞ BİLGİLERİ", Font(bold=True, size=10, color="FFFFFF"), fill=navy_fill)
+    r += 1
+
+    def two_col_row(row: int, l1: str, v1: str, l2: str, v2: str):
+        c1 = ws.cell(row=row, column=1, value=l1); c1.font = Font(bold=True, size=10)
+        c2 = ws.cell(row=row, column=2, value=v1); c2.font = Font(size=10)
+        c3 = ws.cell(row=row, column=3, value=l2); c3.font = Font(bold=True, size=10)
+        ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=n_cols)
+        c4 = ws.cell(row=row, column=4, value=v2); c4.font = Font(size=10)
+
+    two_col_row(r, "Firma", quote.get("musFirma", ""), "Proje Adı", quote.get("projeAdi", "")); r += 1
+    two_col_row(r, "Müşteri Adı", quote.get("musYetkili", ""), "Nakliye", quote.get("nakliye", "")); r += 1
+    two_col_row(r, "Telefon", quote.get("musTelefon") or "-", "Para Birimi", quote.get("paraBirimi", "")); r += 1
+    two_col_row(r, "E-mail", quote.get("musEmail") or "-", "Ödeme Şekli", quote.get("odemeSekli", "")); r += 1
+    two_col_row(r, "Adres", quote.get("musAdres", ""), "Menşei", quote.get("mensei", "")); r += 1
+    two_col_row(r, "", "", "Teslim", quote.get("teslimGun", "")); r += 1
+    r += 1  # spacer
+
+    table_header_row = r
+    headers = ["S.NO", "SİSTEM / HİZMET", "ADET", "BİRİM FİYAT", "TOPLAM FİYAT"]
+    for i, h in enumerate(headers, start=1):
+        cell = ws.cell(row=r, column=i, value=h)
+        cell.font = Font(bold=True, size=10, color="FFFFFF")
+        cell.fill = navy_fill
+        cell.alignment = Alignment(horizontal="center" if i in (1, 3) else "left", vertical="center")
+    r += 1
+
     items = quote.get("items") or []
+    first_item_row = r
     for idx, it in enumerate(items):
         adet = float(it.get("adet") or 0)
         fiyat = float(it.get("birimFiyat") or 0)
-        tutar = adet * fiyat
-        row_fill = PatternFill("solid", fgColor="F8FAFC") if idx % 2 == 1 else None
-        values = [idx + 1, it.get("urunAdi") or it.get("sistemTipi") or "", it.get("aciklama") or "",
-                  adet, fiyat, tutar]
-        for ci, v in enumerate(values, start=1):
+        desc = _xlsx_build_item_description(it)
+        row_vals = [idx + 1, desc, adet, fiyat]
+        for ci, v in enumerate(row_vals, start=1):
             cell = ws.cell(row=r, column=ci, value=v)
-            cell.border = border_all
-            cell.font = Font(size=10, color=_XLSX_TEXT, bold=(ci == 6))
+            cell.font = Font(size=10)
             if ci == 1:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.alignment = Alignment(horizontal="center", vertical="top")
+            elif ci == 2:
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            elif ci == 3:
+                cell.alignment = Alignment(horizontal="center", vertical="top")
             elif ci == 4:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-            elif ci in (5, 6):
-                cell.alignment = Alignment(horizontal="right", vertical="center")
+                cell.alignment = Alignment(horizontal="right", vertical="top")
                 cell.number_format = money_fmt
-            else:
-                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-            if row_fill:
-                cell.fill = row_fill
+        e_cell = ws.cell(row=r, column=5, value=f"=C{r}*D{r}")
+        e_cell.font = Font(size=10)
+        e_cell.alignment = Alignment(horizontal="right", vertical="top")
+        e_cell.number_format = money_fmt
+        ws.row_dimensions[r].height = 90
         r += 1
+    last_item_row = r - 1
 
-    ws.freeze_panes = ws.cell(row=table_header_row + 1, column=1)
+    merge_full(r, "ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.",
+               Font(bold=True, size=10, color="FFFFFF"), fill=red_fill)
+    r += 1
     r += 1  # spacer
 
-    # ---- Toplamlar ----
-    def total_row(label: str, value: float, bold: bool = False, big: bool = False, highlight: bool = False):
-        nonlocal r
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_cols - 1)
-        lc = ws.cell(row=r, column=1, value=label)
-        lc.alignment = Alignment(horizontal="right", vertical="center", indent=1)
-        vc = ws.cell(row=r, column=n_cols, value=value)
-        vc.number_format = money_fmt
-        vc.alignment = Alignment(horizontal="right", vertical="center", indent=1)
-        if highlight:
-            fill = PatternFill("solid", fgColor=_XLSX_NAVY)
-            lc.font = Font(bold=True, size=12, color="FFFFFF")
-            vc.font = Font(bold=True, size=13, color="FFFFFF")
-            lc.fill = fill
-            vc.fill = fill
-            ws.row_dimensions[r].height = 24
-        else:
-            lc.font = Font(bold=bold, size=11 if big else 10, color=_XLSX_TEXT)
-            vc.font = Font(bold=bold, size=11 if big else 10, color=_XLSX_TEXT)
-        r += 1
-
-    total_row("Ara Toplam", float(quote.get("araToplam") or 0))
-    if float(quote.get("iskonto") or 0) > 0:
-        total_row(f"İskonto (%{quote.get('iskonto')})", -float(quote.get("iskontoTutar") or 0))
-    total_row(f"KDV (%{quote.get('kdvOrani')})", float(quote.get("kdvTutar") or 0))
-    total_row("GENEL TOPLAM", float(quote.get("genelToplam") or 0), highlight=True)
-
+    totals_start = r
     notlar = (quote.get("notlar") or "").strip()
+    note_lines = _xlsx_notes_to_lines(notlar) if notlar else []
+
     if notlar:
-        r += 1
-        merge_row(r, "NOTLAR", Font(bold=True, size=9.5, color=_XLSX_MUTED))
-        r += 1
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_cols)
-        nc = ws.cell(row=r, column=1, value=notlar)
-        nc.font = Font(size=10, color=_XLSX_TEXT)
-        nc.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-        ws.row_dimensions[r].height = 16 * (notlar.count("\n") + 2)
-        r += 1
+        c = ws.cell(row=r, column=1, value="ÖZEL NOTLAR & SATIŞ DETAYLARI")
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
+        c.font = Font(bold=True, size=10, color="FFFFFF")
+        for cc in range(1, 4):
+            ws.cell(row=r, column=cc).fill = navy_fill
+        notes_row = r + 1
+        for text, emph in note_lines:
+            ws.merge_cells(start_row=notes_row, start_column=1, end_row=notes_row, end_column=3)
+            nc = ws.cell(row=notes_row, column=1, value=text)
+            nc.font = Font(bold=emph, size=10)
+            nc.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            notes_row += 1
+    else:
+        notes_row = r
 
-    r += 1
-    merge_row(r, "Bu teklif Anında Teklif ile hazırlanmıştır.", Font(size=8.5, italic=True, color=_XLSX_MUTED))
+    iskonto_or = float(quote.get("iskonto") or 0)
+    kdv_or = float(quote.get("kdvOrani") or 0)
+    iskonto_tutar = float(quote.get("iskontoTutar") or 0)
+    kdv_tutar = float(quote.get("kdvTutar") or 0)
+    genel_toplam = float(quote.get("genelToplam") or 0)
 
-    ws.column_dimensions["A"].width = 26
-    ws.column_dimensions["B"].width = 26
-    ws.column_dimensions["C"].width = 30
-    ws.column_dimensions["D"].width = 10
-    ws.column_dimensions["E"].width = 14
-    ws.column_dimensions["F"].width = 16
+    def total_row(row: int, label: str, value):
+        dc = ws.cell(row=row, column=4, value=label)
+        dc.font = Font(bold=True, size=10)
+        dc.fill = gray_fill
+        ec = ws.cell(row=row, column=5, value=value)
+        ec.font = Font(bold=True, size=10)
+        ec.fill = gray_fill
+        ec.number_format = money_fmt
+        ec.alignment = Alignment(horizontal="right")
+
+    tr = totals_start
+    if items:
+        total_row(tr, "ARA TOPLAM", f"=SUM(E{first_item_row}:E{last_item_row})")
+    else:
+        total_row(tr, "ARA TOPLAM", 0)
+    tr += 1
+    if iskonto_or > 0:
+        total_row(tr, f"İSKONTO (%{iskonto_or:g})", -iskonto_tutar)
+        tr += 1
+    if kdv_or > 0:
+        total_row(tr, f"KDV (%{kdv_or:g})", kdv_tutar)
+        tr += 1
+    total_row(tr, "GENEL TOPLAM", genel_toplam)
+    tr += 1
+
+    r = max(notes_row, tr)
+    r += 1  # spacer
+    merge_full(r, "Bu teklif Anında Teklif uygulaması ile hazırlanmıştır. www.anindateklif.co", Font(size=8))
+
+    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["B"].width = 55
+    ws.column_dimensions["C"].width = 8
+    ws.column_dimensions["D"].width = 14
+    ws.column_dimensions["E"].width = 16
     ws.sheet_view.showGridLines = False
 
     buf = io.BytesIO()

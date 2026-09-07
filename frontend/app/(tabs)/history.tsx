@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as XLSX from 'xlsx';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
@@ -203,6 +204,75 @@ export default function HistoryScreen() {
     } catch (e: any) { showToast(t('history.s008') + (e?.message || '')); }
   };
 
+  // Excel (.xlsx) indirme -- Geçmiş listesindeki her kart için de PDF/WhatsApp
+  // ile aynı hizada, önizlemeye girmeden tek dokunuşla indirilebilsin diye
+  // (bkz. preview.tsx: doExcelDownload -- birebir aynı sütun yapısı).
+  const doExcelDownload = async (quote: QuoteT) => {
+    try {
+      const rows: (string | number)[][] = [
+        ['Teklif No', quote.teklifNo],
+        ['Tarih', quote.tarih],
+        ['Geçerlilik', quote.gecerlilik],
+        ['Müşteri Firma', quote.musFirma],
+        ['Yetkili', quote.musYetkili],
+        ['Telefon', quote.musTelefon],
+        ['E-posta', quote.musEmail],
+        ['Adres', quote.musAdres],
+        ['Proje Adı', quote.projeAdi],
+        ['Ödeme Şekli', quote.odemeSekli],
+        ['Menşei', quote.mensei],
+        ['Teslim Süresi', quote.teslimGun],
+        ['Nakliye', quote.nakliye],
+        ['Para Birimi', quote.paraBirimi],
+        [],
+        ['Ürün/Hizmet', 'Açıklama', 'Adet', 'Birim', 'Birim Fiyat', 'Tutar'],
+      ];
+      quote.items.forEach((it) => {
+        rows.push([
+          it.urunAdi || it.sistemTipi || '',
+          it.aciklama || '',
+          it.adet || 0,
+          it.birim || '',
+          it.birimFiyat || 0,
+          (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0),
+        ]);
+      });
+      rows.push([]);
+      rows.push(['Ara Toplam', quote.araToplam]);
+      rows.push([`İskonto (%${quote.iskonto})`, -quote.iskontoTutar]);
+      rows.push([`KDV (%${quote.kdvOrani})`, quote.kdvTutar]);
+      rows.push(['Genel Toplam', quote.genelToplam]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 28 }, { wch: 32 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Teklif');
+
+      const fileName = buildQuoteFileName(new Date()) + '.xlsx';
+      const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (Platform.OS === 'web') {
+        const wbout: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: mime });
+        const url = URL.createObjectURL(blob);
+        await downloadFileWeb(url, fileName);
+        showToast('Excel indirildi');
+      } else {
+        const b64: string = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const uri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Teklif Excel', UTI: 'org.openxmlformats.spreadsheetml.sheet' });
+        } else {
+          showToast('Excel dosyası oluşturuldu ama paylaşım kullanılamıyor');
+        }
+      }
+    } catch (e: any) {
+      showToast('Excel hatası: ' + (e?.message || ''));
+    }
+  };
+
   const doWhatsApp = async (quote: QuoteT, message?: string) => {
     if (!activeCompany) return;
     // Open the tab synchronously, still inside this click's user-gesture
@@ -379,6 +449,14 @@ export default function HistoryScreen() {
                 <TouchableOpacity style={s.actBtn} onPress={() => doShare(quote)} testID={`pdf-${quote.id}`}>
                   <Ionicons name="document-text-outline" size={14} color={theme.colors.primary} />
                   <Text style={s.actText}>{t('history.s022')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.actBtnIcon, { backgroundColor: '#E8F5E9' }]}
+                  onPress={() => doExcelDownload(quote)}
+                  testID={`excel-${quote.id}`}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="grid-outline" size={16} color="#107C41" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />

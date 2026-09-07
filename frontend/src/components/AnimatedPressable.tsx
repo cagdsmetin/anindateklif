@@ -1,6 +1,34 @@
 import React, { useRef } from 'react';
-import { Animated, GestureResponderEvent, Platform, Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
+import { Animated, GestureResponderEvent, Platform, Pressable, PressableProps, StyleProp, StyleSheet, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
+
+// Flex-layout ile ilgili özellikler -- bunlar dıştaki Pressable'a taşınmalı,
+// çünkü flex-wrap'li bir grid'in (ör. Panel'deki Modüller grid'i) genişlik
+// hesaplaması ancak GERÇEK flex child'da (Pressable) doğru çalışır. Bunlar
+// içteki Animated.View'da kalırsa (width: '31%' gibi) o child'ın kendisi flex
+// item olmadığından yüzde hesaplaması content-size'a çöker (bkz. Modüller
+// grid'inin tek satıra sıkışıp etiketlerin kısalması bugu).
+const LAYOUT_KEYS = [
+  'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight',
+  'flex', 'flexBasis', 'flexGrow', 'flexShrink', 'alignSelf',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight',
+  'marginHorizontal', 'marginVertical', 'marginStart', 'marginEnd',
+  'position', 'top', 'bottom', 'left', 'right',
+] as const;
+
+function splitLayoutStyle(style: StyleProp<ViewStyle>): [ViewStyle, ViewStyle] {
+  const flat = (StyleSheet.flatten(style) || {}) as ViewStyle;
+  const layout: any = {};
+  const rest: any = {};
+  for (const key of Object.keys(flat)) {
+    if ((LAYOUT_KEYS as readonly string[]).includes(key)) {
+      layout[key] = (flat as any)[key];
+    } else {
+      rest[key] = (flat as any)[key];
+    }
+  }
+  return [layout, rest];
+}
 
 interface AnimatedPressableProps extends Omit<PressableProps, 'style'> {
   children: React.ReactNode;
@@ -43,9 +71,11 @@ export default function AnimatedPressable({
     onPress?.(e);
   };
 
+  const [layoutStyle, restStyle] = splitLayoutStyle(style);
+
   return (
-    <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handlePress} {...rest}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
+    <Pressable style={layoutStyle} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handlePress} {...rest}>
+      <Animated.View style={[restStyle, { transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>
   );
 }

@@ -10,6 +10,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
+import FloatingTabBar from '@/src/components/FloatingTabBar';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -193,18 +194,12 @@ export default function TabsLayout() {
   const tabs = (
     <Tabs
       initialRouteName="index"
+      // Masaüstünde alt bar hiç render edilmiyor (sol sidebar var); mobilde
+      // ve mobil web'de özel yüzen (floating) pil bar kullanılıyor -- bkz.
+      // src/components/FloatingTabBar.tsx.
+      tabBar={isDesktopWeb ? () => null : (props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: isDesktopWeb
-          ? { display: 'none' }
-          : {
-              height: 52 + insets.bottom,
-              paddingTop: 8,
-              paddingBottom: insets.bottom + 6,
-              borderTopWidth: 0,
-              backgroundColor: theme.colors.navyDark,
-              elevation: 8,
-            },
         tabBarShowLabel: false,
         tabBarItemStyle: { paddingHorizontal: 0 },
       }}

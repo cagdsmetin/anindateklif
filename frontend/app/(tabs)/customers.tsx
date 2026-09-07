@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
+import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { useLanguage } from '@/src/lib/i18n';
 
 const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
@@ -57,15 +58,14 @@ export default function CustomersScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Primary CTA — matches the reference screenshot */}
-        <TouchableOpacity
+        <AnimatedPressable
           style={s.addBtn}
           onPress={() => router.push('/customer-add')}
-          activeOpacity={0.9}
           testID="customer-add-btn"
         >
           <Ionicons name="person-add" size={17} color="#fff" />
           <Text style={s.addBtnText}>{t('customers.s003')}</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>

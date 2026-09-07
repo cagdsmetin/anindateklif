@@ -510,6 +510,8 @@ const tr: Dict = {
     s041: 'Her kalemin maliyetini ayrı ayrı gir, toplam ve kar otomatik hesaplansın. Boş bıraktıkların kaydedilmez.',
     s042: 'Bu teklifte kalem yok',
     s043: 'Kalem',
+    s044: 'Kopyala',
+    s045: 'Teklif kopyalandı, düzenleyip kaydedebilirsiniz',
   },
   join: {
     s001: 'Davet bilgisi alınamadı',
@@ -1711,6 +1713,8 @@ const en: Dict = {
     s041: 'Enter each item\'s cost separately -- the total and profit are calculated automatically. Anything left blank is not saved.',
     s042: 'This quote has no items',
     s043: 'Item',
+    s044: 'Duplicate',
+    s045: 'Quote duplicated — you can edit and save it',
   },
   join: {
     s001: 'Could not retrieve invitation information',
@@ -2912,6 +2916,8 @@ const it: Dict = {
     s041: 'Inserisci il costo di ogni voce separatamente: il totale e il profitto vengono calcolati automaticamente. Le voci lasciate vuote non vengono salvate.',
     s042: 'Questo preventivo non ha voci',
     s043: 'Voce',
+    s044: 'Duplica',
+    s045: 'Preventivo duplicato — puoi modificarlo e salvarlo',
   },
   join: {
     s001: "Impossibile recuperare i dati dell'invito",

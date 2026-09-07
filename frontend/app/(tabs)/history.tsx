@@ -148,6 +148,10 @@ export default function HistoryScreen() {
   const monthVolumeEquiv = equivFromTRY(monthVolumeTRY);
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: id } });
+  // "Kopyala" -- Teklif ekranını bu teklifin bilgileriyle dolu ama YENİ bir
+  // kayıt olarak açar (bkz. teklif.tsx: loadFromQuoteAsCopy). Sık tekrar eden
+  // müşteriler/kalemler için baştan girmek yerine tek dokunuşla taslak oluşturur.
+  const openDuplicate = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { duplicateFrom: id } });
 
   const generatePdf = async (quote: QuoteT): Promise<{ uri: string; fileName: string } | null> => {
     if (!activeCompany) return null;
@@ -379,6 +383,14 @@ export default function HistoryScreen() {
                 <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
                   <Text style={[s.actText, { color: '#16a34a' }]}>{t('history.s023')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.actBtnIcon, { backgroundColor: theme.colors.primary + '14' }]}
+                  onPress={() => openDuplicate(quote.id)}
+                  testID={`duplicate-quote-${quote.id}`}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="copy-outline" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtnIcon} onPress={() => setDeleteTarget(quote.id)} testID={`delete-quote-${quote.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />

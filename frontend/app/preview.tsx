@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as XLSX from 'xlsx';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml, PdfTemplateId } from '@/src/lib/pdf';
@@ -179,6 +180,77 @@ export default function PreviewScreen() {
     }
   };
 
+  // Excel (.xlsx) indirme -- kalem tablosunu ve toplamları muhasebe/ERP'ye
+  // aktarım veya kendi arşivi için tablo halinde isteyen kullanıcılar için.
+  // PDF akışından bağımsız: xlsx kütüphanesiyle (zaten Katalog içe aktarmada
+  // kullanılıyor) doğrudan bir workbook üretilip web'de indiriliyor / native'de
+  // paylaşım sayfası açılıyor.
+  const doExcelDownload = async () => {
+    try {
+      const rows: (string | number)[][] = [
+        ['Teklif No', quote.teklifNo],
+        ['Tarih', quote.tarih],
+        ['Geçerlilik', quote.gecerlilik],
+        ['Müşteri Firma', quote.musFirma],
+        ['Yetkili', quote.musYetkili],
+        ['Telefon', quote.musTelefon],
+        ['E-posta', quote.musEmail],
+        ['Adres', quote.musAdres],
+        ['Proje Adı', quote.projeAdi],
+        ['Ödeme Şekli', quote.odemeSekli],
+        ['Menşei', quote.mensei],
+        ['Teslim Süresi', quote.teslimGun],
+        ['Nakliye', quote.nakliye],
+        ['Para Birimi', quote.paraBirimi],
+        [],
+        ['Ürün/Hizmet', 'Açıklama', 'Adet', 'Birim', 'Birim Fiyat', 'Tutar'],
+      ];
+      quote.items.forEach((it) => {
+        rows.push([
+          it.urunAdi || it.sistemTipi || '',
+          it.aciklama || '',
+          it.adet || 0,
+          it.birim || '',
+          it.birimFiyat || 0,
+          (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0),
+        ]);
+      });
+      rows.push([]);
+      rows.push(['Ara Toplam', quote.araToplam]);
+      rows.push([`İskonto (%${quote.iskonto})`, -quote.iskontoTutar]);
+      rows.push([`KDV (%${quote.kdvOrani})`, quote.kdvTutar]);
+      rows.push(['Genel Toplam', quote.genelToplam]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 28 }, { wch: 32 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Teklif');
+
+      const fileName = buildQuoteFileName(new Date()) + '.xlsx';
+      const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (Platform.OS === 'web') {
+        const wbout: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: mime });
+        const url = URL.createObjectURL(blob);
+        await downloadFileWeb(url, fileName);
+        showToast('Excel indirildi');
+      } else {
+        const b64: string = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const uri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Teklif Excel', UTI: 'org.openxmlformats.spreadsheetml.sheet' });
+        } else {
+          showToast('Excel dosyası oluşturuldu ama paylaşım kullanılamıyor');
+        }
+      }
+    } catch (e: any) {
+      showToast('Excel hatası: ' + (e?.message || ''));
+    }
+  };
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.topBar}>
@@ -260,6 +332,9 @@ export default function PreviewScreen() {
           <Ionicons name="logo-whatsapp" size={16} color="#fff" />
           <Text style={s.actionBtnAccText}>WhatsApp</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={s.actionBtnExcel} onPress={doExcelDownload} testID="preview-excel-btn" hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+          <Ionicons name="grid-outline" size={18} color="#107C41" />
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -291,4 +366,5 @@ const s = StyleSheet.create({
   actionBtnAcc: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.colors.primary, flex: 1.2 },
   actionBtnAccText: { color: '#fff', fontWeight: '900', fontSize: 12 },
   actionBtnWa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: '#25D366', flex: 1 },
+  actionBtnExcel: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#C8E6C9' },
 });

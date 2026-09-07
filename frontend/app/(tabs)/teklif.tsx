@@ -74,7 +74,7 @@ export default function EditorScreen() {
   };
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ quoteId?: string }>();
+  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   // Yalnızca ekranda küçük durum rozeti göstermek için -- kaydetme akışını
@@ -127,6 +127,10 @@ export default function EditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+  // Geçmiş'ten "Kopyala" ile gelindiğinde aynı duplicateFrom id'sinin
+  // formu tekrar tekrar sıfırlamasını önlemek için (kullanıcı formu
+  // düzenlemeye başladıktan sonra da param URL'de kalmaya devam eder).
+  const duplicatedRef = useRef<string | null>(null);
   // Manuel/Genel kalemlerde daha önce girilmiş ürün adı -> fiyat
   // eşleşmeleri (cihazda, firma bazlı kalıcı). Ref kullanıyoruz çünkü
   // sadece updateItem içinde okunup yazılıyor, ekranda ayrıca gösterilmiyor.
@@ -158,6 +162,17 @@ export default function EditorScreen() {
     }
   }, [params.quoteId, quotes]);
 
+  // Geçmiş ekranındaki "Kopyala" butonuyla gelindiğinde: seçilen teklifin
+  // tüm bilgilerini forma doldur ama editingId'yi BOŞ bırak (loadFromQuote'tan
+  // farkı budur) -- böylece Kaydet, orijinal tekliften bağımsız TAMAMEN YENİ
+  // bir kayıt oluşturur, üzerine yazmaz.
+  useEffect(() => {
+    if (params.duplicateFrom && duplicatedRef.current !== params.duplicateFrom) {
+      const q = quotes.find((qq) => qq.id === params.duplicateFrom);
+      if (q) { loadFromQuoteAsCopy(q); duplicatedRef.current = params.duplicateFrom; }
+    }
+  }, [params.duplicateFrom, quotes]);
+
   // `quotes` loads asynchronously (after `loading` already flips to false),
   // so the initial Teklif No may be numbered before today's quotes were
   // actually counted. Keep it in sync with `quotes` for a brand new,
@@ -176,6 +191,26 @@ export default function EditorScreen() {
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
     setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
     setDurum(q.durum || 'Beklemede'); setLeavingItemIds(new Set());
+  };
+
+  // "Kopyala" (Geçmiş ekranı) -- loadFromQuote ile aynı alanları doldurur,
+  // ama editingId'yi BOŞ bırakır ve teklif no/tarih/geçerlilik/durumu
+  // sıfırdan üretir; böylece Kaydet orijinal tekliften bağımsız yepyeni bir
+  // kayıt oluşturur, üzerine yazmaz. Kalemler de yeni id'lerle kopyalanır.
+  const loadFromQuoteAsCopy = (q: QuoteT) => {
+    setEditingId(undefined);
+    setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1));
+    setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
+    setHazirlayanEmail(q.hazirlayanEmail || user?.email || ''); setMusFirma(q.musFirma); setMusYetkili(q.musYetkili);
+    setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
+    setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
+    setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
+    setNotlar(q.notlar);
+    setItems((q.items || []).map((it) => ({ ...it, id: newItemId() })));
+    setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
+    setDurum('Beklemede'); setLeavingItemIds(new Set());
+    teklifNoManualRef.current = false;
+    showToast(t('history.s045'));
   };
 
   const resetForm = useCallback(() => {

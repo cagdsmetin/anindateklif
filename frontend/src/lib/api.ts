@@ -141,6 +141,22 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
   }
 }
 
+// Teklifin, PDF ile aynı marka görünümüne (renkli/kalın başlıklar) sahip
+// gerçek stilli .xlsx dosyasını sunucudan indirir -- istemcideki ücretsiz
+// 'xlsx' kütüphanesi hücre rengi/kalın yazı YAZAMADIĞI için bu dosya artık
+// backend'de (openpyxl ile) üretiliyor, burada sadece ham baytlar alınıyor.
+export async function fetchQuoteExcelBytes(quoteId: string): Promise<ArrayBuffer> {
+  const token = await getSessionToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/quotes/${quoteId}/export-excel`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(`Excel indirilemedi (${res.status})`, 'http', res.status, body);
+  }
+  return await res.arrayBuffer();
+}
+
 export const api = {
   // Auth
   register: (data: { email: string; password: string; name: string; phone: string }) =>

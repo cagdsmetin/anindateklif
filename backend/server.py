@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form, Request, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -19,7 +19,11 @@ from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any, Tuple
 import uuid
+import io
 from datetime import datetime, timezone, timedelta
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 
 ROOT_DIR = Path(__file__).parent
@@ -2798,6 +2802,207 @@ async def restore_quote(quote_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Silinen teklif bulunamadı (süresi dolmuş olabilir)")
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     return Quote(**doc)
+
+
+# ============ QUOTE EXCEL EXPORT ============
+# Uygulamanın PDF teklifiyle aynı marka görünümünü (lacivert/indigo header,
+# beyaz kalın başlıklar, toplam satırı vurgusu) taşıyan gerçekten STİLLİ bir
+# .xlsx üretir. Frontend'de kullanılan ücretsiz 'xlsx' (SheetJS Community)
+# kütüphanesi hücre rengi/kalın yazı YAZAMIYOR (sadece Pro sürüm destekler) --
+# bu yüzden görsel tasarım burada, openpyxl ile (tam stil desteğine sahip)
+# sunucu tarafında üretiliyor.
+_XLSX_NAVY = "1E293B"
+_XLSX_PRIMARY = "4F46E5"
+_XLSX_PRIMARY_SOFT = "EEF2FF"
+_XLSX_LINE = "E2E8F0"
+_XLSX_TEXT = "0F172A"
+_XLSX_MUTED = "64748B"
+
+_CUR_SYMBOL = {"USD": "$", "EUR": "€", "TRY": "₺"}
+
+
+def _xlsx_money_fmt(cur: str) -> str:
+    sym = _CUR_SYMBOL.get(cur, cur)
+    # SheetJS/Excel format codes don't reliably render arbitrary currency
+    # symbols before a signed number, so keep the symbol as a literal prefix.
+    return f'"{sym}" #,##0.00'
+
+
+def build_quote_xlsx(company: Dict[str, Any], quote: Dict[str, Any]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Teklif"
+
+    n_cols = 6  # #, Ürün/Hizmet, Açıklama, Adet, Birim Fiyat, Tutar
+    last_col_letter = get_column_letter(n_cols)
+
+    thin = Side(style="thin", color=_XLSX_LINE)
+    border_all = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def merge_row(row: int, text: str, font: Font, fill: Optional[PatternFill] = None,
+                  align: Alignment = Alignment(horizontal="left", vertical="center"), height: Optional[float] = None):
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=n_cols)
+        cell = ws.cell(row=row, column=1, value=text)
+        cell.font = font
+        cell.alignment = align
+        if fill:
+            for c in range(1, n_cols + 1):
+                ws.cell(row=row, column=c).fill = fill
+        if height:
+            ws.row_dimensions[row].height = height
+        return cell
+
+    r = 1
+    # ---- Marka başlığı (firma adı + TEKLİF FORMU) — lacivert zemin ----
+    navy_fill = PatternFill("solid", fgColor=_XLSX_NAVY)
+    merge_row(r, company.get("sirketAdi") or "Anında Teklif", Font(bold=True, size=16, color="FFFFFF"),
+              fill=navy_fill, align=Alignment(horizontal="left", vertical="center", indent=1), height=26)
+    r += 1
+    contact_bits = [b for b in [company.get("adres"), company.get("telefon"), company.get("email"), company.get("website")] if b]
+    merge_row(r, "  ".join(contact_bits), Font(size=9.5, color="CBD5E1"),
+              fill=navy_fill, align=Alignment(horizontal="left", vertical="center", indent=1), height=16)
+    r += 1
+    merge_row(r, "FİYAT TEKLİFİ", Font(bold=True, size=11, color=_XLSX_PRIMARY),
+              fill=PatternFill("solid", fgColor=_XLSX_PRIMARY_SOFT),
+              align=Alignment(horizontal="left", vertical="center", indent=1), height=20)
+    r += 1
+    r += 1  # spacer
+
+    # ---- Teklif / Müşteri bilgi bloğu (2 sütunlu etiket-değer tablosu) ----
+    info_pairs = [
+        ("Teklif No", quote.get("teklifNo", "")), ("Tarih", quote.get("tarih", "")),
+        ("Geçerlilik", quote.get("gecerlilik", "")), ("Proje Adı", quote.get("projeAdi", "")),
+        ("Müşteri Firma", quote.get("musFirma", "")), ("Yetkili", quote.get("musYetkili", "")),
+        ("Telefon", quote.get("musTelefon", "")), ("E-posta", quote.get("musEmail", "")),
+        ("Adres", quote.get("musAdres", "")), ("Ödeme Şekli", quote.get("odemeSekli", "")),
+        ("Menşei", quote.get("mensei", "")), ("Teslim Süresi", quote.get("teslimGun", "")),
+    ]
+    label_fill = PatternFill("solid", fgColor="F8FAFC")
+    for label, value in info_pairs:
+        c1 = ws.cell(row=r, column=1, value=label)
+        c1.font = Font(bold=True, size=10, color=_XLSX_MUTED)
+        c1.fill = label_fill
+        c1.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=n_cols)
+        c2 = ws.cell(row=r, column=2, value=value)
+        c2.font = Font(size=10.5, color=_XLSX_TEXT)
+        c2.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        r += 1
+    r += 1  # spacer
+
+    # ---- Kalemler tablosu ----
+    table_header_row = r
+    headers = ["#", "Ürün / Hizmet", "Açıklama", "Adet", "Birim Fiyat", "Tutar"]
+    for i, h in enumerate(headers, start=1):
+        cell = ws.cell(row=r, column=i, value=h)
+        cell.font = Font(bold=True, size=10.5, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor=_XLSX_PRIMARY)
+        cell.alignment = Alignment(horizontal="center" if i in (1, 4) else "left", vertical="center")
+        cell.border = border_all
+    ws.row_dimensions[r].height = 22
+    r += 1
+
+    cur = quote.get("paraBirimi", "USD")
+    money_fmt = _xlsx_money_fmt(cur)
+    items = quote.get("items") or []
+    for idx, it in enumerate(items):
+        adet = float(it.get("adet") or 0)
+        fiyat = float(it.get("birimFiyat") or 0)
+        tutar = adet * fiyat
+        row_fill = PatternFill("solid", fgColor="F8FAFC") if idx % 2 == 1 else None
+        values = [idx + 1, it.get("urunAdi") or it.get("sistemTipi") or "", it.get("aciklama") or "",
+                  adet, fiyat, tutar]
+        for ci, v in enumerate(values, start=1):
+            cell = ws.cell(row=r, column=ci, value=v)
+            cell.border = border_all
+            cell.font = Font(size=10, color=_XLSX_TEXT, bold=(ci == 6))
+            if ci == 1:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif ci == 4:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif ci in (5, 6):
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+                cell.number_format = money_fmt
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+            if row_fill:
+                cell.fill = row_fill
+        r += 1
+
+    ws.freeze_panes = ws.cell(row=table_header_row + 1, column=1)
+    r += 1  # spacer
+
+    # ---- Toplamlar ----
+    def total_row(label: str, value: float, bold: bool = False, big: bool = False, highlight: bool = False):
+        nonlocal r
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_cols - 1)
+        lc = ws.cell(row=r, column=1, value=label)
+        lc.alignment = Alignment(horizontal="right", vertical="center", indent=1)
+        vc = ws.cell(row=r, column=n_cols, value=value)
+        vc.number_format = money_fmt
+        vc.alignment = Alignment(horizontal="right", vertical="center", indent=1)
+        if highlight:
+            fill = PatternFill("solid", fgColor=_XLSX_NAVY)
+            lc.font = Font(bold=True, size=12, color="FFFFFF")
+            vc.font = Font(bold=True, size=13, color="FFFFFF")
+            lc.fill = fill
+            vc.fill = fill
+            ws.row_dimensions[r].height = 24
+        else:
+            lc.font = Font(bold=bold, size=11 if big else 10, color=_XLSX_TEXT)
+            vc.font = Font(bold=bold, size=11 if big else 10, color=_XLSX_TEXT)
+        r += 1
+
+    total_row("Ara Toplam", float(quote.get("araToplam") or 0))
+    if float(quote.get("iskonto") or 0) > 0:
+        total_row(f"İskonto (%{quote.get('iskonto')})", -float(quote.get("iskontoTutar") or 0))
+    total_row(f"KDV (%{quote.get('kdvOrani')})", float(quote.get("kdvTutar") or 0))
+    total_row("GENEL TOPLAM", float(quote.get("genelToplam") or 0), highlight=True)
+
+    notlar = (quote.get("notlar") or "").strip()
+    if notlar:
+        r += 1
+        merge_row(r, "NOTLAR", Font(bold=True, size=9.5, color=_XLSX_MUTED))
+        r += 1
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=n_cols)
+        nc = ws.cell(row=r, column=1, value=notlar)
+        nc.font = Font(size=10, color=_XLSX_TEXT)
+        nc.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        ws.row_dimensions[r].height = 16 * (notlar.count("\n") + 2)
+        r += 1
+
+    r += 1
+    merge_row(r, "Bu teklif Anında Teklif ile hazırlanmıştır.", Font(size=8.5, italic=True, color=_XLSX_MUTED))
+
+    ws.column_dimensions["A"].width = 26
+    ws.column_dimensions["B"].width = 26
+    ws.column_dimensions["C"].width = 30
+    ws.column_dimensions["D"].width = 10
+    ws.column_dimensions["E"].width = 14
+    ws.column_dimensions["F"].width = 16
+    ws.sheet_view.showGridLines = False
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@api_router.get("/quotes/{quote_id}/export-excel")
+async def export_quote_excel(quote_id: str, user=Depends(get_current_user)):
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    company = await db.companies.find_one({"id": doc.get("companyId")}, {"_id": 0}) or {}
+    staff_company = user.get("staff_of_company_id")
+    if user.get("is_staff") and staff_company and staff_company != doc.get("companyId"):
+        raise HTTPException(status_code=403, detail="Bu firmaya erişim izniniz yok")
+    xlsx_bytes = build_quote_xlsx(company, doc)
+    file_name = f"teklif-{(doc.get('teklifNo') or quote_id).replace('/', '-')}.xlsx"
+    return StreamingResponse(
+        io.BytesIO(xlsx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 # ============ APP CONFIG (public) ============

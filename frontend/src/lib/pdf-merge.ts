@@ -65,7 +65,7 @@ const b64ToBytes = (b64: string): Uint8Array => {
   return out;
 };
 
-const bytesToBase64 = (bytes: Uint8Array): string => {
+export const bytesToBase64 = (bytes: Uint8Array): string => {
   if (typeof btoa !== 'undefined') {
     // Chunked to avoid "Maximum call stack" on large PDFs.
     let s = '';

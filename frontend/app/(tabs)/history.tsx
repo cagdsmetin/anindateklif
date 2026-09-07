@@ -15,16 +15,15 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as XLSX from 'xlsx';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, QuoteT, RatesT } from '@/src/lib/api';
+import { api, QuoteT, RatesT, fetchQuoteExcelBytes } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb, openWhatsAppChat } from '@/src/lib/whatsapp';
-import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
@@ -205,60 +204,22 @@ export default function HistoryScreen() {
   };
 
   // Excel (.xlsx) indirme -- Geçmiş listesindeki her kart için de PDF/WhatsApp
-  // ile aynı hizada, önizlemeye girmeden tek dokunuşla indirilebilsin diye
-  // (bkz. preview.tsx: doExcelDownload -- birebir aynı sütun yapısı).
+  // ile aynı hizada, önizlemeye girmeden tek dokunuşla indirilebilsin diye.
+  // Görsel tasarım (marka renkleri, kalın başlıklar) sunucuda openpyxl ile
+  // üretiliyor -- istemcideki ücretsiz 'xlsx' kütüphanesi stil yazamıyor.
   const doExcelDownload = async (quote: QuoteT) => {
     try {
-      const rows: (string | number)[][] = [
-        ['Teklif No', quote.teklifNo],
-        ['Tarih', quote.tarih],
-        ['Geçerlilik', quote.gecerlilik],
-        ['Müşteri Firma', quote.musFirma],
-        ['Yetkili', quote.musYetkili],
-        ['Telefon', quote.musTelefon],
-        ['E-posta', quote.musEmail],
-        ['Adres', quote.musAdres],
-        ['Proje Adı', quote.projeAdi],
-        ['Ödeme Şekli', quote.odemeSekli],
-        ['Menşei', quote.mensei],
-        ['Teslim Süresi', quote.teslimGun],
-        ['Nakliye', quote.nakliye],
-        ['Para Birimi', quote.paraBirimi],
-        [],
-        ['Ürün/Hizmet', 'Açıklama', 'Adet', 'Birim', 'Birim Fiyat', 'Tutar'],
-      ];
-      quote.items.forEach((it) => {
-        rows.push([
-          it.urunAdi || it.sistemTipi || '',
-          it.aciklama || '',
-          it.adet || 0,
-          it.birim || '',
-          it.birimFiyat || 0,
-          (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0),
-        ]);
-      });
-      rows.push([]);
-      rows.push(['Ara Toplam', quote.araToplam]);
-      rows.push([`İskonto (%${quote.iskonto})`, -quote.iskontoTutar]);
-      rows.push([`KDV (%${quote.kdvOrani})`, quote.kdvTutar]);
-      rows.push(['Genel Toplam', quote.genelToplam]);
-
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 28 }, { wch: 32 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 }];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Teklif');
-
+      const buf = await fetchQuoteExcelBytes(quote.id);
       const fileName = buildQuoteFileName(new Date()) + '.xlsx';
       const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
       if (Platform.OS === 'web') {
-        const wbout: ArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], { type: mime });
+        const blob = new Blob([buf], { type: mime });
         const url = URL.createObjectURL(blob);
         await downloadFileWeb(url, fileName);
         showToast('Excel indirildi');
       } else {
-        const b64: string = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+        const b64 = bytesToBase64(new Uint8Array(buf));
         const uri = FileSystem.cacheDirectory + fileName;
         await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
         const avail = await Sharing.isAvailableAsync();

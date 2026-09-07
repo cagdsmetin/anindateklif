@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
+import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useLanguage } from '@/src/lib/i18n';
 
 // Anında Teklif'in web'deki gerçek tanıtım (landing) sayfası -- daha önce
@@ -141,6 +142,9 @@ export default function LandingScreen() {
 
           {/* HERO */}
           <View style={[s.hero, isDesktop && s.heroDesktopRow]}>
+            <View style={s.heroCanvasWrap} pointerEvents="none">
+              <BlackHoleBackground />
+            </View>
             <View style={s.heroGlow} pointerEvents="none" />
             <View style={[s.heroCol, isDesktop && s.heroColDesktop]}>
               <View style={s.badge}>
@@ -350,6 +354,16 @@ const s = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 40,
     position: 'relative',
+    overflow: 'hidden',
+  },
+  // Sadece web'de canvas render eden BlackHoleBackground'ın konteyneri --
+  // hero'yu tamamen kaplar, metnin arkasında kalır (pointerEvents: none).
+  heroCanvasWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   heroDesktopRow: {
     flexDirection: 'row',

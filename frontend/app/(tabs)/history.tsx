@@ -712,7 +712,12 @@ const s = StyleSheet.create({
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  filterRowOuter: { flexGrow: 0 },
+  // Yatay ScrollView'un DIŞ style'ı web'de kesin bir yükseklik almazsa
+  // (sadece flexGrow:0 yeterli değil) içerik üstten/alttan kırpılıyor --
+  // önceki "height: 56" bunu çözüyordu, tamamen kaldırmak baloncukların
+  // kaybolmasına (görünmez şekilde kırpılmasına) yol açtı. minHeight ile
+  // hem kırpılmayı önlüyoruz hem de chip boyu değişse bile taşmıyor.
+  filterRowOuter: { flexGrow: 0, minHeight: 62 },
   filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' },
   filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },

@@ -509,11 +509,11 @@ export default function EditorScreen() {
           </LinearGradient>
 
           <SectionHeader title={t('teklifPage.s024')} icon="document-text" />
-          <Row>
-            <FGroup label={t('teklifPage.s025')} flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
-            <FGroup label={t('teklifPage.s026')} flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
-          </Row>
-          <FGroup label={t('teklifPage.s027')}><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s025')} grid><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
+            <FGroup label={t('teklifPage.s026')} grid><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s027')} grid><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+          </View>
 
           <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
@@ -547,11 +547,11 @@ export default function EditorScreen() {
               </View>
             ) : null}
           </View>
-          <Row>
-            <FGroup label={t('teklifPage.s031')} flex={1}><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
-            <FGroup label={t('teklifPage.s002')} flex={1}><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
-          </Row>
-          <FGroup label={t('teklifPage.s033')}><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s031')} grid><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s002')} grid><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
+            <FGroup label={t('teklifPage.s033')} grid><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+          </View>
           <FGroup label={t('teklifPage.s035')}><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder={t('teklifPage.s036')} placeholderTextColor="#94a3b8" /></FGroup>
 
           <SectionHeader title={t('teklifPage.s037')} icon="cart" />
@@ -572,15 +572,13 @@ export default function EditorScreen() {
               ))}</View>
             </FGroup>
           </Row>
-          <FGroup label={t('teklifPage.s042')}><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
-          <Row>
-            <FGroup label={t('teklifPage.s043')} flex={1}><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
-            <FGroup label={t('teklifPage.s044')} flex={1}><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
-          </Row>
-          <Row>
-            <FGroup label={t('teklifPage.s045')} flex={1}><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
-            <FGroup label={t('teklifPage.s046')} flex={1}><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
-          </Row>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s042')} grid><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
+            <FGroup label={t('teklifPage.s043')} grid><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
+            <FGroup label={t('teklifPage.s044')} grid><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} grid><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} grid><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+          </View>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
           {items.length === 0 && (
@@ -1088,7 +1086,7 @@ function ItemCard({
               );
             }
             return (
-              <FieldGroup key={f.id} label={f.label} grid>
+              <FieldGroup key={f.id} label={f.label} grid narrow>
                 <TextInput
                   style={itemStyles.input}
                   keyboardType={f.type === 'number' ? 'numeric' : 'default'}
@@ -1203,11 +1201,11 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
     </View>
   );
 }
-function FGroup({ label, children, flex }: { label?: string; children: React.ReactNode; flex?: number }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
+function FGroup({ label, children, flex, grid }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean }) {
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
 }
-function FieldGroup({ label, children, flex, grid }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
+function FieldGroup({ label, children, flex, grid, narrow }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}, narrow ? itemStyles.fieldGridItemNarrow : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
 }
 function Row({ children, style }: { children: React.ReactNode; style?: any }) { return <View style={[{ flexDirection: 'row', gap: 8 }, style]}>{children}</View>; }
 function TotRow({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
@@ -1235,6 +1233,12 @@ const s = StyleSheet.create({
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 14, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
+  // Teklif/Müşteri/Sipariş Bilgileri'ndeki kısa değerli alanlar (Teklif No,
+  // Tarih, Telefon, Menşei, Teslim vb.) için ItemCard'daki kalem alanlarıyla
+  // aynı otomatik yan yana dizilim -- dar telefonda 2, geniş ekranda 3-4
+  // sütuna kadar kendiliğinden sığdırır.
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
+  fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
   suggestBox: {
     position: 'absolute',
     top: '100%',
@@ -1357,4 +1361,9 @@ const itemStyles = StyleSheet.create({
   // web/Android/iOS/tablette aynı mantıkla otomatik uyum sağlıyor.
   fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
   fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
+  // Serbest metin/sayı alanları (Cephe, Derinlik, Yükseklik, Ayak Sayısı,
+  // RAL vb.) sadece kısa bir ölçü/kod değeri alır (ör. "3000mm") -- select/
+  // checkbox alanlarından (daha uzun seçim metinleri olabilir) ayrı, daha
+  // dar bir taban genişlik veriyoruz ki bir satıra daha fazlası sığsın.
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 0, flexBasis: 92, minWidth: 84, maxWidth: 110 },
 });

@@ -576,8 +576,8 @@ export default function EditorScreen() {
             <FGroup label={t('teklifPage.s042')} grid><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
             <FGroup label={t('teklifPage.s043')} grid><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
             <FGroup label={t('teklifPage.s044')} grid><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
-            <FGroup label={t('teklifPage.s045')} grid><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
-            <FGroup label={t('teklifPage.s046')} grid><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
           </View>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
@@ -1201,8 +1201,8 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
     </View>
   );
 }
-function FGroup({ label, children, flex, grid }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
+function FGroup({ label, children, flex, grid, narrow }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
 }
 function FieldGroup({ label, children, flex, grid, narrow }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
   return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}, narrow ? itemStyles.fieldGridItemNarrow : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
@@ -1239,6 +1239,9 @@ const s = StyleSheet.create({
   // sütuna kadar kendiliğinden sığdırır.
   fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
   fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
+  // İskonto/KDV gibi en fazla 3 haneli bir yüzde değeri (ör. "100") alan
+  // alanlar için -- ItemCard'daki fieldGridItemNarrow ile aynı mantık.
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 0, flexBasis: 76, minWidth: 68, maxWidth: 90 },
   suggestBox: {
     position: 'absolute',
     top: '100%',

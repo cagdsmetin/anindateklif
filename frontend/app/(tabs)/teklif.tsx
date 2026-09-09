@@ -1062,7 +1062,7 @@ function ItemCard({
             const currentVal = (item.sistemFields?.[fi]?.value) || '';
             if (f.type === 'select') {
               return (
-                <FieldGroup key={f.id} label={f.label} grid>
+                <FieldGroup key={f.id} label={f.label} grid maxWidth={selectFieldWidth(f.options)}>
                   <TouchableOpacity
                     style={itemStyles.select}
                     onPress={() => onOpenSelectPicker(`f-${fi}`, f.options, f.label)}
@@ -1077,7 +1077,7 @@ function ItemCard({
             if (f.type === 'checkbox') {
               const on = currentVal === 'Evet' || currentVal === 'true';
               return (
-                <FieldGroup key={f.id} label={f.label} grid>
+                <FieldGroup key={f.id} label={f.label} grid maxWidth={110}>
                   <TouchableOpacity style={itemStyles.checkboxRow} onPress={() => onUpdateSystemFieldValue(fi, on ? '' : 'Evet')} testID={`item-${idx}-field-${fi}`}>
                     <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? theme.colors.primary : theme.colors.textMuted} />
                     <Text style={itemStyles.checkboxText}>{on ? 'Evet' : t('teklifPage.s091')}</Text>
@@ -1206,6 +1206,16 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
 }
 function FGroup({ label, children, flex, grid, narrow }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
   return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label} numberOfLines={2}>{label}</Text> : null}{children}</View>;
+}
+// Seçim (select) tipi alanlar için genişlik: kutunun içeriği (en uzun
+// seçenek metni) ne kadar kısaysa kutu da o kadar dar olsun -- "LED
+// Aydınlatma" gibi kısa seçenekli alanlar tek başına kalınca büyük bir
+// alan kaplamasın. Karakter başına ~7.2px + ok ikonu/dolgu payı, 96-200
+// aralığında sınırlı.
+function selectFieldWidth(options: string[]): number {
+  const longest = Math.max(3, ...(options || []).map((o) => (o || '').length));
+  const w = Math.round(longest * 7.2) + 56;
+  return Math.max(96, Math.min(200, w));
 }
 function FieldGroup({ label, children, flex, grid, narrow, maxWidth }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean; maxWidth?: number }) {
   // numberOfLines=2 + label'a sabit 2 satırlık yükseklik -- etiket 1 ya da 2

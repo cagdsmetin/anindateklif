@@ -1057,12 +1057,14 @@ function ItemCard({
             </TouchableOpacity>
           </FieldGroup>
 
-          {/* Dynamic fields */}
+          {/* Dynamic fields — kısa değer alan alanları (ölçü/RAL/seçim) yan
+              yana diziyoruz, tam genişlik alt alta yığılmasın diye. */}
+          <View style={itemStyles.fieldGrid}>
           {selectedSys && selectedSys.fields.map((f, fi) => {
             const currentVal = (item.sistemFields?.[fi]?.value) || '';
             if (f.type === 'select') {
               return (
-                <FieldGroup key={f.id} label={f.label}>
+                <FieldGroup key={f.id} label={f.label} grid>
                   <TouchableOpacity
                     style={itemStyles.select}
                     onPress={() => onOpenSelectPicker(`f-${fi}`, f.options, f.label)}
@@ -1077,7 +1079,7 @@ function ItemCard({
             if (f.type === 'checkbox') {
               const on = currentVal === 'Evet' || currentVal === 'true';
               return (
-                <FieldGroup key={f.id} label={f.label}>
+                <FieldGroup key={f.id} label={f.label} grid>
                   <TouchableOpacity style={itemStyles.checkboxRow} onPress={() => onUpdateSystemFieldValue(fi, on ? '' : 'Evet')} testID={`item-${idx}-field-${fi}`}>
                     <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? theme.colors.primary : theme.colors.textMuted} />
                     <Text style={itemStyles.checkboxText}>{on ? 'Evet' : t('teklifPage.s091')}</Text>
@@ -1086,7 +1088,7 @@ function ItemCard({
               );
             }
             return (
-              <FieldGroup key={f.id} label={f.label}>
+              <FieldGroup key={f.id} label={f.label} grid>
                 <TextInput
                   style={itemStyles.input}
                   keyboardType={f.type === 'number' ? 'numeric' : 'default'}
@@ -1099,6 +1101,7 @@ function ItemCard({
               </FieldGroup>
             );
           })}
+          </View>
         </>
       )}
 
@@ -1203,8 +1206,8 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
 function FGroup({ label, children, flex }: { label?: string; children: React.ReactNode; flex?: number }) {
   return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
 }
-function FieldGroup({ label, children, flex }: { label: string; children: React.ReactNode; flex?: number }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
+function FieldGroup({ label, children, flex, grid }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean }) {
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
 }
 function Row({ children, style }: { children: React.ReactNode; style?: any }) { return <View style={[{ flexDirection: 'row', gap: 8 }, style]}>{children}</View>; }
 function TotRow({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
@@ -1345,4 +1348,13 @@ const itemStyles = StyleSheet.create({
   previewBox: { marginTop: 10, backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: theme.colors.primary },
   previewLabel: { fontSize: 9, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.5, marginBottom: 4 },
   previewText: { fontSize: 12, color: theme.colors.text, lineHeight: 17 },
+  // Teknik alanlar (Cephe, Derinlik, Yükseklik, RAL vb.) genelde kısa
+  // değerler alır (bir sayı ya da birkaç kelimelik seçim) -- her birini tam
+  // genişlikte alt alta dizmek sayfayı gereksiz uzatıyordu. flexWrap ile
+  // sabit bir taban genişlik (140px) verip satıra sığdığı kadarını yan yana
+  // diziyoruz: dar telefonda 2, tablet/web'de içerik genişliğine göre 3-4
+  // sütuna kadar kendiliğinden çıkıyor -- ekstra breakpoint kodu gerekmeden
+  // web/Android/iOS/tablette aynı mantıkla otomatik uyum sağlıyor.
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
+  fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
 });

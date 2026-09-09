@@ -282,6 +282,14 @@ export default function PreviewScreen() {
         )}
       </View>
 
+      {/* Android'de react-native-webview bir SurfaceView ile render olur ve
+          RN'in view sırasından bağımsız olarak HER ZAMAN diğer native
+          view'ların üstünde çizilir -- bu yüzden bu bar önceden
+          position:'absolute' ile WebView'in üzerine bindirilmişti: görsel
+          olarak doğru duruyordu ama dokunuşlar butonlara değil altındaki
+          WebView'e gidiyordu (WhatsApp/PDF Paylaş butonlarının "hiçbir şey
+          yapmaması" bundandı). Barı normal flex akışına alıp WebView ile
+          hiç örtüşmeyecek şekilde ayırmak bu sınıfın kökten çözümü. */}
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
         <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: quote.id } })} testID="preview-edit-btn">
           <Ionicons name="pencil" size={16} color={theme.colors.textSoft} />
@@ -319,7 +327,6 @@ const s = StyleSheet.create({
   previewStatus: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   previewStatusText: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   actionBar: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8,
     borderTopWidth: 1, borderTopColor: theme.colors.line,
     ...Platform.select({ android: { elevation: 8 }, ios: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 5, shadowOffset: { width: 0, height: -2 } } }),

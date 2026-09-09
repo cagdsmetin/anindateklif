@@ -1141,11 +1141,14 @@ function ItemCard({
         </>
       )}
 
-      {/* Quantity / Unit / Price */}
+      {/* Quantity / Unit / Price -- Birim Fiyat'a maxWidth: para birimi
+          (TL/$/€) fark etmeksizin en fazla "1.000.000.000" gibi 13
+          karakterlik bir rakamı rahat gösterecek, ama geniş ekranda
+          gereğinden fazla büyümeyecek kadar bir üst sınır. */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <FieldGroup label={t('teklifPage.s100')} flex={1}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s101')} flex={1}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s102')} flex={1.4}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s100')} flex={0.7}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s101')} flex={0.9}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s102')} flex={1.4} maxWidth={180}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
       </View>
 
       {/* Per-item PDF cell preview */}
@@ -1202,10 +1205,14 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
   );
 }
 function FGroup({ label, children, flex, grid, narrow }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label} numberOfLines={2}>{label}</Text> : null}{children}</View>;
 }
-function FieldGroup({ label, children, flex, grid, narrow }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}, narrow ? itemStyles.fieldGridItemNarrow : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
+function FieldGroup({ label, children, flex, grid, narrow, maxWidth }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean; maxWidth?: number }) {
+  // numberOfLines=2 + label'a sabit 2 satırlık yükseklik -- etiket 1 ya da 2
+  // satıra sardığına bakılmaksızın aynı satırdaki tüm kutucuklar aynı
+  // hizada başlasın diye (kısa etiketli kutu daha erken, uzun etiketli kutu
+  // daha geç başlamasın).
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}, narrow ? itemStyles.fieldGridItemNarrow : {}, maxWidth ? { maxWidth } : {}]}><Text style={itemStyles.label} numberOfLines={2}>{label}</Text>{children}</View>;
 }
 function Row({ children, style }: { children: React.ReactNode; style?: any }) { return <View style={[{ flexDirection: 'row', gap: 8 }, style]}>{children}</View>; }
 function TotRow({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
@@ -1230,18 +1237,23 @@ const s = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
-  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  // minHeight: 2 satırlık sabit yükseklik -- etiket 1 satıra mı 2 satıra mı
+  // sardığı kutunun genişliğine göre değişse de, aynı satırdaki tüm
+  // kutucukların altındaki input'lar hep aynı hizada başlasın diye.
+  label: { fontSize: 10, lineHeight: 13, minHeight: 26, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 14, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
   // Teklif/Müşteri/Sipariş Bilgileri'ndeki kısa değerli alanlar (Teklif No,
   // Tarih, Telefon, Menşei, Teslim vb.) için ItemCard'daki kalem alanlarıyla
   // aynı otomatik yan yana dizilim -- dar telefonda 2, geniş ekranda 3-4
-  // sütuna kadar kendiliğinden sığdırır.
+  // sütuna kadar kendiliğinden sığdırır. flexGrow:0 -- bir satırda tek
+  // başına kalan kutucuk (ör. son alan) tüm boş alanı kaplayıp aşırı
+  // genişlemesin, sadece kendi içeriği kadar yer kaplasın.
   fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
-  fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
+  fieldGridItem: { flexGrow: 0, flexShrink: 1, flexBasis: 160, minWidth: 130, maxWidth: 220 },
   // İskonto/KDV gibi en fazla 3 haneli bir yüzde değeri (ör. "100") alan
   // alanlar için -- ItemCard'daki fieldGridItemNarrow ile aynı mantık.
-  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 0, flexBasis: 76, minWidth: 68, maxWidth: 90 },
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 1, flexBasis: 76, minWidth: 68, maxWidth: 90 },
   suggestBox: {
     position: 'absolute',
     top: '100%',
@@ -1342,7 +1354,10 @@ const itemStyles = StyleSheet.create({
   modeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
   modeBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   linePrice: { fontSize: 13, fontWeight: '900', color: theme.colors.navy },
-  label: { fontSize: 9.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  // minHeight: 2 satırlık sabit yükseklik -- aynı satırdaki kutucuklardan
+  // biri (ör. "CEPHE / GENİŞLİK") 2 satıra sarsa bile, altındaki input hep
+  // "YÜKSEKLİK" gibi tek satırlık etiketli komşusuyla aynı hizada başlasın.
+  label: { fontSize: 9.5, lineHeight: 12, minHeight: 24, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: Platform.OS === 'ios' ? 10 : 8, fontSize: 13.5, color: theme.colors.text },
   select: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectHighlight: { borderColor: theme.colors.primary, borderWidth: 2, backgroundColor: theme.colors.primarySoft },
@@ -1363,10 +1378,10 @@ const itemStyles = StyleSheet.create({
   // sütuna kadar kendiliğinden çıkıyor -- ekstra breakpoint kodu gerekmeden
   // web/Android/iOS/tablette aynı mantıkla otomatik uyum sağlıyor.
   fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
-  fieldGridItem: { flexGrow: 1, flexBasis: 140, minWidth: 120, maxWidth: 260 },
+  fieldGridItem: { flexGrow: 0, flexShrink: 1, flexBasis: 160, minWidth: 130, maxWidth: 200 },
   // Serbest metin/sayı alanları (Cephe, Derinlik, Yükseklik, Ayak Sayısı,
   // RAL vb.) sadece kısa bir ölçü/kod değeri alır (ör. "3000mm") -- select/
   // checkbox alanlarından (daha uzun seçim metinleri olabilir) ayrı, daha
   // dar bir taban genişlik veriyoruz ki bir satıra daha fazlası sığsın.
-  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 0, flexBasis: 92, minWidth: 84, maxWidth: 110 },
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 1, flexBasis: 92, minWidth: 84, maxWidth: 110 },
 });

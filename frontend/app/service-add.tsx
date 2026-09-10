@@ -133,6 +133,7 @@ export default function ServiceAddScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={s.contentWrap}>
           <View style={s.hero}>
             <View style={s.heroCircle}>
               <Ionicons name="construct" size={24} color={theme.colors.primary} />
@@ -273,18 +274,21 @@ export default function ServiceAddScreen() {
               </View>
             </View>
           </View>
+          </View>
         </ScrollView>
 
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
-          <TouchableOpacity
-            style={[s.cta, busy && s.ctaDisabled]}
-            onPress={onSave}
-            disabled={busy}
-            activeOpacity={0.9}
-            testID="svcadd-save"
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('serviceAdd.s027')}</Text>}
-          </TouchableOpacity>
+          <View style={s.footerInner}>
+            <TouchableOpacity
+              style={[s.cta, busy && s.ctaDisabled]}
+              onPress={onSave}
+              disabled={busy}
+              activeOpacity={0.9}
+              testID="svcadd-save"
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('serviceAdd.s027')}</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -340,6 +344,8 @@ const s = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
+  contentWrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  footerInner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   hero: { alignItems: 'center', marginBottom: 12 },
   heroCircle: {
     width: 56,

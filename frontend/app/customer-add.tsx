@@ -112,6 +112,7 @@ export default function CustomerAddScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={s.contentWrap}>
           {/* Hero avatar */}
           <View style={s.hero}>
             <View style={s.heroCircle}>
@@ -177,19 +178,22 @@ export default function CustomerAddScreen() {
               isLast
             />
           </View>
+          </View>
         </ScrollView>
 
         {/* Sticky primary CTA */}
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
-          <TouchableOpacity
-            style={[s.cta, busy && s.ctaDisabled]}
-            onPress={onSave}
-            disabled={busy}
-            activeOpacity={0.9}
-            testID="cadd-save"
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('customerAdd.s017')}</Text>}
-          </TouchableOpacity>
+          <View style={s.footerInner}>
+            <TouchableOpacity
+              style={[s.cta, busy && s.ctaDisabled]}
+              onPress={onSave}
+              disabled={busy}
+              activeOpacity={0.9}
+              testID="cadd-save"
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('customerAdd.s017')}</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -245,6 +249,8 @@ const s = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
+  contentWrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  footerInner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
   hero: { alignItems: 'center', marginBottom: 12 },
   heroCircle: {
     width: 56,

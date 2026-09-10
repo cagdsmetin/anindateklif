@@ -172,7 +172,7 @@ export default function TeamChatScreen() {
   const convByOther: Record<string, TeamConversationT> = {};
   conversations.forEach((c) => { if (c.otherUserId) convByOther[c.otherUserId] = c; });
 
-  const title = pane.kind === 'list' ? 'Ekip Sohbeti'
+  const title = pane.kind === 'list' ? t('teamChat.mainTitle')
     : pane.kind === 'admin-list' ? t('teamChat.s002')
     : pane.kind === 'thread' ? pane.withName
     : `${pane.aName} · ${pane.bName}`;

@@ -19,13 +19,14 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 
-const ROLES: { id: string; label: string; desc: string }[] = [
-  { id: 'staff', label: 'Personel', desc: "Teklif/müşteri/servis girer, Kasa ve Tahsilat'ı göremez" },
-  { id: 'admin', label: 'Yönetici', desc: 'Sizinle aynı yetkilere sahip, Kasa ve Tahsilat dahil her şeyi görür' },
-];
+const ROLE_IDS = ['staff', 'admin'] as const;
 
 export default function PersonelScreen() {
   const { t } = useLanguage();
+  const ROLES: { id: string; label: string; desc: string }[] = [
+    { id: 'staff', label: t('personel.s001'), desc: t('personel.s003') },
+    { id: 'admin', label: t('personel.s002'), desc: t('personel.s004') },
+  ];
   const router = useRouter();
   const { activeCompany } = useApp();
   const { user } = useAuth();
@@ -188,7 +189,7 @@ export default function PersonelScreen() {
                   />
                   <TouchableOpacity style={s.copyBtn} onPress={onCopyLink} testID="staff-invite-copy">
                     <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={15} color={theme.colors.primary} />
-                    <Text style={s.copyBtnText}>{copied ? t('personel.s013') : Platform.OS === 'web' ? 'Kopyala' : t('personel.s014')}</Text>
+                    <Text style={s.copyBtnText}>{copied ? t('personel.s013') : Platform.OS === 'web' ? t('personel.s019') : t('personel.s014')}</Text>
                   </TouchableOpacity>
                   <Text style={s.linkHint}>{t('personel.s015')}</Text>
                 </View>
@@ -206,7 +207,7 @@ export default function PersonelScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
                       <View style={[s.badge, m.type === 'pending' && s.badgePending]}>
                         <Text style={[s.badgeText, m.type === 'pending' && s.badgeTextPending]}>
-                          {m.type === 'pending' ? 'Davet bekliyor' : m.role === 'admin' ? t('personel.s002') : 'Personel'}
+                          {m.type === 'pending' ? t('personel.s020') : m.role === 'admin' ? t('personel.s002') : t('personel.s001')}
                         </Text>
                       </View>
                     </View>

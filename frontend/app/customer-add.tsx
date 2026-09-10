@@ -108,14 +108,14 @@ export default function CustomerAddScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 140 }}
+          contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Hero avatar */}
           <View style={s.hero}>
             <View style={s.heroCircle}>
-              <Ionicons name="person-add" size={36} color={theme.colors.primary} />
+              <Ionicons name="person-add" size={24} color={theme.colors.primary} />
             </View>
             <Text style={s.heroCaption}>{t('customerAdd.s006')}</Text>
           </View>
@@ -144,24 +144,28 @@ export default function CustomerAddScreen() {
               keyboardType="phone-pad"
               testID="cadd-phone"
             />
-            <FieldRow
-              label={t('customerAdd.s011')}
-              icon="mail-outline"
-              placeholder={t('customerAdd.s012')}
-              value={email}
-              onChange={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="cadd-email"
-            />
-            <FieldRow
-              label={t('customerAdd.s013')}
-              icon="business-outline"
-              placeholder={t('customerAdd.s014')}
-              value={sirket}
-              onChange={setSirket}
-              testID="cadd-company"
-            />
+            <View style={s.row}>
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('customerAdd.s011')}
+                icon="mail-outline"
+                placeholder={t('customerAdd.s012')}
+                value={email}
+                onChange={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                testID="cadd-email"
+              />
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('customerAdd.s013')}
+                icon="business-outline"
+                placeholder={t('customerAdd.s014')}
+                value={sirket}
+                onChange={setSirket}
+                testID="cadd-company"
+              />
+            </View>
             <FieldRow
               label={t('customerAdd.s015')}
               icon="location-outline"
@@ -198,6 +202,7 @@ function FieldRow({
   icon,
   error,
   isLast,
+  rowStyle,
   onChange,
   ...rest
 }: React.ComponentProps<typeof TextInput> & {
@@ -206,10 +211,11 @@ function FieldRow({
   icon: keyof typeof Ionicons.glyphMap;
   error?: boolean;
   isLast?: boolean;
+  rowStyle?: any;
   onChange: (v: string) => void;
 }) {
   return (
-    <View style={[s.field, isLast && { marginBottom: 0 }]}>
+    <View style={[s.field, isLast && { marginBottom: 0 }, rowStyle]}>
       <Text style={s.fieldLabel}>
         {label} {required ? <Text style={{ color: theme.colors.red }}>*</Text> : null}
       </Text>
@@ -239,40 +245,41 @@ const s = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  hero: { alignItems: 'center', marginBottom: 26 },
+  hero: { alignItems: 'center', marginBottom: 12 },
   heroCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  heroCaption: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '600' },
+  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  field: { marginBottom: 16 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  row: { flexDirection: 'row', gap: 10 },
+  field: { marginBottom: 10 },
+  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 5 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FBFDFF',
     borderWidth: 1,
     borderColor: theme.colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 52,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    minHeight: 42,
   },
-  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14, minHeight: 96 },
+  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 64 },
   inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
   input: {
     flex: 1,
@@ -281,7 +288,7 @@ const s = StyleSheet.create({
     paddingVertical: 0,
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
   },
-  inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 48, textAlignVertical: 'top' },
   footer: {
     position: 'absolute',
     left: 0,
@@ -295,8 +302,8 @@ const s = StyleSheet.create({
   },
   cta: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadow.lg,

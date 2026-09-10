@@ -50,13 +50,23 @@ export default function ServiceAddScreen() {
   const [errFirma, setErrFirma] = useState(false);
   const [errBaslik, setErrBaslik] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
 
   const pickCustomer = (c: { firma: string; yetkili: string; telefon: string }) => {
     setMusFirma(c.firma);
     setMusYetkili(c.yetkili);
     setMusTelefon(c.telefon);
     setPickerOpen(false);
+    setShowFirmaSuggestions(false);
   };
+
+  // Müşteri Firma'ya yazarken kayıtlı müşterilerden filtrelenmiş öneri göster
+  // -- Teklif ekranındaki "Firma Adı" otomatik tamamlama ile aynı mantık.
+  const firmaSuggestions = useMemo(() => {
+    const q = musFirma.trim().toLowerCase();
+    if (!q) return [];
+    return customers.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 6);
+  }, [musFirma, customers]);
 
   const onSave = async () => {
     if (busy) return;
@@ -119,20 +129,20 @@ export default function ServiceAddScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 140 }}
+          contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={s.hero}>
             <View style={s.heroCircle}>
-              <Ionicons name="construct" size={36} color={theme.colors.primary} />
+              <Ionicons name="construct" size={24} color={theme.colors.primary} />
             </View>
             <Text style={s.heroCaption}>{t('serviceAdd.s011')}</Text>
           </View>
 
           <View style={s.card}>
-            <View style={s.field}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={[s.field, { zIndex: 30 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <Text style={s.fieldLabel}>{t('serviceAdd.s012')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
                 {customers.length > 0 ? (
                   <TouchableOpacity onPress={() => setPickerOpen((v) => !v)} testID="svcadd-pick-customer">
@@ -141,44 +151,63 @@ export default function ServiceAddScreen() {
                 ) : null}
               </View>
               {pickerOpen ? (
-                <View style={s.pickerBox}>
+                <ScrollView style={s.pickerBox} nestedScrollEnabled showsVerticalScrollIndicator>
                   {customers.map((c) => (
                     <TouchableOpacity key={c.id} style={s.pickerItem} onPress={() => pickCustomer(c)}>
                       <Text style={s.pickerItemText} numberOfLines={1}>{c.firma}{c.yetkili ? ` — ${c.yetkili}` : ''}</Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               ) : null}
               <View style={[s.inputWrap, errFirma && s.inputWrapError]}>
                 <Ionicons name="business-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10 }} />
                 <TextInput
                   testID="svcadd-firma"
                   value={musFirma}
-                  onChangeText={(v) => { setMusFirma(v); if (errFirma) setErrFirma(false); }}
+                  onChangeText={(v) => { setMusFirma(v); if (errFirma) setErrFirma(false); setShowFirmaSuggestions(true); }}
+                  onFocus={() => setShowFirmaSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowFirmaSuggestions(false), 150)}
                   placeholder={t('serviceAdd.s014')}
                   placeholderTextColor="#94a3b8"
                   style={s.input}
                 />
               </View>
+              {showFirmaSuggestions && firmaSuggestions.length > 0 ? (
+                <View style={s.suggestBox}>
+                  {firmaSuggestions.map((c) => (
+                    <TouchableOpacity key={c.id} style={s.suggestRow} onPress={() => pickCustomer(c)}>
+                      <Ionicons name="business-outline" size={14} color={theme.colors.primary} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.suggestName} numberOfLines={1}>{c.firma}</Text>
+                        <Text style={s.suggestSub} numberOfLines={1}>{[c.yetkili, c.telefon].filter(Boolean).join(' • ') || '-'}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
-            <FieldRow
-              label={t('serviceAdd.s015')}
-              icon="person-outline"
-              placeholder={t('serviceAdd.s016')}
-              value={musYetkili}
-              onChange={setMusYetkili}
-              testID="svcadd-yetkili"
-            />
-            <FieldRow
-              label={t('serviceAdd.s017')}
-              icon="call-outline"
-              placeholder="0532 123 45 67"
-              value={musTelefon}
-              onChange={setMusTelefon}
-              keyboardType="phone-pad"
-              testID="svcadd-telefon"
-            />
+            <View style={s.row}>
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('serviceAdd.s015')}
+                icon="person-outline"
+                placeholder={t('serviceAdd.s016')}
+                value={musYetkili}
+                onChange={setMusYetkili}
+                testID="svcadd-yetkili"
+              />
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('serviceAdd.s017')}
+                icon="call-outline"
+                placeholder="0532 123 45 67"
+                value={musTelefon}
+                onChange={setMusTelefon}
+                keyboardType="phone-pad"
+                testID="svcadd-telefon"
+              />
+            </View>
             <FieldRow
               label={t('serviceAdd.s019')}
               required
@@ -198,22 +227,26 @@ export default function ServiceAddScreen() {
               multiline
               testID="svcadd-aciklama"
             />
-            <FieldRow
-              label={t('serviceAdd.s023')}
-              icon="calendar-outline"
-              placeholder={t('serviceAdd.s001')}
-              value={servisTarihi}
-              onChange={setServisTarihi}
-              testID="svcadd-servistarihi"
-            />
-            <FieldRow
-              label={t('serviceAdd.s024')}
-              icon="shield-checkmark-outline"
-              placeholder={t('serviceAdd.s001')}
-              value={garantiBitis}
-              onChange={setGarantiBitis}
-              testID="svcadd-garanti"
-            />
+            <View style={s.row}>
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('serviceAdd.s023')}
+                icon="calendar-outline"
+                placeholder={t('serviceAdd.s001')}
+                value={servisTarihi}
+                onChange={setServisTarihi}
+                testID="svcadd-servistarihi"
+              />
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('serviceAdd.s024')}
+                icon="shield-checkmark-outline"
+                placeholder={t('serviceAdd.s001')}
+                value={garantiBitis}
+                onChange={setGarantiBitis}
+                testID="svcadd-garanti"
+              />
+            </View>
             <FieldRow
               label={t('serviceAdd.s025')}
               icon="build-outline"
@@ -264,6 +297,7 @@ function FieldRow({
   icon,
   error,
   isLast,
+  rowStyle,
   onChange,
   ...rest
 }: React.ComponentProps<typeof TextInput> & {
@@ -272,10 +306,11 @@ function FieldRow({
   icon: keyof typeof Ionicons.glyphMap;
   error?: boolean;
   isLast?: boolean;
+  rowStyle?: any;
   onChange: (v: string) => void;
 }) {
   return (
-    <View style={[s.field, isLast && { marginBottom: 0 }]}>
+    <View style={[s.field, isLast && { marginBottom: 0 }, rowStyle]}>
       <Text style={s.fieldLabel}>
         {label} {required ? <Text style={{ color: theme.colors.red }}>*</Text> : null}
       </Text>
@@ -303,32 +338,33 @@ const s = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
+  headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  hero: { alignItems: 'center', marginBottom: 26 },
+  hero: { alignItems: 'center', marginBottom: 12 },
   heroCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  heroCaption: { fontSize: 14, color: theme.colors.textMuted, fontWeight: '600' },
+  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  field: { marginBottom: 16 },
-  fieldLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
-  pickerBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, marginBottom: 8, maxHeight: 160, overflow: 'hidden', backgroundColor: '#FBFDFF' },
+  row: { flexDirection: 'row', gap: 10 },
+  field: { marginBottom: 10 },
+  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 5 },
+  pickerBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, marginBottom: 8, maxHeight: 160, backgroundColor: '#FBFDFF' },
   pickerItem: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   pickerItemText: { fontSize: 13, color: theme.colors.text, fontWeight: '600' },
   inputWrap: {
@@ -337,22 +373,40 @@ const s = StyleSheet.create({
     backgroundColor: '#FBFDFF',
     borderWidth: 1,
     borderColor: theme.colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 52,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    minHeight: 42,
   },
-  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14, minHeight: 96 },
+  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 64 },
   inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
     color: theme.colors.text,
     paddingVertical: 0,
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
   },
-  inputMultiline: { minHeight: 68, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 48, textAlignVertical: 'top' },
+  suggestBox: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.lineDark,
+    borderRadius: 10,
+    paddingVertical: 4,
+    backgroundColor: '#fff',
+    ...theme.shadow.sm,
+    zIndex: 30,
+    elevation: 6,
+  },
+  suggestRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  suggestName: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
+  suggestSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statusPill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
+  statusPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
   statusPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   statusPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   statusPillTextActive: { color: '#fff' },
@@ -369,14 +423,14 @@ const s = StyleSheet.create({
   },
   cta: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadow.lg,
   },
   ctaDisabled: { opacity: 0.6 },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  ctaText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
   toast: {
     position: 'absolute',
     top: 8,

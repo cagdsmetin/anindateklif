@@ -91,7 +91,7 @@ export default function BlackHoleBackground() {
         const y = cy + Math.sin(p.angle) * p.radius * 0.55; // hafif elips -- düz daireden daha "disk" hissi
         const fade = Math.min(1, (maxRadius - p.radius) / (maxRadius * 0.25));
         const alpha = 0.15 + fade * 0.55;
-        const color = p.hue === 'gold' ? `rgba(241,201,89,${alpha})` : `rgba(96,165,250,${alpha})`;
+        const color = p.hue === 'gold' ? `rgba(232,151,124,${alpha})` : `rgba(96,165,250,${alpha})`;
         ctx.beginPath();
         ctx.fillStyle = color;
         ctx.arc(x, y, p.size, 0, Math.PI * 2);

@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
+import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 
@@ -70,6 +71,9 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      <View style={s.bgWrap} pointerEvents="none">
+        <BlackHoleBackground />
+      </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
           <View style={isDesktopWeb ? s.desktopCard : undefined}>
@@ -174,7 +178,8 @@ export default function ResetPasswordScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: authTheme.bg },
+  container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
+  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24, flexGrow: 1 },
   scrollDesktop: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
   desktopCard: {

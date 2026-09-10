@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
+import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import {
@@ -113,6 +114,9 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      <View style={s.bgWrap} pointerEvents="none">
+        <BlackHoleBackground />
+      </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]}
@@ -259,7 +263,8 @@ function InputRow({
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: authTheme.bg },
+  container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
+  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   scroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 },
   scrollDesktop: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
   backHome: {

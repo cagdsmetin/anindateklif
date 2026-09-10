@@ -323,6 +323,13 @@ export default function CompanyScreen() {
               <Ionicons name="star" size={18} color={theme.colors.primary} />
               <Text style={s.subscriptionBtnText}>{t('firma.subscriptionManagement')}</Text>
             </TouchableOpacity>
+            {/* Google Play / App Store zorunlulugu: kullanici gizlilik politikasina
+                sadece acilis (landing) sayfasindan degil, giris yaptiktan sonra da
+                uygulama icinden ulasabilmeli -- hukuki risk olusturmasin diye. */}
+            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/privacy')} testID="privacy-policy-btn">
+              <Ionicons name="shield-checkmark-outline" size={18} color={theme.colors.primary} />
+              <Text style={s.subscriptionBtnText}>{t('firma.privacyPolicy')}</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Hesap silme (Google Play / App Store zorunlu) — sayfanın en altında,

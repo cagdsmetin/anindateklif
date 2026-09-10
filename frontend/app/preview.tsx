@@ -156,7 +156,16 @@ export default function PreviewScreen() {
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
+  // Covers the WHOLE flow (PDF generation + WhatsApp hand-off), not just the
+  // save step — previously nothing disabled the button while the PDF was
+  // being rendered, so a slow/unstable connection made it look like the
+  // screen had frozen (no feedback, and repeated taps could stack up
+  // multiple popups/PDF generations at once).
+  const [waSharing, setWaSharing] = useState(false);
   const doWhatsAppShare = async () => {
+    if (waSharing) return;
+    setWaSharing(true);
+    showToast('Hazırlanıyor...');
     // On web, open a blank tab synchronously — right here, still inside the
     // click handler's user-gesture window — before any `await`. PDF
     // generation below can take a second or more; calling window.open()
@@ -177,6 +186,8 @@ export default function PreviewScreen() {
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
       showToast('WhatsApp hatası: ' + (e?.message || ''));
+    } finally {
+      setWaSharing(false);
     }
   };
 
@@ -299,9 +310,8 @@ export default function PreviewScreen() {
           <Ionicons name="share-social" size={16} color="#fff" />
           <Text style={s.actionBtnAccText}>PDF Paylaş</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtnWa} onPress={doWhatsAppShare} testID="preview-wa-btn">
-          <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-          <Text style={s.actionBtnAccText}>WhatsApp</Text>
+        <TouchableOpacity style={[s.actionBtnWa, waSharing && { opacity: 0.6 }]} onPress={doWhatsAppShare} disabled={waSharing} testID="preview-wa-btn">
+          {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={16} color="#fff" /><Text style={s.actionBtnAccText}>WhatsApp</Text></>)}
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnExcel} onPress={doExcelDownload} testID="preview-excel-btn" hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
           <Ionicons name="grid-outline" size={18} color="#107C41" />

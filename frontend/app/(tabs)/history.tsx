@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   ScrollView,
@@ -234,8 +235,18 @@ export default function HistoryScreen() {
     }
   };
 
+  // `waSharingId` covers the WHOLE flow (PDF generation + WhatsApp
+  // hand-off) for the quote currently being shared — previously nothing
+  // disabled the "WA" button while the PDF was rendering, so on a slow/
+  // unstable connection nothing visibly happened for a while (or the CDN
+  // fetch for the PDF libraries could hang outright, see pdf-web.ts), which
+  // read as the screen being frozen; repeated taps could then stack up
+  // multiple popups/PDF generations at once.
+  const [waSharingId, setWaSharingId] = useState<string | null>(null);
   const doWhatsApp = async (quote: QuoteT, message?: string) => {
-    if (!activeCompany) return;
+    if (!activeCompany || waSharingId) return;
+    setWaSharingId(quote.id);
+    showToast('Hazırlanıyor...');
     // Open the tab synchronously, still inside this click's user-gesture
     // window — PDF generation below takes long enough that window.open()
     // after it gets silently blocked as a popup. See preview.tsx for the
@@ -252,6 +263,8 @@ export default function HistoryScreen() {
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
       showToast(t('history.s005') + (e?.message || ''));
+    } finally {
+      setWaSharingId(null);
     }
   };
 
@@ -419,8 +432,13 @@ export default function HistoryScreen() {
                 >
                   <Ionicons name="grid-outline" size={16} color="#107C41" />
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
-                  <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                <TouchableOpacity
+                  style={[s.actBtn, { backgroundColor: '#dcfce7' }, waSharingId === quote.id && { opacity: 0.6 }]}
+                  onPress={() => setWaMenuFor(quote.id)}
+                  disabled={waSharingId === quote.id}
+                  testID={`whatsapp-${quote.id}`}
+                >
+                  {waSharingId === quote.id ? <ActivityIndicator size="small" color="#16a34a" /> : <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />}
                   <Text style={[s.actText, { color: '#16a34a' }]}>{t('history.s023')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity

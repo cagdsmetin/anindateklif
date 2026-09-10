@@ -443,25 +443,43 @@ export default function EditorScreen() {
 
   // Direct WhatsApp: open the customer's chat pre-filled, then trigger the share sheet
   // so the user can attach the PDF into that same chat with one tap.
+  //
+  // `waSharing` covers the ENTIRE flow (save + PDF generation + WhatsApp
+  // hand-off), not just the save step. Before this, only `saving` (from
+  // handleSave) disabled the button — the moment the save finished, the
+  // button re-enabled itself while PDF generation/WhatsApp hand-off kept
+  // running silently in the background with zero visual feedback. On a slow
+  // connection (PDF library CDN fetch, etc.) that looked exactly like the
+  // reported "ekranda takılıp kalıyor" bug: nothing visibly happens, so the
+  // person taps again (sometimes several times), stacking up duplicate
+  // PDF generations/popup windows.
+  const [waSharing, setWaSharing] = useState(false);
   const handleWhatsAppShare = async () => {
-    const saved = await handleSave(); if (!saved) return;
-    // Open the tab synchronously, still inside this click's user-gesture
-    // window — PDF generation below takes long enough that window.open()
-    // after it gets silently blocked as a popup.
-    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+    if (waSharing) return;
+    setWaSharing(true);
+    showToast('Hazırlanıyor...');
     try {
-      const { uri, fileName } = await generatePdfUri(saved);
-      const r = await shareQuoteViaWhatsApp({
-        pdfUri: uri,
-        fileName,
-        quote: saved,
-        companyName: activeCompany?.sirketAdi,
-        waWindow,
-      });
-      if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
-    } catch (e: any) {
-      if (waWindow) { try { waWindow.close(); } catch {} }
-      showToast(t('teklifPage.s019') + (e?.message || ''));
+      const saved = await handleSave(); if (!saved) return;
+      // Open the tab synchronously, still inside this click's user-gesture
+      // window — PDF generation below takes long enough that window.open()
+      // after it gets silently blocked as a popup.
+      const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+      try {
+        const { uri, fileName } = await generatePdfUri(saved);
+        const r = await shareQuoteViaWhatsApp({
+          pdfUri: uri,
+          fileName,
+          quote: saved,
+          companyName: activeCompany?.sirketAdi,
+          waWindow,
+        });
+        if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+      } catch (e: any) {
+        if (waWindow) { try { waWindow.close(); } catch {} }
+        showToast(t('teklifPage.s019') + (e?.message || ''));
+      }
+    } finally {
+      setWaSharing(false);
     }
   };
 
@@ -785,9 +803,8 @@ export default function EditorScreen() {
             <TouchableOpacity style={[s.btnPrimary, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
               {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s070')}</Text></>)}
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving} testID="share-whatsapp-btn">
-              <Ionicons name="logo-whatsapp" size={17} color="#fff" />
-              <Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text>
+            <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, (saving || waSharing) && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving || waSharing} testID="share-whatsapp-btn">
+              {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text></>)}
             </TouchableOpacity>
           </View>
         </ScrollView>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Platform,
   ScrollView,
@@ -19,11 +20,11 @@ import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, QuoteT, RatesT } from '@/src/lib/api';
+import { api, QuoteT, RatesT, fetchQuoteExcelBytes } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb, openWhatsAppChat } from '@/src/lib/whatsapp';
-import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
@@ -51,8 +52,23 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, activeCompany, showToast, getQuoteAttachments } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest } = useApp();
   const { user: me } = useAuth();
+  // Teklif sahiplik/onay sistemi: bana (bu tekliflerin gerçek sahibine) gelen,
+  // henüz yanıtlanmamış düzenleme onay istekleri -- bkz. teklif.tsx'teki kilit.
+  const incomingEditRequests = editRequests.filter((r) => r.status === 'pending' && r.approverUserId === me?.user_id);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+  const handleRespondEditRequest = async (id: string, approve: boolean) => {
+    if (respondingId) return;
+    setRespondingId(id);
+    try {
+      await respondQuoteEditRequest(id, approve);
+    } catch (e: any) {
+      showToast(t('history.s005') + (e?.message || ''));
+    } finally {
+      setRespondingId(null);
+    }
+  };
   const isStaffUser = !!me?.is_staff;
   // Onaylı bir teklifi reddetmek bağlı Tahsilat borcunu da iptal ediyor --
   // geri alınamaz bir işlem olduğu için sadece firma sahibi yapabilsin ve
@@ -64,6 +80,11 @@ export default function HistoryScreen() {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : t('history.s003'));
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
+  const [maliyetFor, setMaliyetFor] = useState<string | null>(null);
+  // Kalem bazında maliyet girişi -- teklif kalemi id'sine göre metin kutusu
+  // değerleri (virgüllü, henüz sayıya çevrilmemiş). Modal açılırken quote'un
+  // kalemlerindeki mevcut maliyet değerleriyle dolduruluyor.
+  const [maliyetItemInputs, setMaliyetItemInputs] = useState<Record<string, string>>({});
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
@@ -143,6 +164,10 @@ export default function HistoryScreen() {
   const monthVolumeEquiv = equivFromTRY(monthVolumeTRY);
 
   const openEdit = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: id } });
+  // "Kopyala" -- Teklif ekranını bu teklifin bilgileriyle dolu ama YENİ bir
+  // kayıt olarak açar (bkz. teklif.tsx: loadFromQuoteAsCopy). Sık tekrar eden
+  // müşteriler/kalemler için baştan girmek yerine tek dokunuşla taslak oluşturur.
+  const openDuplicate = (id: string) => router.push({ pathname: '/(tabs)/teklif', params: { duplicateFrom: id } });
 
   const generatePdf = async (quote: QuoteT): Promise<{ uri: string; fileName: string } | null> => {
     if (!activeCompany) return null;
@@ -194,8 +219,49 @@ export default function HistoryScreen() {
     } catch (e: any) { showToast(t('history.s008') + (e?.message || '')); }
   };
 
+  // Excel (.xlsx) indirme -- Geçmiş listesindeki her kart için de PDF/WhatsApp
+  // ile aynı hizada, önizlemeye girmeden tek dokunuşla indirilebilsin diye.
+  // Görsel tasarım (marka renkleri, kalın başlıklar) sunucuda openpyxl ile
+  // üretiliyor -- istemcideki ücretsiz 'xlsx' kütüphanesi stil yazamıyor.
+  const doExcelDownload = async (quote: QuoteT) => {
+    try {
+      const buf = await fetchQuoteExcelBytes(quote.id);
+      const fileName = buildQuoteFileName(new Date()) + '.xlsx';
+      const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([buf], { type: mime });
+        const url = URL.createObjectURL(blob);
+        await downloadFileWeb(url, fileName);
+        showToast('Excel indirildi');
+      } else {
+        const b64 = bytesToBase64(new Uint8Array(buf));
+        const uri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Teklif Excel', UTI: 'org.openxmlformats.spreadsheetml.sheet' });
+        } else {
+          showToast('Excel dosyası oluşturuldu ama paylaşım kullanılamıyor');
+        }
+      }
+    } catch (e: any) {
+      showToast('Excel hatası: ' + (e?.message || ''));
+    }
+  };
+
+  // `waSharingId` covers the WHOLE flow (PDF generation + WhatsApp
+  // hand-off) for the quote currently being shared — previously nothing
+  // disabled the "WA" button while the PDF was rendering, so on a slow/
+  // unstable connection nothing visibly happened for a while (or the CDN
+  // fetch for the PDF libraries could hang outright, see pdf-web.ts), which
+  // read as the screen being frozen; repeated taps could then stack up
+  // multiple popups/PDF generations at once.
+  const [waSharingId, setWaSharingId] = useState<string | null>(null);
   const doWhatsApp = async (quote: QuoteT, message?: string) => {
-    if (!activeCompany) return;
+    if (!activeCompany || waSharingId) return;
+    setWaSharingId(quote.id);
+    showToast('Hazırlanıyor...');
     // Open the tab synchronously, still inside this click's user-gesture
     // window — PDF generation below takes long enough that window.open()
     // after it gets silently blocked as a popup. See preview.tsx for the
@@ -212,6 +278,8 @@ export default function HistoryScreen() {
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
       showToast(t('history.s005') + (e?.message || ''));
+    } finally {
+      setWaSharingId(null);
     }
   };
 
@@ -241,6 +309,36 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('history.s012')} />
+      {incomingEditRequests.length > 0 && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 12, gap: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>{t('history.s046')}</Text>
+          {incomingEditRequests.map((r) => (
+            <View key={r.id} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: '#fef3c7', borderRadius: 12, padding: 12,
+            }}>
+              <Ionicons name="alert-circle" size={18} color="#b45309" />
+              <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                {t('history.s047').replace('{who}', r.requestedByEmail || r.requestedByName || '').replace('{teklifNo}', r.teklifNo || '')}
+              </Text>
+              <TouchableOpacity
+                disabled={respondingId === r.id}
+                onPress={() => handleRespondEditRequest(r.id, true)}
+                style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s048')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={respondingId === r.id}
+                onPress={() => handleRespondEditRequest(r.id, false)}
+                style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s049')}</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
       <View style={{ padding: 14, paddingBottom: 6 }}>
         <View style={s.statsRow}>
           <View style={s.statCard}>
@@ -312,7 +410,7 @@ export default function HistoryScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
         {[t('history.s003'), ...STATUSES].map((st) => (
           <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st}</Text>
+            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false} numberOfLines={1}>{st}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -341,6 +439,27 @@ export default function HistoryScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+              <TouchableOpacity
+                style={s.maliyetRow}
+                onPress={() => {
+                  setMaliyetFor(quote.id);
+                  const init: Record<string, string> = {};
+                  (quote.items || []).forEach((it) => {
+                    if (it.maliyet != null) init[it.id] = String(it.maliyet).replace('.', ',');
+                  });
+                  setMaliyetItemInputs(init);
+                }}
+                testID={`maliyet-${quote.id}`}
+              >
+                <Ionicons name="calculator-outline" size={13} color={theme.colors.textMuted} />
+                {quote.maliyet != null ? (
+                  <Text style={s.maliyetText} numberOfLines={1}>
+                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: (quote.genelToplam - quote.maliyet) >= 0 ? '#16a34a' : theme.colors.red, fontWeight: '900' }}>{fmt(quote.genelToplam - quote.maliyet, quote.paraBirimi)}</Text>
+                  </Text>
+                ) : (
+                  <Text style={s.maliyetTextMuted}>{t('history.s037')}</Text>
+                )}
+              </TouchableOpacity>
               <View style={s.actionBar}>
                 <TouchableOpacity style={s.actBtn} onPress={() => openEdit(quote.id)} testID={`edit-quote-${quote.id}`}>
                   <Ionicons name="pencil-outline" size={14} color={theme.colors.primary} />
@@ -350,9 +469,30 @@ export default function HistoryScreen() {
                   <Ionicons name="document-text-outline" size={14} color={theme.colors.primary} />
                   <Text style={s.actText}>{t('history.s022')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => setWaMenuFor(quote.id)} testID={`whatsapp-${quote.id}`}>
-                  <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                <TouchableOpacity
+                  style={[s.actBtnIcon, { backgroundColor: '#E8F5E9' }]}
+                  onPress={() => doExcelDownload(quote)}
+                  testID={`excel-${quote.id}`}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="grid-outline" size={16} color="#107C41" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.actBtn, { backgroundColor: '#dcfce7' }, waSharingId === quote.id && { opacity: 0.6 }]}
+                  onPress={() => setWaMenuFor(quote.id)}
+                  disabled={waSharingId === quote.id}
+                  testID={`whatsapp-${quote.id}`}
+                >
+                  {waSharingId === quote.id ? <ActivityIndicator size="small" color="#16a34a" /> : <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />}
                   <Text style={[s.actText, { color: '#16a34a' }]}>{t('history.s023')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.actBtnIcon, { backgroundColor: theme.colors.primary + '14' }]}
+                  onPress={() => openDuplicate(quote.id)}
+                  testID={`duplicate-quote-${quote.id}`}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Ionicons name="copy-outline" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtnIcon} onPress={() => setDeleteTarget(quote.id)} testID={`delete-quote-${quote.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
@@ -455,6 +595,93 @@ export default function HistoryScreen() {
         </TouchableOpacity>
       </Modal>
 
+      <Modal visible={!!maliyetFor} transparent animationType="fade" onRequestClose={() => setMaliyetFor(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setMaliyetFor(null)}>
+          <TouchableOpacity activeOpacity={1} style={[s.confirmBox, { maxWidth: 380 }]} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.menuTitle}>{t('history.s035')}</Text>
+            <Text style={[s.confirmBody, { marginBottom: 10 }]}>{t('history.s041')}</Text>
+            {(() => {
+              const activeQuote = quotes.find((q) => q.id === maliyetFor);
+              if (!activeQuote) return null;
+              const items = activeQuote.items || [];
+              const total = items.reduce((sum, it) => {
+                const raw = maliyetItemInputs[it.id];
+                const n = raw != null ? Number(raw.replace(',', '.')) : NaN;
+                return sum + (isNaN(n) ? 0 : n);
+              }, 0);
+              const anyEntered = items.some((it) => (maliyetItemInputs[it.id] || '').trim() !== '');
+              const kar = activeQuote.genelToplam - total;
+              return (
+                <>
+                  <ScrollView style={{ maxHeight: 320, width: '100%' }} showsVerticalScrollIndicator={false}>
+                    {items.length === 0 ? (
+                      <Text style={s.emptyText}>{t('history.s042')}</Text>
+                    ) : (
+                      items.map((it) => {
+                        const name = it.mode === 'technical' ? (it.sistemTipi || it.urunAdi || t('history.s043')) : (it.urunAdi || t('history.s043'));
+                        return (
+                          <View key={it.id} style={s.itemMaliyetRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.itemMaliyetName} numberOfLines={1}>{name}</Text>
+                              <Text style={s.itemMaliyetSub}>{it.adet} {it.birim}</Text>
+                            </View>
+                            <TextInput
+                              style={s.itemMaliyetInput}
+                              keyboardType="decimal-pad"
+                              placeholder="0,00"
+                              placeholderTextColor="#94a3b8"
+                              value={maliyetItemInputs[it.id] || ''}
+                              onChangeText={(txt) => setMaliyetItemInputs((prev) => ({ ...prev, [it.id]: txt.replace(/[^0-9,]/g, '') }))}
+                              testID={`maliyet-item-input-${it.id}`}
+                            />
+                          </View>
+                        );
+                      })
+                    )}
+                  </ScrollView>
+                  {anyEntered && (
+                    <View style={s.maliyetSummaryBox}>
+                      <Text style={s.maliyetSummaryText}>{t('history.s035')}: {fmt(total, activeQuote.paraBirimi)}</Text>
+                      <Text style={[s.maliyetSummaryText, { color: kar >= 0 ? '#16a34a' : theme.colors.red }]}>{t('history.s036')}: {fmt(kar, activeQuote.paraBirimi)}</Text>
+                    </View>
+                  )}
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                    <TouchableOpacity
+                      style={[s.confirmBtn, s.confirmBtnGhost]}
+                      onPress={async () => {
+                        for (const it of items) {
+                          if (it.maliyet != null) await updateQuoteItemMaliyet(activeQuote.id, it.id, null);
+                        }
+                        setMaliyetItemInputs({});
+                        setMaliyetFor(null);
+                      }}
+                      testID="maliyet-clear"
+                    >
+                      <Text style={s.confirmBtnGhostText}>{t('history.s039')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.confirmBtn, { backgroundColor: theme.colors.primary }]}
+                      onPress={async () => {
+                        for (const it of items) {
+                          const raw = maliyetItemInputs[it.id];
+                          const n = raw != null && raw.trim() !== '' ? Number(raw.replace(',', '.')) : null;
+                          const current = it.maliyet != null ? it.maliyet : null;
+                          if (n !== current) await updateQuoteItemMaliyet(activeQuote.id, it.id, n);
+                        }
+                        setMaliyetFor(null);
+                      }}
+                      testID="maliyet-save"
+                    >
+                      <Text style={s.confirmBtnDangerText}>{t('history.s040')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              );
+            })()}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <Modal visible={!!rejectConfirmFor} transparent animationType="fade" onRequestClose={() => setRejectConfirmFor(null)}>
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setRejectConfirmFor(null)}>
           <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
@@ -548,9 +775,14 @@ const s = StyleSheet.create({
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  filterRowOuter: { flexGrow: 0, height: 56 },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center' },
-  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  // Yatay ScrollView'un DIŞ style'ı web'de kesin bir yükseklik almazsa
+  // (sadece flexGrow:0 yeterli değil) içerik üstten/alttan kırpılıyor --
+  // önceki "height: 56" bunu çözüyordu, tamamen kaldırmak baloncukların
+  // kaybolmasına (görünmez şekilde kırpılmasına) yol açtı. minHeight ile
+  // hem kırpılmayı önlüyoruz hem de chip boyu değişse bile taşmıyor.
+  filterRowOuter: { flexGrow: 0, minHeight: 62 },
+  filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' },
+  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },
@@ -565,6 +797,16 @@ const s = StyleSheet.create({
   hAmount: { fontSize: 14, fontWeight: '900', color: theme.colors.primary },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, marginTop: 6 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
+  maliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
+  maliyetText: { fontSize: 11, color: theme.colors.navy, fontWeight: '700', flexShrink: 1 },
+  maliyetTextMuted: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' },
+  maliyetTextInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: theme.colors.navy, minWidth: 200, textAlign: 'center' },
+  itemMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
+  itemMaliyetSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
+  itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.navy, width: 90, textAlign: 'center' },
+  maliyetSummaryBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, gap: 4, width: '100%' },
+  maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy, textAlign: 'right' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
   actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 10, flex: 1, justifyContent: 'center' },
   actBtnIcon: { width: 40, paddingVertical: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

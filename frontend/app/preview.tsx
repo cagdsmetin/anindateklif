@@ -19,8 +19,9 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml, PdfTemplateId } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
+import { fetchQuoteExcelBytes } from '@/src/lib/api';
 import { shareQuoteViaWhatsApp, canShareFilesWeb } from '@/src/lib/whatsapp';
-import { mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
+import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 
@@ -155,7 +156,16 @@ export default function PreviewScreen() {
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
+  // Covers the WHOLE flow (PDF generation + WhatsApp hand-off), not just the
+  // save step — previously nothing disabled the button while the PDF was
+  // being rendered, so a slow/unstable connection made it look like the
+  // screen had frozen (no feedback, and repeated taps could stack up
+  // multiple popups/PDF generations at once).
+  const [waSharing, setWaSharing] = useState(false);
   const doWhatsAppShare = async () => {
+    if (waSharing) return;
+    setWaSharing(true);
+    showToast('Hazırlanıyor...');
     // On web, open a blank tab synchronously — right here, still inside the
     // click handler's user-gesture window — before any `await`. PDF
     // generation below can take a second or more; calling window.open()
@@ -176,6 +186,42 @@ export default function PreviewScreen() {
     } catch (e: any) {
       if (waWindow) { try { waWindow.close(); } catch {} }
       showToast('WhatsApp hatası: ' + (e?.message || ''));
+    } finally {
+      setWaSharing(false);
+    }
+  };
+
+  // Excel (.xlsx) indirme -- kalem tablosunu ve toplamları muhasebe/ERP'ye
+  // aktarım veya kendi arşivi için tablo halinde isteyen kullanıcılar için.
+  // PDF akışından bağımsız: xlsx kütüphanesiyle (zaten Katalog içe aktarmada
+  // kullanılıyor) doğrudan bir workbook üretilip web'de indiriliyor / native'de
+  // paylaşım sayfası açılıyor.
+  const doExcelDownload = async () => {
+    try {
+      // Görsel tasarım (marka renkleri, kalın başlıklar) sunucuda openpyxl ile
+      // üretiliyor -- istemcideki ücretsiz 'xlsx' kütüphanesi stil yazamıyor.
+      const buf = await fetchQuoteExcelBytes(quote.id);
+      const fileName = buildQuoteFileName(new Date()) + '.xlsx';
+      const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([buf], { type: mime });
+        const url = URL.createObjectURL(blob);
+        await downloadFileWeb(url, fileName);
+        showToast('Excel indirildi');
+      } else {
+        const b64 = bytesToBase64(new Uint8Array(buf));
+        const uri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Teklif Excel', UTI: 'org.openxmlformats.spreadsheetml.sheet' });
+        } else {
+          showToast('Excel dosyası oluşturuldu ama paylaşım kullanılamıyor');
+        }
+      }
+    } catch (e: any) {
+      showToast('Excel hatası: ' + (e?.message || ''));
     }
   };
 
@@ -247,6 +293,14 @@ export default function PreviewScreen() {
         )}
       </View>
 
+      {/* Android'de react-native-webview bir SurfaceView ile render olur ve
+          RN'in view sırasından bağımsız olarak HER ZAMAN diğer native
+          view'ların üstünde çizilir -- bu yüzden bu bar önceden
+          position:'absolute' ile WebView'in üzerine bindirilmişti: görsel
+          olarak doğru duruyordu ama dokunuşlar butonlara değil altındaki
+          WebView'e gidiyordu (WhatsApp/PDF Paylaş butonlarının "hiçbir şey
+          yapmaması" bundandı). Barı normal flex akışına alıp WebView ile
+          hiç örtüşmeyecek şekilde ayırmak bu sınıfın kökten çözümü. */}
       <View style={[s.actionBar, { paddingBottom: insets.bottom + 8 }]}>
         <TouchableOpacity style={s.actionBtnGhost} onPress={() => router.push({ pathname: '/(tabs)/teklif', params: { quoteId: quote.id } })} testID="preview-edit-btn">
           <Ionicons name="pencil" size={16} color={theme.colors.textSoft} />
@@ -256,9 +310,11 @@ export default function PreviewScreen() {
           <Ionicons name="share-social" size={16} color="#fff" />
           <Text style={s.actionBtnAccText}>PDF Paylaş</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.actionBtnWa} onPress={doWhatsAppShare} testID="preview-wa-btn">
-          <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-          <Text style={s.actionBtnAccText}>WhatsApp</Text>
+        <TouchableOpacity style={[s.actionBtnWa, waSharing && { opacity: 0.6 }]} onPress={doWhatsAppShare} disabled={waSharing} testID="preview-wa-btn">
+          {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={16} color="#fff" /><Text style={s.actionBtnAccText}>WhatsApp</Text></>)}
+        </TouchableOpacity>
+        <TouchableOpacity style={s.actionBtnExcel} onPress={doExcelDownload} testID="preview-excel-btn" hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
+          <Ionicons name="grid-outline" size={18} color="#107C41" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -281,7 +337,6 @@ const s = StyleSheet.create({
   previewStatus: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   previewStatusText: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   actionBar: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8,
     borderTopWidth: 1, borderTopColor: theme.colors.line,
     ...Platform.select({ android: { elevation: 8 }, ios: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 5, shadowOffset: { width: 0, height: -2 } } }),
@@ -291,4 +346,5 @@ const s = StyleSheet.create({
   actionBtnAcc: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.colors.primary, flex: 1.2 },
   actionBtnAccText: { color: '#fff', fontWeight: '900', fontSize: 12 },
   actionBtnWa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: '#25D366', flex: 1 },
+  actionBtnExcel: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#C8E6C9' },
 });

@@ -10,6 +10,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
+import FloatingTabBar from '@/src/components/FloatingTabBar';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -193,29 +194,23 @@ export default function TabsLayout() {
   const tabs = (
     <Tabs
       initialRouteName="index"
+      // Masaüstünde alt bar hiç render edilmiyor (sol sidebar var); mobilde
+      // ve mobil web'de özel yüzen (floating) pil bar kullanılıyor -- bkz.
+      // src/components/FloatingTabBar.tsx.
+      tabBar={isDesktopWeb ? () => null : (props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: isDesktopWeb
-          ? { display: 'none' }
-          : {
-              height: 52 + insets.bottom,
-              paddingTop: 8,
-              paddingBottom: insets.bottom + 6,
-              borderTopWidth: 0,
-              backgroundColor: theme.colors.navyDark,
-              elevation: 8,
-            },
         tabBarShowLabel: false,
         tabBarItemStyle: { paddingHorizontal: 0 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Panel', tabBarIcon: tabIcon('grid', theme.colors.primary) }} />
       <Tabs.Screen name="teklif" options={{ title: 'Teklif', tabBarIcon: tabIcon('create', m.teklif) }} />
-      <Tabs.Screen name="catalog" options={{ title: 'Katalog', tabBarIcon: tabIcon('library', m.katalog) }} />
+      <Tabs.Screen name="catalog" options={{ title: 'Katalog', href: null }} />
       <Tabs.Screen name="history" options={{ title: 'Geçmiş', tabBarIcon: tabIcon('time', m.gecmis) }} />
       <Tabs.Screen name="customers" options={{ title: 'Müşteri', tabBarIcon: tabIcon('people', m.musteri) }} />
       <Tabs.Screen name="services" options={{ title: 'Servis', tabBarIcon: tabIcon('construct', m.servis) }} />
-      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', tabBarIcon: tabIcon('megaphone', m.kampanya) }} />
+      <Tabs.Screen name="campaigns" options={{ title: 'Kampanya', href: null }} />
       <Tabs.Screen name="reminders" options={{ title: 'Hatırlatmalar', tabBarIcon: tabIcon('notifications', m.hatirlatma) }} />
       <Tabs.Screen name="kasa" options={{ title: 'Kasa', tabBarIcon: tabIcon('wallet', m.kasa), href: restricted ? null : undefined }} />
       <Tabs.Screen name="tahsilat" options={{ title: 'Tahsilat', tabBarIcon: tabIcon('cash', m.tahsilat), href: restricted ? null : undefined }} />
@@ -226,6 +221,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="assistant" options={{ href: null }} />
       <Tabs.Screen name="team-chat" options={{ href: null }} />
       <Tabs.Screen name="personel" options={{ href: null }} />
+      <Tabs.Screen name="personel-teklifleri" options={{ href: null }} />
       <Tabs.Screen name="promo-admin" options={{ href: null }} />
       <Tabs.Screen name="lead-admin" options={{ href: null }} />
       <Tabs.Screen name="leads" options={{ href: null }} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -32,12 +32,21 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 
 export default function TahsilatScreen() {
   const { t, lang } = useLanguage();
-  const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast } = useApp();
+  const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast, reloadTahsilat } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const pendingSectionY = useRef(0);
   const [rates, setRates] = useState<RatesT | null>(null);
+
+  // Teklif onaylanınca/reddedilince backend otomatik Tahsilat kaydı
+  // oluşturuyor/güncelliyor; bu sekmeye her gelindiğinde listeyi tazeleyerek
+  // kullanıcının elle yenilemeden en güncel kayıtları görmesini sağlıyoruz.
+  useFocusEffect(
+    useCallback(() => {
+      reloadTahsilat();
+    }, [reloadTahsilat]),
+  );
 
   useEffect(() => {
     let cancelled = false;

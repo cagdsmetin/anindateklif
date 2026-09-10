@@ -156,10 +156,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     ? `<img src="${esc(company.logoBase64)}" class="logo"/>`
     : `<div class="logo-fallback">${esc((company.sirketAdi || 'FIRMA').substring(0, 24))}</div>`;
 
-  // Logonun altındaki QR -- taranınca teklifi veren firma ve teklifi alan
-  // musterinin bilgilerini (URL degil, duz metin kart olarak) gosterir.
-  const qrSvg = buildQrSvg(buildQuoteQrText(company, quote), 92);
-
   const bankRows = (company.banklar || [])
     .map(
       (b) => `
@@ -210,19 +206,21 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
      into a clean "letterhead" band, so the block reads as one deliberate
      unit even when the left (logo/company) and right (title/meta) columns
      end up different heights. */
-  .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; padding-bottom:9px; margin-bottom:12px; }
+  /* NOT: border-collapse:collapse iken <table>'in kendi padding'i CSS
+     spec'ine gore render edilmiyor (yalniz "separate" modelde calisiyor),
+     bu yuzden alt bosluk tablo degil hucre (td) seviyesinde veriliyor --
+     yoksa telefon numarasi/Gecerlilik Tarihi metni dogrudan alttaki 3px'lik
+     cizgiye yapisiyordu. */
+  .hdr { width:100%; table-layout:fixed; border-collapse:collapse; border-bottom:3px solid #1E293B; margin-bottom:12px; }
   .hdr td { padding:0; vertical-align:top; }
-  .hdr td.left-col { width:34%; padding-right:10px; }
-  .hdr td.center-col { width:32%; padding:0 8px; text-align:center; vertical-align:middle; }
-  .hdr td.right-col { width:34%; padding-left:10px; text-align:right; }
+  .hdr td.left-col { width:34%; padding-right:10px; padding-bottom:16px; }
+  .hdr td.center-col { width:32%; padding:0 8px 16px; text-align:center; vertical-align:middle; }
+  .hdr td.right-col { width:34%; padding-left:10px; padding-bottom:16px; text-align:right; }
 
   /* Logo always sits first (top), company name directly under it, then the
      rest of the contact lines — left-aligned since this column now anchors
      the whole letterhead. */
   .logo { max-width:200px; max-height:150px; object-fit:contain; object-position:center; margin:0 auto; display:block; }
-  .qr-wrap { margin:6px auto 0; width:92px; text-align:center; }
-  .qr-wrap svg { display:block; width:92px; height:92px; }
-  .qr-cap { font-size:6.5px; color:#94a3b8; letter-spacing:0.04em; margin-top:3px; }
   .logo-fallback { padding:14px 20px; border:2px solid #1E293B; font-weight:800; color:#1E293B; margin:0 auto; display:inline-block; font-size:17px; }
   .cname { font-weight:700; font-size:16.5px; color:#1E293B; margin:0 0 4px 0; line-height:1.15; word-wrap:break-word; overflow-wrap:break-word; }
   .cline { font-size:14px; color:#0f172a; line-height:1.05; margin:0; word-wrap:break-word; overflow-wrap:break-word; }
@@ -233,12 +231,14 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
   .meta-table td.k { color:#64748b; text-align:right; padding-right:8px; padding-left:0; }
   .meta-table td.v { font-weight:800; color:#0f172a; text-align:right; min-width:80px; word-wrap:break-word; overflow-wrap:break-word; }
 
-  /* INFO BOXES */
+  /* INFO BOXES -- iki kutu artik boşluksuz, tek blok gibi bitişik oturuyor;
+     ortadaki çift çizgiyi tekille indirmek için sağdaki kutunun sol kenarlığı
+     kaldırıldı. */
   .info-grid { display: table; width:100%; margin-bottom:8px; border-spacing: 0 0; }
   .info-cell { display: table-cell; width:50%; vertical-align:top; }
-  .info-cell:first-child { padding-right:7px; }
-  .info-cell:last-child { padding-left:7px; }
   .info-box { border:1px solid #cbd5e1; border-radius:2px; overflow:hidden; }
+  .info-cell:first-child .info-box { border-radius:2px 0 0 2px; }
+  .info-cell:last-child .info-box { border-left:none; border-radius:0 2px 2px 0; }
   .info-box .hdr-cell { background:#1E293B; color:#fff; font-size:11px; font-weight:800; padding:5px 9px; letter-spacing:0.04em; }
   .info-box table { width:100%; border-collapse:collapse; }
   .info-box td { font-size:11px; padding:3.5px 9px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
@@ -311,7 +311,6 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
       </td>
       <td class="center-col">
         ${logo}
-        ${qrSvg ? `<div class="qr-wrap">${qrSvg}<div class="qr-cap">TEKLİF BİLGİSİ</div></div>` : ''}
       </td>
       <td class="right-col">
         <div class="doc-title">TEKLİF FORMU</div>
@@ -977,7 +976,11 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
   body { font-family:'Montserrat','Helvetica Neue',Arial,sans-serif; color:#1E293B; background:#fff; font-size:9.5pt; line-height:1.5; }
-  .page { display:flex; min-height: 1120px; }
+  /* min-height biraz A4'ün tam yüksekliğinin (~1122px) altında tutulur; aksi
+     halde kenarlık/satır yüksekliği yuvarlamaları gibi küçük taşmalar tek
+     sayfaya sığan kısa tekliflerde gereksiz, neredeyse boş bir 2. sayfa
+     açtırabiliyordu. */
+  .page { display:flex; min-height: 1075px; }
 
   .strip { width:180px; flex-shrink:0; background:linear-gradient(180deg,#0F172A 0%,#1E293B 100%); color:#fff; padding:28px 20px; }
   .strip-logo-img { max-width:145px; max-height:110px; object-fit:contain; display:block; margin-bottom:16px; }
@@ -1173,7 +1176,9 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; }
   body { font-family:'Poppins','Helvetica Neue',Arial,sans-serif; color:#1E1B4B; background:#EEF2FF; font-size:9.5pt; line-height:1.5; }
-  .page { padding:26px; min-height:1120px; box-sizing:border-box; }
+  /* bkz. yukarıdaki Kurumsal şablondaki aynı not: A4 tam yüksekliğinin biraz
+     altında tutup gereksiz boş 2. sayfa açılmasını önlüyoruz. */
+  .page { padding:26px; min-height:1075px; box-sizing:border-box; }
 
   .card { background:#fff; border-radius:14px; padding:16px 18px; margin-bottom:12px; }
 

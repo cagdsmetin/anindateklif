@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
+import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
@@ -24,6 +26,8 @@ export default function LoginScreen() {
   const { t } = useLanguage();
   const router = useRouter();
   const { login } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -61,84 +65,95 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      <View style={s.bgWrap} pointerEvents="none">
+        <BlackHoleBackground centerX={0.5} />
+      </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={s.scroll}
+          contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={s.langRow}>
-            <LanguageFlagSwitcher />
-          </View>
-          <View style={s.logoWrap}>
-            <BrandLogo size={92} />
-          </View>
-          <Text style={s.title}>{t('login.s007')}</Text>
-          <Text style={s.subtitle}>{t('login.s008')}</Text>
-
-          {error ? (
-            <View style={s.errorBox}>
-              <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          <InputRow
-            icon="mail-outline"
-            placeholder={t('login.s009')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            testID="login-email"
-          />
-          <InputRow
-            icon="lock-closed-outline"
-            placeholder={t('login.s010')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPw}
-            autoCapitalize="none"
-            autoComplete="password"
-            testID="login-password"
-            trailing={
-              <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
-              </TouchableOpacity>
-            }
-          />
-
-          <TouchableOpacity
-            style={s.forgotWrap}
-            onPress={() => router.push('/forgot-password')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={s.forgotText}>{t('login.s011')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={[s.cta, busy && s.ctaDisabled]}
-            onPress={onSubmit}
-            disabled={busy}
-            testID="login-submit"
-          >
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={s.ctaText}>{t('login.s012')}</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={s.footer}>
-            <Text style={s.footerText}>{t('login.s013')}</Text>
-            <TouchableOpacity onPress={() => router.replace('/register')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={s.footerLink}>{t('login.s014')}</Text>
+          {isDesktopWeb && (
+            <TouchableOpacity style={s.backHome} onPress={() => router.push('/landing')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={15} color={authTheme.textMuted} />
+              <Text style={s.backHomeText}>{t('landing.s001')} {t('landing.s002')}</Text>
             </TouchableOpacity>
+          )}
+          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+            <View style={s.langRow}>
+              <LanguageFlagSwitcher />
+            </View>
+            <View style={s.logoWrap}>
+              <BrandLogo size={92} />
+            </View>
+            <Text style={s.title}>{t('login.s007')}</Text>
+            <Text style={s.subtitle}>{t('login.s008')}</Text>
+
+            {error ? (
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
+                <Text style={s.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <InputRow
+              icon="mail-outline"
+              placeholder={t('login.s009')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              testID="login-email"
+            />
+            <InputRow
+              icon="lock-closed-outline"
+              placeholder={t('login.s010')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPw}
+              autoCapitalize="none"
+              autoComplete="password"
+              testID="login-password"
+              trailing={
+                <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                </TouchableOpacity>
+              }
+            />
+
+            <TouchableOpacity
+              style={s.forgotWrap}
+              onPress={() => router.push('/forgot-password')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={s.forgotText}>{t('login.s011')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={[s.cta, busy && s.ctaDisabled]}
+              onPress={onSubmit}
+              disabled={busy}
+              testID="login-submit"
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={s.ctaText}>{t('login.s012')}</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={s.footer}>
+              <Text style={s.footerText}>{t('login.s013')}</Text>
+              <TouchableOpacity onPress={() => router.replace('/register')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={s.footerLink}>{t('login.s014')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -168,8 +183,32 @@ function InputRow({
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: authTheme.bg },
+  container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
+  bgWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   scroll: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1, justifyContent: 'center' },
+  scrollDesktop: { alignItems: 'center', paddingVertical: 48 },
+  backHome: {
+    width: '100%', maxWidth: 440, marginBottom: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  backHomeText: { color: authTheme.textMuted, fontSize: 13, fontWeight: '600' },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.xl,
+    paddingHorizontal: 36,
+    paddingVertical: 32,
+    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
+  },
   langRow: { alignItems: 'center', marginBottom: 14 },
   logoWrap: { alignItems: 'center', marginBottom: 20 },
   title: {

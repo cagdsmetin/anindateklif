@@ -28,6 +28,7 @@ import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
 import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
+import { saveQuoteDraft, loadQuoteDraft, clearQuoteDraft, QuoteDraft } from '@/src/lib/quoteDraft';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
@@ -57,7 +58,7 @@ const DURUM_COLORS: Record<string, string> = {
 
 export default function EditorScreen() {
   const { t, lang } = useLanguage();
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
   const saveNotesAsDefault = async () => {
@@ -74,7 +75,7 @@ export default function EditorScreen() {
   };
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ quoteId?: string }>();
+  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   // Yalnızca ekranda küçük durum rozeti göstermek için -- kaydetme akışını
@@ -127,6 +128,10 @@ export default function EditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+  // Geçmiş'ten "Kopyala" ile gelindiğinde aynı duplicateFrom id'sinin
+  // formu tekrar tekrar sıfırlamasını önlemek için (kullanıcı formu
+  // düzenlemeye başladıktan sonra da param URL'de kalmaya devam eder).
+  const duplicatedRef = useRef<string | null>(null);
   // Manuel/Genel kalemlerde daha önce girilmiş ürün adı -> fiyat
   // eşleşmeleri (cihazda, firma bazlı kalıcı). Ref kullanıyoruz çünkü
   // sadece updateItem içinde okunup yazılıyor, ekranda ayrıca gösterilmiyor.
@@ -138,6 +143,15 @@ export default function EditorScreen() {
   // Tracks whether the person has hand-edited the Teklif No field — once
   // they have, the auto-numbering effect below stops overwriting it.
   const teklifNoManualRef = useRef(false);
+
+  // Taslak otomatik kaydetme (madde #333): internet kopması/uygulamanın
+  // beklenmedik kapanması durumunda henüz kaydedilmemiş yeni bir teklifin
+  // içeriği kaybolmasın diye, form her değiştiğinde cihazda saklanır.
+  // Sadece editingId BOŞKEN (henüz sunucuya kaydedilmemiş teklif) çalışır --
+  // var olan bir teklifi düzenlerken veri zaten sunucudadır, üzerine
+  // taslak karışması riski almamak için o durumda devre dışı bırakılır.
+  const [draftBanner, setDraftBanner] = useState<QuoteDraft | null>(null);
+  const draftCheckedRef = useRef(false);
 
   // Live "Firma Adı" autocomplete — suggests previously saved customers as the
   // user types, so name/phone/e-mail/address can be filled with one tap
@@ -157,6 +171,41 @@ export default function EditorScreen() {
       if (q) { loadFromQuote(q); bootedRef.current = params.quoteId; }
     }
   }, [params.quoteId, quotes]);
+
+  // Teklif sahiplik/onay sistemi: bu tekliften başka biri sorumluysa
+  // (createdByUserId dolu ve bana ait değilse) düzenlemeden önce ondan onay
+  // istenmesi gerekir -- bkz. backend update_quote. Sadece görüntüleyip
+  // PDF/WhatsApp paylaşmak (içerikte değişiklik yapmadan) her zaman serbest.
+  const editingQuote = useMemo(() => quotes.find((q) => q.id === editingId), [quotes, editingId]);
+  const isQuoteOwner = !editingQuote?.createdByUserId || editingQuote.createdByUserId === user?.user_id;
+  const myEditRequest = useMemo(
+    () => editRequests.find((r) => r.quoteId === editingId && r.requestedByUserId === user?.user_id),
+    [editRequests, editingId, user?.user_id]
+  );
+  const [requestingApproval, setRequestingApproval] = useState(false);
+  const handleRequestEditApproval = async () => {
+    if (!editingId || requestingApproval) return;
+    setRequestingApproval(true);
+    try {
+      await requestQuoteEditApproval(editingId);
+      showToast(t('teklifPage.s107'));
+    } catch (e: any) {
+      showToast(t('teklifPage.s017') + (e?.message || ''));
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
+
+  // Geçmiş ekranındaki "Kopyala" butonuyla gelindiğinde: seçilen teklifin
+  // tüm bilgilerini forma doldur ama editingId'yi BOŞ bırak (loadFromQuote'tan
+  // farkı budur) -- böylece Kaydet, orijinal tekliften bağımsız TAMAMEN YENİ
+  // bir kayıt oluşturur, üzerine yazmaz.
+  useEffect(() => {
+    if (params.duplicateFrom && duplicatedRef.current !== params.duplicateFrom) {
+      const q = quotes.find((qq) => qq.id === params.duplicateFrom);
+      if (q) { loadFromQuoteAsCopy(q); duplicatedRef.current = params.duplicateFrom; }
+    }
+  }, [params.duplicateFrom, quotes]);
 
   // `quotes` loads asynchronously (after `loading` already flips to false),
   // so the initial Teklif No may be numbered before today's quotes were
@@ -178,6 +227,26 @@ export default function EditorScreen() {
     setDurum(q.durum || 'Beklemede'); setLeavingItemIds(new Set());
   };
 
+  // "Kopyala" (Geçmiş ekranı) -- loadFromQuote ile aynı alanları doldurur,
+  // ama editingId'yi BOŞ bırakır ve teklif no/tarih/geçerlilik/durumu
+  // sıfırdan üretir; böylece Kaydet orijinal tekliften bağımsız yepyeni bir
+  // kayıt oluşturur, üzerine yazmaz. Kalemler de yeni id'lerle kopyalanır.
+  const loadFromQuoteAsCopy = (q: QuoteT) => {
+    setEditingId(undefined);
+    setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1));
+    setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
+    setHazirlayanEmail(q.hazirlayanEmail || user?.email || ''); setMusFirma(q.musFirma); setMusYetkili(q.musYetkili);
+    setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
+    setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
+    setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
+    setNotlar(q.notlar);
+    setItems((q.items || []).map((it) => ({ ...it, id: newItemId() })));
+    setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
+    setDurum('Beklemede'); setLeavingItemIds(new Set());
+    teklifNoManualRef.current = false;
+    showToast(t('history.s045'));
+  };
+
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
@@ -185,6 +254,8 @@ export default function EditorScreen() {
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); setExpandedItemId(null); bootedRef.current = null;
     setDurum('Beklemede'); setLeavingItemIds(new Set());
     teklifNoManualRef.current = false;
+    if (activeCompany?.id) clearQuoteDraft(activeCompany.id);
+    setDraftBanner(null);
   }, [activeCompany, quotes, user]);
 
   const pickAttachments = async () => {
@@ -224,9 +295,60 @@ export default function EditorScreen() {
     if (!editingId && !notlar && activeCompany?.ozelNotlar) setNotlar(activeCompany.ozelNotlar);
   }, [activeCompany, editingId, notlar]);
 
+  // Sayfa ilk açıldığında (yeni teklif akışında, Geçmiş'ten gelinmemişse)
+  // cihazda kaydedilmiş bir taslak var mı diye bak -- varsa kullanıcıya
+  // geri yükleme banner'ı göster. Bir kez kontrol edilir.
+  useEffect(() => {
+    if (draftCheckedRef.current) return;
+    if (!activeCompany?.id) return;
+    if (params.quoteId || params.duplicateFrom) { draftCheckedRef.current = true; return; }
+    draftCheckedRef.current = true;
+    loadQuoteDraft(activeCompany.id).then((draft) => {
+      if (draft && ((draft.musFirma && String(draft.musFirma).trim()) || (Array.isArray(draft.items) && draft.items.length > 0))) {
+        setDraftBanner(draft);
+      }
+    });
+  }, [activeCompany?.id, params.quoteId, params.duplicateFrom]);
+
+  // Form her değiştiğinde (debounce ile) taslağı sakla -- sadece henüz
+  // sunucuya kaydedilmemiş (editingId boş) bir teklif için. Var olan bir
+  // teklif düzenlenirken taslak karışmasın diye devre dışı.
+  useEffect(() => {
+    if (!activeCompany?.id || editingId) return;
+    const hasContent = !!musFirma.trim() || items.length > 0 || !!notlar.trim() || !!musTelefon.trim();
+    if (!hasContent) return;
+    const timer = setTimeout(() => {
+      saveQuoteDraft(activeCompany.id, currentQuote());
+    }, 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeCompany?.id, editingId, teklifNo, tarih, gecerlilik, musFirma, musYetkili, musTelefon,
+    musEmail, musAdres, projeAdi, nakliye, paraBirimi, odemeSekli, mensei, teslimGun, iskonto,
+    kdvOrani, notlar, items,
+  ]);
+
+  const applyDraft = (d: QuoteDraft) => {
+    setTeklifNo(d.teklifNo || teklifNo); setTarih(d.tarih || tarih); setGecerlilik(d.gecerlilik || gecerlilik);
+    setHazirlayanEmail(d.hazirlayanEmail || ''); setMusFirma(d.musFirma || ''); setMusYetkili(d.musYetkili || '');
+    setMusTelefon(d.musTelefon || ''); setMusEmail(d.musEmail || ''); setMusAdres(d.musAdres || '');
+    setProjeAdi(d.projeAdi || ''); setNakliye(d.nakliye || 'EXW'); setParaBirimi(d.paraBirimi || 'USD');
+    setOdemeSekli(d.odemeSekli || odemeSekli); setMensei(d.mensei || mensei); setTeslimGun(d.teslimGun || teslimGun);
+    setIskonto(String(d.iskonto ?? '0')); setKdvOrani(String(d.kdvOrani ?? '20'));
+    setNotlar(d.notlar || ''); setItems(Array.isArray(d.items) ? d.items : []);
+    teklifNoManualRef.current = true;
+    setDraftBanner(null);
+    showToast('Taslak geri yüklendi');
+  };
+
+  const discardDraft = () => {
+    if (activeCompany?.id) clearQuoteDraft(activeCompany.id);
+    setDraftBanner(null);
+  };
+
   const subtotal = useMemo(() => items.reduce((a, it) => a + (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0), 0), [items]);
-  const iskontoOr = Number(iskonto) || 0;
-  const kdvOr = Number(kdvOrani) || 0;
+  const iskontoOr = Number(iskonto.replace(',', '.')) || 0;
+  const kdvOr = Number(kdvOrani.replace(',', '.')) || 0;
   const iskontoTutar = (subtotal * iskontoOr) / 100;
   const araToplam = subtotal - iskontoTutar;
   const kdvTutar = (araToplam * kdvOr) / 100;
@@ -274,6 +396,19 @@ export default function EditorScreen() {
       setItems((prev) => prev.filter((it) => it.id !== id));
       setLeavingItemIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     }, 190);
+  };
+
+  // Kalemi listede bir yukarı ya da bir aşağı taşır (sıralama düzenleme).
+  const moveItem = (id: string, direction: 'up' | 'down') => {
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.id === id);
+      if (idx === -1) return prev;
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      return next;
+    });
   };
 
   const makeItem = (mode: 'technical' | 'manual' | 'general'): QuoteItemT => ({
@@ -326,7 +461,11 @@ export default function EditorScreen() {
       // Keep the currently-picked local attachments available to Preview/History
       // for this quote, so they can also include them when generating a PDF.
       setQuoteAttachments(saved.id, attachments);
-      showToast('Teklif kaydedildi'); return saved;
+      // Artık sunucuda güvenli şekilde kayıtlı -- cihazdaki taslağa gerek kalmadı.
+      if (activeCompany?.id) clearQuoteDraft(activeCompany.id);
+      showToast('Teklif kaydedildi');
+      reloadEditRequests();
+      return saved;
     } catch (e: any) {
       if (e?.status === 402) {
         showToast(t('teklifPage.s016'));
@@ -395,25 +534,43 @@ export default function EditorScreen() {
 
   // Direct WhatsApp: open the customer's chat pre-filled, then trigger the share sheet
   // so the user can attach the PDF into that same chat with one tap.
+  //
+  // `waSharing` covers the ENTIRE flow (save + PDF generation + WhatsApp
+  // hand-off), not just the save step. Before this, only `saving` (from
+  // handleSave) disabled the button — the moment the save finished, the
+  // button re-enabled itself while PDF generation/WhatsApp hand-off kept
+  // running silently in the background with zero visual feedback. On a slow
+  // connection (PDF library CDN fetch, etc.) that looked exactly like the
+  // reported "ekranda takılıp kalıyor" bug: nothing visibly happens, so the
+  // person taps again (sometimes several times), stacking up duplicate
+  // PDF generations/popup windows.
+  const [waSharing, setWaSharing] = useState(false);
   const handleWhatsAppShare = async () => {
-    const saved = await handleSave(); if (!saved) return;
-    // Open the tab synchronously, still inside this click's user-gesture
-    // window — PDF generation below takes long enough that window.open()
-    // after it gets silently blocked as a popup.
-    const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+    if (waSharing) return;
+    setWaSharing(true);
+    showToast('Hazırlanıyor...');
     try {
-      const { uri, fileName } = await generatePdfUri(saved);
-      const r = await shareQuoteViaWhatsApp({
-        pdfUri: uri,
-        fileName,
-        quote: saved,
-        companyName: activeCompany?.sirketAdi,
-        waWindow,
-      });
-      if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
-    } catch (e: any) {
-      if (waWindow) { try { waWindow.close(); } catch {} }
-      showToast(t('teklifPage.s019') + (e?.message || ''));
+      const saved = await handleSave(); if (!saved) return;
+      // Open the tab synchronously, still inside this click's user-gesture
+      // window — PDF generation below takes long enough that window.open()
+      // after it gets silently blocked as a popup.
+      const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+      try {
+        const { uri, fileName } = await generatePdfUri(saved);
+        const r = await shareQuoteViaWhatsApp({
+          pdfUri: uri,
+          fileName,
+          quote: saved,
+          companyName: activeCompany?.sirketAdi,
+          waWindow,
+        });
+        if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+      } catch (e: any) {
+        if (waWindow) { try { waWindow.close(); } catch {} }
+        showToast(t('teklifPage.s019') + (e?.message || ''));
+      }
+    } finally {
+      setWaSharing(false);
     }
   };
 
@@ -460,12 +617,67 @@ export default function EditorScreen() {
             </View>
           </LinearGradient>
 
+          {!!draftBanner && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: '#eff6ff', borderRadius: 12, padding: 12, marginBottom: 14,
+              borderWidth: 1, borderColor: '#bfdbfe',
+            }}>
+              <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+              <Text style={{ flex: 1, fontSize: 12.5, color: theme.colors.text }}>
+                Kaydedilmemiş bir taslak bulundu{draftBanner.musFirma ? ` (${draftBanner.musFirma})` : ''}. Geri yüklensin mi?
+              </Text>
+              <TouchableOpacity onPress={discardDraft} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID="draft-discard-btn">
+                <Text style={{ fontSize: 12, color: theme.colors.textMuted, fontWeight: '700' }}>Sil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => applyDraft(draftBanner)}
+                style={{ backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
+                testID="draft-restore-btn"
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Geri Yükle</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!!editingId && !isQuoteOwner && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: myEditRequest?.status === 'approved' ? '#dcfce7' : '#fef3c7',
+              borderRadius: 12, padding: 12, marginBottom: 14,
+            }}>
+              <Ionicons
+                name={myEditRequest?.status === 'approved' ? 'checkmark-circle' : 'lock-closed'}
+                size={20}
+                color={myEditRequest?.status === 'approved' ? '#16a34a' : '#b45309'}
+              />
+              <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                {myEditRequest?.status === 'approved'
+                  ? t('teklifPage.s109')
+                  : t('teklifPage.s105').replace('{who}', editingQuote?.createdByEmail || editingQuote?.createdByName || '')}
+              </Text>
+              {myEditRequest?.status === 'pending' ? (
+                <Text style={{ fontSize: 12, color: '#92400e', fontWeight: '600' }}>{t('teklifPage.s108')}</Text>
+              ) : myEditRequest?.status !== 'approved' ? (
+                <TouchableOpacity
+                  onPress={handleRequestEditApproval}
+                  disabled={requestingApproval}
+                  style={{ backgroundColor: '#b45309', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
+                >
+                  {requestingApproval ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('teklifPage.s106')}</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+
           <SectionHeader title={t('teklifPage.s024')} icon="document-text" />
-          <Row>
-            <FGroup label={t('teklifPage.s025')} flex={1}><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
-            <FGroup label={t('teklifPage.s026')} flex={1}><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
-          </Row>
-          <FGroup label={t('teklifPage.s027')}><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s025')} grid><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
+            <FGroup label={t('teklifPage.s026')} grid><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s027')} grid><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+          </View>
 
           <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
@@ -499,11 +711,11 @@ export default function EditorScreen() {
               </View>
             ) : null}
           </View>
-          <Row>
-            <FGroup label={t('teklifPage.s031')} flex={1}><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
-            <FGroup label={t('teklifPage.s002')} flex={1}><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
-          </Row>
-          <FGroup label={t('teklifPage.s033')}><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s031')} grid><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s002')} grid><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
+            <FGroup label={t('teklifPage.s033')} grid><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+          </View>
           <FGroup label={t('teklifPage.s035')}><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder={t('teklifPage.s036')} placeholderTextColor="#94a3b8" /></FGroup>
 
           <SectionHeader title={t('teklifPage.s037')} icon="cart" />
@@ -524,15 +736,13 @@ export default function EditorScreen() {
               ))}</View>
             </FGroup>
           </Row>
-          <FGroup label={t('teklifPage.s042')}><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
-          <Row>
-            <FGroup label={t('teklifPage.s043')} flex={1}><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
-            <FGroup label={t('teklifPage.s044')} flex={1}><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
-          </Row>
-          <Row>
-            <FGroup label={t('teklifPage.s045')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={iskonto} onChangeText={setIskonto} /></FGroup>
-            <FGroup label={t('teklifPage.s046')} flex={1}><TextInput style={s.input} keyboardType="numeric" value={kdvOrani} onChangeText={setKdvOrani} /></FGroup>
-          </Row>
+          <View style={s.fieldGrid}>
+            <FGroup label={t('teklifPage.s042')} grid><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
+            <FGroup label={t('teklifPage.s043')} grid><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
+            <FGroup label={t('teklifPage.s044')} grid><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+          </View>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
           {items.length === 0 && (
@@ -560,6 +770,10 @@ export default function EditorScreen() {
               onOpenSelectPicker={(fieldId, options, title) => setShowSelectPicker({ itemId: it.id, fieldId, options, title })}
               onUpdateSystemFieldValue={(fi, val) => updateSystemFieldValue(it.id, fi, val)}
               leaving={leavingItemIds.has(it.id)}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < items.length - 1}
+              onMoveUp={() => moveItem(it.id, 'up')}
+              onMoveDown={() => moveItem(it.id, 'down')}
             />
           ))}
 
@@ -714,7 +928,13 @@ export default function EditorScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+          {/* İndirmeden/paylaşmadan sadece kaydetme -- bilgiler girildikten sonra
+              PDF/WhatsApp akışına girmeden teklifi kayıt altına almak için. */}
+          <TouchableOpacity style={[s.btnSave, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving} testID="save-only-btn">
+            {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="save-outline" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet</Text></>)}
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
             <TouchableOpacity style={[s.btnGhost, { flex: 0.8 }]} onPress={resetForm}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSoft} />
               <Text style={s.btnGhostText}>{t('teklifPage.s068')}</Text>
@@ -729,9 +949,8 @@ export default function EditorScreen() {
             <TouchableOpacity style={[s.btnPrimary, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
               {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s070')}</Text></>)}
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving} testID="share-whatsapp-btn">
-              <Ionicons name="logo-whatsapp" size={17} color="#fff" />
-              <Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text>
+            <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, (saving || waSharing) && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving || waSharing} testID="share-whatsapp-btn">
+              {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text></>)}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -824,7 +1043,7 @@ export default function EditorScreen() {
 
       {/* Select-field picker */}
       <Modal visible={!!showSelectPicker} transparent animationType="fade">
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowSelectPicker(null)}>
+        <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowSelectPicker(null)}>
           <View style={s.pickerSheet}>
             <Text style={s.modalTitle}>{showSelectPicker?.title || t('teklifPage.s085')}</Text>
             <ScrollView style={{ maxHeight: 320 }}>
@@ -854,6 +1073,7 @@ export default function EditorScreen() {
 // ============ ITEM CARD ============
 function ItemCard({
   item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   item: QuoteItemT;
   idx: number;
@@ -867,8 +1087,43 @@ function ItemCard({
   onOpenSelectPicker: (fieldId: string, options: string[], title: string) => void;
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
   leaving?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const { t, lang } = useLanguage();
+  // Adet ve Birim Fiyat alanları için ayrı bir "ham metin" state'i tutulur.
+  // Neden: value={String(item.adet)} kullanılırsa, kullanıcı "667," yazdığı anda
+  // Number("667,") -> "667." -> 667 olarak parse edilip state'e yazılır, sonraki
+  // render'da input değeri tekrar String(667) = "667" olur ve daha yeni yazılan
+  // virgül anında silinir; kullanıcı ondalık kısmı hiç yazamaz. Bu yüzden ekranda
+  // gösterilen metin kullanıcının yazdığı ham string, hesaplamalarda kullanılan
+  // sayı ise ayrıca onChange ile parent'a bildirilir.
+  const [adetText, setAdetText] = useState(String(item.adet ?? ''));
+  const [priceText, setPriceText] = useState(String(item.birimFiyat ?? ''));
+  useEffect(() => {
+    const parsed = Number(adetText.replace(',', '.')) || 0;
+    if (parsed !== (item.adet || 0)) setAdetText(String(item.adet ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.adet]);
+  useEffect(() => {
+    const parsed = Number(priceText.replace(',', '.')) || 0;
+    if (parsed !== (item.birimFiyat || 0)) setPriceText(String(item.birimFiyat ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.birimFiyat]);
+  const onAdetTextChange = (v: string) => {
+    const cleaned = v.replace(/[^0-9.,]/g, '');
+    setAdetText(cleaned);
+    const num = Number(cleaned.replace(',', '.'));
+    onChange({ adet: Number.isFinite(num) ? num : 0 });
+  };
+  const onPriceTextChange = (v: string) => {
+    const cleaned = v.replace(/[^0-9.,]/g, '');
+    setPriceText(cleaned);
+    const num = Number(cleaned.replace(',', '.'));
+    onChange({ birimFiyat: Number.isFinite(num) ? num : 0 });
+  };
   // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
   // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -910,6 +1165,24 @@ function ItemCard({
       <TouchableOpacity activeOpacity={0.7} onPress={onToggleExpand} testID={`item-${idx}-toggle`}>
         <View style={itemStyles.hdr}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <View style={itemStyles.moveCol}>
+              <TouchableOpacity
+                disabled={!canMoveUp}
+                onPress={(e) => { e.stopPropagation?.(); onMoveUp?.(); }}
+                hitSlop={{ top: 4, bottom: 4, left: 6, right: 6 }}
+                testID={`item-move-up-${idx}`}
+              >
+                <Ionicons name="chevron-up" size={15} color={canMoveUp ? theme.colors.primary : theme.colors.line} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!canMoveDown}
+                onPress={(e) => { e.stopPropagation?.(); onMoveDown?.(); }}
+                hitSlop={{ top: 4, bottom: 4, left: 6, right: 6 }}
+                testID={`item-move-down-${idx}`}
+              >
+                <Ionicons name="chevron-down" size={15} color={canMoveDown ? theme.colors.primary : theme.colors.line} />
+              </TouchableOpacity>
+            </View>
             <Text style={itemStyles.no}>#{idx + 1}</Text>
             <View style={[itemStyles.modeBadge, { backgroundColor: modeMeta.color + '20', borderColor: modeMeta.color }]}>
               <Ionicons name={modeMeta.icon} size={11} color={modeMeta.color} style={{ marginRight: 3 }} />
@@ -945,12 +1218,14 @@ function ItemCard({
             </TouchableOpacity>
           </FieldGroup>
 
-          {/* Dynamic fields */}
+          {/* Dynamic fields — kısa değer alan alanları (ölçü/RAL/seçim) yan
+              yana diziyoruz, tam genişlik alt alta yığılmasın diye. */}
+          <View style={itemStyles.fieldGrid}>
           {selectedSys && selectedSys.fields.map((f, fi) => {
             const currentVal = (item.sistemFields?.[fi]?.value) || '';
             if (f.type === 'select') {
               return (
-                <FieldGroup key={f.id} label={f.label}>
+                <FieldGroup key={f.id} label={f.label} grid maxWidth={selectFieldWidth(f.options)}>
                   <TouchableOpacity
                     style={itemStyles.select}
                     onPress={() => onOpenSelectPicker(`f-${fi}`, f.options, f.label)}
@@ -965,7 +1240,7 @@ function ItemCard({
             if (f.type === 'checkbox') {
               const on = currentVal === 'Evet' || currentVal === 'true';
               return (
-                <FieldGroup key={f.id} label={f.label}>
+                <FieldGroup key={f.id} label={f.label} grid maxWidth={110}>
                   <TouchableOpacity style={itemStyles.checkboxRow} onPress={() => onUpdateSystemFieldValue(fi, on ? '' : 'Evet')} testID={`item-${idx}-field-${fi}`}>
                     <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? theme.colors.primary : theme.colors.textMuted} />
                     <Text style={itemStyles.checkboxText}>{on ? 'Evet' : t('teklifPage.s091')}</Text>
@@ -974,7 +1249,7 @@ function ItemCard({
               );
             }
             return (
-              <FieldGroup key={f.id} label={f.label}>
+              <FieldGroup key={f.id} label={f.label} grid narrow>
                 <TextInput
                   style={itemStyles.input}
                   keyboardType={f.type === 'number' ? 'numeric' : 'default'}
@@ -987,6 +1262,7 @@ function ItemCard({
               </FieldGroup>
             );
           })}
+          </View>
         </>
       )}
 
@@ -1028,11 +1304,14 @@ function ItemCard({
         </>
       )}
 
-      {/* Quantity / Unit / Price */}
+      {/* Quantity / Unit / Price -- Birim Fiyat'a maxWidth: para birimi
+          (TL/$/€) fark etmeksizin en fazla "1.000.000.000" gibi 13
+          karakterlik bir rakamı rahat gösterecek, ama geniş ekranda
+          gereğinden fazla büyümeyecek kadar bir üst sınır. */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <FieldGroup label={t('teklifPage.s100')} flex={1}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.adet)} onChangeText={(v) => onChange({ adet: Number(v.replace(',', '.')) || 0 })} testID={`item-qty-${idx}`} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s101')} flex={1}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s102')} flex={1.4}><TextInput style={itemStyles.input} keyboardType="numeric" value={String(item.birimFiyat)} onChangeText={(v) => onChange({ birimFiyat: Number(v.replace(',', '.')) || 0 })} testID={`item-price-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s100')} flex={0.7}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s101')} flex={0.9}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s102')} flex={1.4} maxWidth={180}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
       </View>
 
       {/* Per-item PDF cell preview */}
@@ -1088,11 +1367,25 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
     </View>
   );
 }
-function FGroup({ label, children, flex }: { label?: string; children: React.ReactNode; flex?: number }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}]}>{label ? <Text style={s.label}>{label}</Text> : null}{children}</View>;
+function FGroup({ label, children, flex, grid, narrow }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label} numberOfLines={2}>{label}</Text> : null}{children}</View>;
 }
-function FieldGroup({ label, children, flex }: { label: string; children: React.ReactNode; flex?: number }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}]}><Text style={itemStyles.label}>{label}</Text>{children}</View>;
+// Seçim (select) tipi alanlar için genişlik: kutunun içeriği (en uzun
+// seçenek metni) ne kadar kısaysa kutu da o kadar dar olsun -- "LED
+// Aydınlatma" gibi kısa seçenekli alanlar tek başına kalınca büyük bir
+// alan kaplamasın. Karakter başına ~7.2px + ok ikonu/dolgu payı, 96-200
+// aralığında sınırlı.
+function selectFieldWidth(options: string[]): number {
+  const longest = Math.max(3, ...(options || []).map((o) => (o || '').length));
+  const w = Math.round(longest * 7.2) + 56;
+  return Math.max(96, Math.min(200, w));
+}
+function FieldGroup({ label, children, flex, grid, narrow, maxWidth }: { label: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean; maxWidth?: number }) {
+  // numberOfLines=2 + label'a sabit 2 satırlık yükseklik -- etiket 1 ya da 2
+  // satıra sardığına bakılmaksızın aynı satırdaki tüm kutucuklar aynı
+  // hizada başlasın diye (kısa etiketli kutu daha erken, uzun etiketli kutu
+  // daha geç başlamasın).
+  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? itemStyles.fieldGridItem : {}, narrow ? itemStyles.fieldGridItemNarrow : {}, maxWidth ? { maxWidth } : {}]}><Text style={itemStyles.label} numberOfLines={2}>{label}</Text>{children}</View>;
 }
 function Row({ children, style }: { children: React.ReactNode; style?: any }) { return <View style={[{ flexDirection: 'row', gap: 8 }, style]}>{children}</View>; }
 function TotRow({ label, value, negative }: { label: string; value: string; negative?: boolean }) {
@@ -1117,9 +1410,23 @@ const s = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
-  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  // minHeight: 2 satırlık sabit yükseklik -- etiket 1 satıra mı 2 satıra mı
+  // sardığı kutunun genişliğine göre değişse de, aynı satırdaki tüm
+  // kutucukların altındaki input'lar hep aynı hizada başlasın diye.
+  label: { fontSize: 10, lineHeight: 13, minHeight: 26, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 14, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
+  // Teklif/Müşteri/Sipariş Bilgileri'ndeki kısa değerli alanlar (Teklif No,
+  // Tarih, Telefon, Menşei, Teslim vb.) için ItemCard'daki kalem alanlarıyla
+  // aynı otomatik yan yana dizilim -- dar telefonda 2, geniş ekranda 3-4
+  // sütuna kadar kendiliğinden sığdırır. flexGrow:0 -- bir satırda tek
+  // başına kalan kutucuk (ör. son alan) tüm boş alanı kaplayıp aşırı
+  // genişlemesin, sadece kendi içeriği kadar yer kaplasın.
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
+  fieldGridItem: { flexGrow: 0, flexShrink: 1, flexBasis: 160, minWidth: 130, maxWidth: 220 },
+  // İskonto/KDV gibi en fazla 3 haneli bir yüzde değeri (ör. "100") alan
+  // alanlar için -- ItemCard'daki fieldGridItemNarrow ile aynı mantık.
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 1, flexBasis: 76, minWidth: 68, maxWidth: 90 },
   suggestBox: {
     position: 'absolute',
     top: '100%',
@@ -1177,6 +1484,7 @@ const s = StyleSheet.create({
   grandLabel: { color: '#cbd5e1', fontSize: 11.5, fontWeight: '900', letterSpacing: 0.6 },
   grandValue: { color: '#fff', fontSize: 17, fontWeight: '900' },
   btnPrimary: { marginTop: 12, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
+  btnSave: { marginTop: 14, backgroundColor: theme.colors.green, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.green, shadowOpacity: 0.35 },
   btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
   btnWhatsApp: { marginTop: 12, backgroundColor: '#25D366', paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: '#25D366', shadowOpacity: 0.35 },
   ekCard: { backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },
@@ -1199,7 +1507,8 @@ const s = StyleSheet.create({
   catBadge: { fontSize: 9.5, color: theme.colors.primary, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
   catName: { fontSize: 13, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   catPrice: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
-  pickerSheet: { backgroundColor: '#fff', margin: 20, borderRadius: 16, padding: 16, ...theme.shadow.lg },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  pickerSheet: { backgroundColor: '#fff', borderRadius: 16, padding: 16, width: '100%', maxWidth: 340, ...theme.shadow.lg },
   emailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10 },
   emailRowActive: { backgroundColor: theme.colors.primarySoft },
   emailText: { fontSize: 12.5, color: theme.colors.text, flex: 1 },
@@ -1213,12 +1522,16 @@ const s = StyleSheet.create({
 const itemStyles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, borderLeftWidth: 4, marginBottom: 10, ...theme.shadow.sm },
   hdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  moveCol: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginRight: 2 },
   collapsedSummary: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 2 },
   no: { fontSize: 11, fontWeight: '900', color: theme.colors.textMuted },
   modeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
   modeBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   linePrice: { fontSize: 13, fontWeight: '900', color: theme.colors.navy },
-  label: { fontSize: 9.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
+  // minHeight: 2 satırlık sabit yükseklik -- aynı satırdaki kutucuklardan
+  // biri (ör. "CEPHE / GENİŞLİK") 2 satıra sarsa bile, altındaki input hep
+  // "YÜKSEKLİK" gibi tek satırlık etiketli komşusuyla aynı hizada başlasın.
+  label: { fontSize: 9.5, lineHeight: 12, minHeight: 24, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: Platform.OS === 'ios' ? 10 : 8, fontSize: 13.5, color: theme.colors.text },
   select: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectHighlight: { borderColor: theme.colors.primary, borderWidth: 2, backgroundColor: theme.colors.primarySoft },
@@ -1231,4 +1544,18 @@ const itemStyles = StyleSheet.create({
   previewBox: { marginTop: 10, backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: theme.colors.primary },
   previewLabel: { fontSize: 9, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.5, marginBottom: 4 },
   previewText: { fontSize: 12, color: theme.colors.text, lineHeight: 17 },
+  // Teknik alanlar (Cephe, Derinlik, Yükseklik, RAL vb.) genelde kısa
+  // değerler alır (bir sayı ya da birkaç kelimelik seçim) -- her birini tam
+  // genişlikte alt alta dizmek sayfayı gereksiz uzatıyordu. flexWrap ile
+  // sabit bir taban genişlik (140px) verip satıra sığdığı kadarını yan yana
+  // diziyoruz: dar telefonda 2, tablet/web'de içerik genişliğine göre 3-4
+  // sütuna kadar kendiliğinden çıkıyor -- ekstra breakpoint kodu gerekmeden
+  // web/Android/iOS/tablette aynı mantıkla otomatik uyum sağlıyor.
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
+  fieldGridItem: { flexGrow: 0, flexShrink: 1, flexBasis: 160, minWidth: 130, maxWidth: 200 },
+  // Serbest metin/sayı alanları (Cephe, Derinlik, Yükseklik, Ayak Sayısı,
+  // RAL vb.) sadece kısa bir ölçü/kod değeri alır (ör. "3000mm") -- select/
+  // checkbox alanlarından (daha uzun seçim metinleri olabilir) ayrı, daha
+  // dar bir taban genişlik veriyoruz ki bir satıra daha fazlası sığsın.
+  fieldGridItemNarrow: { flexGrow: 0, flexShrink: 1, flexBasis: 92, minWidth: 84, maxWidth: 110 },
 });

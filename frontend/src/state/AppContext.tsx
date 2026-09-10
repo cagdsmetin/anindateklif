@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { usePathname } from 'expo-router';
-import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
+import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, QuoteEditRequestT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -55,6 +55,14 @@ type Ctx = {
   saveQuote: (quote: Partial<QuoteT>, existingId?: string) => Promise<QuoteT>;
   deleteQuote: (id: string) => Promise<void>;
   updateQuoteStatus: (id: string, durum: string) => Promise<void>;
+  updateQuoteMaliyet: (id: string, maliyet: number | null) => Promise<void>;
+  updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) => Promise<void>;
+  // Teklif sahiplik/onay sistemi: başkasının oluşturduğu teklifi düzenlemek
+  // için sahibinden onay istenir (bkz. history.tsx banner'ı, teklif.tsx kilidi).
+  editRequests: QuoteEditRequestT[];
+  reloadEditRequests: () => Promise<void>;
+  requestQuoteEditApproval: (quoteId: string) => Promise<QuoteEditRequestT>;
+  respondQuoteEditRequest: (requestId: string, approve: boolean) => Promise<void>;
   toast: string | null;
   showToast: (msg: string) => void;
   // Session-only registry of local (unsaved-to-backend) file attachments per quote,
@@ -108,6 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [campaigns, setCampaigns] = useState<CampaignT[]>([]);
   const [reminders, setReminders] = useState<ManualReminderT[]>([]);
   const [quotes, setQuotes] = useState<QuoteT[]>([]);
+  const [editRequests, setEditRequests] = useState<QuoteEditRequestT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
   const [teamUnreadTotal, setTeamUnreadTotal] = useState(0);
@@ -211,6 +220,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const list = await api.listQuotes(activeCompanyId);
     setQuotes(list);
   }, [activeCompanyId]);
+
+  // Teklif sahiplik/onay sistemi: hem bana gelen (onaylamam gereken) hem de
+  // benim gönderdiğim düzenleme istekleri -- bkz. history.tsx (gelen istekler
+  // banner'ı) ve teklif.tsx (kilit + "Onay iste" akışı).
+  const reloadEditRequests = useCallback(async () => {
+    if (!activeCompanyId) {
+      setEditRequests([]);
+      return;
+    }
+    try {
+      const list = await api.listQuoteEditRequests();
+      setEditRequests(list);
+    } catch {
+      // sessiz geç -- kritik olmayan bir bildirim özelliği
+    }
+  }, [activeCompanyId]);
+
+  const requestQuoteEditApproval = useCallback(async (quoteId: string) => {
+    const r = await api.requestQuoteEdit(quoteId);
+    await reloadEditRequests();
+    return r;
+  }, [reloadEditRequests]);
+
+  const respondQuoteEditRequest = useCallback(async (requestId: string, approve: boolean) => {
+    await api.respondQuoteEditRequest(requestId, approve);
+    await reloadEditRequests();
+  }, [reloadEditRequests]);
 
   const setActiveCompanyId = useCallback(async (id: string) => {
     setActiveCompanyIdState(id);
@@ -493,13 +529,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })),
       durum: quote.durum || 'Beklemede',
     };
+    if (existingId) {
+      // Ekip üyesi başkasının teklifini SADECE görüntüleyip PDF/WhatsApp ile
+      // paylaşmak isteyebilir (paylaşım akışları kaydı otomatik tetikler) --
+      // içerikte gerçek bir değişiklik yoksa backend'e hiç PUT göndermeyelim.
+      // Böylece sahip olmayan biri sırf paylaşım yaptığı için "onay iste"
+      // duvarına çarpmaz; sadece GERÇEKTEN bir alanı değiştirip kaydedince
+      // teklif sahiplik kısıtına takılır (bkz. backend update_quote).
+      const original = quotes.find((q) => q.id === existingId);
+      if (original) {
+        const origComparable = {
+          teklifNo: original.teklifNo || '',
+          tarih: original.tarih || '',
+          gecerlilik: original.gecerlilik || '',
+          hazirlayanEmail: original.hazirlayanEmail || '',
+          musFirma: original.musFirma || '',
+          musYetkili: original.musYetkili || '',
+          musTelefon: original.musTelefon || '',
+          musEmail: original.musEmail || '',
+          musAdres: original.musAdres || '',
+          projeAdi: original.projeAdi || '',
+          nakliye: original.nakliye || 'EXW',
+          paraBirimi: original.paraBirimi || 'USD',
+          odemeSekli: original.odemeSekli || '',
+          mensei: original.mensei || 'TÜRKİYE',
+          teslimGun: original.teslimGun || '',
+          iskonto: Number(original.iskonto) || 0,
+          kdvOrani: Number(original.kdvOrani ?? 20),
+          notlar: original.notlar || '',
+          items: (original.items || []).map((it) => ({
+            id: it.id,
+            mode: it.mode || 'general',
+            urunAdi: it.urunAdi || '',
+            sistemTipiId: it.sistemTipiId || '',
+            sistemTipi: it.sistemTipi || '',
+            sistemFields: it.sistemFields || [],
+            customFields: it.customFields || [],
+            aciklama: it.aciklama || '',
+            adet: Number(it.adet) || 0,
+            birim: it.birim || 'Adet',
+            birimFiyat: Number(it.birimFiyat) || 0,
+          })),
+          durum: original.durum || 'Beklemede',
+        };
+        const { companyId: _cid, ...newComparable } = payload;
+        if (JSON.stringify(origComparable) === JSON.stringify(newComparable)) {
+          return original;
+        }
+      }
+    }
     const saved = existingId
       ? await api.updateQuote(existingId, payload)
       : await api.createQuote(payload);
     await reloadQuotes();
     await reloadCustomers();
     return saved as QuoteT;
-  }, [activeCompanyId, reloadQuotes, reloadCustomers]);
+  }, [activeCompanyId, quotes, reloadQuotes, reloadCustomers]);
 
   const deleteQuote = useCallback(async (id: string) => {
     await api.deleteQuote(id);
@@ -508,6 +593,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuoteStatus = useCallback(async (id: string, durum: string) => {
     await api.updateQuoteStatus(id, durum);
+    // Teklif onaylanınca (veya reddedilince) backend otomatik olarak Tahsilat
+    // ve Kasa kayıtları oluşturuyor/güncelliyor. Sadece teklifleri yeniden
+    // yüklemek bu ekranların state'ini bayat bırakıyordu — kullanıcı Tahsilat
+    // sekmesine gidince manuel yenilemeden yeni girdiyi göremiyordu. Üçünü de
+    // birlikte tazeleyerek her ekranın anında güncel görünmesini sağlıyoruz.
+    await Promise.all([reloadQuotes(), reloadTahsilat(), reloadKasa()]);
+  }, [reloadQuotes, reloadTahsilat, reloadKasa]);
+
+  // Teklif verildikten sonra isteğe bağlı olarak girilen maliyet -- zorunlu
+  // değil, girilirse teklif tutarından düşülerek kâr hesaplanır (history.tsx).
+  const updateQuoteMaliyet = useCallback(async (id: string, maliyet: number | null) => {
+    await api.updateQuoteMaliyet(id, maliyet);
+    await reloadQuotes();
+  }, [reloadQuotes]);
+
+  // Kalem bazında maliyet -- "hangi kalemden ne kadar maliyet oldu" diye tek
+  // tek girilebilsin diye eklendi; backend toplam Quote.maliyet'i kalemlerin
+  // toplamından otomatik hesaplıyor.
+  const updateQuoteItemMaliyet = useCallback(async (id: string, itemId: string, maliyet: number | null) => {
+    await api.updateQuoteItemMaliyet(id, itemId, maliyet);
     await reloadQuotes();
   }, [reloadQuotes]);
 
@@ -582,7 +687,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     reloadQuotes();
     reloadKasa();
     reloadTahsilat();
-  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadReminders, reloadQuotes, reloadKasa, reloadTahsilat]);
+    reloadEditRequests();
+  }, [user, activeCompanyId, reloadCatalog, reloadCustomers, reloadServices, reloadCampaigns, reloadReminders, reloadQuotes, reloadKasa, reloadTahsilat, reloadEditRequests]);
 
   // Ekip Sohbeti: okunmamis mesaj sayacini periyodik yokla (15sn) -- sidebar/
   // drawer'daki 'Ekip Sohbeti' ogesini yanip sondurmek ve (sadece web'de)
@@ -689,8 +795,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quotes,
         reloadQuotes,
         saveQuote,
+        updateQuoteItemMaliyet,
         deleteQuote,
         updateQuoteStatus,
+        updateQuoteMaliyet,
+        editRequests,
+        reloadEditRequests,
+        requestQuoteEditApproval,
+        respondQuoteEditRequest,
         toast,
         showToast,
         getQuoteAttachments,

@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
+import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 
@@ -22,6 +24,8 @@ export default function ForgotPasswordScreen() {
   const { t } = useLanguage();
   const router = useRouter();
   const { forgotPassword } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === 'web' && width >= 900;
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -48,62 +52,67 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      <View style={s.bgWrap} pointerEvents="none">
+        <BlackHoleBackground centerX={0.5} />
+      </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={22} color={authTheme.text} />
-          </TouchableOpacity>
-
-          <View style={s.logoWrap}>
-            <BrandLogo size={72} />
-          </View>
-          <Text style={s.title}>{t('forgotPassword.s003')}</Text>
-          <Text style={s.subtitle}>
-            {t('forgotPassword.s004')}</Text>
-
-          {sent ? (
-            <View style={s.successBox}>
-              <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
-              <Text style={s.successText}>
-                {t('forgotPassword.s005')}</Text>
-            </View>
-          ) : null}
-
-          {error ? (
-            <View style={s.errorBox}>
-              <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          <View style={s.inputRow}>
-            <Ionicons name="mail-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('forgotPassword.s006')}
-              placeholderTextColor={authTheme.textMuted}
-              style={s.input}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              testID="fp-email"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[s.cta, busy && s.ctaDisabled]}
-            onPress={onSubmit}
-            disabled={busy}
-            testID="fp-submit"
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('forgotPassword.s007')}</Text>}
-          </TouchableOpacity>
-
-          <View style={s.footer}>
-            <TouchableOpacity onPress={() => router.replace('/login')}>
-              <Text style={s.footerLink}>{t('forgotPassword.s008')}</Text>
+        <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
+          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+            <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="arrow-back" size={22} color={authTheme.text} />
             </TouchableOpacity>
+
+            <View style={s.logoWrap}>
+              <BrandLogo size={72} />
+            </View>
+            <Text style={s.title}>{t('forgotPassword.s003')}</Text>
+            <Text style={s.subtitle}>
+              {t('forgotPassword.s004')}</Text>
+
+            {sent ? (
+              <View style={s.successBox}>
+                <Ionicons name="checkmark-circle" size={18} color={authTheme.success} />
+                <Text style={s.successText}>
+                  {t('forgotPassword.s005')}</Text>
+              </View>
+            ) : null}
+
+            {error ? (
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={authTheme.danger} />
+                <Text style={s.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <View style={s.inputRow}>
+              <Ionicons name="mail-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t('forgotPassword.s006')}
+                placeholderTextColor={authTheme.textMuted}
+                style={s.input}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                testID="fp-email"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[s.cta, busy && s.ctaDisabled]}
+              onPress={onSubmit}
+              disabled={busy}
+              testID="fp-submit"
+            >
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('forgotPassword.s007')}</Text>}
+            </TouchableOpacity>
+
+            <View style={s.footer}>
+              <TouchableOpacity onPress={() => router.replace('/login')}>
+                <Text style={s.footerLink}>{t('forgotPassword.s008')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -112,8 +121,21 @@ export default function ForgotPasswordScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: authTheme.bg },
+  container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
+  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24, flexGrow: 1 },
+  scrollDesktop: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
+  desktopCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: authTheme.card,
+    borderColor: authTheme.cardBorder,
+    borderWidth: 1,
+    borderRadius: authRadius.xl,
+    paddingHorizontal: 36,
+    paddingVertical: 28,
+    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
+  },
   back: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
   logoWrap: { alignItems: 'center', marginTop: 24, marginBottom: 16 },
   title: { color: authTheme.text, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 6 },

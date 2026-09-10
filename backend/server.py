@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, Form, Request, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -19,7 +19,12 @@ from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any, Tuple
 import uuid
+import io
 from datetime import datetime, timezone, timedelta
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.drawing.image import Image as XLImage
 
 
 ROOT_DIR = Path(__file__).parent
@@ -648,11 +653,19 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         resolved["staff_role"] = account.get("staff_role", "staff")
         resolved["staff_of_company_id"] = account.get("staff_of_company_id", "")
         resolved["actual_user_id"] = account["user_id"]
+        # Teklif sahiplik/onay sistemi (bkz. _actor_email/_actor_name ve
+        # Quote.createdByUserId) için: "resolved" sözlüğü artık firma
+        # sahibinin e-postasını/adını taşıyor, gerçek giriş yapan personelin
+        # kendi kimliği kaybolmasın diye ayrıca saklıyoruz.
+        resolved["actor_email"] = account.get("email", "")
+        resolved["actor_name"] = account.get("name", "")
         resolved["_impersonated"] = imp_flag
         resolved["_impersonated_by"] = imp_by
         return resolved
 
     account["is_staff"] = False
+    account["actor_email"] = account.get("email", "")
+    account["actor_name"] = account.get("name", "")
     account["_impersonated"] = imp_flag
     account["_impersonated_by"] = imp_by
     return account
@@ -664,6 +677,16 @@ def _self_id(user: Dict[str, Any]) -> str:
     get_current_user) user["user_id"] has been swapped to the OWNER's id, so
     identity-only endpoints (auth/me, phone OTP) must use this instead."""
     return user.get("actual_user_id") or user["user_id"]
+
+
+def _actor_email(user: Dict[str, Any]) -> str:
+    """Gerçek giriş yapan kişinin e-postası (personel için firma sahibinin
+    değil, personelin kendi e-postası) -- teklif sahiplik/onay sistemi."""
+    return user.get("actor_email") or user.get("email", "")
+
+
+def _actor_name(user: Dict[str, Any]) -> str:
+    return user.get("actor_name") or user.get("name", "")
 
 
 def _user_out(u: Dict[str, Any]) -> UserOut:
@@ -1440,6 +1463,10 @@ class QuoteItem(BaseModel):
     adet: float = 1
     birim: str = "Adet"
     birimFiyat: float = 0
+    # Teklif verildikten sonra bu kaleme ait isteğe bağlı maliyet girişi --
+    # kalem bazında girilince Quote.maliyet toplamı otomatik hesaplanır
+    # (bkz. update_quote_item_maliyet).
+    maliyet: Optional[float] = None
 
 
 class Quote(BaseModel):
@@ -1471,6 +1498,14 @@ class Quote(BaseModel):
     iskontoTutar: float = 0
     kdvTutar: float = 0
     genelToplam: float = 0
+    maliyet: Optional[float] = None
+    # Bu teklifi GERÇEKTE kim oluşturdu (Quote.userId firma-paylaşımlı/ortak
+    # bir kimliktir -- personel de sahip de aynı userId altında saklanır --
+    # bu yüzden ekip içi düzenleme izni burada ayrıca tutulan gerçek
+    # kimliğe bakar, bkz. _actor_email/_self_id ve /quotes/{id}/edit-requests).
+    createdByUserId: str = ""
+    createdByEmail: str = ""
+    createdByName: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
     deletedAt: Optional[str] = None
@@ -1503,6 +1538,39 @@ class QuoteCreate(BaseModel):
 
 class QuoteStatusUpdate(BaseModel):
     durum: str
+
+
+class QuoteMaliyetUpdate(BaseModel):
+    maliyet: Optional[float] = None
+
+
+class QuoteItemMaliyetUpdate(BaseModel):
+    itemId: str
+    maliyet: Optional[float] = None
+
+
+# Bir ekip üyesi başka bir üyenin oluşturduğu teklifi düzenlemek isterse,
+# doğrudan değiştiremesin diye -- teklifi oluşturan kişiden onay istenir.
+# Onaylanınca tek seferlik düzenleme hakkı doğar (bkz. update_quote).
+class QuoteEditRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    quoteId: str
+    companyId: str
+    ownerUserId: str  # firma-paylaşımlı ortak userId (sorgu kapsamı için)
+    requestedByUserId: str
+    requestedByEmail: str = ""
+    requestedByName: str = ""
+    approverUserId: str
+    approverEmail: str = ""
+    teklifNo: str = ""
+    musFirma: str = ""
+    status: str = "pending"  # pending | approved | denied
+    createdAt: str = Field(default_factory=utc_now_iso)
+    resolvedAt: Optional[str] = None
+
+
+class QuoteEditRequestRespond(BaseModel):
+    approve: bool
 
 
 class CampaignSend(BaseModel):
@@ -2537,6 +2605,9 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     data["iskontoTutar"] = iskontoTutar
     data["kdvTutar"] = kdvTutar
     data["genelToplam"] = genelToplam
+    data["createdByUserId"] = _self_id(user)
+    data["createdByEmail"] = _actor_email(user)
+    data["createdByName"] = _actor_name(user)
     obj = Quote(userId=user["user_id"], **data)
     await db.quotes.insert_one(obj.dict())
     # upsert customer
@@ -2561,11 +2632,94 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     return obj
 
 
+@api_router.get("/quotes/edit-requests/list", response_model=List[QuoteEditRequest])
+async def list_quote_edit_requests(user=Depends(get_current_user)):
+    """Şu anki gerçek kullanıcının hem gönderdiği hem de kendisine gelen
+    (onaylaması gereken) teklif düzenleme isteklerini döner -- frontend
+    ikisini de tek çağrıyla alıp ayırt eder (requestedByUserId/approverUserId
+    kendi id'siyle karşılaştırılarak)."""
+    actor_id = _self_id(user)
+    docs = await db.quote_edit_requests.find(
+        {"ownerUserId": user["user_id"], "$or": [{"approverUserId": actor_id}, {"requestedByUserId": actor_id}]},
+        {"_id": 0},
+    ).sort("createdAt", -1).to_list(200)
+    return [QuoteEditRequest(**d) for d in docs]
+
+
+@api_router.post("/quotes/{quote_id}/edit-requests", response_model=QuoteEditRequest)
+async def create_quote_edit_request(quote_id: str, user=Depends(get_current_user)):
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"], "deletedAt": None}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    actor_id = _self_id(user)
+    creator_id = doc.get("createdByUserId") or ""
+    if not creator_id or creator_id == actor_id:
+        raise HTTPException(400, "Bu teklif için onay isteğine gerek yok, doğrudan düzenleyebilirsiniz")
+    existing = await db.quote_edit_requests.find_one(
+        {"quoteId": quote_id, "requestedByUserId": actor_id, "status": "pending"}, {"_id": 0}
+    )
+    if existing:
+        return QuoteEditRequest(**existing)
+    reqobj = QuoteEditRequest(
+        quoteId=quote_id,
+        companyId=doc.get("companyId", ""),
+        ownerUserId=user["user_id"],
+        requestedByUserId=actor_id,
+        requestedByEmail=_actor_email(user),
+        requestedByName=_actor_name(user),
+        approverUserId=creator_id,
+        approverEmail=doc.get("createdByEmail", ""),
+        teklifNo=doc.get("teklifNo", ""),
+        musFirma=doc.get("musFirma", ""),
+    )
+    await db.quote_edit_requests.insert_one(reqobj.dict())
+    return reqobj
+
+
+@api_router.post("/quotes/edit-requests/{request_id}/respond", response_model=QuoteEditRequest)
+async def respond_quote_edit_request(request_id: str, payload: QuoteEditRequestRespond, user=Depends(get_current_user)):
+    actor_id = _self_id(user)
+    doc = await db.quote_edit_requests.find_one({"id": request_id, "ownerUserId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "İstek bulunamadı")
+    if doc.get("approverUserId") != actor_id:
+        raise HTTPException(403, "Bu isteği yalnızca teklifi oluşturan kişi yanıtlayabilir")
+    if doc.get("status") != "pending":
+        raise HTTPException(400, "Bu istek zaten yanıtlanmış")
+    doc["status"] = "approved" if payload.approve else "denied"
+    doc["resolvedAt"] = utc_now_iso()
+    await db.quote_edit_requests.replace_one({"id": request_id}, doc)
+    return QuoteEditRequest(**doc)
+
+
 @api_router.put("/quotes/{quote_id}", response_model=Quote)
 async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_current_user)):
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
+
+    actor_id = _self_id(user)
+    creator_id = doc.get("createdByUserId") or ""
+    if not creator_id:
+        # Bu özellikten önce oluşturulmuş eski bir teklif -- sahiplik kaydı
+        # yok, geriye dönük olarak ilk düzenleyeni sahip say (kimseyi kilitli
+        # bırakmamak için) ve buradan sonra normal kurala tabi olsun.
+        doc["createdByUserId"] = actor_id
+        doc["createdByEmail"] = _actor_email(user)
+        doc["createdByName"] = _actor_name(user)
+    elif creator_id != actor_id:
+        approved = await db.quote_edit_requests.find_one(
+            {"quoteId": quote_id, "requestedByUserId": actor_id, "status": "approved"}, {"_id": 0}
+        )
+        if not approved:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Bu teklifi yalnızca oluşturan kişi ({doc.get('createdByEmail') or doc.get('createdByName') or 'ilgili kullanıcı'}) düzenleyebilir. Düzenlemek için ondan onay isteyin.",
+            )
+        # Onay tek kullanımlık: bu düzenleme kaydedilince tüketilir, bir
+        # sonraki düzenleme için tekrar onay istenmesi gerekir.
+        await db.quote_edit_requests.delete_one({"id": approved["id"]})
+
     data = payload.dict()
     items = [QuoteItem(**it) if isinstance(it, dict) else it for it in data.get("items", [])]
     data["items"] = [it.dict() for it in items]
@@ -2669,6 +2823,46 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
     return Quote(**doc)
 
 
+@api_router.patch("/quotes/{quote_id}/maliyet", response_model=Quote)
+async def update_quote_maliyet(quote_id: str, payload: QuoteMaliyetUpdate, user=Depends(get_current_user)):
+    """Teklif verildikten sonra girilen isteğe bağlı maliyet -- kar hesabı için.
+    Zorunlu değil: null gönderilirse maliyet temizlenmiş sayılır."""
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    doc["maliyet"] = payload.maliyet
+    doc["updatedAt"] = utc_now_iso()
+    await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+    return Quote(**doc)
+
+
+@api_router.patch("/quotes/{quote_id}/item-maliyet", response_model=Quote)
+async def update_quote_item_maliyet(quote_id: str, payload: QuoteItemMaliyetUpdate, user=Depends(get_current_user)):
+    """Kullanıcı "hangi kalemden ne kadar maliyeti oldu" diye tek tek
+    girebilsin diye eklendi -- her kalemin kendi maliyet alanını günceller ve
+    üstteki Quote.maliyet toplamını, en az bir kalemde değer varsa
+    kalemlerin toplamı olacak şekilde otomatik yeniden hesaplar (eski
+    tek-kutulu update_quote_maliyet ile de hâlâ elle geçersiz kılınabilir)."""
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    items = doc.get("items", [])
+    found = False
+    for it in items:
+        if it.get("id") == payload.itemId:
+            it["maliyet"] = payload.maliyet
+            found = True
+            break
+    if not found:
+        raise HTTPException(404, "Quote item not found")
+    doc["items"] = items
+    entered = [it.get("maliyet") for it in items if it.get("maliyet") is not None]
+    doc["maliyet"] = sum(entered) if entered else None
+    doc["updatedAt"] = utc_now_iso()
+    await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+    return Quote(**doc)
+
+
 @api_router.delete("/quotes/{quote_id}")
 async def delete_quote(quote_id: str, user=Depends(get_current_user)):
     """Soft delete — moves the quote to the trash instead of erasing it, so an
@@ -2744,6 +2938,366 @@ async def restore_quote(quote_id: str, user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Silinen teklif bulunamadı (süresi dolmuş olabilir)")
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     return Quote(**doc)
+
+
+# ============ QUOTE EXCEL EXPORT ============
+# Kullanıcının onayladığı referans tasarıma birebir uyan STİLLİ bir .xlsx
+# üretir (lacivert/gri kurumsal doküman görünümü). Frontend'de kullanılan
+# ücretsiz 'xlsx' (SheetJS Community) kütüphanesi hücre rengi/kalın yazı
+# YAZAMIYOR (sadece Pro sürüm destekler) -- bu yüzden görsel tasarım burada,
+# openpyxl ile (tam stil desteğine sahip) sunucu tarafında üretiliyor.
+#
+# Kalem açıklaması (buildItemDescription) ve **vurgu** notu ayrıştırma
+# (parseNoteSegments) mantığı frontend/src/lib/quote-utils.ts'teki aynı
+# adlı fonksiyonlarla birebir aynı davranacak şekilde Python'a taşınmıştır --
+# biri değişirse diğeri de güncellenmelidir.
+_XLSX_NAVY = "1F2A44"
+_XLSX_GRAY = "D9D9D9"
+_XLSX_RED = "C0392B"
+_CUR_SYMBOL = {"USD": "$", "EUR": "€", "TRY": "₺"}
+
+
+def _xlsx_money_fmt(cur: str) -> str:
+    sym = _CUR_SYMBOL.get(cur, cur)
+    return f'"{sym}"#,##0.00'
+
+
+def _xlsx_normalize_label(s: str) -> str:
+    s = (s or "").lower()
+    s = s.translate(str.maketrans({"ı": "i", "ş": "s", "ğ": "g", "ü": "u", "ö": "o", "ç": "c"}))
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+_XLSX_HEIGHT_LABELS = {"yukseklik", "h", "height"}
+_XLSX_WIDTH_LABELS = {"genislik", "cephe", "en", "width", "w"}
+_XLSX_DEPTH_LABELS = {"derinlik", "uzunluk", "boy", "depth", "length", "d", "l"}
+
+
+def _xlsx_dim_role(label: str) -> Optional[str]:
+    n = _xlsx_normalize_label(label)
+    if n in _XLSX_HEIGHT_LABELS:
+        return "height"
+    if n in _XLSX_WIDTH_LABELS:
+        return "width"
+    if n in _XLSX_DEPTH_LABELS:
+        return "depth"
+    return None
+
+
+def _xlsx_render_dimension_fields(fields: List[Dict[str, str]]) -> List[str]:
+    items = [{"label": (f.get("label") or "").strip(), "value": (f.get("value") or "").strip()} for f in fields]
+    for it in items:
+        it["role"] = _xlsx_dim_role(it["label"])
+    width_has = any(it["role"] == "width" and it["value"] for it in items)
+    depth_has = any(it["role"] == "depth" and it["value"] for it in items)
+    combine = width_has and depth_has
+    parts: List[str] = []
+    emitted = False
+    for it in items:
+        if not it["label"] and not it["value"]:
+            continue
+        if it["role"] == "height" and it["value"]:
+            parts.append(f"H: {it['value']} mm")
+            continue
+        if it["role"] in ("width", "depth") and combine:
+            if not emitted:
+                w = next(x["value"] for x in items if x["role"] == "width")
+                d = next(x["value"] for x in items if x["role"] == "depth")
+                parts.append(f"{w} x {d} mm")
+                emitted = True
+            continue
+        if it["label"] and it["value"]:
+            parts.append(f"{it['label']}: {it['value']}")
+        elif it["value"]:
+            parts.append(it["value"])
+        else:
+            parts.append(it["label"])
+    return parts
+
+
+def _xlsx_build_item_description(it: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    mode = it.get("mode") or "general"
+    if mode == "technical":
+        head = it.get("sistemTipi") or it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        parts.extend(_xlsx_render_dimension_fields(it.get("sistemFields") or []))
+    elif mode == "manual":
+        head = it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        for f in it.get("customFields") or []:
+            key = (f.get("key") or "").strip()
+            value = (f.get("value") or "").strip()
+            if not key and not value:
+                continue
+            if key and value:
+                parts.append(f"{key}: {value}")
+            elif value:
+                parts.append(value)
+            else:
+                parts.append(key)
+    else:
+        head = it.get("urunAdi") or ""
+        if head:
+            parts.append(head)
+        if it.get("aciklama"):
+            parts.append(it["aciklama"])
+    return (", ".join(parts) + ".") if parts else ""
+
+
+def _xlsx_parse_note_segments(raw: str):
+    if not raw:
+        return []
+    segments = []
+    last_index = 0
+    for m in re.finditer(r"\*\*([^*]+)\*\*", raw):
+        if m.start() > last_index:
+            segments.append((raw[last_index:m.start()], False))
+        segments.append((m.group(1), True))
+        last_index = m.end()
+    if last_index < len(raw):
+        segments.append((raw[last_index:], False))
+    return segments
+
+
+def _xlsx_notes_to_lines(raw: str):
+    segments = _xlsx_parse_note_segments(raw)
+    lines = []
+    cur_text = ""
+    cur_emph = False
+    for text, emph in segments:
+        subparts = text.split("\n")
+        for i, part in enumerate(subparts):
+            cur_text += part
+            if emph and part.strip():
+                cur_emph = True
+            if i < len(subparts) - 1:
+                lines.append((cur_text, cur_emph))
+                cur_text = ""
+                cur_emph = False
+    if cur_text.strip() or cur_emph:
+        lines.append((cur_text, cur_emph))
+    return [(t, e) for t, e in lines if t.strip()]
+
+
+def _xlsx_fmt_date_ddmmyyyy(iso: str) -> str:
+    try:
+        d = datetime.strptime((iso or "")[:10], "%Y-%m-%d")
+        return d.strftime("%d-%m-%Y")
+    except Exception:
+        return iso or ""
+
+
+def build_quote_xlsx(company: Dict[str, Any], quote: Dict[str, Any]) -> bytes:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Teklif"
+    n_cols = 5  # A..E
+
+    navy_fill = PatternFill("solid", fgColor=_XLSX_NAVY)
+    gray_fill = PatternFill("solid", fgColor=_XLSX_GRAY)
+    red_fill = PatternFill("solid", fgColor=_XLSX_RED)
+
+    def merge_full(row: int, text: str, font: Font, fill: Optional[PatternFill] = None,
+                    align: Optional[Alignment] = None, height: Optional[float] = None,
+                    start_col: int = 1, end_col: Optional[int] = None):
+        end_col = end_col or n_cols
+        ws.merge_cells(start_row=row, start_column=start_col, end_row=row, end_column=end_col)
+        cell = ws.cell(row=row, column=start_col, value=text)
+        cell.font = font
+        cell.alignment = align or Alignment(horizontal="left", vertical="center", indent=1)
+        if fill:
+            for c in range(start_col, end_col + 1):
+                ws.cell(row=row, column=c).fill = fill
+        if height:
+            ws.row_dimensions[row].height = height
+        return cell
+
+    cur = quote.get("paraBirimi", "USD")
+    money_fmt = _xlsx_money_fmt(cur)
+
+    r = 1
+    merge_full(r, company.get("sirketAdi") or "Anında Teklif", Font(bold=True, size=14), height=32)
+    header_name_row = r
+    r += 1
+    contact_bits = [b for b in [company.get("adres"), company.get("telefon"), company.get("email"), company.get("website")] if b]
+    merge_full(r, "  ".join(contact_bits), Font(size=9))
+    r += 1
+    merge_full(r, "TEKLİF FORMU", Font(bold=True, size=16), fill=gray_fill, height=20)
+    r += 1
+    r += 1  # spacer
+
+    # ---- Firma logosu (üst-sağ köşe) ----
+    logo_b64 = company.get("logoBase64") or ""
+    if logo_b64.startswith("data:image/"):
+        try:
+            img_bytes = base64.b64decode(logo_b64.split(",", 1)[1])
+            img = XLImage(io.BytesIO(img_bytes))
+            max_h = 60
+            if img.height > max_h:
+                ratio = max_h / img.height
+                img.width = int(img.width * ratio)
+                img.height = max_h
+            ws.add_image(img, f"{get_column_letter(n_cols)}{header_name_row}")
+        except Exception:
+            logger.warning("Excel export: logo gömülemedi", exc_info=True)
+
+    def info_row(row: int, label: str, value: str):
+        c1 = ws.cell(row=row, column=1, value=label)
+        c1.font = Font(bold=True, size=10)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=n_cols)
+        c2 = ws.cell(row=row, column=2, value=value)
+        c2.font = Font(size=10)
+
+    info_row(r, "Teklif No", quote.get("teklifNo", "")); r += 1
+    info_row(r, "Tarih", _xlsx_fmt_date_ddmmyyyy(quote.get("tarih", ""))); r += 1
+    info_row(r, "Geçerlilik Tarihi", _xlsx_fmt_date_ddmmyyyy(quote.get("gecerlilik", ""))); r += 1
+    r += 1  # spacer
+
+    merge_full(r, "MÜŞTERİ BİLGİLERİ / SİPARİŞ BİLGİLERİ", Font(bold=True, size=10, color="FFFFFF"), fill=navy_fill)
+    r += 1
+
+    def two_col_row(row: int, l1: str, v1: str, l2: str, v2: str):
+        c1 = ws.cell(row=row, column=1, value=l1); c1.font = Font(bold=True, size=10)
+        c2 = ws.cell(row=row, column=2, value=v1); c2.font = Font(size=10)
+        c3 = ws.cell(row=row, column=3, value=l2); c3.font = Font(bold=True, size=10)
+        ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=n_cols)
+        c4 = ws.cell(row=row, column=4, value=v2); c4.font = Font(size=10)
+
+    two_col_row(r, "Firma", quote.get("musFirma", ""), "Proje Adı", quote.get("projeAdi", "")); r += 1
+    two_col_row(r, "Müşteri Adı", quote.get("musYetkili", ""), "Nakliye", quote.get("nakliye", "")); r += 1
+    two_col_row(r, "Telefon", quote.get("musTelefon") or "-", "Para Birimi", quote.get("paraBirimi", "")); r += 1
+    two_col_row(r, "E-mail", quote.get("musEmail") or "-", "Ödeme Şekli", quote.get("odemeSekli", "")); r += 1
+    two_col_row(r, "Adres", quote.get("musAdres", ""), "Menşei", quote.get("mensei", "")); r += 1
+    two_col_row(r, "", "", "Teslim", quote.get("teslimGun", "")); r += 1
+    r += 1  # spacer
+
+    table_header_row = r
+    headers = ["S.NO", "SİSTEM / HİZMET", "ADET", "BİRİM FİYAT", "TOPLAM FİYAT"]
+    for i, h in enumerate(headers, start=1):
+        cell = ws.cell(row=r, column=i, value=h)
+        cell.font = Font(bold=True, size=10, color="FFFFFF")
+        cell.fill = navy_fill
+        cell.alignment = Alignment(horizontal="center" if i in (1, 3) else "left", vertical="center")
+    r += 1
+
+    items = quote.get("items") or []
+    first_item_row = r
+    for idx, it in enumerate(items):
+        adet = float(it.get("adet") or 0)
+        fiyat = float(it.get("birimFiyat") or 0)
+        desc = _xlsx_build_item_description(it)
+        row_vals = [idx + 1, desc, adet, fiyat]
+        for ci, v in enumerate(row_vals, start=1):
+            cell = ws.cell(row=r, column=ci, value=v)
+            cell.font = Font(size=10)
+            if ci == 1:
+                cell.alignment = Alignment(horizontal="center", vertical="top")
+            elif ci == 2:
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            elif ci == 3:
+                cell.alignment = Alignment(horizontal="center", vertical="top")
+            elif ci == 4:
+                cell.alignment = Alignment(horizontal="right", vertical="top")
+                cell.number_format = money_fmt
+        e_cell = ws.cell(row=r, column=5, value=f"=C{r}*D{r}")
+        e_cell.font = Font(size=10)
+        e_cell.alignment = Alignment(horizontal="right", vertical="top")
+        e_cell.number_format = money_fmt
+        ws.row_dimensions[r].height = 90
+        r += 1
+    last_item_row = r - 1
+
+    merge_full(r, "ÖLÇÜ VE ÖZELLİKLERİ DİKKATLİ KONTROL EDİNİZ. OLASI HATALARDAN FİRMAMIZ SORUMLU DEĞİLDİR.",
+               Font(bold=True, size=10, color="FFFFFF"), fill=red_fill)
+    r += 1
+    r += 1  # spacer
+
+    totals_start = r
+    notlar = (quote.get("notlar") or "").strip()
+    note_lines = _xlsx_notes_to_lines(notlar) if notlar else []
+
+    if notlar:
+        c = ws.cell(row=r, column=1, value="ÖZEL NOTLAR & SATIŞ DETAYLARI")
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
+        c.font = Font(bold=True, size=10, color="FFFFFF")
+        for cc in range(1, 4):
+            ws.cell(row=r, column=cc).fill = navy_fill
+        notes_row = r + 1
+        for text, emph in note_lines:
+            ws.merge_cells(start_row=notes_row, start_column=1, end_row=notes_row, end_column=3)
+            nc = ws.cell(row=notes_row, column=1, value=text)
+            nc.font = Font(bold=emph, size=10)
+            nc.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            notes_row += 1
+    else:
+        notes_row = r
+
+    iskonto_or = float(quote.get("iskonto") or 0)
+    kdv_or = float(quote.get("kdvOrani") or 0)
+    iskonto_tutar = float(quote.get("iskontoTutar") or 0)
+    kdv_tutar = float(quote.get("kdvTutar") or 0)
+    genel_toplam = float(quote.get("genelToplam") or 0)
+
+    def total_row(row: int, label: str, value):
+        dc = ws.cell(row=row, column=4, value=label)
+        dc.font = Font(bold=True, size=10)
+        dc.fill = gray_fill
+        ec = ws.cell(row=row, column=5, value=value)
+        ec.font = Font(bold=True, size=10)
+        ec.fill = gray_fill
+        ec.number_format = money_fmt
+        ec.alignment = Alignment(horizontal="right")
+
+    tr = totals_start
+    if items:
+        total_row(tr, "ARA TOPLAM", f"=SUM(E{first_item_row}:E{last_item_row})")
+    else:
+        total_row(tr, "ARA TOPLAM", 0)
+    tr += 1
+    if iskonto_or > 0:
+        total_row(tr, f"İSKONTO (%{iskonto_or:g})", -iskonto_tutar)
+        tr += 1
+    if kdv_or > 0:
+        total_row(tr, f"KDV (%{kdv_or:g})", kdv_tutar)
+        tr += 1
+    total_row(tr, "GENEL TOPLAM", genel_toplam)
+    tr += 1
+
+    r = max(notes_row, tr)
+    r += 1  # spacer
+    merge_full(r, "Bu teklif Anında Teklif uygulaması ile hazırlanmıştır. www.anindateklif.co", Font(size=8))
+
+    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["B"].width = 55
+    ws.column_dimensions["C"].width = 8
+    ws.column_dimensions["D"].width = 14
+    ws.column_dimensions["E"].width = 16
+    ws.sheet_view.showGridLines = False
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@api_router.get("/quotes/{quote_id}/export-excel")
+async def export_quote_excel(quote_id: str, user=Depends(get_current_user)):
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Quote not found")
+    company = await db.companies.find_one({"id": doc.get("companyId")}, {"_id": 0}) or {}
+    staff_company = user.get("staff_of_company_id")
+    if user.get("is_staff") and staff_company and staff_company != doc.get("companyId"):
+        raise HTTPException(status_code=403, detail="Bu firmaya erişim izniniz yok")
+    xlsx_bytes = build_quote_xlsx(company, doc)
+    file_name = f"teklif-{(doc.get('teklifNo') or quote_id).replace('/', '-')}.xlsx"
+    return StreamingResponse(
+        io.BytesIO(xlsx_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+    )
 
 
 # ============ APP CONFIG (public) ============

@@ -43,17 +43,19 @@ const s = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: authTheme.gold,
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
   },
   ring: {
     borderColor: authTheme.gold,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+    // Parlama doğrudan yuvarlak halkaya uygulanıyor -- dıştaki kare "wrap"
+    // View'ına uygulanırsa köşeli/kare bir gölge/parlama görünüyordu.
+    shadowColor: authTheme.gold,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   check: {
     // Slightly nudged to appear centered in the ring visually.

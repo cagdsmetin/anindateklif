@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
+import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { useLanguage } from '@/src/lib/i18n';
 
 const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
@@ -56,16 +57,16 @@ export default function CustomersScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >
+        <View style={s.contentWrap}>
         {/* Primary CTA — matches the reference screenshot */}
-        <TouchableOpacity
+        <AnimatedPressable
           style={s.addBtn}
           onPress={() => router.push('/customer-add')}
-          activeOpacity={0.9}
           testID="customer-add-btn"
         >
-          <Ionicons name="person-add" size={20} color="#fff" />
+          <Ionicons name="person-add" size={17} color="#fff" />
           <Text style={s.addBtnText}>{t('customers.s003')}</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>
@@ -96,7 +97,7 @@ export default function CustomersScreen() {
                     testID={`delete-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.textMuted} />
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => router.push({ pathname: '/customer-add', params: { id: c.id } })}
@@ -104,7 +105,7 @@ export default function CustomersScreen() {
                     testID={`open-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="chevron-forward" size={22} color={theme.colors.textMuted} />
+                    <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </View>
 
@@ -129,6 +130,7 @@ export default function CustomersScreen() {
             );
           })
         )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,21 +138,22 @@ export default function CustomersScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
+  contentWrap: { width: '100%', maxWidth: 720, alignSelf: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
 
   addBtn: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 14,
+    paddingVertical: 13,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 14,
     ...theme.shadow.lg,
   },
-  addBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  addBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 },
 
   emptyBox: {
     marginTop: 30,
@@ -167,45 +170,45 @@ const s = StyleSheet.create({
 
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 14,
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginBottom: 7,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 22,
+    fontSize: 13.5,
     fontWeight: '900',
     color: theme.colors.primary,
     letterSpacing: 0.5,
   },
-  name: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
-  phone: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
-  phoneMuted: { fontSize: 12, color: theme.colors.lineDark, marginTop: 2, fontStyle: 'italic' },
-  iconBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  phone: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
+  phoneMuted: { fontSize: 10, color: theme.colors.lineDark, marginTop: 1, fontStyle: 'italic' },
+  iconBtn: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
 
-  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 12 },
+  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 6 },
 
   statsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   statLabel: {
-    fontSize: 10.5,
+    fontSize: 9,
     fontWeight: '700',
     color: theme.colors.textMuted,
-    letterSpacing: 1.1,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 2,
   },
-  statValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text },
+  statValue: { fontSize: 13, fontWeight: '900', color: theme.colors.text },
 });

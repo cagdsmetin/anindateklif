@@ -79,13 +79,14 @@ export default function CampaignAddScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 160 }}
+          contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={s.contentWrap}>
           <View style={s.hero}>
             <View style={s.heroCircle}>
-              <Ionicons name="megaphone" size={36} color={theme.colors.primary} />
+              <Ionicons name="megaphone" size={24} color={theme.colors.primary} />
             </View>
             <Text style={s.heroCaption}>{t('campaignAdd.s007')}</Text>
           </View>
@@ -125,10 +126,11 @@ export default function CampaignAddScreen() {
                 {t('campaignAdd.s012')}<Text style={s.helperCode}>{'{musteri}'}</Text> ve <Text style={s.helperCode}>{'{firma}'}</Text> {t('campaignAdd.s013')}</Text>
             </View>
           </View>
+          </View>
         </ScrollView>
 
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
-          <View style={s.footerRow}>
+          <View style={[s.footerRow, s.footerInner]}>
             <TouchableOpacity
               style={[s.ctaSecondary]}
               onPress={() => router.back()}
@@ -167,50 +169,52 @@ const s = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  hero: { alignItems: 'center', marginBottom: 26 },
+  contentWrap: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  footerInner: { width: '100%', maxWidth: 480, alignSelf: 'center' },
+  hero: { alignItems: 'center', marginBottom: 12 },
   heroCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  heroCaption: { fontSize: 13.5, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 19 },
+  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 17 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  field: { marginBottom: 16 },
-  fieldLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  field: { marginBottom: 10 },
+  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 5 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FBFDFF',
     borderWidth: 1,
     borderColor: theme.colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 52,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    minHeight: 42,
   },
-  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14, minHeight: 140 },
+  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 96 },
   inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
     color: theme.colors.text,
     paddingVertical: 0,
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
   },
-  inputMultiline: { minHeight: 112, textAlignVertical: 'top' },
-  helperText: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 16 },
+  inputMultiline: { minHeight: 78, textAlignVertical: 'top' },
+  helperText: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, lineHeight: 15 },
   helperCode: { fontWeight: '800', color: theme.colors.primary },
   footer: {
     position: 'absolute',
@@ -227,25 +231,25 @@ const s = StyleSheet.create({
   cta: {
     flex: 1,
     backgroundColor: theme.colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadow.lg,
   },
   ctaDisabled: { opacity: 0.6 },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  ctaText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
   ctaSecondary: {
     flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: theme.colors.lineDark,
   },
-  ctaSecondaryText: { color: theme.colors.textMuted, fontSize: 15, fontWeight: '800' },
+  ctaSecondaryText: { color: theme.colors.textMuted, fontSize: 14, fontWeight: '800' },
   toast: {
     position: 'absolute',
     top: 8,

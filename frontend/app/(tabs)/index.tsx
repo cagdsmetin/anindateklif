@@ -7,6 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
+import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
 import { sumToTRY, RatesLike, computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
@@ -867,13 +868,13 @@ function QuickAction({ icon, label, color, onPress }: { icon: any; label: string
 
 function ModuleTile({ icon, label, color, onPress }: { icon: any; label: string; color: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={s.moduleTile} onPress={onPress} activeOpacity={0.85}>
+    <AnimatedPressable style={s.moduleTile} onPress={onPress} scaleTo={0.94}>
       <View style={[s.moduleAccentBar, { backgroundColor: color }]} />
       <View style={[s.moduleIconWrap, { backgroundColor: color }]}>
         <Ionicons name={icon} size={19} color="#fff" />
       </View>
       <Text style={s.moduleLabel} numberOfLines={1}>{label}</Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

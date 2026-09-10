@@ -131,7 +131,12 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
     const body = await res.text().catch(() => '');
     // eslint-disable-next-line no-console
     console.warn('[api]', 'http', res.status, path, body.slice(0, 200));
-    throw new ApiError(`API ${path} ${res.status}`, 'http', res.status, body);
+    // FastAPI hataları çoğunlukla anlamlı bir Türkçe { detail: "..." } döner
+    // (örn. teklif sahiplik kısıtı) -- bunu yakalayıp mesaj olarak kullanınca
+    // kullanıcıya jenerik "API ... 403" yerine gerçek sebep gösterilir.
+    let detail = '';
+    try { const j = JSON.parse(body); if (typeof j?.detail === 'string') detail = j.detail; } catch {}
+    throw new ApiError(detail || `API ${path} ${res.status}`, 'http', res.status, body);
   }
 
   try {
@@ -139,6 +144,22 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
   } catch (e: any) {
     throw new ApiError('Geçersiz sunucu yanıtı', 'parse');
   }
+}
+
+// Teklifin, PDF ile aynı marka görünümüne (renkli/kalın başlıklar) sahip
+// gerçek stilli .xlsx dosyasını sunucudan indirir -- istemcideki ücretsiz
+// 'xlsx' kütüphanesi hücre rengi/kalın yazı YAZAMADIĞI için bu dosya artık
+// backend'de (openpyxl ile) üretiliyor, burada sadece ham baytlar alınıyor.
+export async function fetchQuoteExcelBytes(quoteId: string): Promise<ArrayBuffer> {
+  const token = await getSessionToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/quotes/${quoteId}/export-excel`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(`Excel indirilemedi (${res.status})`, 'http', res.status, body);
+  }
+  return await res.arrayBuffer();
 }
 
 export const api = {
@@ -280,9 +301,20 @@ export const api = {
   updateQuote: (id: string, data: any) => req(`/quotes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateQuoteStatus: (id: string, durum: string) =>
     req(`/quotes/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  updateQuoteMaliyet: (id: string, maliyet: number | null) =>
+    req(`/quotes/${id}/maliyet`, { method: 'PATCH', body: JSON.stringify({ maliyet }) }),
+  updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) =>
+    req(`/quotes/${id}/item-maliyet`, { method: 'PATCH', body: JSON.stringify({ itemId, maliyet }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
   listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
   restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
+  // Teklif sahiplik/onay sistemi: bir başkasının oluşturduğu teklifi
+  // düzenlemek için önce ondan onay istenir.
+  listQuoteEditRequests: (): Promise<QuoteEditRequestT[]> => req('/quotes/edit-requests/list'),
+  requestQuoteEdit: (quoteId: string): Promise<QuoteEditRequestT> =>
+    req(`/quotes/${quoteId}/edit-requests`, { method: 'POST' }),
+  respondQuoteEditRequest: (requestId: string, approve: boolean): Promise<QuoteEditRequestT> =>
+    req(`/quotes/edit-requests/${requestId}/respond`, { method: 'POST', body: JSON.stringify({ approve }) }),
 
   // App config (public)
   getAppConfig: () => req('/config'),
@@ -588,6 +620,7 @@ export type QuoteItemT = {
   adet: number;
   birim: string;
   birimFiyat: number;
+  maliyet?: number | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };
@@ -622,5 +655,26 @@ export type QuoteT = {
   iskontoTutar: number;
   kdvTutar: number;
   genelToplam: number;
+  maliyet?: number | null;
+  createdByUserId?: string;
+  createdByEmail?: string;
+  createdByName?: string;
   createdAt: string;
+};
+
+export type QuoteEditRequestT = {
+  id: string;
+  quoteId: string;
+  companyId: string;
+  ownerUserId: string;
+  requestedByUserId: string;
+  requestedByEmail: string;
+  requestedByName?: string;
+  approverUserId: string;
+  approverEmail?: string;
+  teklifNo?: string;
+  musFirma?: string;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: string;
+  resolvedAt?: string | null;
 };

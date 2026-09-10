@@ -57,6 +57,7 @@ export default function CustomersScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
       >
+        <View style={s.contentWrap}>
         {/* Primary CTA — matches the reference screenshot */}
         <AnimatedPressable
           style={s.addBtn}
@@ -129,6 +130,7 @@ export default function CustomersScreen() {
             );
           })
         )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,6 +138,7 @@ export default function CustomersScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
+  contentWrap: { width: '100%', maxWidth: 720, alignSelf: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
 
@@ -167,37 +170,37 @@ const s = StyleSheet.create({
 
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 9,
-    paddingHorizontal: 11,
-    marginBottom: 8,
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginBottom: 7,
     borderWidth: 1,
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.05,
   },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '900',
     color: theme.colors.primary,
     letterSpacing: 0.5,
   },
-  name: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
-  phone: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
-  phoneMuted: { fontSize: 10.5, color: theme.colors.lineDark, marginTop: 1, fontStyle: 'italic' },
-  iconBtn: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  name: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  phone: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
+  phoneMuted: { fontSize: 10, color: theme.colors.lineDark, marginTop: 1, fontStyle: 'italic' },
+  iconBtn: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
 
-  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 7 },
+  cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 6 },
 
   statsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   statLabel: {

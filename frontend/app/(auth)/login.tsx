@@ -66,7 +66,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <View style={s.bgWrap} pointerEvents="none">
-        <BlackHoleBackground />
+        <BlackHoleBackground centerX={0.5} />
       </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}

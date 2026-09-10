@@ -6,6 +6,6 @@ import { View } from 'react-native';
 // değmez -- burada hiçbir şey render etmiyoruz. Gerçek animasyonlu versiyon
 // sadece web'de (BlackHoleBackground.web.tsx) render edilir; Metro/Expo
 // bundler dosya adındaki `.web.tsx` uzantısını platforma göre otomatik seçer.
-export default function BlackHoleBackground() {
+export default function BlackHoleBackground(_props: { centerX?: number; spread?: number } = {}) {
   return <View pointerEvents="none" />;
 }

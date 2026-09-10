@@ -115,7 +115,7 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <View style={s.bgWrap} pointerEvents="none">
-        <BlackHoleBackground />
+        <BlackHoleBackground centerX={0.5} spread={1.4} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView

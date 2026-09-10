@@ -8,7 +8,18 @@ import React, { useEffect, useRef } from 'react';
 // canvas parçacık sistemi: küçük ışık noktaları merkeze doğru spiral çizerek
 // akıyor, merkeze yaklaşınca kenardan yeniden başlıyor. Sadece dekoratif
 // olduğu için native tarafta hiç render edilmiyor (bkz. BlackHoleBackground.tsx).
-export default function BlackHoleBackground() {
+type Props = {
+  // Parçacık dağılımının merkezinin yatayda nerede olacağı (0 = sol kenar,
+  // 0.5 = tam orta, 1 = sağ kenar). Landing hero'da metin solda kaldığı için
+  // merkez sağa kaydırılıyor (0.72); ortalanmış tek-sütun form ekranlarında
+  // (login/register/vb.) 0.5 ile tam ortalanır.
+  centerX?: number;
+  // Dağılımın yarıçapını çarpan -- 1 varsayılan, >1 "balonları" daha geniş
+  // bir alana yayar (parçacık sayısı da orantılı artırılır ki seyrekleşmesin).
+  spread?: number;
+};
+
+export default function BlackHoleBackground({ centerX = 0.72, spread = 1 }: Props = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -32,7 +43,7 @@ export default function BlackHoleBackground() {
       hue: 'blue' | 'gold';
     };
 
-    const PARTICLE_COUNT = 140;
+    const PARTICLE_COUNT = Math.round(140 * spread);
     let particles: Particle[] = [];
     let maxRadius = 0;
 
@@ -59,7 +70,7 @@ export default function BlackHoleBackground() {
       canvas.height = Math.max(1, Math.floor(height * dpr));
       canvas.style.width = width + 'px';
       canvas.style.height = height + 'px';
-      maxRadius = Math.max(width, height) * 0.62;
+      maxRadius = Math.max(width, height) * 0.62 * spread;
       particles = Array.from({ length: PARTICLE_COUNT }, () => makeParticle(false));
     }
 
@@ -68,7 +79,7 @@ export default function BlackHoleBackground() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
 
-      const cx = width * 0.72; // marka logosunun/metinin solda kalması için merkez sağa kaydırılmış
+      const cx = width * centerX;
       const cy = height * 0.42;
 
       // Merkez kor parlaması

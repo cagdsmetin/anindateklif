@@ -72,7 +72,7 @@ export default function ResetPasswordScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <View style={s.bgWrap} pointerEvents="none">
-        <BlackHoleBackground />
+        <BlackHoleBackground centerX={0.5} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">

@@ -131,7 +131,12 @@ async function req(path: string, opts: RequestInit = {}, timeoutMs: number = 200
     const body = await res.text().catch(() => '');
     // eslint-disable-next-line no-console
     console.warn('[api]', 'http', res.status, path, body.slice(0, 200));
-    throw new ApiError(`API ${path} ${res.status}`, 'http', res.status, body);
+    // FastAPI hataları çoğunlukla anlamlı bir Türkçe { detail: "..." } döner
+    // (örn. teklif sahiplik kısıtı) -- bunu yakalayıp mesaj olarak kullanınca
+    // kullanıcıya jenerik "API ... 403" yerine gerçek sebep gösterilir.
+    let detail = '';
+    try { const j = JSON.parse(body); if (typeof j?.detail === 'string') detail = j.detail; } catch {}
+    throw new ApiError(detail || `API ${path} ${res.status}`, 'http', res.status, body);
   }
 
   try {
@@ -303,6 +308,13 @@ export const api = {
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
   listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
   restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
+  // Teklif sahiplik/onay sistemi: bir başkasının oluşturduğu teklifi
+  // düzenlemek için önce ondan onay istenir.
+  listQuoteEditRequests: (): Promise<QuoteEditRequestT[]> => req('/quotes/edit-requests/list'),
+  requestQuoteEdit: (quoteId: string): Promise<QuoteEditRequestT> =>
+    req(`/quotes/${quoteId}/edit-requests`, { method: 'POST' }),
+  respondQuoteEditRequest: (requestId: string, approve: boolean): Promise<QuoteEditRequestT> =>
+    req(`/quotes/edit-requests/${requestId}/respond`, { method: 'POST', body: JSON.stringify({ approve }) }),
 
   // App config (public)
   getAppConfig: () => req('/config'),
@@ -644,5 +656,25 @@ export type QuoteT = {
   kdvTutar: number;
   genelToplam: number;
   maliyet?: number | null;
+  createdByUserId?: string;
+  createdByEmail?: string;
+  createdByName?: string;
   createdAt: string;
+};
+
+export type QuoteEditRequestT = {
+  id: string;
+  quoteId: string;
+  companyId: string;
+  ownerUserId: string;
+  requestedByUserId: string;
+  requestedByEmail: string;
+  requestedByName?: string;
+  approverUserId: string;
+  approverEmail?: string;
+  teklifNo?: string;
+  musFirma?: string;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: string;
+  resolvedAt?: string | null;
 };

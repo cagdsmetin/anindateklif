@@ -57,7 +57,7 @@ const DURUM_COLORS: Record<string, string> = {
 
 export default function EditorScreen() {
   const { t, lang } = useLanguage();
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
   const saveNotesAsDefault = async () => {
@@ -161,6 +161,30 @@ export default function EditorScreen() {
       if (q) { loadFromQuote(q); bootedRef.current = params.quoteId; }
     }
   }, [params.quoteId, quotes]);
+
+  // Teklif sahiplik/onay sistemi: bu tekliften başka biri sorumluysa
+  // (createdByUserId dolu ve bana ait değilse) düzenlemeden önce ondan onay
+  // istenmesi gerekir -- bkz. backend update_quote. Sadece görüntüleyip
+  // PDF/WhatsApp paylaşmak (içerikte değişiklik yapmadan) her zaman serbest.
+  const editingQuote = useMemo(() => quotes.find((q) => q.id === editingId), [quotes, editingId]);
+  const isQuoteOwner = !editingQuote?.createdByUserId || editingQuote.createdByUserId === user?.user_id;
+  const myEditRequest = useMemo(
+    () => editRequests.find((r) => r.quoteId === editingId && r.requestedByUserId === user?.user_id),
+    [editRequests, editingId, user?.user_id]
+  );
+  const [requestingApproval, setRequestingApproval] = useState(false);
+  const handleRequestEditApproval = async () => {
+    if (!editingId || requestingApproval) return;
+    setRequestingApproval(true);
+    try {
+      await requestQuoteEditApproval(editingId);
+      showToast(t('teklifPage.s107'));
+    } catch (e: any) {
+      showToast(t('teklifPage.s017') + (e?.message || ''));
+    } finally {
+      setRequestingApproval(false);
+    }
+  };
 
   // Geçmiş ekranındaki "Kopyala" butonuyla gelindiğinde: seçilen teklifin
   // tüm bilgilerini forma doldur ama editingId'yi BOŞ bırak (loadFromQuote'tan
@@ -374,7 +398,9 @@ export default function EditorScreen() {
       // Keep the currently-picked local attachments available to Preview/History
       // for this quote, so they can also include them when generating a PDF.
       setQuoteAttachments(saved.id, attachments);
-      showToast('Teklif kaydedildi'); return saved;
+      showToast('Teklif kaydedildi');
+      reloadEditRequests();
+      return saved;
     } catch (e: any) {
       if (e?.status === 402) {
         showToast(t('teklifPage.s016'));
@@ -525,6 +551,38 @@ export default function EditorScreen() {
               <Text style={s.miniStatSub}>{t('teklifPage.s023')}{kdvOr}</Text>
             </View>
           </LinearGradient>
+
+          {!!editingId && !isQuoteOwner && (
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: myEditRequest?.status === 'approved' ? '#dcfce7' : '#fef3c7',
+              borderRadius: 12, padding: 12, marginBottom: 14,
+            }}>
+              <Ionicons
+                name={myEditRequest?.status === 'approved' ? 'checkmark-circle' : 'lock-closed'}
+                size={20}
+                color={myEditRequest?.status === 'approved' ? '#16a34a' : '#b45309'}
+              />
+              <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                {myEditRequest?.status === 'approved'
+                  ? t('teklifPage.s109')
+                  : t('teklifPage.s105').replace('{who}', editingQuote?.createdByEmail || editingQuote?.createdByName || '')}
+              </Text>
+              {myEditRequest?.status === 'pending' ? (
+                <Text style={{ fontSize: 12, color: '#92400e', fontWeight: '600' }}>{t('teklifPage.s108')}</Text>
+              ) : myEditRequest?.status !== 'approved' ? (
+                <TouchableOpacity
+                  onPress={handleRequestEditApproval}
+                  disabled={requestingApproval}
+                  style={{ backgroundColor: '#b45309', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}
+                >
+                  {requestingApproval ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('teklifPage.s106')}</Text>
+                  )}
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
 
           <SectionHeader title={t('teklifPage.s024')} icon="document-text" />
           <View style={s.fieldGrid}>

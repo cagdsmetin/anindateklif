@@ -653,11 +653,19 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
         resolved["staff_role"] = account.get("staff_role", "staff")
         resolved["staff_of_company_id"] = account.get("staff_of_company_id", "")
         resolved["actual_user_id"] = account["user_id"]
+        # Teklif sahiplik/onay sistemi (bkz. _actor_email/_actor_name ve
+        # Quote.createdByUserId) için: "resolved" sözlüğü artık firma
+        # sahibinin e-postasını/adını taşıyor, gerçek giriş yapan personelin
+        # kendi kimliği kaybolmasın diye ayrıca saklıyoruz.
+        resolved["actor_email"] = account.get("email", "")
+        resolved["actor_name"] = account.get("name", "")
         resolved["_impersonated"] = imp_flag
         resolved["_impersonated_by"] = imp_by
         return resolved
 
     account["is_staff"] = False
+    account["actor_email"] = account.get("email", "")
+    account["actor_name"] = account.get("name", "")
     account["_impersonated"] = imp_flag
     account["_impersonated_by"] = imp_by
     return account
@@ -669,6 +677,16 @@ def _self_id(user: Dict[str, Any]) -> str:
     get_current_user) user["user_id"] has been swapped to the OWNER's id, so
     identity-only endpoints (auth/me, phone OTP) must use this instead."""
     return user.get("actual_user_id") or user["user_id"]
+
+
+def _actor_email(user: Dict[str, Any]) -> str:
+    """Gerçek giriş yapan kişinin e-postası (personel için firma sahibinin
+    değil, personelin kendi e-postası) -- teklif sahiplik/onay sistemi."""
+    return user.get("actor_email") or user.get("email", "")
+
+
+def _actor_name(user: Dict[str, Any]) -> str:
+    return user.get("actor_name") or user.get("name", "")
 
 
 def _user_out(u: Dict[str, Any]) -> UserOut:
@@ -1481,6 +1499,13 @@ class Quote(BaseModel):
     kdvTutar: float = 0
     genelToplam: float = 0
     maliyet: Optional[float] = None
+    # Bu teklifi GERÇEKTE kim oluşturdu (Quote.userId firma-paylaşımlı/ortak
+    # bir kimliktir -- personel de sahip de aynı userId altında saklanır --
+    # bu yüzden ekip içi düzenleme izni burada ayrıca tutulan gerçek
+    # kimliğe bakar, bkz. _actor_email/_self_id ve /quotes/{id}/edit-requests).
+    createdByUserId: str = ""
+    createdByEmail: str = ""
+    createdByName: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
     deletedAt: Optional[str] = None
@@ -1522,6 +1547,30 @@ class QuoteMaliyetUpdate(BaseModel):
 class QuoteItemMaliyetUpdate(BaseModel):
     itemId: str
     maliyet: Optional[float] = None
+
+
+# Bir ekip üyesi başka bir üyenin oluşturduğu teklifi düzenlemek isterse,
+# doğrudan değiştiremesin diye -- teklifi oluşturan kişiden onay istenir.
+# Onaylanınca tek seferlik düzenleme hakkı doğar (bkz. update_quote).
+class QuoteEditRequest(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    quoteId: str
+    companyId: str
+    ownerUserId: str  # firma-paylaşımlı ortak userId (sorgu kapsamı için)
+    requestedByUserId: str
+    requestedByEmail: str = ""
+    requestedByName: str = ""
+    approverUserId: str
+    approverEmail: str = ""
+    teklifNo: str = ""
+    musFirma: str = ""
+    status: str = "pending"  # pending | approved | denied
+    createdAt: str = Field(default_factory=utc_now_iso)
+    resolvedAt: Optional[str] = None
+
+
+class QuoteEditRequestRespond(BaseModel):
+    approve: bool
 
 
 class CampaignSend(BaseModel):
@@ -2556,6 +2605,9 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     data["iskontoTutar"] = iskontoTutar
     data["kdvTutar"] = kdvTutar
     data["genelToplam"] = genelToplam
+    data["createdByUserId"] = _self_id(user)
+    data["createdByEmail"] = _actor_email(user)
+    data["createdByName"] = _actor_name(user)
     obj = Quote(userId=user["user_id"], **data)
     await db.quotes.insert_one(obj.dict())
     # upsert customer
@@ -2580,11 +2632,94 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     return obj
 
 
+@api_router.get("/quotes/edit-requests/list", response_model=List[QuoteEditRequest])
+async def list_quote_edit_requests(user=Depends(get_current_user)):
+    """Şu anki gerçek kullanıcının hem gönderdiği hem de kendisine gelen
+    (onaylaması gereken) teklif düzenleme isteklerini döner -- frontend
+    ikisini de tek çağrıyla alıp ayırt eder (requestedByUserId/approverUserId
+    kendi id'siyle karşılaştırılarak)."""
+    actor_id = _self_id(user)
+    docs = await db.quote_edit_requests.find(
+        {"ownerUserId": user["user_id"], "$or": [{"approverUserId": actor_id}, {"requestedByUserId": actor_id}]},
+        {"_id": 0},
+    ).sort("createdAt", -1).to_list(200)
+    return [QuoteEditRequest(**d) for d in docs]
+
+
+@api_router.post("/quotes/{quote_id}/edit-requests", response_model=QuoteEditRequest)
+async def create_quote_edit_request(quote_id: str, user=Depends(get_current_user)):
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"], "deletedAt": None}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    actor_id = _self_id(user)
+    creator_id = doc.get("createdByUserId") or ""
+    if not creator_id or creator_id == actor_id:
+        raise HTTPException(400, "Bu teklif için onay isteğine gerek yok, doğrudan düzenleyebilirsiniz")
+    existing = await db.quote_edit_requests.find_one(
+        {"quoteId": quote_id, "requestedByUserId": actor_id, "status": "pending"}, {"_id": 0}
+    )
+    if existing:
+        return QuoteEditRequest(**existing)
+    reqobj = QuoteEditRequest(
+        quoteId=quote_id,
+        companyId=doc.get("companyId", ""),
+        ownerUserId=user["user_id"],
+        requestedByUserId=actor_id,
+        requestedByEmail=_actor_email(user),
+        requestedByName=_actor_name(user),
+        approverUserId=creator_id,
+        approverEmail=doc.get("createdByEmail", ""),
+        teklifNo=doc.get("teklifNo", ""),
+        musFirma=doc.get("musFirma", ""),
+    )
+    await db.quote_edit_requests.insert_one(reqobj.dict())
+    return reqobj
+
+
+@api_router.post("/quotes/edit-requests/{request_id}/respond", response_model=QuoteEditRequest)
+async def respond_quote_edit_request(request_id: str, payload: QuoteEditRequestRespond, user=Depends(get_current_user)):
+    actor_id = _self_id(user)
+    doc = await db.quote_edit_requests.find_one({"id": request_id, "ownerUserId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "İstek bulunamadı")
+    if doc.get("approverUserId") != actor_id:
+        raise HTTPException(403, "Bu isteği yalnızca teklifi oluşturan kişi yanıtlayabilir")
+    if doc.get("status") != "pending":
+        raise HTTPException(400, "Bu istek zaten yanıtlanmış")
+    doc["status"] = "approved" if payload.approve else "denied"
+    doc["resolvedAt"] = utc_now_iso()
+    await db.quote_edit_requests.replace_one({"id": request_id}, doc)
+    return QuoteEditRequest(**doc)
+
+
 @api_router.put("/quotes/{quote_id}", response_model=Quote)
 async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_current_user)):
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
+
+    actor_id = _self_id(user)
+    creator_id = doc.get("createdByUserId") or ""
+    if not creator_id:
+        # Bu özellikten önce oluşturulmuş eski bir teklif -- sahiplik kaydı
+        # yok, geriye dönük olarak ilk düzenleyeni sahip say (kimseyi kilitli
+        # bırakmamak için) ve buradan sonra normal kurala tabi olsun.
+        doc["createdByUserId"] = actor_id
+        doc["createdByEmail"] = _actor_email(user)
+        doc["createdByName"] = _actor_name(user)
+    elif creator_id != actor_id:
+        approved = await db.quote_edit_requests.find_one(
+            {"quoteId": quote_id, "requestedByUserId": actor_id, "status": "approved"}, {"_id": 0}
+        )
+        if not approved:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Bu teklifi yalnızca oluşturan kişi ({doc.get('createdByEmail') or doc.get('createdByName') or 'ilgili kullanıcı'}) düzenleyebilir. Düzenlemek için ondan onay isteyin.",
+            )
+        # Onay tek kullanımlık: bu düzenleme kaydedilince tüketilir, bir
+        # sonraki düzenleme için tekrar onay istenmesi gerekir.
+        await db.quote_edit_requests.delete_one({"id": approved["id"]})
+
     data = payload.dict()
     items = [QuoteItem(**it) if isinstance(it, dict) else it for it in data.get("items", [])]
     data["items"] = [it.dict() for it in items]

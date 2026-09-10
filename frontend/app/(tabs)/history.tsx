@@ -52,8 +52,23 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, activeCompany, showToast, getQuoteAttachments } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest } = useApp();
   const { user: me } = useAuth();
+  // Teklif sahiplik/onay sistemi: bana (bu tekliflerin gerçek sahibine) gelen,
+  // henüz yanıtlanmamış düzenleme onay istekleri -- bkz. teklif.tsx'teki kilit.
+  const incomingEditRequests = editRequests.filter((r) => r.status === 'pending' && r.approverUserId === me?.user_id);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+  const handleRespondEditRequest = async (id: string, approve: boolean) => {
+    if (respondingId) return;
+    setRespondingId(id);
+    try {
+      await respondQuoteEditRequest(id, approve);
+    } catch (e: any) {
+      showToast(t('history.s005') + (e?.message || ''));
+    } finally {
+      setRespondingId(null);
+    }
+  };
   const isStaffUser = !!me?.is_staff;
   // Onaylı bir teklifi reddetmek bağlı Tahsilat borcunu da iptal ediyor --
   // geri alınamaz bir işlem olduğu için sadece firma sahibi yapabilsin ve
@@ -294,6 +309,36 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('history.s012')} />
+      {incomingEditRequests.length > 0 && (
+        <View style={{ paddingHorizontal: 14, paddingTop: 12, gap: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>{t('history.s046')}</Text>
+          {incomingEditRequests.map((r) => (
+            <View key={r.id} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: '#fef3c7', borderRadius: 12, padding: 12,
+            }}>
+              <Ionicons name="alert-circle" size={18} color="#b45309" />
+              <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                {t('history.s047').replace('{who}', r.requestedByEmail || r.requestedByName || '').replace('{teklifNo}', r.teklifNo || '')}
+              </Text>
+              <TouchableOpacity
+                disabled={respondingId === r.id}
+                onPress={() => handleRespondEditRequest(r.id, true)}
+                style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s048')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={respondingId === r.id}
+                onPress={() => handleRespondEditRequest(r.id, false)}
+                style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s049')}</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
       <View style={{ padding: 14, paddingBottom: 6 }}>
         <View style={s.statsRow}>
           <View style={s.statCard}>

@@ -880,7 +880,7 @@ export default function EditorScreen() {
 
       {/* Select-field picker */}
       <Modal visible={!!showSelectPicker} transparent animationType="fade">
-        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowSelectPicker(null)}>
+        <TouchableOpacity style={s.pickerOverlay} activeOpacity={1} onPress={() => setShowSelectPicker(null)}>
           <View style={s.pickerSheet}>
             <Text style={s.modalTitle}>{showSelectPicker?.title || t('teklifPage.s085')}</Text>
             <ScrollView style={{ maxHeight: 320 }}>
@@ -1344,7 +1344,8 @@ const s = StyleSheet.create({
   catBadge: { fontSize: 9.5, color: theme.colors.primary, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.4 },
   catName: { fontSize: 13, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   catPrice: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
-  pickerSheet: { backgroundColor: '#fff', margin: 20, borderRadius: 16, padding: 16, ...theme.shadow.lg },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  pickerSheet: { backgroundColor: '#fff', borderRadius: 16, padding: 16, width: '100%', maxWidth: 340, ...theme.shadow.lg },
   emailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10 },
   emailRowActive: { backgroundColor: theme.colors.primarySoft },
   emailText: { fontSize: 12.5, color: theme.colors.text, flex: 1 },

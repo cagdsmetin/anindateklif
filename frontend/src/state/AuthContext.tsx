@@ -31,13 +31,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = await getSessionToken();
       if (token) {
-        try {
-          const me: UserT = await api.me();
+        // BUG FIX: eskiden burada api.me() attigi HERHANGI bir hatada
+        // (ag hatasi, zaman asimi, sunucu 5xx, CORS...) token siliniyor ve
+        // kullanici login ekranina atiliyordu. Bu, art arda hizli sayfa
+        // yenilemede ("peş peşe refresh") veya sunucunun anlik yavaslamasinda
+        // gecerli bir oturumu bosuna gecersiz kilip kullaniciyi "atiyordu".
+        // Simdi: gecici hatalarda (ag/timeout/5xx) kisa araliklarla birkac
+        // kez tekrar denenir ve token SAKLANIR; sadece backend GERCEKTEN
+        // 401 (token gecersiz/suresi dolmus) donerse oturum kapatilir.
+        let me: UserT | null = null;
+        let lastErr: any = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            me = await api.me();
+            break;
+          } catch (e: any) {
+            lastErr = e;
+            if (e?.kind === 'http' && e?.status === 401) break; // gercek yetki hatasi, tekrar deneme yok
+            if (attempt < 2) await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          }
+        }
+        if (me) {
           setUser(me);
-        } catch {
+        } else if (lastErr?.kind === 'http' && lastErr?.status === 401) {
           await setSessionToken(null);
           setUser(null);
         }
+        // else: agsal/gecici bir sorun -- token'i SAKLA (user null kalir,
+        // bu oturumda login ekrani gorunebilir ama sifre tekrar sorulmadan
+        // bir sonraki basarili acilista oturum kendiliginden geri gelir).
       }
     } finally {
       setLoading(false);

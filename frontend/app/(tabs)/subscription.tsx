@@ -302,6 +302,50 @@ export default function SubscriptionScreen() {
               </View>
             </View>
 
+            {/* Hediye/promosyon kodu — kullanıcı raporu: "çok altta kalmış, göz
+                önüne getir" -- eskiden CTA'nın altında, sayfanın en sonunda,
+                küçük ve soluk bir metin linki olarak duruyordu; kolayca
+                atlanıyordu. Şimdi status kartının hemen altında, plan
+                seçiminden önce, kendi dikkat çekici (altın renkli) kartı
+                içinde gösteriliyor. */}
+            <TouchableOpacity
+              style={s.promoToggle}
+              onPress={() => setPromoOpen((v) => !v)}
+              activeOpacity={0.85}
+              testID="promo-toggle"
+            >
+              <View style={s.promoToggleIconWrap}>
+                <Ionicons name="gift" size={18} color={theme.colors.gold} />
+              </View>
+              <Text style={s.promoToggleText}>Hediye kodunuz mu var?</Text>
+              <Ionicons name={promoOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.goldDark} />
+            </TouchableOpacity>
+            {promoOpen && (
+              <View style={s.promoBox}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput
+                    style={[s.input, { flex: 1, textTransform: 'uppercase' }]}
+                    placeholder="Örn. AB12CD34"
+                    placeholderTextColor="#94a3b8"
+                    value={promoCode}
+                    onChangeText={setPromoCode}
+                    autoCapitalize="characters"
+                    testID="promo-code-input"
+                  />
+                  <TouchableOpacity
+                    style={[s.promoBtn, promoBusy && s.ctaDisabled]}
+                    onPress={onRedeemPromo}
+                    disabled={promoBusy}
+                    testID="promo-redeem-submit"
+                  >
+                    {promoBusy ? <ActivityIndicator color="#fff" /> : <Text style={s.promoBtnText}>Uygula</Text>}
+                  </TouchableOpacity>
+                </View>
+                {promoError ? <Text style={s.errorText}>{promoError}</Text> : null}
+                {promoSuccess ? <Text style={s.promoSuccess}>{promoSuccess}</Text> : null}
+              </View>
+            )}
+
             {showPlanSection && (
               <>
                 {/* Plan picker */}
@@ -394,41 +438,6 @@ export default function SubscriptionScreen() {
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>
             )}
-
-            <TouchableOpacity
-              style={s.promoToggle}
-              onPress={() => setPromoOpen((v) => !v)}
-              testID="promo-toggle"
-            >
-              <Ionicons name="gift-outline" size={16} color={theme.colors.gold} />
-              <Text style={s.promoToggleText}>Hediye kodunuz mu var?</Text>
-              <Ionicons name={promoOpen ? 'chevron-up' : 'chevron-down'} size={14} color={theme.colors.textMuted} />
-            </TouchableOpacity>
-            {promoOpen && (
-              <View style={s.promoBox}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput
-                    style={[s.input, { flex: 1, textTransform: 'uppercase' }]}
-                    placeholder="Örn. AB12CD34"
-                    placeholderTextColor="#94a3b8"
-                    value={promoCode}
-                    onChangeText={setPromoCode}
-                    autoCapitalize="characters"
-                    testID="promo-code-input"
-                  />
-                  <TouchableOpacity
-                    style={[s.promoBtn, promoBusy && s.ctaDisabled]}
-                    onPress={onRedeemPromo}
-                    disabled={promoBusy}
-                    testID="promo-redeem-submit"
-                  >
-                    {promoBusy ? <ActivityIndicator color="#fff" /> : <Text style={s.promoBtnText}>Uygula</Text>}
-                  </TouchableOpacity>
-                </View>
-                {promoError ? <Text style={s.errorText}>{promoError}</Text> : null}
-                {promoSuccess ? <Text style={s.promoSuccess}>{promoSuccess}</Text> : null}
-              </View>
-            )}
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -461,7 +470,7 @@ function FieldRow({
     <View style={[s.field, isLast && { marginBottom: 0 }]}>
       <Text style={s.fieldLabel}>{label}</Text>
       <View style={[s.inputWrap, rest.multiline && s.inputWrapMultiline]}>
-        <Ionicons name={icon} size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: rest.multiline ? 2 : 0 }} />
+        <Ionicons name={icon} size={17} color={theme.colors.primary} style={{ marginRight: 8, marginTop: rest.multiline ? 2 : 0 }} />
         <TextInput
           {...rest}
           onChangeText={onChange}
@@ -556,27 +565,27 @@ const s = StyleSheet.create({
     borderColor: theme.colors.line,
     ...theme.shadow.sm,
   },
-  field: { marginBottom: 16 },
-  fieldLabel: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  field: { marginBottom: 10 },
+  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 5 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FBFDFF',
     borderWidth: 1,
     borderColor: theme.colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 52,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    minHeight: 42,
   },
-  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14, minHeight: 80 },
+  inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 64 },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
     color: theme.colors.text,
     paddingVertical: 0,
     ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
   },
-  inputMultiline: { minHeight: 56, textAlignVertical: 'top' },
+  inputMultiline: { minHeight: 48, textAlignVertical: 'top' },
   errorText: { color: theme.colors.red, fontSize: 13, fontWeight: '700', marginTop: 14, textAlign: 'center' },
   cta: {
     backgroundColor: theme.colors.primary,
@@ -591,9 +600,29 @@ const s = StyleSheet.create({
   ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
   ctaApprox: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', marginTop: 6 },
   footNote: { fontSize: 11.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 10 },
-  promoToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18, paddingVertical: 8 },
-  promoToggleText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSoft },
-  promoBox: { marginTop: 4, backgroundColor: theme.colors.goldSoft, borderRadius: 14, padding: 12, gap: 8 },
+  promoToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: theme.colors.goldSoft,
+    borderWidth: 1.5,
+    borderColor: theme.colors.goldBorder,
+    borderRadius: 14,
+    ...theme.shadow.sm,
+  },
+  promoToggleIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promoToggleText: { flex: 1, fontSize: 13.5, fontWeight: '800', color: theme.colors.goldDark },
+  promoBox: { marginTop: -10, marginBottom: 18, backgroundColor: theme.colors.goldSoft, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: theme.colors.goldBorder },
   promoBtn: { backgroundColor: theme.colors.gold, borderRadius: 12, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
   promoBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
   promoSuccess: { color: '#166534', fontSize: 13, fontWeight: '700', textAlign: 'center' },

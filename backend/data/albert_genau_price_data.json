@@ -1,0 +1,1436 @@
+{
+  "price_list": {
+    "B15224--": {
+      "name": "59*227 KİRİŞ PROFİLİ 4,5 MT",
+      "unit": "Mt.",
+      "price": 2138,
+      "weight": 5020
+    },
+    "B15225--": {
+      "name": "59*227 KİRİŞ PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 2138,
+      "weight": 5020
+    },
+    "B15226--": {
+      "name": "59*227 KİRİŞ PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 2138,
+      "weight": 5020
+    },
+    "B15227--": {
+      "name": "178*106 OLUK PROFİLİ 4,5 MT",
+      "unit": "Mt.",
+      "price": 1475.5,
+      "weight": 3467
+    },
+    "B15228--": {
+      "name": "178*106 OLUK PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 1475.5,
+      "weight": 3467
+    },
+    "B15229--": {
+      "name": "178*106 OLUK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 1475.5,
+      "weight": 3467
+    },
+    "B15230--": {
+      "name": "52*87 RAY PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 995,
+      "weight": 2332
+    },
+    "B15231--": {
+      "name": "52*87 RAY PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 995,
+      "weight": 2332
+    },
+    "B15232--": {
+      "name": "64*8 RAY KAPAK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 235,
+      "weight": 455
+    },
+    "B15235--": {
+      "name": "270*46 PANEL PROFİLİ 3,75 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15236--": {
+      "name": "270*46 PANEL PROFİLİ 4,25 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15237--": {
+      "name": "270*46 PANEL PROFİLİ 4,75 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15238--": {
+      "name": "270*46 PANEL PROFİLİ 5,25 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15276--": {
+      "name": "270*46 PANEL PROFİLİ 5,75 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15277--": {
+      "name": "270*46 PANEL PROFİLİ 6,25 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15273--": {
+      "name": "270*46 PANEL PROFİLİ 6,75 MT",
+      "unit": "Mt.",
+      "price": 1544,
+      "weight": 3622
+    },
+    "B15239--": {
+      "name": "135*129 MOTOR HAZNE PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 1192.5,
+      "weight": 2820
+    },
+    "B15240--": {
+      "name": "135*129 MOTOR HAZNE PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 1192.5,
+      "weight": 2820
+    },
+    "B15274--": {
+      "name": "135*129 MOTOR HAZNE PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 1192.5,
+      "weight": 2820
+    },
+    "B15241--": {
+      "name": "139*21 MOTOR KAPAK PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 325.5,
+      "weight": 695
+    },
+    "B15275--": {
+      "name": "139*21 MOTOR KAPAK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 325.5,
+      "weight": 695
+    },
+    "B15242--": {
+      "name": "160*160 DİKME PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 1830,
+      "weight": 4293
+    },
+    "B15243--": {
+      "name": "160*160 DİKME PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 1830,
+      "weight": 4293
+    },
+    "B15244--": {
+      "name": "143*19 OVAL DİKME KAPAK PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 366,
+      "weight": 779
+    },
+    "B15245--": {
+      "name": "159*12 DÜZ DİKME KAPAK PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 357.5,
+      "weight": 756
+    },
+    "B15246--": {
+      "name": "42*68 LED PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 373,
+      "weight": 797
+    },
+    "B15248--": {
+      "name": "79*227 MODÜL BİRLEŞİM KİRİŞ PROFİLİ 4,5 MT",
+      "unit": "Mt.",
+      "price": 2274,
+      "weight": 5332
+    },
+    "B15249--": {
+      "name": "79*227 MODÜL BİRLEŞİM KİRİŞ PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 2274,
+      "weight": 5332
+    },
+    "B15250--": {
+      "name": "79*227 MODÜL BİRLEŞİM KİRİŞ PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 2274,
+      "weight": 5332
+    },
+    "B15278--": {
+      "name": "76*134 ORTA DESTEK PROFILI 6,60 MT",
+      "unit": "Mt.",
+      "price": 1328.5,
+      "weight": 3138
+    },
+    "B15046--": {
+      "name": "60*120 SABİT AKSESUAR ADAPTOR PROFİLİ",
+      "unit": "Mt.",
+      "price": 815.5,
+      "weight": 1907
+    },
+    "B15083--": {
+      "name": "11*123 YAN DİKME PROFİLİ",
+      "unit": "Mt.",
+      "price": 466,
+      "weight": 917
+    },
+    "TS8503201": {
+      "name": "SEKİZGEN KORUMA BORUSU Ø70 1,2 mm.",
+      "unit": "Mt.",
+      "price": 412,
+      "weight": 2000
+    },
+    "P8500312": {
+      "name": "120*60*2,5MM ÇELİK PROFİLİ GALVANİZLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 807.5,
+      "weight": null
+    },
+    "B8505616": {
+      "name": "30*5 OPAL POLICARBON DÜZ LED KAPAGI (WARM)",
+      "unit": "Mt.",
+      "price": 106.5,
+      "weight": 25
+    },
+    "B8505617": {
+      "name": "25*6 OPAL POLICARBON OVAL LED KAPAGI (RGB)",
+      "unit": "Mt.",
+      "price": 97,
+      "weight": 25
+    },
+    "B8505702": {
+      "name": "21*6 POLIAMID ORTA DESTEK CITASI (6,6MT)",
+      "unit": "Mt.",
+      "price": 91.5,
+      "weight": null
+    },
+    "B8505401": {
+      "name": "YARIK HORTUM YAN KAPAMA CONTASI",
+      "unit": "Mt.",
+      "price": 18.1,
+      "weight": null
+    },
+    "B8505305": {
+      "name": "KIL FIRÇA 067*1000",
+      "unit": "Mt.",
+      "price": 7.7,
+      "weight": null
+    },
+    "B8505409": {
+      "name": "16*25 BF OLUK CONTASI",
+      "unit": "Mt.",
+      "price": 48,
+      "weight": null
+    },
+    "B8505411": {
+      "name": "16*25 BF OLUK CONTASI 15MT PAKET",
+      "unit": "Ad.",
+      "price": 716.5,
+      "weight": null
+    },
+    "B8505410": {
+      "name": "26*52 BF MOTOR PANEL GECME CONTA",
+      "unit": "Mt.",
+      "price": 67,
+      "weight": null
+    },
+    "B8505412": {
+      "name": "26*52 BF MOTOR PANEL GECME CONTA 7MT PAKET",
+      "unit": "Ad.",
+      "price": 466.5,
+      "weight": null
+    },
+    "B8505102": {
+      "name": "PASLANMAZ TABANLI SIYAH KIL FIRCA 20 mm.",
+      "unit": "Mt.",
+      "price": 99.5,
+      "weight": null
+    },
+    "P8500101": {
+      "name": "T10*20 TRIGER ZAMAN KAYIŞI",
+      "unit": "Mt.",
+      "price": 124,
+      "weight": null
+    },
+    "P8500102": {
+      "name": "T10*20 TRIGER ZAMAN KAYIŞI 16,66 MT PAKET",
+      "unit": "Ad.",
+      "price": 2080.5,
+      "weight": null
+    },
+    "P8500103": {
+      "name": "T10*20 TRIGER ZAMAN KAYIŞI 25 MT PAKET",
+      "unit": "Ad.",
+      "price": 3121,
+      "weight": null
+    },
+    "P05001": {
+      "name": "BIOKLIMATIK ALBERT GENAU MOTOR VE AKSAM TAKIMI",
+      "unit": "Tk.",
+      "price": 13355.5,
+      "weight": 5000
+    },
+    "P05002": {
+      "name": "BIOKLIMATIK SOMFY MOTOR VE AKSAM TAKIMI",
+      "unit": "Tk.",
+      "price": 24575,
+      "weight": 5000
+    },
+    "P05003": {
+      "name": "BIOKLIMATIK BAŞLANGIÇ - BİTİM MAKAS PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 3941,
+      "weight": 2500
+    },
+    "P05004": {
+      "name": "BIOKLIMATIK ARA MAKAS PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 1624.5,
+      "weight": 2000
+    },
+    "P05005": {
+      "name": "BIOKLIMATIK KÖŞE DİKME BAĞLANTI TAKIMI FLANŞLI",
+      "unit": "Tk.",
+      "price": 4623,
+      "weight": 3000
+    },
+    "P05029": {
+      "name": "BIOKLIMATIK KÖŞE DİKME BAĞLANTI TAKIMI GİZLİ",
+      "unit": "Tk.",
+      "price": 4269.5,
+      "weight": null
+    },
+    "P05007": {
+      "name": "BIOKLIMATIK OLUK BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 1256.5,
+      "weight": 1000
+    },
+    "P05008": {
+      "name": "BIOKLIMATIK RAY BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 10243,
+      "weight": 1000
+    },
+    "P05037": {
+      "name": "BIOKLIMATIK DİKMELİ MODÜL BAĞLANTI TAKIMI GİZLİ (MCX)",
+      "unit": "Tk.",
+      "price": 5456.5,
+      "weight": null
+    },
+    "P05038": {
+      "name": "BIOKLIMATIK DİKMELİ MODÜL BAĞLANTI TAKIMI GİZLİ (MCY)",
+      "unit": "Tk.",
+      "price": 5456.5,
+      "weight": null
+    },
+    "P05011": {
+      "name": "BIOKLIMATIK DUVAR KÖŞE BAĞLANTI TAKIMI SAĞ/SOL",
+      "unit": "Tk.",
+      "price": 1027.5,
+      "weight": 1000
+    },
+    "P05012": {
+      "name": "BIOKLIMATIK DUVAR BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 2149,
+      "weight": 2500
+    },
+    "P05013": {
+      "name": "BIOKLIMATIK DUVAR MODUL BİRLEŞİM TAKIMI",
+      "unit": "Tk.",
+      "price": 4706.5,
+      "weight": 2500
+    },
+    "P05014": {
+      "name": "BIOKLIMATIK DİKMESİZ MODÜL BİRLEŞİM TAKIMI",
+      "unit": "Tk.",
+      "price": 585,
+      "weight": 1000
+    },
+    "P05015": {
+      "name": "BIOKLIMATIK YARDIMCI DIKME BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 2051.5,
+      "weight": 1000
+    },
+    "P05039": {
+      "name": "BIOKLIMATIK YATAY ORTA DESTEK BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 1140.5,
+      "weight": 1000
+    },
+    "P05040": {
+      "name": "BIOKLIMATIK DIKEY ORTA DESTEK BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 1140.5,
+      "weight": 1000
+    },
+    "P05017": {
+      "name": "BIOKLIMATIK DORTLU MODUL BİRLEŞİM TAKIMI",
+      "unit": "Tk.",
+      "price": 7766.5,
+      "weight": 3000
+    },
+    "P05018": {
+      "name": "BIOKLIMATIK SABİT PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 549,
+      "weight": 2000
+    },
+    "P05019": {
+      "name": "BIOKLIMATIK SABİT SİSTEM BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 532.5,
+      "weight": 1000
+    },
+    "K05004": {
+      "name": "PREMIUM SU DRENAJ TAKIMI",
+      "unit": "Tk.",
+      "price": 366.5,
+      "weight": 1000
+    },
+    "G05010": {
+      "name": "ALBERT GENAU KUMANDA TEK KANAL",
+      "unit": "Ad.",
+      "price": 1697,
+      "weight": null
+    },
+    "G05011": {
+      "name": "ALBERT GENAU KUMANDA 5 KANAL",
+      "unit": "Ad.",
+      "price": 2416,
+      "weight": null
+    },
+    "G05012": {
+      "name": "ALBERT GENAU KUMANDA 16 KANAL",
+      "unit": "Ad.",
+      "price": 8186.5,
+      "weight": null
+    },
+    "G05013": {
+      "name": "SOMFY KUMANDA TEK KANAL",
+      "unit": "Ad.",
+      "price": 2938,
+      "weight": null
+    },
+    "G05014": {
+      "name": "SOMFY KUMANDA 5 KANAL",
+      "unit": "Ad.",
+      "price": 4988,
+      "weight": null
+    },
+    "P05020": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA WARM WHITE IŞIK",
+      "unit": "Mt.",
+      "price": 473.5,
+      "weight": null
+    },
+    "P05025": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA WARM WHITE IŞIK 15 MT PAKET",
+      "unit": "Ad.",
+      "price": 7092.5,
+      "weight": null
+    },
+    "P05026": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA WARM WHITE IŞIK 21 MT PAKET",
+      "unit": "Ad.",
+      "price": 9928,
+      "weight": null
+    },
+    "P05021": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA RGBW IŞIK",
+      "unit": "Mt.",
+      "price": 733,
+      "weight": null
+    },
+    "P05027": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA RGBW IŞIK 15 MT PAKET",
+      "unit": "Ad.",
+      "price": 10991.5,
+      "weight": null
+    },
+    "P05028": {
+      "name": "24V KILIFLI ŞERİT LED AYDINLATMA RGBW IŞIK 21 MT PAKET",
+      "unit": "Ad.",
+      "price": 15386.5,
+      "weight": null
+    },
+    "P05022": {
+      "name": "24V 320W AMBİYANS AYDINLATMA DIMMERLİ KONTROL ÜNİTESİ",
+      "unit": "Tk.",
+      "price": 19790.5,
+      "weight": null
+    },
+    "P05023": {
+      "name": "24V 200W DİMMERLİ AYDINLATMA KONTROL ÜNİTESİ",
+      "unit": "Tk.",
+      "price": 8526.5,
+      "weight": null
+    },
+    "P8500515": {
+      "name": "AMBİYANS AYDINLATMA RGB ÇOK KANAL KUMANDA",
+      "unit": "Tk.",
+      "price": 2940,
+      "weight": null
+    },
+    "P8500520": {
+      "name": "GÜN IŞIĞI AYDINLATMA ÇOK KANAL KUMANDA",
+      "unit": "Tk.",
+      "price": 1080.5,
+      "weight": null
+    },
+    "P05024": {
+      "name": "PANEL DOLGUSU İKİ PARÇALI 2000MM",
+      "unit": "Tk.",
+      "price": 327.5,
+      "weight": null
+    },
+    "P05034": {
+      "name": "BIOKLIMATIK SEKIZGEN ORTA DESTEK TAKIMI",
+      "unit": "Tk.",
+      "price": 437.5,
+      "weight": null
+    }
+  },
+  "finish_multipliers": {
+    "SATİNE NATUREL": 1,
+    "ANTRASİT GRİ": 1,
+    "BRONZ 1122 BOYALI": 1,
+    "DİĞER RAL RENKLERİ": 1.15,
+    "BRONZ ELOKSAL": 1.1,
+    "PRES": 0.9
+  },
+  "depth_table": {
+    "3": 1070.0,
+    "4": 1300.0,
+    "5": 1530.0,
+    "6": 1770.0,
+    "7": 2000.0,
+    "8": 2230.0,
+    "9": 2470.0,
+    "10": 2700.0,
+    "11": 2930.0,
+    "12": 3170.0,
+    "13": 3400.0,
+    "14": 3640.0,
+    "15": 3870.0,
+    "16": 4100.0,
+    "17": 4340.0,
+    "18": 4570.0,
+    "19": 4800.0,
+    "20": 5040.0,
+    "21": 5270.0,
+    "22": 5510.0,
+    "23": 5740.0,
+    "24": 5970.0,
+    "25": 6210.0,
+    "26": 6440.0,
+    "27": 6670.0,
+    "28": 6910.0
+  },
+  "belt_table": {
+    "3": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "5": {
+        "length": 25,
+        "qty": 1
+      },
+      "6": {
+        "length": 25,
+        "qty": 1
+      },
+      "7": {
+        "length": 25,
+        "qty": 1
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 2
+      }
+    },
+    "4": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "4": {
+        "length": 25,
+        "qty": 1
+      },
+      "5": {
+        "length": 25,
+        "qty": 1
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "8": {
+        "length": 25,
+        "qty": 2
+      }
+    },
+    "5": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "4": {
+        "length": 25,
+        "qty": 1
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 3
+      }
+    },
+    "6": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 25,
+        "qty": 1
+      },
+      "4": {
+        "length": 25,
+        "qty": 1
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "6": {
+        "length": 25,
+        "qty": 2
+      },
+      "7": {
+        "length": 25,
+        "qty": 2
+      },
+      "8": {
+        "length": 25,
+        "qty": 2
+      }
+    },
+    "7": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 25,
+        "qty": 1
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "5": {
+        "length": 25,
+        "qty": 2
+      },
+      "6": {
+        "length": 25,
+        "qty": 2
+      },
+      "7": {
+        "length": 25,
+        "qty": 2
+      },
+      "8": {
+        "length": 25,
+        "qty": 3
+      }
+    },
+    "8": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "3": {
+        "length": 25,
+        "qty": 1
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 4
+      }
+    },
+    "9": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "4": {
+        "length": 25,
+        "qty": 2
+      },
+      "5": {
+        "length": 25,
+        "qty": 2
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "7": {
+        "length": 25,
+        "qty": 3
+      },
+      "8": {
+        "length": 25,
+        "qty": 4
+      }
+    },
+    "10": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "4": {
+        "length": 25,
+        "qty": 2
+      },
+      "5": {
+        "length": 25,
+        "qty": 2
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "7": {
+        "length": 25,
+        "qty": 3
+      },
+      "8": {
+        "length": 25,
+        "qty": 4
+      }
+    },
+    "11": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 1
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 6
+      }
+    },
+    "12": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 1
+      },
+      "3": {
+        "length": 25,
+        "qty": 2
+      },
+      "4": {
+        "length": 25,
+        "qty": 2
+      },
+      "5": {
+        "length": 25,
+        "qty": 3
+      },
+      "6": {
+        "length": 25,
+        "qty": 3
+      },
+      "7": {
+        "length": 25,
+        "qty": 4
+      },
+      "8": {
+        "length": 25,
+        "qty": 4
+      }
+    },
+    "13": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 7
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 8
+      }
+    },
+    "14": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 7
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 8
+      }
+    },
+    "15": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 7
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 8
+      }
+    },
+    "16": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 7
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 8
+      }
+    },
+    "17": {
+      "1": {
+        "length": 16.6,
+        "qty": 1
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 3
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 5
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 7
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 8
+      }
+    },
+    "18": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "19": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "20": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "21": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "22": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "23": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "24": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "25": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "26": {
+      "1": {
+        "length": 25,
+        "qty": 1
+      },
+      "2": {
+        "length": 25,
+        "qty": 2
+      },
+      "3": {
+        "length": 25,
+        "qty": 3
+      },
+      "4": {
+        "length": 25,
+        "qty": 4
+      },
+      "5": {
+        "length": 25,
+        "qty": 5
+      },
+      "6": {
+        "length": 25,
+        "qty": 6
+      },
+      "7": {
+        "length": 25,
+        "qty": 7
+      },
+      "8": {
+        "length": 25,
+        "qty": 8
+      }
+    },
+    "27": {
+      "1": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 8
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 10
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 12
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 14
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 16
+      }
+    },
+    "28": {
+      "1": {
+        "length": 16.6,
+        "qty": 2
+      },
+      "2": {
+        "length": 16.6,
+        "qty": 4
+      },
+      "3": {
+        "length": 16.6,
+        "qty": 6
+      },
+      "4": {
+        "length": 16.6,
+        "qty": 8
+      },
+      "5": {
+        "length": 16.6,
+        "qty": 10
+      },
+      "6": {
+        "length": 16.6,
+        "qty": 12
+      },
+      "7": {
+        "length": 16.6,
+        "qty": 14
+      },
+      "8": {
+        "length": 16.6,
+        "qty": 16
+      }
+    }
+  }
+}

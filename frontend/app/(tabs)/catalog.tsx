@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
@@ -157,6 +158,7 @@ function fmtFileSize(bytes: number): string {
 
 export default function CatalogScreen() {
   const { t } = useLanguage();
+  const router = useRouter();
   const { catalog, addCatalogItem, updateCatalogItem, deleteCatalogItem, bulkAddCatalog, activeCompany, updateCompany, showToast } = useApp();
   const { user: me } = useAuth();
   // Katalog ve Yapılandırıcı sadece firma sahibi tarafından yönetilir --
@@ -604,6 +606,19 @@ export default function CatalogScreen() {
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Albert Genau — genel katalog/yapılandırıcıdan tamamen ayrı, ölçüye
+            göre otomatik fiyat hesaplayan özel bölüm. */}
+        <TouchableOpacity style={s.agCard} onPress={() => router.push('/albert-genau')} testID="open-albert-genau" activeOpacity={0.9}>
+          <View style={s.agIcon}>
+            <Ionicons name="calculator" size={22} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.agTitle}>Albert Genau Fiyat Hesaplama</Text>
+            <Text style={s.agDesc}>Ölçüleri girin, malzeme + fiyat otomatik hesaplansın</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.navy} />
+        </TouchableOpacity>
+
         {/* System Configurator — the star of the show */}
         <Text style={s.sectionH}>{t('catalog.s026')}</Text>
         <Text style={s.hint}>{t('catalog.s027')}</Text>
@@ -992,6 +1007,22 @@ function FieldGroup({ label, children, flex }: { label: string; children: React.
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
+  agCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 14,
+    marginBottom: 18,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
+    ...theme.shadow.sm,
+  },
+  agIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' },
+  agTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text },
+  agDesc: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2, fontWeight: '600' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   searchWrap: {

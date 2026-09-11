@@ -75,7 +75,7 @@ export default function EditorScreen() {
   };
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string }>();
+  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string; albertGenau?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   // Yalnızca ekranda küçük durum rozeti göstermek için -- kaydetme akışını
@@ -132,6 +132,10 @@ export default function EditorScreen() {
   // formu tekrar tekrar sıfırlamasını önlemek için (kullanıcı formu
   // düzenlemeye başladıktan sonra da param URL'de kalmaya devam eder).
   const duplicatedRef = useRef<string | null>(null);
+  // Albert Genau hesaplama ekranından "Teklife Kalem Olarak Ekle" ile
+  // dönüldüğünde aynı param'ın (URL'de kalabildiği için) tekrar tekrar
+  // yeni kalem eklemesini önler.
+  const albertGenauRef = useRef<string | null>(null);
   // Manuel/Genel kalemlerde daha önce girilmiş ürün adı -> fiyat
   // eşleşmeleri (cihazda, firma bazlı kalıcı). Ref kullanıyoruz çünkü
   // sadece updateItem içinde okunup yazılıyor, ekranda ayrıca gösterilmiyor.
@@ -206,6 +210,24 @@ export default function EditorScreen() {
       if (q) { loadFromQuoteAsCopy(q); duplicatedRef.current = params.duplicateFrom; }
     }
   }, [params.duplicateFrom, quotes]);
+
+  // Albert Genau hesaplama ekranından hesaplanmış fiyatla dönüldüğünde:
+  // otomatik olarak "genel" modda yeni bir kalem oluşturup ekler.
+  useEffect(() => {
+    if (params.albertGenau && albertGenauRef.current !== params.albertGenau) {
+      albertGenauRef.current = params.albertGenau;
+      try {
+        const data = JSON.parse(params.albertGenau);
+        const it = { ...makeItem('general'), urunAdi: data.urunAdi || 'Albert Genau', birim: 'Adet', birimFiyat: Number(data.birimFiyat) || 0, aciklama: data.aciklama || '' };
+        setItems((prev) => [...prev, it]);
+        setExpandedItemId(it.id);
+        showToast('Albert Genau kalemi eklendi');
+      } catch {
+        // yoksay -- bozuk parametre
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.albertGenau]);
 
   // `quotes` loads asynchronously (after `loading` already flips to false),
   // so the initial Teklif No may be numbered before today's quotes were
@@ -964,6 +986,7 @@ export default function EditorScreen() {
             <ModeChoice icon="construct" title={t('teklifPage.s005')} desc={t('teklifPage.s073')} onPress={() => addItem('technical')} tid="add-technical" />
             <ModeChoice icon="list" title={t('teklifPage.s074')} desc={t('teklifPage.s075')} onPress={() => addItem('manual')} tid="add-manual" />
             <ModeChoice icon="pricetag" title={t('teklifPage.s076')} desc={t('teklifPage.s077')} onPress={() => addItem('general')} tid="add-general" />
+            <ModeChoice icon="calculator" title="Albert Genau Hesapla" desc="Ölçü girip otomatik fiyat hesapla, kalem olarak ekle" onPress={() => { setShowModeSheet(false); router.push('/albert-genau'); }} tid="add-albertgenau" />
           </View>
         </TouchableOpacity>
       </Modal>

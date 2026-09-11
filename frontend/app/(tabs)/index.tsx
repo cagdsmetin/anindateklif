@@ -576,6 +576,9 @@ export default function PanelScreen() {
           {(user?.email || '').toLowerCase() === 'ncagdasm@gmail.com' ? (
             <ModuleTile icon="gift" label={t('panel.s077')} color={theme.colors.gold} onPress={() => router.push('/(tabs)/promo-admin' as any)} />
           ) : null}
+          {(user?.email || '').toLowerCase() === 'ncagdasm@gmail.com' ? (
+            <ModuleTile icon="calculator" label="Albert Genau Fiyat" color={theme.colors.gold} onPress={() => router.push('/(tabs)/albert-genau-admin' as any)} />
+          ) : null}
         </View>
       </ScrollView>
 

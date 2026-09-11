@@ -22,10 +22,11 @@ import uuid
 import io
 from html import escape as esc
 from datetime import datetime, timezone, timedelta
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
+import albert_genau_calc as ag_calc
 
 
 ROOT_DIR = Path(__file__).parent
@@ -2292,6 +2293,265 @@ async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ============ ALBERT GENAU (parametrik pergola/bioklimatik hesaplayici) ============
+# Bu bolum, Albert Genau'nun kendi Excel maliyet analizi dosyalarindan
+# (bkz. backend/albert_genau_calc.py) cikarilan gercek formullerle genislik/
+# derinlik/yukseklik girildiginde tam malzeme listesi + fiyat hesabi yapan
+# ayri bir katalog turudur. Fiyat listesi (SKU->fiyat) `albert_genau_config`
+# kolleksiyonunda tutulur -- bu, kod degismeden (formuller sabit kalirken)
+# Albert Genau yeni bir fiyat listesi yayinladiginda tek yapilmasi gereken
+# seyin ayni Excel dosyasini tekrar yuklemek olmasini saglar.
+
+class AlbertGenauCalculateRequest(BaseModel):
+    tip: str  # ag_calc.SYSTEM_TYPES icinden biri
+    genislikMm: float
+    derinlikMm: float
+    yukseklikMm: Optional[float] = None
+    cornerFlat: bool = False
+    somfy: bool = False
+    noWallBracket: bool = False
+    finish: Optional[str] = None
+    ledOption: Optional[str] = None  # None | 'warm' | 'warm_rgb'
+    ledMidSupport: bool = False
+    kopuk: bool = False
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+
+    @field_validator("tip")
+    @classmethod
+    def _tip_valid(cls, v: str) -> str:
+        if v not in ag_calc.SYSTEM_TYPES:
+            raise ValueError(f"Gecersiz sistem tipi: {v}")
+        return v
+
+    @field_validator("genislikMm", "derinlikMm")
+    @classmethod
+    def _dim_positive(cls, v: float) -> float:
+        if v is None or v <= 0 or v > 20000:
+            raise ValueError("Olcu 0-20000mm araliginda olmalidir")
+        return v
+
+
+class AlbertGenauItemCreate(BaseModel):
+    companyId: str
+    tip: str
+    isim: str
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    paraBirimi: str = "TRY"
+
+    @field_validator("tip")
+    @classmethod
+    def _tip_valid(cls, v: str) -> str:
+        if v not in ag_calc.SYSTEM_TYPES:
+            raise ValueError(f"Gecersiz sistem tipi: {v}")
+        return v
+
+    @field_validator("isim")
+    @classmethod
+    def _isim_req(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Isim zorunlu")
+        return v[:120]
+
+
+class AlbertGenauItem(AlbertGenauItemCreate):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+async def _get_ag_price_data() -> Dict[str, Any]:
+    doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+    if doc and doc.get("price_list"):
+        return doc
+    return None  # None -> ag_calc kendi paketindeki varsayilani kullanir
+
+
+@api_router.get("/albert-genau/types")
+async def albert_genau_types(user=Depends(get_current_user)):
+    return {"types": [{"id": t, "label": ag_calc.SYSTEM_TYPE_LABELS[t]} for t in ag_calc.SYSTEM_TYPES],
+            "finishes": list(ag_calc.FINISH_OPTIONS.keys())}
+
+
+@api_router.post("/albert-genau/calculate")
+async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
+    price_data = await _get_ag_price_data()
+    try:
+        result = ag_calc.calculate(
+            tip=payload.tip,
+            genislik_mm=payload.genislikMm,
+            derinlik_mm=payload.derinlikMm,
+            yukseklik_mm=payload.yukseklikMm,
+            corner_flat=payload.cornerFlat,
+            somfy=payload.somfy,
+            no_wall_bracket=payload.noWallBracket,
+            finish=payload.finish,
+            led_option=payload.ledOption,
+            led_mid_support=payload.ledMidSupport,
+            kopuk=payload.kopuk,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
+
+
+@api_router.get("/albert-genau/items", response_model=List[AlbertGenauItem])
+async def list_albert_genau_items(companyId: str, user=Depends(get_current_user)):
+    await _own_company(user, companyId)
+    docs = await db.albert_genau_items.find({"companyId": companyId, "userId": user["user_id"]}, {"_id": 0}).to_list(500)
+    return [AlbertGenauItem(**d) for d in docs]
+
+
+@api_router.post("/albert-genau/items", response_model=AlbertGenauItem)
+async def create_albert_genau_item(payload: AlbertGenauItemCreate, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, payload.companyId)
+    obj = AlbertGenauItem(userId=user["user_id"], **payload.dict())
+    await db.albert_genau_items.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/albert-genau/items/{item_id}", response_model=AlbertGenauItem)
+async def update_albert_genau_item(item_id: str, payload: AlbertGenauItemCreate, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, payload.companyId)
+    doc = await db.albert_genau_items.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Kalem bulunamadi")
+    updated = {**doc, **payload.dict()}
+    await db.albert_genau_items.replace_one({"id": item_id, "userId": user["user_id"]}, updated)
+    return AlbertGenauItem(**updated)
+
+
+@api_router.delete("/albert-genau/items/{item_id}")
+async def delete_albert_genau_item(item_id: str, user=Depends(get_current_user)):
+    _require_owner(user)
+    await db.albert_genau_items.delete_one({"id": item_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+def _parse_ag_price_excel(file_bytes: bytes) -> Dict[str, Any]:
+    """'SİPARİŞ FORMU' sayfasindaki (SKU, ad, birim, fiyat, agirlik) fiyat
+    listesini okur. Hesaplama formulleri/tablolari (depth_table, belt_table)
+    bu dosyada DEGISTIRILMEZ -- sadece fiyatlar guncellenir, cunku bunlar
+    Albert Genau'nun urun/imalat mantigina bagli sabitlerdir."""
+    try:
+        wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Excel dosyasi okunamadi: {e}")
+    if "SİPARİŞ FORMU" not in wb.sheetnames:
+        raise HTTPException(status_code=422, detail="Bu dosyada 'SİPARİŞ FORMU' sayfasi bulunamadi")
+    ws = wb["SİPARİŞ FORMU"]
+    price_list: Dict[str, Any] = {}
+    for row in range(5, 200):
+        code = ws.cell(row=row, column=1).value
+        name = ws.cell(row=row, column=2).value
+        unit = ws.cell(row=row, column=5).value
+        price = ws.cell(row=row, column=6).value
+        weight = ws.cell(row=row, column=7).value
+        if not code or not isinstance(code, str) or name is None or price is None:
+            continue
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            continue
+        price_list[code.strip()] = {"name": str(name).strip(), "unit": unit, "price": price, "weight": weight}
+    if len(price_list) < 20:
+        raise HTTPException(status_code=422, detail="Fiyat listesinde beklenenden az kalem bulundu, dosyayi kontrol edin")
+    return price_list
+
+
+@api_router.get("/albert-genau/price-list/status")
+async def albert_genau_price_list_status(user=Depends(get_current_user)):
+    _require_admin(user)
+    doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+    if not doc:
+        return {"exists": False, "skuCount": len(ag_calc._DEFAULT_DATA["price_list"]), "source": "varsayilan (paket icinde)"}
+    return {"exists": True, "skuCount": len(doc.get("price_list", {})), "updatedAt": doc.get("updatedAt"),
+            "updatedBy": doc.get("updatedBy"), "source": "yuklenen Excel"}
+
+
+@api_router.post("/albert-genau/price-list/upload")
+async def albert_genau_price_list_upload(payload: Dict[str, str], user=Depends(get_current_user)):
+    # Sadece platform admini gunceller -- Albert Genau'nun kendi resmi fiyat
+    # listesi, tek bir firmanin verisi degil, bu yuzden ADMIN_EMAILS ile
+    # sinirli (bkz. _require_admin), sirket sahiplerinin normal yetkisi degil.
+    _require_admin(user)
+    b64 = (payload or {}).get("fileBase64", "")
+    if not b64 or "," not in b64:
+        raise HTTPException(status_code=422, detail="Gecersiz dosya verisi")
+    try:
+        file_bytes = base64.b64decode(b64.split(",", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=422, detail="Dosya cozumlenemedi")
+    if len(file_bytes) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Dosya cok buyuk (maksimum 20MB)")
+    new_price_list = _parse_ag_price_excel(file_bytes)
+    existing = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+    base = existing or ag_calc._DEFAULT_DATA
+    updated_doc = {
+        "id": "default",
+        "price_list": new_price_list,
+        "depth_table": base["depth_table"],
+        "belt_table": base["belt_table"],
+        "updatedAt": utc_now_iso(),
+        "updatedBy": user.get("email", ""),
+    }
+    await db.albert_genau_config.replace_one({"id": "default"}, updated_doc, upsert=True)
+    return {"ok": True, "skuCount": len(new_price_list)}
+
+
+@api_router.get("/albert-genau/export-package")
+async def albert_genau_export_package(user=Depends(get_current_user)):
+    # Bayi (dealer) paketi: bu uygulamayı satın alan yeni bir Albert Genau
+    # bayisine, kendi kurulumuna yükleyebileceği taşınabilir bir JSON paketi
+    # -- güncel fiyat listesi + derinlik/kayış tablolari + sistem tipi
+    # tanimlari. Hesaplama formulleri (albert_genau_calc.py) pakette YER
+    # ALMAZ -- onlar kod olarak zaten her kurulumda mevcuttur; sadece VERI
+    # (fiyat/tablo) tasinir. Admin-only: bu, tek bir uretici icin paylasilan
+    # resmi fiyat kitabidir.
+    _require_admin(user)
+    price_data = await _get_ag_price_data()
+    base = price_data or ag_calc._DEFAULT_DATA
+    return {
+        "exportedAt": utc_now_iso(),
+        "exportedBy": user.get("email", ""),
+        "formatVersion": 1,
+        "systemTypes": [{"id": t, "label": ag_calc.SYSTEM_TYPE_LABELS[t]} for t in ag_calc.SYSTEM_TYPES],
+        "finishOptions": ag_calc.FINISH_OPTIONS,
+        "priceList": base["price_list"],
+        "depthTable": base["depth_table"],
+        "beltTable": base["belt_table"],
+    }
+
+
+@api_router.get("/albert-genau/export-package.csv")
+async def albert_genau_export_price_csv(user=Depends(get_current_user)):
+    # Aynı fiyat listesinin insan-okunur CSV hali -- Excel'de acilip
+    # incelenebilir/paylasilabilir (SKU, ad, birim, fiyat, agirlik).
+    _require_admin(user)
+    price_data = await _get_ag_price_data()
+    base = price_data or ag_calc._DEFAULT_DATA
+    lines = ["sku,ad,birim,fiyat,agirlik"]
+    for sku, item in sorted(base["price_list"].items()):
+        name = str(item.get("name", "")).replace('"', "'")
+        unit = str(item.get("unit", "") or "")
+        price = item.get("price", 0)
+        weight = item.get("weight", "") if item.get("weight") is not None else ""
+        lines.append(f'"{sku}","{name}","{unit}",{price},{weight}')
+    csv_text = "\n".join(lines)
+    return StreamingResponse(
+        io.BytesIO(csv_text.encode("utf-8-sig")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=albert-genau-fiyat-listesi.csv"},
+    )
+
+
 # ============ COMPANY CATALOG FILES (hazır PDF/görsel katalog paylaşımı) ============
 MAX_CATALOG_FILES_PER_COMPANY = 20
 
@@ -4543,6 +4803,25 @@ async def on_startup():
         await db.tahsilat.create_index([("userId", 1), ("companyId", 1)])
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
+
+    try:
+        # Albert Genau fiyat listesi: ilk acilista, veritabaninda henuz
+        # kayit yoksa, paket icindeki varsayilan Excel-cikartma verisiyle
+        # (albert_genau_price_data.json) tohumla. Daha sonra admin panelden
+        # yeni bir Excel yuklendiginde bu kayit guncellenir; formuller
+        # (albert_genau_calc.py) hic degismez.
+        existing_ag = await db.albert_genau_config.find_one({"id": "default"})
+        if not existing_ag:
+            await db.albert_genau_config.insert_one({
+                "id": "default",
+                "price_list": ag_calc._DEFAULT_DATA["price_list"],
+                "depth_table": ag_calc._DEFAULT_DATA["depth_table"],
+                "belt_table": ag_calc._DEFAULT_DATA["belt_table"],
+                "updatedAt": utc_now_iso(),
+                "updatedBy": "seed",
+            })
+    except Exception as e:
+        logger.warning(f"Albert Genau seed issue: {e}")
 
 
 @app.on_event("shutdown")

@@ -344,7 +344,42 @@ export const api = {
   // AI Assistant
   assistantChat: (data: { message: string; quote_context?: any }): Promise<AssistantChatResponseT> =>
     req('/assistant/chat', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Albert Genau (parametrik pergola/bioklimatik hesaplayıcı) — ayrı katalog
+  // türü: dealer genişlik/derinlik/yükseklik girer, Excel'den çıkarılmış
+  // formüllerle tam malzeme listesi + fiyat otomatik hesaplanır.
+  albertGenauTypes: (): Promise<AlbertGenauTypesResponseT> => req('/albert-genau/types'),
+  albertGenauCalculate: (data: AlbertGenauCalculateInputT): Promise<AlbertGenauResultT> =>
+    req('/albert-genau/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
+    req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
+  createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
+    req('/albert-genau/items', { method: 'POST', body: JSON.stringify(data) }),
+  updateAlbertGenauItem: (id: string, data: any): Promise<AlbertGenauItemT> =>
+    req(`/albert-genau/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAlbertGenauItem: (id: string) => req(`/albert-genau/items/${id}`, { method: 'DELETE' }),
+  // Fiyat listesi güncelleme — sadece platform admini (Excel'i tekrar yükler)
+  albertGenauPriceListStatus: (): Promise<AlbertGenauPriceListStatusT> => req('/albert-genau/price-list/status'),
+  uploadAlbertGenauPriceList: (fileBase64: string): Promise<{ ok: boolean; skuCount: number }> =>
+    req('/albert-genau/price-list/upload', { method: 'POST', body: JSON.stringify({ fileBase64 }) }, 40000),
+  // Bayi (dealer) paketi — yeni bir Albert Genau bayisine kendi kurulumuna
+  // yüklemesi için verilecek taşınabilir fiyat/tablo paketi.
+  albertGenauExportPackage: (): Promise<any> => req('/albert-genau/export-package'),
 };
+
+// CSV export -- diğer .csv/.xlsx indirme uçları gibi (bkz. fetchQuoteExcelBytes)
+// ham metin/bayt döndüğü için standart `req()` JSON sarmalayıcısını kullanmaz.
+export async function fetchAlbertGenauPriceCsv(): Promise<string> {
+  const token = await getSessionToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/albert-genau/export-package.csv`, { headers });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(`CSV indirilemedi (${res.status})`, 'http', res.status, body);
+  }
+  return await res.text();
+}
 
 export type UserT = {
   user_id: string;
@@ -660,6 +695,75 @@ export type QuoteT = {
   createdByEmail?: string;
   createdByName?: string;
   createdAt: string;
+};
+
+export type AlbertGenauTypesResponseT = {
+  types: { id: string; label: string }[];
+  finishes: string[];
+};
+
+export type AlbertGenauCalculateInputT = {
+  tip: string;
+  genislikMm: number;
+  derinlikMm: number;
+  yukseklikMm?: number | null;
+  cornerFlat?: boolean;
+  somfy?: boolean;
+  noWallBracket?: boolean;
+  finish?: string | null;
+  ledOption?: 'warm' | 'warm_rgb' | null;
+  ledMidSupport?: boolean;
+  kopuk?: boolean;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+};
+
+export type AlbertGenauKalemT = {
+  label: string;
+  sku: string;
+  birimFiyat: number;
+  miktar: number;
+  toplam: number;
+};
+
+export type AlbertGenauResultT = {
+  tip: string;
+  tipAdi: string;
+  girdi: {
+    genislikMm: number;
+    derinlikMmGirilen: number;
+    yapilabilirDerinlikMm: number;
+    yukseklikMm?: number | null;
+    modulSayisi: number;
+  };
+  profilGrubuToplam: number;
+  aksesuarGrubuToplam: number;
+  opsiyonelToplam: number;
+  maliyetToplam: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+export type AlbertGenauItemT = {
+  id: string;
+  companyId: string;
+  userId: string;
+  tip: string;
+  isim: string;
+  montajBedeli: number;
+  karMarjiPct: number;
+  paraBirimi: string;
+  createdAt: string;
+};
+
+export type AlbertGenauPriceListStatusT = {
+  exists: boolean;
+  skuCount: number;
+  updatedAt?: string;
+  updatedBy?: string;
+  source: string;
 };
 
 export type QuoteEditRequestT = {

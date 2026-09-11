@@ -4030,7 +4030,6 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     # tutar birebir aynı olmalı.
     billing_currency = currencyForLang(user.get("language", "tr"))
     plan_price, iyzico_currency = _plan_price_for_currency(plan_cfg, billing_currency)
-    import iyzipay
 
     name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
     first_name = name_parts[0] or "Müşteri"
@@ -4084,14 +4083,36 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
             "price": f"{plan_price:.2f}",
         }],
     }
-    cf = iyzipay.CheckoutFormInitialize()
-    result = await asyncio.to_thread(cf.create, request, _iyzico_options())
-    response = json.load(result)
+    # BUG FIX: bu blokta (iyzipay'e agsal erisim, kutuphane/parsing hatasi vs.)
+    # yakalanmamis HERHANGI bir exception, FastAPI'nin varsayilan 500
+    # handler'inda JSON OLMAYAN duz metin bir govde uretiyordu ("Internal
+    # Server Error") -- bu da istemcinin JSON.parse(body) denemesini
+    # basarisiz kilip ekranda hep jenerik "Odeme baslatilamadi, lutfen
+    # tekrar deneyin" mesajini gostermesine sebep oluyordu; gercek sebep
+    # (ag hatasi mi, iyzico'nun kendi hata mesaji mi) hem kullaniciya hem
+    # de loglara hic yansimiyordu. Simdi tum riskli kisim try/except ile
+    # sariliyor: gercek hata loglaniyor ve kullaniciya anlamli, JSON bir
+    # hata donduruluyor.
+    try:
+        import iyzipay
+        cf = iyzipay.CheckoutFormInitialize()
+        result = await asyncio.to_thread(cf.create, request, _iyzico_options())
+        response = json.load(result)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("[subscription] iyzico checkout create basarisiz")
+        raise HTTPException(status_code=502, detail="Ödeme sağlayıcısına ulaşılamadı, lütfen daha sonra tekrar deneyin")
     if response.get("status") != "success":
-        raise HTTPException(status_code=502, detail=response.get("errorMessage", "Ödeme başlatılamadı"))
+        logger.error(f"[subscription] iyzico checkout status!=success: {response}")
+        raise HTTPException(status_code=502, detail=response.get("errorMessage") or "Ödeme başlatılamadı")
+    token = response.get("token")
+    if not token:
+        logger.error(f"[subscription] iyzico basarili ama token yok: {response}")
+        raise HTTPException(status_code=502, detail="Ödeme sayfası oluşturulamadı, lütfen tekrar deneyin")
     await db.subscription_payments.insert_one({
         "user_id": user["user_id"],
-        "token": response["token"],
+        "token": token,
         "conversation_id": conversation_id,
         "plan": plan_id,
         "amount": plan_price,
@@ -4102,7 +4123,7 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     return SubscriptionCheckoutResponse(
         payment_page_url=response.get("paymentPageUrl"),
         checkout_form_content=response.get("checkoutFormContent"),
-        token=response["token"],
+        token=token,
     )
 
 
@@ -4894,6 +4915,26 @@ async def _security_headers(request: Request, call_next):
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+# BUG FIX (genel): FastAPI/Starlette varsayilan olarak, bir endpoint icinde
+# yakalanmamis herhangi bir exception oldugunda JSON DEGIL, duz metin
+# "Internal Server Error" govdesi donduruyordu. Istemci tarafinda (api.ts)
+# hata govdesi hep JSON.parse() ile okunmaya calisiliyor; bu parse basarisiz
+# oldugunda kullaniciya gercek sebep yerine hep jenerik "... basarisiz,
+# lutfen tekrar deneyin" mesaji gosteriliyordu (ör. Abonelik odeme ekrani).
+# Bu handler, HERHANGI bir route'ta beklenmeyen bir hata olustugunda
+# gercek traceback'i loglar VE istemciye duzgun bir JSON {"detail": ...}
+# govdesi doner -- boylece hem kullanici anlamli bir mesaj gorur hem de
+# Railway loglarindan gercek sebep izlenebilir.
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"[unhandled] {request.method} {request.url.path}")
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Beklenmeyen bir hata oluştu, lütfen tekrar deneyin"},
+    )
 
 
 @app.on_event("startup")

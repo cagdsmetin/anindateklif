@@ -138,6 +138,29 @@ export default function HistoryScreen() {
     eur: try_ != null && rates?.eur_try ? try_ / rates.eur_try : null,
   });
 
+  // Geçmiş kartlarında, teklifin kendi para biriminin altına diğer iki para
+  // biriminin (TL/USD/EUR arasından teklifin PARASI dışındaki ikisi) canlı
+  // karşılığını göstermek için -- teklif TRY ise USD/EUR, USD ise TRY/EUR,
+  // EUR ise TRY/USD döner. Kur verisi henüz gelmediyse null döner (satır hiç
+  // gösterilmez, mevcut davranış bozulmaz).
+  const cardEquiv = (quote: QuoteT): { cur: string; val: number }[] | null => {
+    if (!rates) return null;
+    const amt = quote.genelToplam || 0;
+    const cur = (quote.paraBirimi || 'USD').toUpperCase();
+    let tryAmt: number | null = null;
+    if (cur === 'TRY' || cur === 'TL') tryAmt = amt;
+    else if (cur === 'USD' && rates.usd_try) tryAmt = amt * rates.usd_try;
+    else if (cur === 'EUR' && rates.eur_try) tryAmt = amt * rates.eur_try;
+    if (tryAmt == null) return null;
+    const usdAmt = rates.usd_try ? tryAmt / rates.usd_try : null;
+    const eurAmt = rates.eur_try ? tryAmt / rates.eur_try : null;
+    const parts: { cur: string; val: number }[] = [];
+    if (cur !== 'TRY' && cur !== 'TL') parts.push({ cur: 'TRY', val: tryAmt });
+    if (cur !== 'USD' && usdAmt != null) parts.push({ cur: 'USD', val: usdAmt });
+    if (cur !== 'EUR' && eurAmt != null) parts.push({ cur: 'EUR', val: eurAmt });
+    return parts;
+  };
+
   // USD-first fallback (kur verisi henüz gelmediyse eski davranış).
   const totalValueUSDOnly = quotes.reduce((a, x) => a + (x.durum === 'Onaylandı' && (x.paraBirimi || 'USD') === 'USD' ? x.genelToplam : 0), 0);
   const approvedQuotes = useMemo(() => quotes.filter((x) => x.durum === 'Onaylandı'), [quotes]);
@@ -433,6 +456,15 @@ export default function HistoryScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={s.hAmount} numberOfLines={1}>{fmt(quote.genelToplam, quote.paraBirimi)}</Text>
+                  {(() => {
+                    const eq = cardEquiv(quote);
+                    if (!eq || eq.length === 0) return null;
+                    return (
+                      <Text style={s.hAmountEquiv} numberOfLines={1}>
+                        ≈ {eq.map((x) => fmt(x.val, x.cur)).join(' · ')}
+                      </Text>
+                    );
+                  })()}
                   <TouchableOpacity testID={`status-${quote.id}`} onPress={() => setStatusMenuFor(quote.id)} style={[s.statusBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
                     <Text style={[s.statusText, { color: c.text }]}>{statusLabel(lang, quote.durum)}</Text>
                     <Ionicons name="chevron-down" size={11} color={c.text} />
@@ -795,6 +827,7 @@ const s = StyleSheet.create({
   hProje: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   hAmount: { fontSize: 14, fontWeight: '900', color: theme.colors.primary },
+  hAmountEquiv: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 1 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, marginTop: 6 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
   maliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },

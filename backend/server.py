@@ -233,7 +233,23 @@ TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # örn: "what
 
 
 def _iyzico_options():
-    return {"api_key": IYZICO_API_KEY, "secret_key": IYZICO_SECRET_KEY, "base_url": IYZICO_BASE_URL}
+    # BUG FIX: iyzipay Python SDK'si (iyzipay_resource.py) 'base_url'i dogrudan
+    # http.client.HTTPSConnection(base_url)'e host olarak geciriyor -- yani
+    # BASINDA SEMA (https://) OLMAMASI gerekiyor (ornek: 'sandbox-api.iyzipay.com',
+    # 'https://sandbox-api.iyzipay.com' DEGIL). IYZICO_BASE_URL env degiskeni
+    # (veya varsayilanimiz) sema ile ayarlanmissa, HTTPSConnection host'u
+    # '//sandbox-api.iyzipay.com' olarak parse etmeye calisiyor ve
+    # "http.client.InvalidURL: nonnumeric port: '//sandbox-api.iyzipay.com'"
+    # hatasiyla PATLIYORDU -- bu da /subscription/checkout'un her zaman
+    # "Odeme saglayicisina ulasilamadi" donmesine sebep oluyordu. Burada
+    # sema'yi (varsa) temizleyip SADECE host'u gonderiyoruz.
+    base = (IYZICO_BASE_URL or "").strip()
+    for prefix in ("https://", "http://"):
+        if base.startswith(prefix):
+            base = base[len(prefix):]
+            break
+    base = base.rstrip("/")
+    return {"api_key": IYZICO_API_KEY, "secret_key": IYZICO_SECRET_KEY, "base_url": base}
 
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")

@@ -20,6 +20,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any, Tuple
 import uuid
 import io
+from html import escape as esc
 from datetime import datetime, timezone, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -630,6 +631,23 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
     if not account:
         raise HTTPException(status_code=401, detail="User not found")
 
+    # Şifre sıfırlanınca (forgot-password akışı), o andan ÖNCE verilmiş tüm
+    # access token'ları geçersiz say -- aksi halde çalınmış/sızmış bir token,
+    # kullanıcı şifresini değiştirdikten sonra da 7 gün boyunca geçerli kalır.
+    pw_changed_at = account.get("pw_changed_at")
+    if pw_changed_at and payload.get("iat"):
+        if isinstance(pw_changed_at, str):
+            try:
+                pw_changed_at = datetime.fromisoformat(pw_changed_at)
+            except Exception:
+                pw_changed_at = None
+        if pw_changed_at:
+            if pw_changed_at.tzinfo is None:
+                pw_changed_at = pw_changed_at.replace(tzinfo=timezone.utc)
+            iat_dt = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+            if iat_dt < pw_changed_at:
+                raise HTTPException(status_code=401, detail="Session expired")
+
     # Admin destek/impersonasyon oturumu ise (bkz. /admin/impersonate) bu
     # bilgiyi çözümlenen kullanıcı sözlüğüne taşı ki auth/me üzerinden
     # frontend'e "destek modundasın" banner'ı için ulaşabilsin.
@@ -974,7 +992,7 @@ async def reset_password(payload: ResetPasswordRequest, request: Request):
         raise HTTPException(status_code=422, detail=str(e))
     await db.users.update_one(
         {"user_id": doc["user_id"]},
-        {"$set": {"hashed_password": _hash_password(payload.new_password)}},
+        {"$set": {"hashed_password": _hash_password(payload.new_password), "pw_changed_at": _utc()}},
     )
     await db.password_resets.update_one({"token_hash": doc["token_hash"]}, {"$set": {"used_at": _utc()}})
     return {"message": "Şifre başarıyla güncellendi"}
@@ -1327,6 +1345,14 @@ class CatalogFileEmailShareRequest(BaseModel):
     toEmail: EmailStr
     message: str = ""
 
+    @field_validator("message")
+    @classmethod
+    def _message_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if len(v) > 1000:
+            v = v[:1000]
+        return v
+
 
 class KasaEntry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -1657,6 +1683,19 @@ async def _own_company(user: Dict[str, Any], company_id: str):
 @api_router.get("/")
 async def root():
     return {"message": "Anında Teklif API", "status": "ok"}
+
+
+@api_router.get("/health")
+async def health():
+    # Railway bu ucu düzenli olarak yoklar: process ayakta görünse bile
+    # MongoDB'ye erişemiyorsa (deadlock/bağlantı kopması gibi) burası hata
+    # döner ve Railway servisi otomatik olarak yeniden başlatır -- process'in
+    # sadece "canlı" değil "sağlıklı" olduğunu doğrulayan tek uç bu.
+    try:
+        await db.command("ping")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"DB unreachable: {e}")
+    return {"status": "ok"}
 
 
 @api_router.get("/companies", response_model=List[Company])
@@ -2237,6 +2276,7 @@ async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_curre
 @api_router.put("/catalog/{item_id}", response_model=CatalogItem)
 async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Depends(get_current_user)):
     _require_owner(user)
+    await _own_company(user, payload.companyId)
     doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Item not found")
@@ -2489,6 +2529,7 @@ async def create_service(payload: ServiceCreate, user=Depends(get_current_user))
 
 @api_router.put("/services/{service_id}", response_model=Service)
 async def update_service(service_id: str, payload: ServiceCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
     doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Service not found")
@@ -2694,6 +2735,7 @@ async def respond_quote_edit_request(request_id: str, payload: QuoteEditRequestR
 
 @api_router.put("/quotes/{quote_id}", response_model=Quote)
 async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -4490,6 +4532,15 @@ async def on_startup():
         # veritabaninda kalir ve bu TTL index sayesinde suresi dolunca
         # otomatik olarak tamamen silinir.
         await db.team_messages.create_index("expiresAt", expireAfterSeconds=0)
+        # Veri büyüdükçe (yüzlerce/binlerce teklif, tahsilat vb. biriktikçe)
+        # her firma sorgusunun tüm koleksiyonu taramaması için: bu dört
+        # koleksiyon userId+companyId ile filtreleniyor, listelerde de
+        # createdAt'a göre sıralanıyor -- bileşik index bu sorguları tek
+        # index taramasıyla karşılar.
+        await db.quotes.create_index([("userId", 1), ("companyId", 1), ("createdAt", -1)])
+        await db.customers.create_index([("userId", 1), ("companyId", 1)])
+        await db.kasa.create_index([("userId", 1), ("companyId", 1)])
+        await db.tahsilat.create_index([("userId", 1), ("companyId", 1)])
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 

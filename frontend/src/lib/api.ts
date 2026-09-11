@@ -367,6 +367,24 @@ export const api = {
   albertGenauExportPackage: (): Promise<any> => req('/albert-genau/export-package'),
 };
 
+// Albert Genau hesap sonucunu Excel olarak indirme -- POST gövdesiyle
+// hesaplama girdisini gönderip ham .xlsx baytlarını alır (bkz. fetchQuoteExcelBytes).
+export async function fetchAlbertGenauExcelBytes(data: AlbertGenauCalculateInputT): Promise<ArrayBuffer> {
+  const token = await getSessionToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/albert-genau/calculate/export-excel`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(`Excel indirilemedi (${res.status})`, 'http', res.status, body);
+  }
+  return await res.arrayBuffer();
+}
+
 // CSV export -- diğer .csv/.xlsx indirme uçları gibi (bkz. fetchQuoteExcelBytes)
 // ham metin/bayt döndüğü için standart `req()` JSON sarmalayıcısını kullanmaz.
 export async function fetchAlbertGenauPriceCsv(): Promise<string> {
@@ -714,6 +732,7 @@ export type AlbertGenauCalculateInputT = {
   ledOption?: 'warm' | 'warm_rgb' | null;
   ledMidSupport?: boolean;
   kopuk?: boolean;
+  alisIskontoPct?: number;
   montajBedeli?: number;
   karMarjiPct?: number;
 };
@@ -740,8 +759,11 @@ export type AlbertGenauResultT = {
   aksesuarGrubuToplam: number;
   opsiyonelToplam: number;
   maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
   montajBedeli: number;
   karMarjiPct: number;
+  karTutari: number;
   satisFiyati: number;
   kalemler: AlbertGenauKalemT[];
 };

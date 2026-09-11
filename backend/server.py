@@ -2314,6 +2314,7 @@ class AlbertGenauCalculateRequest(BaseModel):
     ledOption: Optional[str] = None  # None | 'warm' | 'warm_rgb'
     ledMidSupport: bool = False
     kopuk: bool = False
+    alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
     karMarjiPct: float = 0.0
 
@@ -2322,6 +2323,15 @@ class AlbertGenauCalculateRequest(BaseModel):
     def _tip_valid(cls, v: str) -> str:
         if v not in ag_calc.SYSTEM_TYPES:
             raise ValueError(f"Gecersiz sistem tipi: {v}")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
         return v
 
     @field_validator("genislikMm", "derinlikMm")
@@ -2375,11 +2385,9 @@ async def albert_genau_types(user=Depends(get_current_user)):
             "finishes": list(ag_calc.FINISH_OPTIONS.keys())}
 
 
-@api_router.post("/albert-genau/calculate")
-async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
-    price_data = await _get_ag_price_data()
+def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Optional[Dict[str, Any]]):
     try:
-        result = ag_calc.calculate(
+        return ag_calc.calculate(
             tip=payload.tip,
             genislik_mm=payload.genislikMm,
             derinlik_mm=payload.derinlikMm,
@@ -2391,13 +2399,125 @@ async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depe
             led_option=payload.ledOption,
             led_mid_support=payload.ledMidSupport,
             kopuk=payload.kopuk,
+            alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
             kar_marji_pct=payload.karMarjiPct,
             price_data=price_data,
         )
+    except ag_calc.DepthChoiceRequired as e:
+        # Derinlik iki standart panel-adimi arasinda kaliyor -- otomatik
+        # yuvarlamak yerine 409 ile alt/ust seceneklerini dondururuz ki
+        # istemci kullaniciya secim yaptirip ayni istegi kesin bir
+        # derinlikMm ile tekrar gonderebilsin.
+        raise HTTPException(status_code=409, detail={
+            "code": "depth_choice_required",
+            "message": str(e),
+            "floorMm": e.floor_mm,
+            "ceilMm": e.ceil_mm,
+            "rawMm": e.raw_mm,
+        })
     except (ValueError, KeyError) as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return result
+
+
+@api_router.post("/albert-genau/calculate")
+async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
+    price_data = await _get_ag_price_data()
+    return _run_ag_calculate(payload, price_data)
+
+
+@api_router.post("/albert-genau/calculate/export-excel")
+async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
+    price_data = await _get_ag_price_data()
+    result = _run_ag_calculate(payload, price_data)
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Albert Genau Hesap"
+
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    title_font = Font(bold=True, size=14)
+    bold = Font(bold=True)
+    thin = Side(style="thin", color="D1D5DB")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    ws.merge_cells("A1:D1")
+    ws["A1"] = f"{result['tipAdi']} - Fiyat Hesabi"
+    ws["A1"].font = title_font
+
+    girdi = result["girdi"]
+    rows_info = [
+        ("Genislik (mm)", girdi.get("genislikMm")),
+        ("Girilen Derinlik (mm)", girdi.get("derinlikMmGirilen")),
+        ("Uygulanan Derinlik (mm)", girdi.get("yapilabilirDerinlikMm")),
+        ("Yukseklik (mm)", girdi.get("yukseklikMm")),
+        ("Modul Sayisi", girdi.get("modulSayisi")),
+    ]
+    r = 3
+    for label, val in rows_info:
+        ws.cell(row=r, column=1, value=label).font = bold
+        ws.cell(row=r, column=2, value=val)
+        r += 1
+
+    r += 1
+    ws.cell(row=r, column=1, value="Malzeme Kalemleri").font = Font(bold=True, size=12)
+    r += 1
+    headers = ["Kalem", "SKU", "Birim Fiyat", "Miktar", "Toplam"]
+    for i, h in enumerate(headers, start=1):
+        c = ws.cell(row=r, column=i, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.border = border
+    r += 1
+    kalem_start = r
+    for k in result["kalemler"]:
+        ws.cell(row=r, column=1, value=k["label"]).border = border
+        ws.cell(row=r, column=2, value=k["sku"]).border = border
+        ws.cell(row=r, column=3, value=k["birimFiyat"]).border = border
+        ws.cell(row=r, column=4, value=k["miktar"]).border = border
+        ws.cell(row=r, column=5, value=k["toplam"]).border = border
+        r += 1
+    kalem_end = r - 1
+
+    r += 1
+    summary_rows = [
+        ("Profil Grubu Toplam", result["profilGrubuToplam"]),
+        ("Aksesuar Grubu Toplam", result["aksesuarGrubuToplam"]),
+        ("Opsiyonel Toplam", result.get("opsiyonelToplam", 0)),
+        ("Malzeme Maliyeti Toplam", result["maliyetToplam"]),
+        (f"Alis Iskontosu (%{result.get('alisIskontoPct', 0)})", None),
+        ("Iskontolu Malzeme Maliyeti", result.get("maliyetIndirimli")),
+        (f"Kar Tutari (%{result.get('karMarjiPct', 0)})", result.get("karTutari")),
+        ("Montaj Bedeli", result["montajBedeli"]),
+        ("SATIS FIYATI", result["satisFiyati"]),
+    ]
+    for label, val in summary_rows:
+        ws.cell(row=r, column=1, value=label).font = bold
+        if val is not None:
+            ws.cell(row=r, column=4, value=val).font = bold
+        if label == "SATIS FIYATI":
+            for col in range(1, 6):
+                ws.cell(row=r, column=col).fill = PatternFill(start_color="FDE68A", end_color="FDE68A", fill_type="solid")
+        r += 1
+
+    for col, width in zip("ABCDE", [34, 16, 14, 10, 14]):
+        ws.column_dimensions[col].width = width
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"albert-genau-{payload.tip}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @api_router.get("/albert-genau/items", response_model=List[AlbertGenauItem])

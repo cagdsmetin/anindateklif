@@ -49,6 +49,22 @@ SYSTEM_TYPE_LABELS = {
     'sabit_duvar': 'AG BIO Sabit Duvar',
 }
 
+class DepthChoiceRequired(ValueError):
+    """Girilen derinlik iki standart panel-adimi arasinda kaldiginda
+    firlatilir -- otomatik yuvarlama yerine kullaniciya alt/ust secim
+    yaptirmak icin (bkz. PriceBook.depth_choice)."""
+
+    def __init__(self, floor_mm: float, ceil_mm: float, raw_mm: float):
+        self.floor_mm = floor_mm
+        self.ceil_mm = ceil_mm
+        self.raw_mm = raw_mm
+        super().__init__(
+            f"Girilen derinlik ({raw_mm:.0f}mm) standart bir olcuye tam denk gelmiyor. "
+            f"Alt (dar, {floor_mm:.0f}mm) veya ust (genis, {ceil_mm:.0f}mm) standart "
+            f"derinlikten birini secmeniz gerekiyor."
+        )
+
+
 FINISH_OPTIONS = {
     'SATINE_NATUREL': 1.0,
     'ANTRASIT_GRI': 1.0,
@@ -73,22 +89,57 @@ class PriceBook:
             for k, mods in d['belt_table'].items()
         }
 
+    # `price_list`'teki birim fiyatlar Excel'in 'SIPARIS FORMU' sekmesindeki
+    # KREDI KARTI (taksitli/liste) fiyat sutunundan geliyor. Excel'in kendi
+    # toplam satirinda ise NAKIT (pesin) toplam = KREDI KARTI toplami * 0.89
+    # olarak hesaplaniyor (bkz. G66 = C66 * 0.89). Bayi maliyet analizinin
+    # esas aldigi rakam NAKIT oldugu icin bu carpani burada, tek noktada
+    # (her SKU okumasinda) uyguluyoruz -- boylece hem kalem bazli hem toplam
+    # rakamlar Excel'in NAKIT sutunuyla birebir eslesir.
+    NAKIT_FACTOR = 0.89
+
     def price(self, sku: str) -> float:
         item = self.price_list.get(sku)
         if not item:
             raise KeyError(f"Fiyat listesinde bulunamayan SKU: {sku}")
-        return float(item['price'])
+        return float(item['price']) * self.NAKIT_FACTOR
+
+    def depth_choice(self, raw_depth_mm: float) -> Optional[Dict[str, float]]:
+        """Girilen derinlik standart panel-adimli tabloya TAM denk gelmiyorsa
+        (yani otomatik ASAGI yuvarlama sessizce bir varsayim yapmis olacaksa),
+        bunun yerine cagirana 'alt' (dar, guvenli) ve 'ust' (genis, biraz
+        tasan) secenekleri dondurur ki kullanici acikca birini secsin. Tam
+        eslesme varsa (veya tablonun tek ucunda ise, secilecek ikinci bir
+        secenek yoksa) None doner -- bu durumda normal (floor) hesaplama
+        sessizce devam eder."""
+        vals = sorted(self.depth_table.values())
+        if any(abs(v - raw_depth_mm) < 1e-6 for v in vals):
+            return None
+        floor_candidates = [v for v in vals if v < raw_depth_mm]
+        ceil_candidates = [v for v in vals if v > raw_depth_mm]
+        if not floor_candidates or not ceil_candidates:
+            return None
+        return {'floorMm': max(floor_candidates), 'ceilMm': min(ceil_candidates), 'rawMm': raw_depth_mm}
 
     def snap_depth(self, raw_depth_mm: float) -> float:
+        """Standart (panel adimli) derinlige YUVARLAMAZ, her zaman ASAGI (floor)
+        siknar -- sistem, musterinin belirttigi fiziksel alandan DAHA DERIN
+        kurulamaz (duvara/sinira tasar). Excel'in kendi yardimci tablosundaki
+        VLOOKUP(..., 1) (yaklasik eslesme, artan sirali) da ayni sekilde her
+        zaman <= girilen deger olan en buyuk standart derinligi bulur --
+        'en yakin' (yukari da yuvarlayabilen) bir mantik degildir."""
         vals = sorted(self.depth_table.values())
-        floor_v = max([v for v in vals if v <= raw_depth_mm], default=vals[0])
-        ceil_candidates = [v for v in vals if v > floor_v]
-        ceil_v = ceil_candidates[0] if ceil_candidates else floor_v
-        chosen = floor_v if abs(floor_v - raw_depth_mm) <= abs(ceil_v - raw_depth_mm) else ceil_v
-        if abs(chosen - raw_depth_mm) > 235:
+        candidates = [v for v in vals if v <= raw_depth_mm]
+        if not candidates:
+            raise ValueError(
+                f"Girilen derinlik ({raw_depth_mm:.0f}mm) cok kucuk "
+                f"(en kucuk desteklenen derinlik: {vals[0]:.0f}mm)"
+            )
+        chosen = max(candidates)
+        if raw_depth_mm - chosen > 235:
             raise ValueError(
                 f"Girilen derinlik ({raw_depth_mm:.0f}mm) desteklenen aralik disinda "
-                f"(en yakin standart derinlik: {chosen:.0f}mm, fark {abs(chosen - raw_depth_mm):.0f}mm)"
+                f"(en yakin uygulanabilir derinlik: {chosen:.0f}mm, fark {raw_depth_mm - chosen:.0f}mm)"
             )
         return chosen
 
@@ -551,6 +602,7 @@ def calculate(
     led_option: Optional[str] = None,   # None | 'warm' | 'warm_rgb'
     led_mid_support: bool = False,
     kopuk: bool = False,
+    alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     price_data: Optional[Dict[str, Any]] = None,
@@ -564,6 +616,9 @@ def calculate(
     if tip not in _TYPE_FUNCS:
         raise ValueError(f"Bilinmeyen sistem tipi: {tip}")
     pb = PriceBook(price_data)
+    choice = pb.depth_choice(derinlik_mm)
+    if choice is not None:
+        raise DepthChoiceRequired(choice['floorMm'], choice['ceilMm'], choice['rawMm'])
     finish_mult = _finish_multiplier(finish)
     func, needs_height = _TYPE_FUNCS[tip]
 
@@ -610,7 +665,17 @@ def calculate(
             opsiyonel_toplam += sum(k.total for k in rgb)
 
     maliyet_toplam = profil_toplam + aksesuar_toplam + opsiyonel_toplam
-    satis_fiyati = (maliyet_toplam + montaj_bedeli) * (1 + (kar_marji_pct or 0) / 100.0)
+
+    # Is kurali (bayinin acik talimati):
+    #   1) Alis iskontosu SADECE malzeme maliyetini dusurur -- montaj bedelini
+    #      ve kar marjini ETKILEMEZ.
+    #   2) Kar marji, SADECE (iskontolu) malzeme maliyeti uzerine uygulanir.
+    #   3) Montaj bedeli en sonda DUZ (kar marjisiz) eklenir -- boylece montaja
+    #      da yuzdelik kar konup toplam rakam "sisirilmis" olmaz.
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
 
     return {
         'tip': tip,
@@ -626,8 +691,11 @@ def calculate(
         'aksesuarGrubuToplam': round(aksesuar_toplam, 2),
         'opsiyonelToplam': round(opsiyonel_toplam, 2),
         'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
         'kalemler': [k.dict() for k in (profil + aksesuar + opsiyonel_kalemler)],
     }

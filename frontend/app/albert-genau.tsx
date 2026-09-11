@@ -13,9 +13,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, AlbertGenauResultT, AlbertGenauTypesResponseT } from '@/src/lib/api';
+import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, fetchAlbertGenauExcelBytes } from '@/src/lib/api';
+import { bytesToBase64 } from '@/src/lib/pdf-merge';
+import { downloadFileWeb } from '@/src/lib/web-download';
 
 // Albert Genau parametrik pergola/bioklimatik hesaplayıcı — genel Katalog ve
 // Ürün/Hizmet Yapılandırıcı'dan tamamen ayrı bir bölüm. Dealer genişlik/
@@ -68,14 +72,20 @@ export default function AlbertGenauScreen() {
   const [ledOption, setLedOption] = useState<'' | 'warm' | 'warm_rgb'>('');
   const [ledMidSupport, setLedMidSupport] = useState(false);
   const [kopuk, setKopuk] = useState(false);
+  const [alisIskontoPct, setAlisIskontoPct] = useState('0');
   const [montajBedeli, setMontajBedeli] = useState('0');
   const [karMarjiPct, setKarMarjiPct] = useState('0');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<AlbertGenauResultT | null>(null);
-  const [showKalemler, setShowKalemler] = useState(false);
+  const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  // Girilen derinlik standart panel-adimina tam denk gelmediginde backend
+  // 409 dondurur; kullaniciya alt (dar) veya ust (genis) standart derinlikten
+  // birini secmesi icin bu bilgiyi sakliyoruz (bkz. onCalculate/onChooseDepth).
+  const [depthChoice, setDepthChoice] = useState<{ floorMm: number; ceilMm: number; rawMm: number } | null>(null);
 
   useEffect(() => {
     api.albertGenauTypes().then(setMeta).catch(() => {});
@@ -86,10 +96,11 @@ export default function AlbertGenauScreen() {
     [meta.types, tip],
   );
 
-  const onCalculate = async () => {
+  const onCalculate = async (depthOverrideMm?: number) => {
     setError('');
+    setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
-    const d = Number(derinlik.replace(',', '.'));
+    const d = depthOverrideMm ?? Number(derinlik.replace(',', '.'));
     const y = needsHeight(tip) ? Number(yukseklik.replace(',', '.')) : undefined;
     if (!g || g <= 0) { setError('Genişlik (mm) girin'); return; }
     if (!d || d <= 0) { setError('Derinlik (mm) girin'); return; }
@@ -97,7 +108,7 @@ export default function AlbertGenauScreen() {
     setBusy(true);
     setResult(null);
     try {
-      const res = await api.albertGenauCalculate({
+      const payload: AlbertGenauCalculateInputT = {
         tip,
         genislikMm: g,
         derinlikMm: d,
@@ -109,14 +120,76 @@ export default function AlbertGenauScreen() {
         ledOption: ledOption || null,
         ledMidSupport: ledOption ? ledMidSupport : false,
         kopuk,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
-      });
+      };
+      const res = await api.albertGenauCalculate(payload);
       setResult(res);
+      setLastPayload(payload);
+      if (depthOverrideMm) setDerinlik(String(depthOverrideMm));
     } catch (e: any) {
+      if (e?.status === 409 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'depth_choice_required') {
+            setDepthChoice({ floorMm: info.floorMm, ceilMm: info.ceilMm, rawMm: info.rawMm });
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
       setError(e?.message || 'Hesaplanamadı');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onChooseDepth = (mm: number) => {
+    setDepthChoice(null);
+    onCalculate(mm);
+  };
+
+  const onShowKalemler = () => {
+    if (!result) return;
+    router.push({
+      pathname: '/albert-genau-kalemler',
+      params: {
+        tipAdi: result.tipAdi,
+        girdi: JSON.stringify(result.girdi),
+        kalemler: JSON.stringify(result.kalemler),
+      },
+    });
+  };
+
+  const onExportExcel = async () => {
+    if (!lastPayload || exporting) return;
+    setExporting(true);
+    try {
+      const buf = await fetchAlbertGenauExcelBytes(lastPayload);
+      const fileName = `albert-genau-${lastPayload.tip}.xlsx`;
+      const mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      if (Platform.OS === 'web') {
+        const blob = new Blob([buf], { type: mime });
+        const url = URL.createObjectURL(blob);
+        await downloadFileWeb(url, fileName);
+        showToast('Excel indirildi');
+      } else {
+        const b64 = bytesToBase64(new Uint8Array(buf));
+        const uri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
+        const avail = await Sharing.isAvailableAsync();
+        if (avail) {
+          await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: 'Albert Genau Hesabı', UTI: 'org.openxmlformats.spreadsheetml.sheet' });
+        } else {
+          showToast('Excel dosyası oluşturuldu ama paylaşım kullanılamıyor');
+        }
+      }
+    } catch (e: any) {
+      showToast(e?.message || 'Excel indirilemedi');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -255,14 +328,18 @@ export default function AlbertGenauScreen() {
               <Text style={s.hint}>LED ve köpük fiyatları da aynı Excel formülleriyle otomatik hesaplanır; ekstra bir şey girmenize gerek yok.</Text>
             </View>
 
-            {/* Montaj + Kar */}
+            {/* İskonto + Montaj + Kar */}
             <View style={s.card}>
-              <Text style={s.sectionTitle}>Montaj Bedeli &amp; Kar Marjı</Text>
+              <Text style={s.sectionTitle}>Alış İskontosu, Montaj &amp; Kar Marjı</Text>
+              <NumField label="Alış İskonto Oranı (%)" value={alisIskontoPct} onChange={setAlisIskontoPct} testID="ag-iskonto" />
               <View style={s.row}>
                 <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" />
                 <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
               </View>
-              <Text style={s.hint}>Satış fiyatı = (Malzeme Maliyeti + Montaj Bedeli) × (1 + Kar Marjı%)</Text>
+              <Text style={s.hint}>
+                İskonto sadece malzeme maliyetini düşürür; montaj bedelini ve kar marjını etkilemez.{'\n'}
+                Satış Fiyatı = (Malzeme Maliyeti − İskonto) × (1 + Kar Marjı%) + Montaj Bedeli
+              </Text>
             </View>
 
             {!!error && (
@@ -272,7 +349,31 @@ export default function AlbertGenauScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={[s.calcBtn, busy && s.ctaDisabled]} onPress={onCalculate} disabled={busy} testID="ag-calculate">
+            {depthChoice && (
+              <View style={s.choiceBox}>
+                <View style={s.choiceHeader}>
+                  <Ionicons name="help-circle" size={18} color={theme.colors.primary} />
+                  <Text style={s.choiceTitle}>Derinlik standart ölçüye tam denk gelmiyor</Text>
+                </View>
+                <Text style={s.choiceHint}>
+                  Girdiğiniz {depthChoice.rawMm}mm için iki standart derinlikten birini seçin:
+                </Text>
+                <View style={s.row}>
+                  <TouchableOpacity style={s.choiceBtn} onPress={() => onChooseDepth(depthChoice.floorMm)} testID="ag-depth-floor">
+                    <Text style={s.choiceBtnLabel}>Alt Ölçü</Text>
+                    <Text style={s.choiceBtnValue}>{depthChoice.floorMm}mm</Text>
+                    <Text style={s.choiceBtnSub}>(dar, içeride kalır)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.choiceBtn} onPress={() => onChooseDepth(depthChoice.ceilMm)} testID="ag-depth-ceil">
+                    <Text style={s.choiceBtnLabel}>Üst Ölçü</Text>
+                    <Text style={s.choiceBtnValue}>{depthChoice.ceilMm}mm</Text>
+                    <Text style={s.choiceBtnSub}>(geniş, taşabilir)</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <TouchableOpacity style={[s.calcBtn, busy && s.ctaDisabled]} onPress={() => onCalculate()} disabled={busy} testID="ag-calculate">
               {busy ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <Ionicons name="calculator-outline" size={18} color="#fff" />
@@ -306,13 +407,25 @@ export default function AlbertGenauScreen() {
                   <Text style={[s.breakdownLabel, { fontWeight: '800' }]}>Malzeme Maliyeti</Text>
                   <Text style={[s.breakdownValue, { fontWeight: '800' }]}>₺{money(result.maliyetToplam)}</Text>
                 </View>
+                {result.alisIskontoPct > 0 && (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Alış İskontosu (%{result.alisIskontoPct})</Text>
+                      <Text style={[s.breakdownValue, { color: theme.colors.red }]}>−₺{money(result.maliyetToplam - result.maliyetIndirimli)}</Text>
+                    </View>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>İskontolu Malzeme Maliyeti</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.maliyetIndirimli)}</Text>
+                    </View>
+                  </>
+                )}
+                <View style={s.breakdownRow}>
+                  <Text style={s.breakdownLabel}>Kar Tutarı (%{result.karMarjiPct})</Text>
+                  <Text style={s.breakdownValue}>₺{money(result.karTutari)}</Text>
+                </View>
                 <View style={s.breakdownRow}>
                   <Text style={s.breakdownLabel}>Montaj Bedeli</Text>
                   <Text style={s.breakdownValue}>₺{money(result.montajBedeli)}</Text>
-                </View>
-                <View style={s.breakdownRow}>
-                  <Text style={s.breakdownLabel}>Kar Marjı</Text>
-                  <Text style={s.breakdownValue}>%{result.karMarjiPct}</Text>
                 </View>
 
                 <View style={s.totalBox}>
@@ -320,28 +433,25 @@ export default function AlbertGenauScreen() {
                   <Text style={s.totalValue}>₺{money(result.satisFiyati)}</Text>
                 </View>
 
-                <TouchableOpacity style={s.kalemlerToggle} onPress={() => setShowKalemler((v) => !v)} testID="ag-toggle-kalemler">
-                  <Text style={s.kalemlerToggleText}>{showKalemler ? 'Malzeme listesini gizle' : `Malzeme listesini göster (${result.kalemler.length} kalem)`}</Text>
-                  <Ionicons name={showKalemler ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.primary} />
+                <TouchableOpacity style={s.kalemlerToggle} onPress={onShowKalemler} testID="ag-show-kalemler">
+                  <Text style={s.kalemlerToggleText}>{`Malzeme listesini görüntüle (${result.kalemler.length} kalem)`}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
                 </TouchableOpacity>
-                {showKalemler && (
-                  <View style={s.kalemlerBox}>
-                    {result.kalemler.map((k, i) => (
-                      <View key={i} style={s.kalemRow}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.kalemLabel} numberOfLines={1}>{k.label}</Text>
-                          <Text style={s.kalemSku}>{k.sku} • {k.miktar} × ₺{money(k.birimFiyat)}</Text>
-                        </View>
-                        <Text style={s.kalemToplam}>₺{money(k.toplam)}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
 
-                <TouchableOpacity style={[s.addBtn, adding && s.ctaDisabled]} onPress={onAddToQuote} disabled={adding} testID="ag-add-to-quote">
-                  <Ionicons name="add-circle" size={18} color="#fff" />
-                  <Text style={s.calcBtnText}>Teklife Kalem Olarak Ekle</Text>
-                </TouchableOpacity>
+                <View style={s.row}>
+                  <TouchableOpacity style={[s.addBtn, { flex: 1 }, adding && s.ctaDisabled]} onPress={onAddToQuote} disabled={adding} testID="ag-add-to-quote">
+                    <Ionicons name="add-circle" size={18} color="#fff" />
+                    <Text style={s.calcBtnText}>Teklife Ekle</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
+                    {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
+                      <>
+                        <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
+                        <Text style={s.excelBtnText}>Excel</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -411,6 +521,14 @@ const s = StyleSheet.create({
   toggleLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.text },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginBottom: 12 },
   errorText: { color: theme.colors.red, fontSize: 12.5, fontWeight: '700', flex: 1 },
+  choiceBox: { backgroundColor: '#EFF6FF', borderRadius: 14, borderWidth: 1, borderColor: '#BFDBFE', padding: 14, marginBottom: 12 },
+  choiceHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  choiceTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, flex: 1 },
+  choiceHint: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600', marginBottom: 10 },
+  choiceBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.primary, paddingVertical: 12, alignItems: 'center' },
+  choiceBtnLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary },
+  choiceBtnValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+  choiceBtnSub: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
   calcBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13, ...theme.shadow.lg, marginBottom: 12 },
   calcBtnText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
   ctaDisabled: { opacity: 0.6 },
@@ -422,14 +540,11 @@ const s = StyleSheet.create({
   totalBox: { backgroundColor: theme.colors.navy, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   totalLabel: { color: '#fff', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 },
   totalValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
+  kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, marginTop: 4 },
   kalemlerToggleText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary },
-  kalemlerBox: { borderTopWidth: 1, borderTopColor: theme.colors.line, marginTop: 4, paddingTop: 8, maxHeight: 280 },
-  kalemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 8 },
-  kalemLabel: { fontSize: 12, fontWeight: '700', color: theme.colors.text },
-  kalemSku: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
-  kalemToplam: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.navy, borderRadius: 14, paddingVertical: 13, marginTop: 12 },
+  excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1.5, borderColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16, marginTop: 12 },
+  excelBtnText: { color: theme.colors.primary, fontSize: 13.5, fontWeight: '800' },
   toast: { position: 'absolute', top: 8, alignSelf: 'center', backgroundColor: theme.colors.navy, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, zIndex: 9999, gap: 6, ...theme.shadow.md },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

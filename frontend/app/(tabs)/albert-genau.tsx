@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ import { useApp } from '@/src/state/AppContext';
 import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, fetchAlbertGenauExcelBytes } from '@/src/lib/api';
 import { bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
+import NavDrawer from '@/src/components/NavDrawer';
 
 // Albert Genau parametrik pergola/bioklimatik hesaplayıcı — genel Katalog ve
 // Ürün/Hizmet Yapılandırıcı'dan tamamen ayrı bir bölüm. Dealer genişlik/
@@ -59,6 +61,14 @@ export default function AlbertGenauScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, showToast, toast } = useApp();
+  // Bu ekranın kendi geri-tuşlu üst çubuğu var (TopHeader değil), bu yüzden
+  // masaüstü genişliğinde sidebar zaten (tabs)/_layout.tsx tarafından
+  // gösteriliyor olsa da, dar/mobil genişlikte diğer ekranlardaki hamburger
+  // menüsüne (NavDrawer) buradan da erişim sağlanmalı -- kullanıcı "mevcut
+  // bar kaybolmasın" diye bildirdi.
+  const { width: winWidth } = useWindowDimensions();
+  const showHamburger = !(Platform.OS === 'web' && winWidth >= 900);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const [meta, setMeta] = useState<AlbertGenauTypesResponseT>({ types: FALLBACK_TYPES, finishes: FALLBACK_FINISHES });
   const [tip, setTip] = useState('4ayak_ustu');
@@ -262,7 +272,18 @@ export default function AlbertGenauScreen() {
           <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Albert Genau Fiyat Hesaplama</Text>
-        <View style={s.headerBtn} />
+        {showHamburger ? (
+          <TouchableOpacity
+            onPress={() => setDrawerVisible(true)}
+            style={s.headerBtn}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            testID="hamburger-btn"
+          >
+            <Ionicons name="menu" size={22} color={theme.colors.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={s.headerBtn} />
+        )}
       </View>
       <View style={s.divider} />
 
@@ -550,6 +571,8 @@ export default function AlbertGenauScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <NavDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />
     </SafeAreaView>
   );
 }

@@ -52,7 +52,7 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, updateQuoteEkstraMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, updateQuoteEkstraMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest, tahsilat } = useApp();
   const { user: me } = useAuth();
   // Teklif sahiplik/onay sistemi: bana (bu tekliflerin gerçek sahibine) gelen,
   // henüz yanıtlanmamış düzenleme onay istekleri -- bkz. teklif.tsx'teki kilit.
@@ -672,30 +672,10 @@ export default function HistoryScreen() {
               return (
                 <>
                   <ScrollView style={{ maxHeight: 320, width: '100%' }} showsVerticalScrollIndicator={false}>
-                    {items.length === 0 ? (
-                      <Text style={s.emptyText}>{t('history.s042')}</Text>
-                    ) : (
-                      items.map((it) => {
-                        const name = it.mode === 'technical' ? (it.sistemTipi || it.urunAdi || t('history.s043')) : (it.urunAdi || t('history.s043'));
-                        return (
-                          <View key={it.id} style={s.itemMaliyetRow}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={s.itemMaliyetName} numberOfLines={1}>{name}</Text>
-                              <Text style={s.itemMaliyetSub}>{it.adet} {it.birim}</Text>
-                            </View>
-                            <TextInput
-                              style={s.itemMaliyetInput}
-                              keyboardType="decimal-pad"
-                              placeholder="0,00"
-                              placeholderTextColor="#94a3b8"
-                              value={maliyetItemInputs[it.id] || ''}
-                              onChangeText={(txt) => setMaliyetItemInputs((prev) => ({ ...prev, [it.id]: txt.replace(/[^0-9,]/g, '') }))}
-                              testID={`maliyet-item-input-${it.id}`}
-                            />
-                          </View>
-                        );
-                      })
-                    )}
+                    {/* Kalem kalem girmek istemeyenler için: serbest açıklama + toplam
+                        tutar satırları en üstte, hemen görünsün -- kalem listesini
+                        kaydırmaya gerek kalmasın. */}
+                    <Text style={s.ekstraMaliyetSectionLabel}>{t('history.s054')}</Text>
                     {ekstraMaliyetRows.map((row) => (
                       <View key={row.id} style={s.ekstraMaliyetRow}>
                         <TextInput
@@ -732,6 +712,31 @@ export default function HistoryScreen() {
                       <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
                       <Text style={s.ekstraMaliyetAddText}>{t('history.s050')}</Text>
                     </TouchableOpacity>
+                    {items.length > 0 && (
+                      <Text style={[s.ekstraMaliyetSectionLabel, { marginTop: 14 }]}>{t('history.s055')}</Text>
+                    )}
+                    {items.length === 0 ? null : (
+                      items.map((it) => {
+                        const name = it.mode === 'technical' ? (it.sistemTipi || it.urunAdi || t('history.s043')) : (it.urunAdi || t('history.s043'));
+                        return (
+                          <View key={it.id} style={s.itemMaliyetRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.itemMaliyetName} numberOfLines={1}>{name}</Text>
+                              <Text style={s.itemMaliyetSub}>{it.adet} {it.birim}</Text>
+                            </View>
+                            <TextInput
+                              style={s.itemMaliyetInput}
+                              keyboardType="decimal-pad"
+                              placeholder="0,00"
+                              placeholderTextColor="#94a3b8"
+                              value={maliyetItemInputs[it.id] || ''}
+                              onChangeText={(txt) => setMaliyetItemInputs((prev) => ({ ...prev, [it.id]: txt.replace(/[^0-9,]/g, '') }))}
+                              testID={`maliyet-item-input-${it.id}`}
+                            />
+                          </View>
+                        );
+                      })
+                    )}
                   </ScrollView>
                   {anyEntered && (
                     <View style={s.maliyetSummaryBox}>
@@ -797,6 +802,12 @@ export default function HistoryScreen() {
             <Text style={s.menuTitle}>{t('history.s030')}</Text>
             <Text style={s.confirmBody}>
               {t('history.s031')}</Text>
+            {!!rejectConfirmFor && tahsilat.some((t2) => t2.quoteId === rejectConfirmFor && t2.tur === 'tahsilat') && (
+              <View style={s.realPaymentWarnBox}>
+                <Ionicons name="alert-circle" size={16} color={theme.colors.red} />
+                <Text style={s.realPaymentWarnText}>{t('history.s056')}</Text>
+              </View>
+            )}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
               <TouchableOpacity
                 style={[s.confirmBtn, s.confirmBtnGhost]}
@@ -951,6 +962,9 @@ const s = StyleSheet.create({
   itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
   itemMaliyetSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.navy, width: 90, textAlign: 'center' },
+  ekstraMaliyetSectionLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 },
+  realPaymentWarnBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: theme.colors.redSoft, borderRadius: 10, padding: 10, marginTop: 8, width: '100%' },
+  realPaymentWarnText: { flex: 1, fontSize: 11.5, fontWeight: '700', color: theme.colors.red, lineHeight: 16 },
   ekstraMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   ekstraMaliyetAciklamaInput: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12.5, color: theme.colors.navy },
   ekstraMaliyetAddBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, marginTop: 8 },

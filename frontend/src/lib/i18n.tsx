@@ -521,6 +521,9 @@ const tr: Dict = {
     s051: 'Açıklama (örn. Nakliye)',
     s052: 'Teklifi Onayla',
     s053: 'Bu teklifi onaylarsan, müşteri için Tahsilat sayfasında otomatik bir borç kaydı oluşturulacak (kasaya alacak olarak işlenecek). Yanlışlıkla onaylamadığından emin ol.',
+    s054: 'Toplam olarak gir (kalem kalem girmek zorunda değilsin)',
+    s055: 'Ya da kalem kalem gir',
+    s056: 'Bu teklife gerçek ödeme kaydı işlenmiş. Reddedersen bu ödeme kayıtları ve karşılık gelen Kasa satırları da kalıcı olarak silinecek.',
   },
   join: {
     s001: 'Davet bilgisi alınamadı',
@@ -1738,6 +1741,9 @@ const en: Dict = {
     s051: 'Description (e.g. Shipping)',
     s052: 'Approve Quote',
     s053: "If you approve this quote, an automatic debt record will be created for the customer in Collections (recorded as a receivable). Make sure you're not approving it by mistake.",
+    s054: "Enter a total (you don't have to enter each item separately)",
+    s055: 'Or enter each item separately',
+    s056: 'A real payment has been recorded against this quote. If you reject it, those payment records and the matching Cashbook entries will also be permanently deleted.',
   },
   join: {
     s001: 'Could not retrieve invitation information',
@@ -2955,6 +2961,9 @@ const it: Dict = {
     s051: 'Descrizione (es. Spedizione)',
     s052: 'Approva Preventivo',
     s053: 'Se approvi questo preventivo, verrà creato automaticamente un debito per il cliente in Incassi (registrato come credito). Assicurati di non approvarlo per errore.',
+    s054: 'Inserisci un totale (non è necessario inserire ogni articolo separatamente)',
+    s055: 'Oppure inserisci ogni articolo separatamente',
+    s056: 'È stato registrato un pagamento reale per questo preventivo. Se lo rifiuti, anche questi pagamenti e le relative voci di Cassa verranno eliminati definitivamente.',
   },
   join: {
     s001: "Impossibile recuperare i dati dell'invito",

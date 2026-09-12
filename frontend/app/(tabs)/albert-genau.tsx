@@ -317,22 +317,26 @@ export default function AlbertGenauScreen() {
       ) : null}
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Albert Genau Fiyat Hesaplama</Text>
-        {showHamburger ? (
-          <TouchableOpacity
-            onPress={() => setDrawerVisible(true)}
-            style={s.headerBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            testID="hamburger-btn"
-          >
-            <Ionicons name="menu" size={22} color={theme.colors.text} />
+        <View style={s.headerLeftGroup}>
+          {showHamburger ? (
+            // Diğer ekranlardaki (TopHeader) yerleşimle tutarlı olsun diye
+            // hamburger menüsü solda -- kullanıcı "3 çizgi neden solda değil"
+            // diye bildirdi.
+            <TouchableOpacity
+              onPress={() => setDrawerVisible(true)}
+              style={s.headerBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              testID="hamburger-btn"
+            >
+              <Ionicons name="menu" size={22} color={theme.colors.text} />
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </TouchableOpacity>
-        ) : (
-          <View style={s.headerBtn} />
-        )}
+        </View>
+        <Text style={s.headerTitle} numberOfLines={1}>Albert Genau Fiyat Hesaplama</Text>
+        <View style={[s.headerBtn, showHamburger && { width: 80 }]} />
       </View>
       <View style={s.divider} />
 
@@ -684,6 +688,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerLeftGroup: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   contentWrap: { width: '100%', maxWidth: 520, alignSelf: 'center' },

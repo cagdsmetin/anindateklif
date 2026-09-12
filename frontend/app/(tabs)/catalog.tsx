@@ -150,6 +150,16 @@ function sheetToRows(wb: XLSX.WorkBook): string[][] {
 
 const MAX_CATALOG_FILE_BYTES = 15 * 1024 * 1024; // 15MB — see backend MAX_CATALOG_FILE_BASE64_CHARS
 
+// Aynı Excel/CSV fiyat listesi zam sonrası tekrar yüklendiğinde backend
+// artık aynı ürün adıyla eşleşen kalemleri güncelliyor, kalanları yeni
+// ekliyor (bkz. server.py /catalog/bulk) -- bu ikisini ayrı ayrı gösterir.
+function bulkResultMessage(createdCount: number, updatedCount: number): string {
+  const parts: string[] = [];
+  if (updatedCount > 0) parts.push(`${updatedCount} ürünün fiyatı güncellendi`);
+  if (createdCount > 0) parts.push(`${createdCount} yeni ürün eklendi`);
+  return parts.length ? parts.join(', ') : 'Değişiklik yok';
+}
+
 function fmtFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -475,8 +485,8 @@ export default function CatalogScreen() {
       return;
     }
     try {
-      await bulkAddCatalog(items);
-      showToast(`${items.length} ürün eklendi`);
+      const { createdCount, updatedCount } = await bulkAddCatalog(items);
+      showToast(bulkResultMessage(createdCount, updatedCount));
       setBulkText('');
       setShowBulk(false);
     } catch (e: any) {
@@ -533,8 +543,8 @@ export default function CatalogScreen() {
         showToast(t('catalog.s020'));
         return;
       }
-      await bulkAddCatalog(items);
-      showToast(`${items.length} ürün dosyadan içe aktarıldı`);
+      const { createdCount, updatedCount } = await bulkAddCatalog(items);
+      showToast(bulkResultMessage(createdCount, updatedCount));
       setBulkText('');
       setShowBulk(false);
     } catch (e: any) {

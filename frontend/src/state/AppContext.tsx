@@ -22,7 +22,7 @@ type Ctx = {
   addCatalogItem: (data: Partial<CatalogItemT>) => Promise<void>;
   updateCatalogItem: (id: string, data: Partial<CatalogItemT>) => Promise<void>;
   deleteCatalogItem: (id: string) => Promise<void>;
-  bulkAddCatalog: (items: Partial<CatalogItemT>[]) => Promise<void>;
+  bulkAddCatalog: (items: Partial<CatalogItemT>[]) => Promise<{ createdCount: number; updatedCount: number }>;
   kasa: KasaEntryT[];
   reloadKasa: () => Promise<void>;
   addKasaEntry: (data: Partial<KasaEntryT>) => Promise<void>;
@@ -399,7 +399,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [reloadTahsilat]);
 
   const bulkAddCatalog = useCallback(async (items: Partial<CatalogItemT>[]) => {
-    if (!activeCompanyId) return;
+    if (!activeCompanyId) return { createdCount: 0, updatedCount: 0 };
     const payload = items.map((it) => ({
       companyId: activeCompanyId,
       kategori: it.kategori || 'Genel',
@@ -409,8 +409,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       birimFiyat: Number(it.birimFiyat) || 0,
       paraBirimi: it.paraBirimi || 'USD',
     }));
-    await api.bulkCreateCatalog(activeCompanyId, payload);
+    // Backend artik ayni urunAdi'yla eslesen kalemleri COKALTMAK yerine
+    // fiyatini GUNCELLIYOR (ayni Excel/CSV zam sonrasi tekrar yuklendiginde),
+    // bu yuzden createdCount/updatedCount donuyor -- catalog.tsx bunu
+    // kullaniciya 'X guncellendi, Y yeni eklendi' seklinde gosterir.
+    const res = await api.bulkCreateCatalog(activeCompanyId, payload);
     await reloadCatalog();
+    return { createdCount: res?.createdCount ?? items.length, updatedCount: res?.updatedCount ?? 0 };
   }, [activeCompanyId, reloadCatalog]);
 
   const deleteCustomer = useCallback(async (id: string) => {

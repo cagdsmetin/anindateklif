@@ -1303,6 +1303,15 @@ class CatalogBulkCreate(BaseModel):
     items: List[CatalogItemCreate]
 
 
+class CatalogBulkResult(BaseModel):
+    """/catalog/bulk yaniti -- urunAdi eslesen kalemler guncellenir, geri
+    kalanlar yeni eklenir; frontend createdCount/updatedCount ile kullaniciya
+    'X guncellendi, Y yeni eklendi' gibi bir ozet gosterebilir."""
+    items: List[CatalogItem]
+    createdCount: int
+    updatedCount: int
+
+
 ALLOWED_CATALOG_FILE_MIME_RE = re.compile(
     r'^data:(application/pdf|image/(png|jpe?g|webp));base64,[A-Za-z0-9+/]+=*$'
 )
@@ -2293,18 +2302,47 @@ async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_curre
     return obj
 
 
-@api_router.post("/catalog/bulk", response_model=List[CatalogItem])
+@api_router.post("/catalog/bulk", response_model=CatalogBulkResult)
 async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_current_user)):
     _require_owner(user)
     await _own_company(user, payload.companyId)
-    created = []
+    # Ayni fiyat listesi (Excel/CSV) -- tablo duzeni aynen kalip sadece
+    # fiyatlar zam gorunce -- Katalog'dan tekrar yuklendiginde, ayni urun
+    # adiyla ZATEN VAR OLAN kalemi coklamak yerine sadece fiyat/birim/
+    # aciklama/kategori bilgisini GUNCELLER. Boylece Teklif ekraninda o
+    # urun secildiginde hesaplama artik yeni yuklenen fiyattan devam eder.
+    # Eslesme, ayni firma icinde urunAdi'nin (bosluk kirpilmis, kucuk harfe
+    # cevrilmis) tekil oldugu varsayimiyla yapilir.
+    existing_docs = await db.catalog.find(
+        {"companyId": payload.companyId, "userId": user["user_id"]}, {"_id": 0}
+    ).to_list(5000)
+    existing_by_name: Dict[str, dict] = {}
+    for doc in existing_docs:
+        key = (doc.get("urunAdi") or "").strip().casefold()
+        if key and key not in existing_by_name:
+            existing_by_name[key] = doc
+
+    result: List[CatalogItem] = []
+    created_count = 0
+    updated_count = 0
     for it in payload.items:
         d = it.dict()
         d["companyId"] = payload.companyId
-        obj = CatalogItem(userId=user["user_id"], **d)
-        await db.catalog.insert_one(obj.dict())
-        created.append(obj)
-    return created
+        key = (d.get("urunAdi") or "").strip().casefold()
+        match = existing_by_name.get(key) if key else None
+        if match:
+            updated_doc = {**match, **d}
+            await db.catalog.replace_one({"id": match["id"], "userId": user["user_id"]}, updated_doc)
+            result.append(CatalogItem(**updated_doc))
+            updated_count += 1
+        else:
+            obj = CatalogItem(userId=user["user_id"], **d)
+            await db.catalog.insert_one(obj.dict())
+            if key:
+                existing_by_name[key] = obj.dict()
+            result.append(obj)
+            created_count += 1
+    return CatalogBulkResult(items=result, createdCount=created_count, updatedCount=updated_count)
 
 
 @api_router.put("/catalog/{item_id}", response_model=CatalogItem)

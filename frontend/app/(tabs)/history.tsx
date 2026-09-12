@@ -20,7 +20,7 @@ import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, QuoteT, RatesT, fetchQuoteExcelBytes } from '@/src/lib/api';
+import { api, QuoteT, QuoteEkstraMaliyetT, RatesT, fetchQuoteExcelBytes } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canShareFilesWeb, openWhatsAppChat } from '@/src/lib/whatsapp';
@@ -52,7 +52,7 @@ const PENDING_FILTER = '__bekleyen__';
 
 export default function HistoryScreen() {
   const { t, lang } = useLanguage();
-  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest } = useApp();
+  const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, updateQuoteEkstraMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest } = useApp();
   const { user: me } = useAuth();
   // Teklif sahiplik/onay sistemi: bana (bu tekliflerin gerçek sahibine) gelen,
   // henüz yanıtlanmamış düzenleme onay istekleri -- bkz. teklif.tsx'teki kilit.
@@ -74,6 +74,10 @@ export default function HistoryScreen() {
   // geri alınamaz bir işlem olduğu için sadece firma sahibi yapabilsin ve
   // öncesinde bir uyarı ekranından geçsin.
   const [rejectConfirmFor, setRejectConfirmFor] = useState<string | null>(null);
+  // Bir teklifi "Onaylandı" durumuna geçirmek Tahsilat'a otomatik bir borç
+  // kaydı düşürüyor (kasaya alacak olarak işleniyor) -- kullanıcı yanlışlıkla
+  // onaylamasın diye burada da bir uyarı ekranından geçiriyoruz.
+  const [approveConfirmFor, setApproveConfirmFor] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
@@ -85,6 +89,11 @@ export default function HistoryScreen() {
   // değerleri (virgüllü, henüz sayıya çevrilmemiş). Modal açılırken quote'un
   // kalemlerindeki mevcut maliyet değerleriyle dolduruluyor.
   const [maliyetItemInputs, setMaliyetItemInputs] = useState<Record<string, string>>({});
+  // Kaleme bağlı olmayan, kullanıcının doğrudan "açıklama + fiyat" girip
+  // serbestçe ekleyip çıkarabildiği ek maliyet satırları -- tutar değeri
+  // virgüllü metin olarak tutuluyor (yukarıdaki kalem inputlarıyla tutarlı).
+  const [ekstraMaliyetRows, setEkstraMaliyetRows] = useState<{ id: string; aciklama: string; tutar: string }[]>([]);
+  const newEkstraMaliyetId = () => 'em-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   const [waMenuFor, setWaMenuFor] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [rates, setRates] = useState<RatesT | null>(null);
@@ -480,6 +489,9 @@ export default function HistoryScreen() {
                     if (it.maliyet != null) init[it.id] = String(it.maliyet).replace('.', ',');
                   });
                   setMaliyetItemInputs(init);
+                  setEkstraMaliyetRows((quote.ekstraMaliyetler || []).map((e) => ({
+                    id: e.id, aciklama: e.aciklama || '', tutar: e.tutar ? String(e.tutar).replace('.', ',') : '',
+                  })));
                 }}
                 testID={`maliyet-${quote.id}`}
               >
@@ -593,6 +605,7 @@ export default function HistoryScreen() {
               const cc = statusColor(st);
               const targetQuote = quotes.find((q) => q.id === statusMenuFor);
               const isRejectingApproved = targetQuote?.durum === 'Onaylandı' && st === 'Reddedildi';
+              const isApprovingQuote = st === 'Onaylandı' && targetQuote?.durum !== 'Onaylandı';
               if (isRejectingApproved && isStaffUser) {
                 return (
                   <TouchableOpacity
@@ -612,6 +625,13 @@ export default function HistoryScreen() {
                     // Geri alınamaz + Tahsilat borcunu iptal eden bir işlem --
                     // doğrudan uygulamak yerine önce uyarı ekranı gösteriyoruz.
                     setRejectConfirmFor(statusMenuFor);
+                    setStatusMenuFor(null);
+                    return;
+                  }
+                  if (isApprovingQuote) {
+                    // Onaylamak Tahsilat'a otomatik borç kaydı düşürüyor --
+                    // yanlışlıkla onaylamayı önlemek için önce uyarı gösteriyoruz.
+                    setApproveConfirmFor(statusMenuFor);
                     setStatusMenuFor(null);
                     return;
                   }
@@ -636,12 +656,18 @@ export default function HistoryScreen() {
               const activeQuote = quotes.find((q) => q.id === maliyetFor);
               if (!activeQuote) return null;
               const items = activeQuote.items || [];
-              const total = items.reduce((sum, it) => {
+              const itemsTotal = items.reduce((sum, it) => {
                 const raw = maliyetItemInputs[it.id];
                 const n = raw != null ? Number(raw.replace(',', '.')) : NaN;
                 return sum + (isNaN(n) ? 0 : n);
               }, 0);
-              const anyEntered = items.some((it) => (maliyetItemInputs[it.id] || '').trim() !== '');
+              const ekstraTotal = ekstraMaliyetRows.reduce((sum, r) => {
+                const n = Number((r.tutar || '').replace(',', '.'));
+                return sum + (isNaN(n) ? 0 : n);
+              }, 0);
+              const total = itemsTotal + ekstraTotal;
+              const anyEntered = items.some((it) => (maliyetItemInputs[it.id] || '').trim() !== '')
+                || ekstraMaliyetRows.some((r) => r.aciklama.trim() !== '' || (r.tutar || '').trim() !== '');
               const kar = activeQuote.genelToplam - total;
               return (
                 <>
@@ -670,6 +696,42 @@ export default function HistoryScreen() {
                         );
                       })
                     )}
+                    {ekstraMaliyetRows.map((row) => (
+                      <View key={row.id} style={s.ekstraMaliyetRow}>
+                        <TextInput
+                          style={s.ekstraMaliyetAciklamaInput}
+                          placeholder={t('history.s051')}
+                          placeholderTextColor="#94a3b8"
+                          value={row.aciklama}
+                          onChangeText={(txt) => setEkstraMaliyetRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, aciklama: txt } : r)))}
+                          testID={`ekstra-maliyet-aciklama-${row.id}`}
+                        />
+                        <TextInput
+                          style={s.itemMaliyetInput}
+                          keyboardType="decimal-pad"
+                          placeholder="0,00"
+                          placeholderTextColor="#94a3b8"
+                          value={row.tutar}
+                          onChangeText={(txt) => setEkstraMaliyetRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tutar: txt.replace(/[^0-9,]/g, '') } : r)))}
+                          testID={`ekstra-maliyet-tutar-${row.id}`}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setEkstraMaliyetRows((prev) => prev.filter((r) => r.id !== row.id))}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          testID={`ekstra-maliyet-remove-${row.id}`}
+                        >
+                          <Ionicons name="close-circle" size={18} color={theme.colors.red} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={s.ekstraMaliyetAddBtn}
+                      onPress={() => setEkstraMaliyetRows((prev) => [...prev, { id: newEkstraMaliyetId(), aciklama: '', tutar: '' }])}
+                      testID="ekstra-maliyet-add"
+                    >
+                      <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
+                      <Text style={s.ekstraMaliyetAddText}>{t('history.s050')}</Text>
+                    </TouchableOpacity>
                   </ScrollView>
                   {anyEntered && (
                     <View style={s.maliyetSummaryBox}>
@@ -684,7 +746,11 @@ export default function HistoryScreen() {
                         for (const it of items) {
                           if (it.maliyet != null) await updateQuoteItemMaliyet(activeQuote.id, it.id, null);
                         }
+                        if ((activeQuote.ekstraMaliyetler || []).length > 0) {
+                          await updateQuoteEkstraMaliyet(activeQuote.id, []);
+                        }
                         setMaliyetItemInputs({});
+                        setEkstraMaliyetRows([]);
                         setMaliyetFor(null);
                       }}
                       testID="maliyet-clear"
@@ -700,6 +766,14 @@ export default function HistoryScreen() {
                           const current = it.maliyet != null ? it.maliyet : null;
                           if (n !== current) await updateQuoteItemMaliyet(activeQuote.id, it.id, n);
                         }
+                        const cleanedEkstra: QuoteEkstraMaliyetT[] = ekstraMaliyetRows
+                          .filter((r) => r.aciklama.trim() !== '' || (r.tutar || '').trim() !== '')
+                          .map((r) => ({
+                            id: r.id,
+                            aciklama: r.aciklama.trim(),
+                            tutar: (() => { const n = Number((r.tutar || '').replace(',', '.')); return isNaN(n) ? 0 : n; })(),
+                          }));
+                        await updateQuoteEkstraMaliyet(activeQuote.id, cleanedEkstra);
                         setMaliyetFor(null);
                       }}
                       testID="maliyet-save"
@@ -747,6 +821,45 @@ export default function HistoryScreen() {
                 testID="reject-approved-confirm"
               >
                 <Text style={s.confirmBtnDangerText}>{t('history.s033')}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!approveConfirmFor} transparent animationType="fade" onRequestClose={() => setApproveConfirmFor(null)}>
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setApproveConfirmFor(null)}>
+          <TouchableOpacity activeOpacity={1} style={s.confirmBox} onPress={(e) => e.stopPropagation()}>
+            <View style={[s.confirmIconWrap, { backgroundColor: theme.colors.primarySoft }]}>
+              <Ionicons name="warning" size={22} color={theme.colors.primary} />
+            </View>
+            <Text style={s.menuTitle}>{t('history.s052')}</Text>
+            <Text style={s.confirmBody}>
+              {t('history.s053')}</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                style={[s.confirmBtn, s.confirmBtnGhost]}
+                onPress={() => setApproveConfirmFor(null)}
+                testID="approve-quote-cancel"
+              >
+                <Text style={s.confirmBtnGhostText}>{t('history.s004')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.confirmBtn, { backgroundColor: theme.colors.primary }]}
+                onPress={async () => {
+                  if (approveConfirmFor) {
+                    try {
+                      await updateQuoteStatus(approveConfirmFor, 'Onaylandı');
+                      showToast(t('history.s029'));
+                    } catch (e: any) {
+                      showToast('Hata: ' + (e?.message || ''));
+                    }
+                  }
+                  setApproveConfirmFor(null);
+                }}
+                testID="approve-quote-confirm"
+              >
+                <Text style={s.confirmBtnDangerText}>{t('history.s048')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -838,6 +951,10 @@ const s = StyleSheet.create({
   itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
   itemMaliyetSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.navy, width: 90, textAlign: 'center' },
+  ekstraMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  ekstraMaliyetAciklamaInput: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12.5, color: theme.colors.navy },
+  ekstraMaliyetAddBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, marginTop: 8 },
+  ekstraMaliyetAddText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   maliyetSummaryBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, gap: 4, width: '100%' },
   maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy, textAlign: 'right' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },

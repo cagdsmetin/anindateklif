@@ -1542,6 +1542,11 @@ class Quote(BaseModel):
     kdvTutar: float = 0
     genelToplam: float = 0
     maliyet: Optional[float] = None
+    # Kaleme bağlı olmayan, kullanıcının serbestçe "açıklama + fiyat" olarak
+    # ekleyip çıkarabildiği ek maliyet satırları (örn. nakliye, ekstra
+    # işçilik). Kalem bazlı maliyetlerin (items[].maliyet) yanına eklenir,
+    # onların yerine geçmez -- bkz. _recompute_quote_maliyet.
+    ekstraMaliyetler: List[Dict[str, Any]] = Field(default_factory=list)
     # Bu teklifi GERÇEKTE kim oluşturdu (Quote.userId firma-paylaşımlı/ortak
     # bir kimliktir -- personel de sahip de aynı userId altında saklanır --
     # bu yüzden ekip içi düzenleme izni burada ayrıca tutulan gerçek
@@ -1590,6 +1595,18 @@ class QuoteMaliyetUpdate(BaseModel):
 class QuoteItemMaliyetUpdate(BaseModel):
     itemId: str
     maliyet: Optional[float] = None
+
+
+class QuoteEkstraMaliyetItem(BaseModel):
+    id: str
+    aciklama: str = ""
+    tutar: float = 0
+
+
+class QuoteEkstraMaliyetUpdate(BaseModel):
+    # Her seferinde tüm listeyi gönderip yerine yazıyoruz (ekle/çıkar/güncelle
+    # hepsi aynı uçtan) -- basit ve tutarlı tutmak için.
+    ekstraMaliyetler: List[QuoteEkstraMaliyetItem] = Field(default_factory=list)
 
 
 # Bir ekip üyesi başka bir üyenin oluşturduğu teklifi düzenlemek isterse,
@@ -3259,17 +3276,52 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
         # müşteriden gerçekten para geldiğinde (Tahsilat ekranından "tahsilat"
         # kaydı girildiğinde, bkz. create_tahsilat_entry) otomatik eklenir.
 
-    # Onayın tam tersi: teklif "Reddedildi" durumuna geçerse, bu teklif için
-    # otomatik oluşturulmuş olan borç kaydını iptal et (sil). Teklif hiç
-    # onaylanmadıysa zaten böyle bir kayıt yoktur, hiçbir şey silinmez.
+    # Onayın tam tersi: teklif "Reddedildi" durumuna geçerse, bu teklife bağlı
+    # TÜM Tahsilat kayıtlarını iptal et (sil) -- hem otomatik oluşan borç
+    # (tur="borc") hem de kullanıcının bu teklif için elle girdiği gerçek
+    # ödeme kayıtları (tur="tahsilat"). Gerçek bir ödeme kaydı Kasa'ya da bir
+    # gelir satırı yazmış olabilir (bkz. create_tahsilat_entry) -- yanlışlıkla
+    # onaylanan bir teklif reddedilince bu kasa kaydı da asılı kalmasın diye
+    # önce ilişkili tahsilat id'lerini bulup buna bağlı Kasa satırlarını, sonra
+    # da tahsilat kayıtlarının kendisini siliyoruz. Teklif hiç onaylanmadıysa
+    # zaten böyle bir kayıt yoktur, hiçbir şey silinmez.
     if payload.durum == "Reddedildi" and previous_durum != "Reddedildi":
+        linked_tahsilat_ids = [
+            t["id"] async for t in db.tahsilat.find(
+                {"userId": user["user_id"], "quoteId": quote_id}, {"_id": 0, "id": 1}
+            )
+        ]
+        if linked_tahsilat_ids:
+            await db.kasa.delete_many({
+                "userId": user["user_id"],
+                "tahsilatId": {"$in": linked_tahsilat_ids},
+            })
+        await db.kasa.delete_many({
+            "userId": user["user_id"],
+            "quoteId": quote_id,
+        })
         await db.tahsilat.delete_many({
             "userId": user["user_id"],
             "quoteId": quote_id,
-            "tur": "borc",
         })
 
     return Quote(**doc)
+
+
+def _recompute_quote_maliyet(doc: Dict[str, Any]) -> None:
+    """Quote.maliyet toplamini, kalem bazli girilen maliyetler (items[].maliyet)
+    ile kaleme bagli olmayan serbest ek maliyet satirlarinin (ekstraMaliyetler --
+    kullanicinin dogrudan acikama+fiyat olarak ekledigi nakliye/iscilik vb.
+    satirlar) toplami olarak yeniden hesaplar. Hicbiri girilmemisse maliyet
+    opsiyonel kabul edilip None birakilir."""
+    items = doc.get("items", [])
+    entered_item_costs = [it.get("maliyet") for it in items if it.get("maliyet") is not None]
+    ekstra_raw = doc.get("ekstraMaliyetler") or []
+    ekstra = [e for e in ekstra_raw if (e.get("aciklama") or "").strip() or (e.get("tutar") or 0)]
+    if entered_item_costs or ekstra:
+        doc["maliyet"] = sum(entered_item_costs) + sum((e.get("tutar") or 0) for e in ekstra)
+    else:
+        doc["maliyet"] = None
 
 
 @api_router.patch("/quotes/{quote_id}/maliyet", response_model=Quote)
@@ -3305,8 +3357,25 @@ async def update_quote_item_maliyet(quote_id: str, payload: QuoteItemMaliyetUpda
     if not found:
         raise HTTPException(404, "Quote item not found")
     doc["items"] = items
-    entered = [it.get("maliyet") for it in items if it.get("maliyet") is not None]
-    doc["maliyet"] = sum(entered) if entered else None
+    _recompute_quote_maliyet(doc)
+    doc["updatedAt"] = utc_now_iso()
+    await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+    return Quote(**doc)
+
+
+@api_router.patch("/quotes/{quote_id}/ekstra-maliyet", response_model=Quote)
+async def update_quote_ekstra_maliyet(quote_id: str, payload: QuoteEkstraMaliyetUpdate, user=Depends(get_current_user)):
+    """Kullanıcının teklif kalemlerine bağlı olmadan, doğrudan serbestçe
+    "açıklama + fiyat" girip ekleyip çıkarabildiği ek maliyet satırları
+    (örn. nakliye, ekstra işçilik). Kalem bazlı maliyetlerin
+    (update_quote_item_maliyet) yerine değil yanına eklenir -- her ikisi de
+    _recompute_quote_maliyet ile toplama dahil edilir. İstek her seferinde
+    güncel listenin tamamını gönderir, biz de olduğu gibi yerine yazarız."""
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Quote not found")
+    doc["ekstraMaliyetler"] = [e.dict() for e in payload.ekstraMaliyetler]
+    _recompute_quote_maliyet(doc)
     doc["updatedAt"] = utc_now_iso()
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
     return Quote(**doc)

@@ -305,6 +305,8 @@ export const api = {
     req(`/quotes/${id}/maliyet`, { method: 'PATCH', body: JSON.stringify({ maliyet }) }),
   updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) =>
     req(`/quotes/${id}/item-maliyet`, { method: 'PATCH', body: JSON.stringify({ itemId, maliyet }) }),
+  updateQuoteEkstraMaliyet: (id: string, ekstraMaliyetler: QuoteEkstraMaliyetT[]) =>
+    req(`/quotes/${id}/ekstra-maliyet`, { method: 'PATCH', body: JSON.stringify({ ekstraMaliyetler }) }),
   deleteQuote: (id: string) => req(`/quotes/${id}`, { method: 'DELETE' }),
   listTrashedQuotes: (companyId: string) => req(`/quotes/${companyId}/trash`),
   restoreQuote: (id: string) => req(`/quotes/${id}/restore`, { method: 'POST' }),
@@ -678,6 +680,10 @@ export type QuoteItemT = {
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };
 
+// Kaleme bağlı olmayan, kullanıcının serbestçe "açıklama + fiyat" olarak
+// ekleyip çıkarabildiği ek maliyet satırı (örn. nakliye, ekstra işçilik).
+export type QuoteEkstraMaliyetT = { id: string; aciklama: string; tutar: number };
+
 export type QuoteT = {
   id: string;
   userId: string;
@@ -709,6 +715,7 @@ export type QuoteT = {
   kdvTutar: number;
   genelToplam: number;
   maliyet?: number | null;
+  ekstraMaliyetler?: QuoteEkstraMaliyetT[];
   createdByUserId?: string;
   createdByEmail?: string;
   createdByName?: string;

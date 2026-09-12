@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { usePathname } from 'expo-router';
-import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, QuoteEditRequestT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
+import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, QuoteEditRequestT, QuoteEkstraMaliyetT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -57,6 +57,7 @@ type Ctx = {
   updateQuoteStatus: (id: string, durum: string) => Promise<void>;
   updateQuoteMaliyet: (id: string, maliyet: number | null) => Promise<void>;
   updateQuoteItemMaliyet: (id: string, itemId: string, maliyet: number | null) => Promise<void>;
+  updateQuoteEkstraMaliyet: (id: string, ekstraMaliyetler: QuoteEkstraMaliyetT[]) => Promise<void>;
   // Teklif sahiplik/onay sistemi: başkasının oluşturduğu teklifi düzenlemek
   // için sahibinden onay istenir (bkz. history.tsx banner'ı, teklif.tsx kilidi).
   editRequests: QuoteEditRequestT[];
@@ -616,6 +617,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await reloadQuotes();
   }, [reloadQuotes]);
 
+  // Kaleme bağlı olmayan, kullanıcının serbestçe "açıklama + fiyat" olarak
+  // ekleyip çıkarabildiği ek maliyet satırları (örn. nakliye, ekstra işçilik)
+  // -- kalem bazlı maliyetlerin yanına eklenir, yerine geçmez.
+  const updateQuoteEkstraMaliyet = useCallback(async (id: string, ekstraMaliyetler: QuoteEkstraMaliyetT[]) => {
+    await api.updateQuoteEkstraMaliyet(id, ekstraMaliyetler);
+    await reloadQuotes();
+  }, [reloadQuotes]);
+
   // Bootstrap when user changes
   useEffect(() => {
     if (!user) {
@@ -796,6 +805,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         reloadQuotes,
         saveQuote,
         updateQuoteItemMaliyet,
+        updateQuoteEkstraMaliyet,
         deleteQuote,
         updateQuoteStatus,
         updateQuoteMaliyet,

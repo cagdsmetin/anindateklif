@@ -18,7 +18,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, fetchAlbertGenauExcelBytes } from '@/src/lib/api';
+import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, RatesT, fetchAlbertGenauExcelBytes } from '@/src/lib/api';
 import { bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
@@ -119,6 +119,27 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     api.albertGenauTypes().then(setMeta).catch(() => {});
   }, []);
+
+  // Satış fiyatının (₺) altında canlı kurla $ / € karşılığını göstermek için
+  // -- Geçmiş ekranındaki tutar kartlarıyla aynı desen (bkz. history.tsx
+  // cardEquiv). Kur verisi gelene kadar hiçbir şey gösterilmez.
+  const [rates, setRates] = useState<RatesT | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchRates = () => api.rates().then((r) => { if (!cancelled) setRates(r); }).catch(() => {});
+    fetchRates();
+    const id = setInterval(fetchRates, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const satisFiyatiEquiv = useMemo(() => {
+    if (!result || !rates) return null;
+    const try_ = result.satisFiyati;
+    const usd = rates.usd_try ? try_ / rates.usd_try : null;
+    const eur = rates.eur_try ? try_ / rates.eur_try : null;
+    if (usd == null && eur == null) return null;
+    return { usd, eur };
+  }, [result, rates]);
 
   const selectedTypeLabel = useMemo(
     () => meta.types.find((x) => x.id === tip)?.label || tip,
@@ -544,7 +565,17 @@ export default function AlbertGenauScreen() {
 
                 <View style={s.totalBox}>
                   <Text style={s.totalLabel}>SATIŞ FİYATI ({result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'})</Text>
-                  <Text style={s.totalValue}>₺{money(result.satisFiyati)}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.totalValue}>₺{money(result.satisFiyati)}</Text>
+                    {satisFiyatiEquiv ? (
+                      <Text style={s.totalValueEquiv}>
+                        {[
+                          satisFiyatiEquiv.usd != null ? `$ ${money(satisFiyatiEquiv.usd)}` : null,
+                          satisFiyatiEquiv.eur != null ? `€ ${money(satisFiyatiEquiv.eur)}` : null,
+                        ].filter(Boolean).join(' · ')}
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
 
                 <TouchableOpacity style={s.kalemlerToggle} onPress={onShowKalemler} testID="ag-show-kalemler">
@@ -663,6 +694,7 @@ const s = StyleSheet.create({
   totalBox: { backgroundColor: theme.colors.navy, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   totalLabel: { color: '#fff', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 },
   totalValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  totalValueEquiv: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', marginTop: 1 },
   kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, marginTop: 4 },
   kalemlerToggleText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary },
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.navy, borderRadius: 14, paddingVertical: 13, marginTop: 12 },

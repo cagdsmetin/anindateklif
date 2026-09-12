@@ -420,6 +420,21 @@ export default function EditorScreen() {
     }, 190);
   };
 
+  // Bir kalemi aynen kopyalar; kopya, orijinalin hemen altına eklenir ve
+  // otomatik olarak açılır (diğer kartlar #221 kuralı gereği daralır).
+  const duplicateItem = (id: string) => {
+    setItems((prev) => {
+      const idx = prev.findIndex((it) => it.id === id);
+      if (idx === -1) return prev;
+      const copy: QuoteItemT = { ...prev[idx], id: newItemId() };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      setExpandedItemId(copy.id);
+      return next;
+    });
+    showToast('Kalem kopyalandı');
+  };
+
   // Kalemi listede bir yukarı ya da bir aşağı taşır (sıralama düzenleme).
   const moveItem = (id: string, direction: 'up' | 'down') => {
     setItems((prev) => {
@@ -788,6 +803,7 @@ export default function EditorScreen() {
               onToggleExpand={() => setExpandedItemId((prev) => (prev === it.id ? null : it.id))}
               onChange={(patch) => updateItem(it.id, patch)}
               onRemove={() => removeItem(it.id)}
+              onDuplicate={() => duplicateItem(it.id)}
               onOpenSystemPicker={() => setShowSystemPicker(it.id)}
               onOpenSelectPicker={(fieldId, options, title) => setShowSelectPicker({ itemId: it.id, fieldId, options, title })}
               onUpdateSystemFieldValue={(fi, val) => updateSystemFieldValue(it.id, fi, val)}
@@ -1095,7 +1111,7 @@ export default function EditorScreen() {
 
 // ============ ITEM CARD ============
 function ItemCard({
-  item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
+  item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onDuplicate, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   item: QuoteItemT;
@@ -1106,6 +1122,7 @@ function ItemCard({
   onToggleExpand: () => void;
   onChange: (patch: Partial<QuoteItemT>) => void;
   onRemove: () => void;
+  onDuplicate?: () => void;
   onOpenSystemPicker: () => void;
   onOpenSelectPicker: (fieldId: string, options: string[], title: string) => void;
   onUpdateSystemFieldValue: (fieldIndex: number, value: string) => void;
@@ -1215,6 +1232,11 @@ function ItemCard({
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={itemStyles.linePrice}>{fmt(line, currency)}</Text>
+            {!!onDuplicate && (
+              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onDuplicate(); }} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }} testID={`duplicate-item-${idx}`}>
+                <Ionicons name="copy-outline" size={19} color={theme.colors.primary} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onRemove(); }} testID={`remove-item-${idx}`}>
               <Ionicons name="close-circle" size={20} color={theme.colors.red} />
             </TouchableOpacity>

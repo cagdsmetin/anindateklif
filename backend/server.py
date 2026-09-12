@@ -2539,7 +2539,8 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
 
     r += 1
     summary_rows = [
-        (f"Profil Grubu Toplam ({odeme_label})", result["profilGrubuToplam"]),
+        (f"Profil Grubu Toplam ({odeme_label})", result.get("profilGrubuToplamFiresiz", result["profilGrubuToplam"])),
+        (f"Profil Fire Payi (%{round((result.get('profilFireOrani') or 0) * 100)})", result.get("profilFireTutari", 0)),
         (f"Aksesuar Grubu Toplam ({odeme_label})", result["aksesuarGrubuToplam"]),
         ("Opsiyonel Toplam", result.get("opsiyonelToplam", 0)),
         (f"Malzeme Maliyeti Toplam ({odeme_label})", result["maliyetToplam"]),

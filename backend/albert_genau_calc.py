@@ -660,7 +660,18 @@ def calculate(
         profil, aksesuar, ctx = func(pb, genislik_mm, derinlik_mm, yukseklik_mm, **kwargs)
         orta_destek_key = 'F29'
 
-    profil_toplam = sum(k.total for k in profil)
+    # Profil (aluminyum) grubu maliyetine, gercek imalatta kacinilmaz kesim/
+    # islem firesi icin %10 ek maliyet eklenir -- kullanicinin paylastigi
+    # orijinal Excel'in TUM 5 sistem tipi analiz sayfasinda BIREBIR ayni
+    # formul dogrulanmistir: P21 = (C19*1.1 + C40*1) - ((...)*iskonto) yani
+    # "profil*1.1 + aksesuar*1" (bkz. hucre I41: "SISTEMIN TOPLAM FIRE
+    # BEDELI; PROFIL TUTARININ %10'U KADAR KABUL EDILEREK HESAPLANMISTIR.").
+    # Aksesuar grubuna VE opsiyonel (panel dolgu/LED/RGB) bloklarina fire
+    # UYGULANMAZ -- o bloklarin kendi Excel formullerinde (C49/C57/C66) fire
+    # carpani yoktur, dogrudan iskontoya tabi tutulurlar.
+    PROFIL_FIRE_ORANI = 0.10
+    profil_toplam_firesiz = sum(k.total for k in profil)
+    profil_toplam = profil_toplam_firesiz * (1 + PROFIL_FIRE_ORANI)
     aksesuar_toplam = sum(k.total for k in aksesuar)
 
     opsiyonel_kalemler = []
@@ -704,6 +715,9 @@ def calculate(
             'yukseklikMm': yukseklik_mm,
             'modulSayisi': ctx['C3'],
         },
+        'profilGrubuToplamFiresiz': round(profil_toplam_firesiz, 2),
+        'profilFireOrani': PROFIL_FIRE_ORANI,
+        'profilFireTutari': round(profil_toplam - profil_toplam_firesiz, 2),
         'profilGrubuToplam': round(profil_toplam, 2),
         'aksesuarGrubuToplam': round(aksesuar_toplam, 2),
         'opsiyonelToplam': round(opsiyonel_toplam, 2),

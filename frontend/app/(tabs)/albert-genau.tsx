@@ -478,8 +478,14 @@ export default function AlbertGenauScreen() {
 
                 <View style={s.breakdownRow}>
                   <Text style={s.breakdownLabel}>Profil Grubu</Text>
-                  <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplam)}</Text>
+                  <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplamFiresiz ?? result.profilGrubuToplam)}</Text>
                 </View>
+                {!!result.profilFireTutari && (
+                  <View style={s.breakdownRow}>
+                    <Text style={s.breakdownLabel}>Profil Fire Payı (%{Math.round((result.profilFireOrani ?? 0.1) * 100)})</Text>
+                    <Text style={s.breakdownValue}>₺{money(result.profilFireTutari)}</Text>
+                  </View>
+                )}
                 <View style={s.breakdownRow}>
                   <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
                   <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>

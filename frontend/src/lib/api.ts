@@ -768,6 +768,11 @@ export type AlbertGenauResultT = {
     yukseklikMm?: number | null;
     modulSayisi: number;
   };
+  // profilGrubuToplam, %10 fire payı dahil edilmiş nihai değerdir (bkz.
+  // profilGrubuToplamFiresiz -- fire eklenmeden önceki ham değer).
+  profilGrubuToplamFiresiz?: number;
+  profilFireOrani?: number;
+  profilFireTutari?: number;
   profilGrubuToplam: number;
   aksesuarGrubuToplam: number;
   opsiyonelToplam: number;

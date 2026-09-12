@@ -387,6 +387,25 @@ export async function fetchAlbertGenauExcelBytes(data: AlbertGenauCalculateInput
   return await res.arrayBuffer();
 }
 
+// Albert Genau hesap sonucuna göre otomatik üretilen teknik çizim (modül/kanat
+// şeması) -- ham PNG baytlarını döner, fetchAlbertGenauExcelBytes ile birebir
+// aynı desen.
+export async function fetchAlbertGenauDrawingBytes(data: AlbertGenauCalculateInputT): Promise<ArrayBuffer> {
+  const token = await getSessionToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE}/albert-genau/calculate/export-drawing`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new ApiError(`Teknik çizim indirilemedi (${res.status})`, 'http', res.status, body);
+  }
+  return await res.arrayBuffer();
+}
+
 // CSV export -- diğer .csv/.xlsx indirme uçları gibi (bkz. fetchQuoteExcelBytes)
 // ham metin/bayt döndüğü için standart `req()` JSON sarmalayıcısını kullanmaz.
 export async function fetchAlbertGenauPriceCsv(): Promise<string> {

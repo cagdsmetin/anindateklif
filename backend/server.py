@@ -2573,6 +2573,118 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
     )
 
 
+@api_router.post("/albert-genau/calculate/export-drawing")
+async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
+    """Excel'deki 'CIZIMLER' sayfasindaki modul semasina benzer, girilen
+    olculere gore otomatik uretilen basit bir teknik cizim -- PNG olarak
+    dondurulur ve frontend'de teklife ek (attachment) olarak eklenir.
+    Gercek CAD cizimi degil, dealer'a ve musteriye kac modul/kanat oldugunu
+    gosteren bir semadir."""
+    price_data = await _get_ag_price_data()
+    result = _run_ag_calculate(payload, price_data)
+    girdi = result["girdi"]
+
+    from PIL import Image, ImageDraw, ImageFont
+    from io import BytesIO
+
+    modul_sayisi = max(1, int(girdi.get("modulSayisi") or 1))
+    panel_sayisi = min(30, max(1, int(girdi.get("panelSayisiModul") or 1)))
+    genislik_mm = girdi.get("genislikMm") or 0
+    derinlik_mm = girdi.get("yapilabilirDerinlikMm") or girdi.get("derinlikMmGirilen") or 0
+
+    def _font(size: int, bold: bool = False):
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        ]
+        for path in candidates:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        return ImageFont.load_default()
+
+    font_title = _font(20, bold=True)
+    font_info = _font(15)
+    font_module = _font(22, bold=True)
+
+    PAD = 30
+    TITLE_H = 50
+    INFO_H = 34
+    MODULE_GAP = 12
+    MODULE_W = 240
+    aspect = (derinlik_mm / genislik_mm) if genislik_mm else 0.6
+    MODULE_H = int(max(260, min(460, MODULE_W * aspect * 1.6)))
+
+    # Cok modul varsa (>5) genisligi sikistirarak resmin cok buyumesini onle.
+    if modul_sayisi > 5:
+        MODULE_W = max(140, int(MODULE_W * 5 / modul_sayisi))
+
+    canvas_w = PAD * 2 + modul_sayisi * MODULE_W + (modul_sayisi - 1) * MODULE_GAP
+    canvas_h = PAD * 2 + TITLE_H + INFO_H + MODULE_H
+
+    img = Image.new("RGB", (canvas_w, canvas_h), "#FFFFFF")
+    d = ImageDraw.Draw(img)
+
+    # Dis cerceve + baslik kutusu
+    d.rectangle([2, 2, canvas_w - 3, canvas_h - 3], outline="#111827", width=2)
+    d.rectangle([2, 2, canvas_w - 3, TITLE_H], outline="#111827", width=2, fill="#1F2937")
+    title_text = "TEKNİK ÇİZİM VE DETAYLARI"
+    tb = d.textbbox((0, 0), title_text, font=font_title)
+    d.text(((canvas_w - (tb[2] - tb[0])) / 2, (TITLE_H - (tb[3] - tb[1])) / 2 - tb[1]), title_text, font=font_title, fill="#FFFFFF")
+
+    info_text = f"Genişlik: {genislik_mm:.0f} mm    Derinlik: {derinlik_mm:.0f} mm    Modül Sayısı: {modul_sayisi}"
+    ib = d.textbbox((0, 0), info_text, font=font_info)
+    d.text(((canvas_w - (ib[2] - ib[0])) / 2, TITLE_H + 8), info_text, font=font_info, fill="#374151")
+
+    y0 = TITLE_H + INFO_H
+    for i in range(modul_sayisi):
+        x0 = PAD + i * (MODULE_W + MODULE_GAP)
+        x1 = x0 + MODULE_W
+        y1 = y0 + MODULE_H
+
+        # Renkli "olcu kilavuzu" cercevesi -- orijinal Excel cizimindeki gibi
+        # her kenarda farkli renk (sadece gorsel referans, olcek disi).
+        d.line([x0, y0 + 4, x1, y0 + 4], fill="#DB2777", width=3)     # ust: magenta
+        d.line([x0, y1 - 4, x1, y1 - 4], fill="#2563EB", width=3)     # alt: mavi
+        d.line([x0 + 4, y0, x0 + 4, y1], fill="#16A34A", width=3)     # sol: yesil
+        d.line([x1 - 4, y0, x1 - 4, y1], fill="#0891B2", width=3)     # sag: camgobegi
+
+        # Ana govde
+        inset = 14
+        d.rectangle([x0 + inset, y0 + inset, x1 - inset, y1 - inset], outline="#111827", width=2)
+
+        # Kanat/lamel cizgileri
+        inner_pad = 26
+        ix0, iy0, ix1, iy1 = x0 + inner_pad, y0 + inner_pad, x1 - inner_pad, y1 - inner_pad
+        if panel_sayisi > 1 and iy1 > iy0:
+            step = (iy1 - iy0) / panel_sayisi
+            for k in range(1, panel_sayisi):
+                ly = iy0 + step * k
+                d.line([ix0, ly, ix1, ly], fill="#9CA3AF", width=1)
+            d.rectangle([ix0, iy0, ix1, iy1], outline="#0891B2", width=1)
+
+        # Kose baglanti (vida/kelepce) isaretleri
+        for cx, cy in [(x0 + inset, y0 + inset), (x1 - inset, y0 + inset), (x0 + inset, y1 - inset), (x1 - inset, y1 - inset)]:
+            d.rectangle([cx - 7, cy - 7, cx + 7, cy + 7], outline="#111827", fill="#E5E7EB", width=1)
+            d.line([cx - 4, cy - 4, cx + 4, cy + 4], fill="#111827", width=1)
+            d.line([cx - 4, cy + 4, cx + 4, cy - 4], fill="#111827", width=1)
+
+        label = f"MODUL {i + 1}"
+        lb = d.textbbox((0, 0), label, font=font_module)
+        d.text((x0 + (MODULE_W - (lb[2] - lb[0])) / 2, y0 + (MODULE_H - (lb[3] - lb[1])) / 2 - lb[1]), label, font=font_module, fill="#111827")
+
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    filename = f"albert-genau-{payload.tip}-cizim.png"
+    return StreamingResponse(
+        buf,
+        media_type="image/png",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @api_router.get("/albert-genau/items", response_model=List[AlbertGenauItem])
 async def list_albert_genau_items(companyId: str, user=Depends(get_current_user)):
     await _own_company(user, companyId)

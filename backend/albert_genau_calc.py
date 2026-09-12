@@ -714,6 +714,13 @@ def calculate(
             'yapilabilirDerinlikMm': ctx['E3'],
             'yukseklikMm': yukseklik_mm,
             'modulSayisi': ctx['C3'],
+            # Derinlige gore bir moduldeki kanat/lamel (panel) sayisi -- sadece
+            # teknik cizim onizlemesinde her modulun ic cizgi sayisini dogru
+            # gostermek icin eklendi (bkz. server.py'deki teknik cizim uc noktasi).
+            # ctx sozlugunde G3 saklanmadigi icin (bkz. yukaridaki _calc_* fonk.
+            # ctx = {...} satirlari), ayni deterministik fonksiyonu burada tekrar
+            # cagirmak -- pb.module_panel_count -- en guvenli yol.
+            'panelSayisiModul': pb.module_panel_count(genislik_mm, derinlik_mm)[1],
         },
         'profilGrubuToplamFiresiz': round(profil_toplam_firesiz, 2),
         'profilFireOrani': PROFIL_FIRE_ORANI,

@@ -70,6 +70,13 @@ type Ctx = {
   // shared between the editor, preview, and history screens so PDF merging is consistent.
   getQuoteAttachments: (quoteId: string) => AttachmentT[];
   setQuoteAttachments: (quoteId: string, atts: AttachmentT[]) => void;
+  // Henüz kaydedilmemiş (yeni oluşturulmakta olan) bir teklife, başka bir
+  // ekrandan (örn. Albert Genau otomatik teknik çizim) eklenmek istenen ek
+  // dosya için tek seferlik, session-only bekleme alanı -- teklif.tsx kendi
+  // yerel `attachments` state'ine alıp burayı temizler.
+  pendingNewQuoteAttachments: AttachmentT[];
+  addPendingNewQuoteAttachment: (att: AttachmentT) => void;
+  clearPendingNewQuoteAttachments: () => void;
   // Ekip Sohbeti: kaç okunmamış mesaj olduğu (WhatsApp Web tarzı yanıp sönen
   // menü göstergesi + tarayıcı bildirimi için) — bkz. aşağıdaki polling useEffect.
   teamUnreadTotal: number;
@@ -120,6 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [editRequests, setEditRequests] = useState<QuoteEditRequestT[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
+  const [pendingNewQuoteAttachments, setPendingNewQuoteAttachments] = useState<AttachmentT[]>([]);
   const [teamUnreadTotal, setTeamUnreadTotal] = useState(0);
   const pathname = usePathname();
   const notifiedKeysRef = useRef<Set<string>>(new Set());
@@ -132,6 +140,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setQuoteAttachments = useCallback((quoteId: string, atts: AttachmentT[]) => {
     if (!quoteId) return;
     setAttachmentsByQuoteId((prev) => ({ ...prev, [quoteId]: atts }));
+  }, []);
+  const addPendingNewQuoteAttachment = useCallback((att: AttachmentT) => {
+    setPendingNewQuoteAttachments((prev) => [...prev, att]);
+  }, []);
+  const clearPendingNewQuoteAttachments = useCallback(() => {
+    setPendingNewQuoteAttachments([]);
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -817,6 +831,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         showToast,
         getQuoteAttachments,
         setQuoteAttachments,
+        pendingNewQuoteAttachments,
+        addPendingNewQuoteAttachment,
+        clearPendingNewQuoteAttachments,
         teamUnreadTotal,
       }}
     >

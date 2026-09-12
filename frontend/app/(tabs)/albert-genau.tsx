@@ -18,8 +18,8 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, RatesT, fetchAlbertGenauExcelBytes } from '@/src/lib/api';
-import { bytesToBase64 } from '@/src/lib/pdf-merge';
+import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, RatesT, fetchAlbertGenauExcelBytes, fetchAlbertGenauDrawingBytes } from '@/src/lib/api';
+import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
 
@@ -60,7 +60,7 @@ function money(n: number) {
 export default function AlbertGenauScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, showToast, toast } = useApp();
+  const { activeCompany, showToast, toast, addPendingNewQuoteAttachment } = useApp();
   // Bu ekranın kendi geri-tuşlu üst çubuğu var (TopHeader değil), bu yüzden
   // masaüstü genişliğinde sidebar zaten (tabs)/_layout.tsx tarafından
   // gösteriliyor olsa da, dar/mobil genişlikte diğer ekranlardaki hamburger
@@ -250,6 +250,34 @@ export default function AlbertGenauScreen() {
       showToast(e?.message || 'Excel indirilemedi');
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Excel'in kendi "CIZIMLER" sayfasindaki modul semasina benzer, girilen
+  // olculere gore backend'de otomatik uretilen (PNG) teknik cizimi indirip
+  // -- fiziksel bir dosyaya kaydetmeden -- direkt data: URI'li bir ek
+  // (AttachmentT) olarak, henuz olusturulmamis teklife eklenmek uzere
+  // AppContext'teki bekleme alanina koyar (bkz. teklif.tsx'teki tuketici).
+  const [addingDrawing, setAddingDrawing] = useState(false);
+  const onAddDrawing = async () => {
+    if (!lastPayload || addingDrawing) return;
+    setAddingDrawing(true);
+    try {
+      const buf = await fetchAlbertGenauDrawingBytes(lastPayload);
+      const b64 = bytesToBase64(new Uint8Array(buf));
+      const att: AttachmentT = {
+        id: `ag-cizim-${Date.now()}`,
+        name: `albert-genau-${lastPayload.tip}-cizim.png`,
+        uri: `data:image/png;base64,${b64}`,
+        mime: 'image/png',
+        size: buf.byteLength,
+      };
+      addPendingNewQuoteAttachment(att);
+      showToast('Teknik çizim, teklife eklenmek üzere hazırlandı');
+    } catch (e: any) {
+      showToast(e?.message || 'Teknik çizim oluşturulamadı');
+    } finally {
+      setAddingDrawing(false);
     }
   };
 
@@ -597,6 +625,20 @@ export default function AlbertGenauScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                  style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
+                  onPress={onAddDrawing}
+                  disabled={addingDrawing}
+                  testID="ag-add-drawing"
+                >
+                  {addingDrawing ? <ActivityIndicator color={theme.colors.primary} /> : (
+                    <>
+                      <Ionicons name="image-outline" size={17} color={theme.colors.primary} />
+                      <Text style={s.drawingBtnText}>Teknik Çizim Ekle (Teklife PDF ek olarak eklenir)</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -700,6 +742,8 @@ const s = StyleSheet.create({
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.navy, borderRadius: 14, paddingVertical: 13, marginTop: 12 },
   excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1.5, borderColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16, marginTop: 12 },
   excelBtnText: { color: theme.colors.primary, fontSize: 13.5, fontWeight: '800' },
+  drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, marginTop: 10 },
+  drawingBtnText: { color: theme.colors.primary, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
   toast: { position: 'absolute', top: 8, alignSelf: 'center', backgroundColor: theme.colors.navy, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, zIndex: 9999, gap: 6, ...theme.shadow.md },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

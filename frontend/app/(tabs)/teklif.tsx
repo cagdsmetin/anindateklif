@@ -58,7 +58,7 @@ const DURUM_COLORS: Record<string, string> = {
 
 export default function EditorScreen() {
   const { t, lang } = useLanguage();
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests, pendingNewQuoteAttachments, clearPendingNewQuoteAttachments } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
   const saveNotesAsDefault = async () => {
@@ -228,6 +228,18 @@ export default function EditorScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.albertGenau]);
+
+  // Albert Genau ekranında "Teknik Çizim Ekle" ile hazırlanan otomatik çizim
+  // (henüz kaydedilmemiş bu teklife eklenmek üzere AppContext'te bekliyor) --
+  // buraya dönüldüğünde yerel `attachments` listesine katılır ve bekleme
+  // alanı temizlenir (bkz. src/state/AppContext.tsx pendingNewQuoteAttachments).
+  useEffect(() => {
+    if (pendingNewQuoteAttachments.length === 0) return;
+    setAttachments((prev) => [...prev, ...pendingNewQuoteAttachments]);
+    clearPendingNewQuoteAttachments();
+    showToast('Teknik çizim eklere eklendi');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingNewQuoteAttachments]);
 
   // `quotes` loads asynchronously (after `loading` already flips to false),
   // so the initial Teklif No may be numbered before today's quotes were

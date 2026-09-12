@@ -86,7 +86,25 @@ export default function AlbertGenauScreen() {
   // Girilen derinlik standart panel-adimina tam denk gelmediginde backend
   // 409 dondurur; kullaniciya alt (dar) veya ust (genis) standart derinlikten
   // birini secmesi icin bu bilgiyi sakliyoruz (bkz. onCalculate/onChooseDepth).
+  // Bu artik sadece bir GUVENLIK AGI -- normalde asagidaki liveDepthChoice
+  // (Hesapla'ya hic basmadan, derinlik yazilirken hesaplanan) devreye girer.
   const [depthChoice, setDepthChoice] = useState<{ floorMm: number; ceilMm: number; rawMm: number } | null>(null);
+
+  // Kullanici derinligi YAZARKEN (Hesapla'ya basmadan), Excel'deki gibi anlik
+  // olarak standart olcuye denk gelip gelmedigini kontrol eder. Backend'deki
+  // PriceBook.depth_choice ile BIREBIR ayni mantik -- tam eslesme varsa veya
+  // tablonun disindaysa null, degilse en yakin alt/ust standart degerleri.
+  const liveDepthChoice = useMemo(() => {
+    const vals = (meta.depthValuesMm || []).slice().sort((a, b) => a - b);
+    if (!vals.length) return null;
+    const raw = Number(derinlik.replace(',', '.'));
+    if (!raw || raw <= 0) return null;
+    if (vals.some((v) => Math.abs(v - raw) < 1e-6)) return null;
+    const floorCandidates = vals.filter((v) => v < raw);
+    const ceilCandidates = vals.filter((v) => v > raw);
+    if (!floorCandidates.length || !ceilCandidates.length) return null;
+    return { floorMm: Math.max(...floorCandidates), ceilMm: Math.min(...ceilCandidates), rawMm: raw };
+  }, [derinlik, meta.depthValuesMm]);
 
   useEffect(() => {
     api.albertGenauTypes().then(setMeta).catch(() => {});
@@ -151,6 +169,15 @@ export default function AlbertGenauScreen() {
   const onChooseDepth = (mm: number) => {
     setDepthChoice(null);
     onCalculate(mm);
+  };
+
+  // Derinlik henuz yazilirken (Hesapla'ya basmadan) gosterilen anlik secim
+  // kutusundan bir deger secildiginde -- sadece derinlik alanini o degere
+  // "snap"ler, otomatik hesaplama YAPMAZ (genislik/yukseklik gibi diger
+  // alanlar henuz doldurulmamis olabilir). Kullanici normal sekilde Hesapla'ya
+  // bastiginda artik tam eslesen bir derinlik ile calisir.
+  const onPickLiveDepth = (mm: number) => {
+    setDerinlik(String(mm));
   };
 
   const onShowKalemler = () => {
@@ -277,6 +304,29 @@ export default function AlbertGenauScreen() {
                 <NumField label="Genişlik" value={genislik} onChange={setGenislik} testID="ag-genislik" />
                 <NumField label="Derinlik" value={derinlik} onChange={setDerinlik} testID="ag-derinlik" />
               </View>
+              {liveDepthChoice && (
+                <View style={s.choiceBox}>
+                  <View style={s.choiceHeader}>
+                    <Ionicons name="help-circle" size={18} color={theme.colors.primary} />
+                    <Text style={s.choiceTitle}>Derinlik standart ölçüye tam denk gelmiyor</Text>
+                  </View>
+                  <Text style={s.choiceHint}>
+                    Girdiğiniz {liveDepthChoice.rawMm}mm için iki standart derinlikten birini seçin:
+                  </Text>
+                  <View style={s.row}>
+                    <TouchableOpacity style={s.choiceBtn} onPress={() => onPickLiveDepth(liveDepthChoice.floorMm)} testID="ag-depth-floor-live">
+                      <Text style={s.choiceBtnLabel}>Alt Ölçü</Text>
+                      <Text style={s.choiceBtnValue}>{liveDepthChoice.floorMm}mm</Text>
+                      <Text style={s.choiceBtnSub}>(dar, içeride kalır)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.choiceBtn} onPress={() => onPickLiveDepth(liveDepthChoice.ceilMm)} testID="ag-depth-ceil-live">
+                      <Text style={s.choiceBtnLabel}>Üst Ölçü</Text>
+                      <Text style={s.choiceBtnValue}>{liveDepthChoice.ceilMm}mm</Text>
+                      <Text style={s.choiceBtnSub}>(geniş, taşabilir)</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
               {needsHeight(tip) ? (
                 <NumField label="Yükseklik" value={yukseklik} onChange={setYukseklik} testID="ag-yukseklik" />
               ) : (

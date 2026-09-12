@@ -2422,8 +2422,16 @@ async def _get_ag_price_data() -> Dict[str, Any]:
 
 @api_router.get("/albert-genau/types")
 async def albert_genau_types(user=Depends(get_current_user)):
+    # depthValuesMm: standart panel-adimli derinlik tablosunun tüm degerleri --
+    # frontend, kullanici derinlik yazarken (Hesapla'ya basmadan) bu degerlerle
+    # karsilastirip tam denk gelmiyorsa alt/ust secim kutusunu HEMEN gösterebilsin
+    # (bkz. PriceBook.depth_choice ile ayni mantik, istemci tarafinda tekrarlanir).
+    price_data = await _get_ag_price_data()
+    base = price_data or ag_calc._DEFAULT_DATA
+    depth_values = sorted({float(v) for v in base["depth_table"].values()})
     return {"types": [{"id": t, "label": ag_calc.SYSTEM_TYPE_LABELS[t]} for t in ag_calc.SYSTEM_TYPES],
-            "finishes": list(ag_calc.FINISH_OPTIONS.keys())}
+            "finishes": list(ag_calc.FINISH_OPTIONS.keys()),
+            "depthValuesMm": depth_values}
 
 
 def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Optional[Dict[str, Any]]):

@@ -725,6 +725,10 @@ export type QuoteT = {
 export type AlbertGenauTypesResponseT = {
   types: { id: string; label: string }[];
   finishes: string[];
+  // Standart panel-adımlı derinlik tablosunun tüm değerleri (mm) -- frontend
+  // bunu kullanarak kullanıcı derinlik yazarken (Hesapla'ya basmadan) tam
+  // denk gelip gelmediğini anında kontrol edip alt/üst seçim kutusunu gösterir.
+  depthValuesMm?: number[];
 };
 
 export type AlbertGenauCalculateInputT = {

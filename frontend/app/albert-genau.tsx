@@ -72,6 +72,7 @@ export default function AlbertGenauScreen() {
   const [ledOption, setLedOption] = useState<'' | 'warm' | 'warm_rgb'>('');
   const [ledMidSupport, setLedMidSupport] = useState(false);
   const [kopuk, setKopuk] = useState(false);
+  const [odemeTipi, setOdemeTipi] = useState<'nakit' | 'kredi_karti'>('nakit');
   const [alisIskontoPct, setAlisIskontoPct] = useState('0');
   const [montajBedeli, setMontajBedeli] = useState('0');
   const [karMarjiPct, setKarMarjiPct] = useState('0');
@@ -123,6 +124,7 @@ export default function AlbertGenauScreen() {
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
       };
       const res = await api.albertGenauCalculate(payload);
       setResult(res);
@@ -282,6 +284,35 @@ export default function AlbertGenauScreen() {
               )}
             </View>
 
+            {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
+                ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
+                liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
+                tüm hesap (malzeme maliyeti, kar, satış fiyatı) değişir. */}
+            <View style={s.card}>
+              <Text style={s.sectionTitle}>Ödeme Tipi</Text>
+              <View style={s.payWrap}>
+                <TouchableOpacity
+                  style={[s.payPill, odemeTipi === 'nakit' && s.payPillActive]}
+                  onPress={() => { setOdemeTipi('nakit'); setResult(null); }}
+                  testID="ag-pay-nakit"
+                >
+                  <Ionicons name="cash-outline" size={16} color={odemeTipi === 'nakit' ? '#fff' : theme.colors.textMuted} />
+                  <Text style={[s.payPillText, odemeTipi === 'nakit' && s.payPillTextActive]}>Nakit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.payPill, odemeTipi === 'kredi_karti' && s.payPillActive]}
+                  onPress={() => { setOdemeTipi('kredi_karti'); setResult(null); }}
+                  testID="ag-pay-kredi"
+                >
+                  <Ionicons name="card-outline" size={16} color={odemeTipi === 'kredi_karti' ? '#fff' : theme.colors.textMuted} />
+                  <Text style={[s.payPillText, odemeTipi === 'kredi_karti' && s.payPillTextActive]}>Kredi Kartı</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={s.hint}>
+                Nakit ödemede fiyat listesinin %89'u; kredi kartı ile ödemede ise tam liste fiyatı esas alınır.
+              </Text>
+            </View>
+
             {/* Opsiyonlar */}
             <View style={s.card}>
               <Text style={s.sectionTitle}>Seçenekler</Text>
@@ -384,7 +415,13 @@ export default function AlbertGenauScreen() {
 
             {result && (
               <View style={[s.card, s.resultCard]}>
-                <Text style={s.sectionTitle}>{result.tipAdi}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <Text style={s.sectionTitle}>{result.tipAdi}</Text>
+                  <View style={s.payBadge}>
+                    <Ionicons name={result.odemeTipi === 'nakit' ? 'cash-outline' : 'card-outline'} size={12} color={theme.colors.primary} />
+                    <Text style={s.payBadgeText}>{result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'}</Text>
+                  </View>
+                </View>
                 <Text style={s.resultSub}>
                   {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
                 </Text>
@@ -429,7 +466,7 @@ export default function AlbertGenauScreen() {
                 </View>
 
                 <View style={s.totalBox}>
-                  <Text style={s.totalLabel}>SATIŞ FİYATI</Text>
+                  <Text style={s.totalLabel}>SATIŞ FİYATI ({result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'})</Text>
                   <Text style={s.totalValue}>₺{money(result.satisFiyati)}</Text>
                 </View>
 
@@ -507,6 +544,13 @@ const s = StyleSheet.create({
   field: { marginBottom: 10 },
   fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
   typeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  payWrap: { flexDirection: 'row', gap: 10 },
+  payPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
+  payPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  payPillText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
+  payPillTextActive: { color: '#fff' },
+  payBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primary },
+  payBadgeText: { fontSize: 10.5, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.3 },
   typePill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
   finishPill: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
   typePillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },

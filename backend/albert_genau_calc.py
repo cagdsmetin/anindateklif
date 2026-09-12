@@ -80,7 +80,7 @@ class PriceBook:
     (Mongo'daki guncel kayittan) enjekte edilebilir; verilmezse bu dosyadaki
     varsayilan/ilk-yuklenen Excel verisi kullanilir."""
 
-    def __init__(self, data: Optional[Dict[str, Any]] = None):
+    def __init__(self, data: Optional[Dict[str, Any]] = None, odeme_tipi: str = 'nakit'):
         d = data or _DEFAULT_DATA
         self.price_list: Dict[str, Dict[str, Any]] = d['price_list']
         self.depth_table = {int(k): float(v) for k, v in d['depth_table'].items()}
@@ -88,21 +88,30 @@ class PriceBook:
             int(k): {int(m): v for m, v in mods.items()}
             for k, mods in d['belt_table'].items()
         }
+        # 'nakit' | 'kredi_karti' -- price() bu alana gore hangi rakami
+        # dondurecegine karar verir (bkz. asagidaki NAKIT_FACTOR notu).
+        self.odeme_tipi = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
 
     # `price_list`'teki birim fiyatlar Excel'in 'SIPARIS FORMU' sekmesindeki
     # KREDI KARTI (taksitli/liste) fiyat sutunundan geliyor. Excel'in kendi
-    # toplam satirinda ise NAKIT (pesin) toplam = KREDI KARTI toplami * 0.89
-    # olarak hesaplaniyor (bkz. G66 = C66 * 0.89). Bayi maliyet analizinin
-    # esas aldigi rakam NAKIT oldugu icin bu carpani burada, tek noktada
-    # (her SKU okumasinda) uyguluyoruz -- boylece hem kalem bazli hem toplam
-    # rakamlar Excel'in NAKIT sutunuyla birebir eslesir.
+    # toplam satirinda NAKIT (pesin) toplam = KREDI KARTI toplami * 0.89
+    # olarak hesaplaniyor (bkz. G66 = C66 * 0.89) -- Excel'de bu iki rakam
+    # HER ZAMAN yan yana, iki ayri sutun olarak gosterilir (bkz. kullanicinin
+    # paylastigi ekran goruntusu: FIRE DAHIL MALIYET satirinda "KREDI
+    # KARTINA TAKSITLI" ve "NAKIT" diye iki ayri deger var). Dolayisiyla
+    # hesap motoru da ODEME TIPINE gore bu iki rakamdan birini uretmeli --
+    # sabit olarak hep NAKIT'i dondurmek, kredi karti ile odeme yapacak
+    # musteriler icin YANLIS (fazla iskontolu) bir fiyat cikariyordu.
     NAKIT_FACTOR = 0.89
 
     def price(self, sku: str) -> float:
         item = self.price_list.get(sku)
         if not item:
             raise KeyError(f"Fiyat listesinde bulunamayan SKU: {sku}")
-        return float(item['price']) * self.NAKIT_FACTOR
+        base = float(item['price'])
+        if self.odeme_tipi == 'nakit':
+            return base * self.NAKIT_FACTOR
+        return base  # kredi_karti -> liste fiyati, carpan yok
 
     def depth_choice(self, raw_depth_mm: float) -> Optional[Dict[str, float]]:
         """Girilen derinlik standart panel-adimli tabloya TAM denk gelmiyorsa
@@ -605,9 +614,15 @@ def calculate(
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Bir Albert Genau sistemi icin tam fiyat kirilimini hesaplar.
+
+    `odeme_tipi`: 'nakit' (varsayilan, KREDI KARTI liste fiyatinin *0.89'u) ya
+    da 'kredi_karti' (liste fiyati, carpansiz) -- Excel'deki iki ayri sutuna
+    (KREDI KARTINA TAKSITLI / NAKIT) karsilik gelir; musterinin sececegi
+    odeme yontemine gore dogru rakam uretilsin diye.
 
     `price_data` verilmezse bu dosyadaki varsayilan/ilk-yuklenen Excel verisi
     kullanilir; canli kullanimda Mongo'daki guncel `albert_genau_config`
@@ -615,7 +630,8 @@ def calculate(
     """
     if tip not in _TYPE_FUNCS:
         raise ValueError(f"Bilinmeyen sistem tipi: {tip}")
-    pb = PriceBook(price_data)
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     choice = pb.depth_choice(derinlik_mm)
     if choice is not None:
         raise DepthChoiceRequired(choice['floorMm'], choice['ceilMm'], choice['rawMm'])
@@ -680,6 +696,7 @@ def calculate(
     return {
         'tip': tip,
         'tipAdi': SYSTEM_TYPE_LABELS[tip],
+        'odemeTipi': odeme_tipi_eff,
         'girdi': {
             'genislikMm': genislik_mm,
             'derinlikMmGirilen': derinlik_mm,

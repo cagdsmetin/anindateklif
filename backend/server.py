@@ -2333,12 +2333,20 @@ class AlbertGenauCalculateRequest(BaseModel):
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
     karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"  # 'nakit' | 'kredi_karti' -- hangi Excel sutununa gore hesaplanacagi
 
     @field_validator("tip")
     @classmethod
     def _tip_valid(cls, v: str) -> str:
         if v not in ag_calc.SYSTEM_TYPES:
             raise ValueError(f"Gecersiz sistem tipi: {v}")
+        return v
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
         return v
 
     @field_validator("alisIskontoPct", "karMarjiPct")
@@ -2418,6 +2426,7 @@ def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Option
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
             kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
             price_data=price_data,
         )
     except ag_calc.DepthChoiceRequired as e:
@@ -2468,12 +2477,14 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
     ws["A1"].font = title_font
 
     girdi = result["girdi"]
+    odeme_label = "NAKIT" if result.get("odemeTipi", "nakit") == "nakit" else "KREDI KARTI"
     rows_info = [
         ("Genislik (mm)", girdi.get("genislikMm")),
         ("Girilen Derinlik (mm)", girdi.get("derinlikMmGirilen")),
         ("Uygulanan Derinlik (mm)", girdi.get("yapilabilirDerinlikMm")),
         ("Yukseklik (mm)", girdi.get("yukseklikMm")),
         ("Modul Sayisi", girdi.get("modulSayisi")),
+        ("Odeme Tipi", odeme_label),
     ]
     r = 3
     for label, val in rows_info:
@@ -2503,21 +2514,21 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
 
     r += 1
     summary_rows = [
-        ("Profil Grubu Toplam", result["profilGrubuToplam"]),
-        ("Aksesuar Grubu Toplam", result["aksesuarGrubuToplam"]),
+        (f"Profil Grubu Toplam ({odeme_label})", result["profilGrubuToplam"]),
+        (f"Aksesuar Grubu Toplam ({odeme_label})", result["aksesuarGrubuToplam"]),
         ("Opsiyonel Toplam", result.get("opsiyonelToplam", 0)),
-        ("Malzeme Maliyeti Toplam", result["maliyetToplam"]),
+        (f"Malzeme Maliyeti Toplam ({odeme_label})", result["maliyetToplam"]),
         (f"Alis Iskontosu (%{result.get('alisIskontoPct', 0)})", None),
         ("Iskontolu Malzeme Maliyeti", result.get("maliyetIndirimli")),
         (f"Kar Tutari (%{result.get('karMarjiPct', 0)})", result.get("karTutari")),
         ("Montaj Bedeli", result["montajBedeli"]),
-        ("SATIS FIYATI", result["satisFiyati"]),
+        (f"SATIS FIYATI ({odeme_label})", result["satisFiyati"]),
     ]
     for label, val in summary_rows:
         ws.cell(row=r, column=1, value=label).font = bold
         if val is not None:
             ws.cell(row=r, column=4, value=val).font = bold
-        if label == "SATIS FIYATI":
+        if label.startswith("SATIS FIYATI"):
             for col in range(1, 6):
                 ws.cell(row=r, column=col).fill = PatternFill(start_color="FDE68A", end_color="FDE68A", fill_type="solid")
         r += 1

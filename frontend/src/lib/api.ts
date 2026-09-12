@@ -735,6 +735,7 @@ export type AlbertGenauCalculateInputT = {
   alisIskontoPct?: number;
   montajBedeli?: number;
   karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
 };
 
 export type AlbertGenauKalemT = {
@@ -748,6 +749,7 @@ export type AlbertGenauKalemT = {
 export type AlbertGenauResultT = {
   tip: string;
   tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
   girdi: {
     genislikMm: number;
     derinlikMmGirilen: number;

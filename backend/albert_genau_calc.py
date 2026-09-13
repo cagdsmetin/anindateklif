@@ -784,6 +784,140 @@ def _pl_price(pb: 'PriceBook', sku: str) -> float:
     return base * PriceBook.NAKIT_FACTOR if pb.odeme_tipi == 'nakit' else base
 
 
+# ============ AIRFLEX MODUL HESABI (adet-bazli, olcu yerine sabit yukseklik) ============
+# Kullanicinin (bayinin) acikca belirttigi is kurallari (bkz. sohbet/degisiklik
+# gecmisi -- bunlar Albert Genau'nun kendi mühendislik kurallaridir, Excel'de
+# formul olarak yazili degildi, bayiden alinan sozel bilgidir):
+#   - Sistem yuksekligi HER ZAMAN 1850mm'dir (kullanicidan yukseklik ALINMAZ).
+#   - "Adet" = tam bir sistem/modul sayisi. Her 1 adette, sistemin SAG ve SOL
+#     tarafinda birer dikme cifti bulunur -> toplam 2 sabit dikme (B15199,
+#     her biri 1000mm kesilir) + 2 hareketli dikme (B15200, her biri 850mm
+#     kesilir) = adet basina 4 dikme parcasi.
+#   - Panel takimlari da adet basina 2'ser gider: 2x hareketli panel takimi
+#     (G05101) + 2x (sabit panel takimi G05102 YA DA tekerlekli sabit panel
+#     takimi G05106 -- bayi hangisini kullanacagini secer, ikisi ayni anda
+#     kullanilmaz).
+#   - Kapi panel takimi (G05107) ve kilit takimi (G05103) ISTEGE BAGLI ve
+#     adetten BAGIMSIZ: secilirse siparise sadece 1 adet olarak eklenir
+#     (bir hatta genelde tek bir kapi/kilit noktasi olur).
+#   - Genislik girdisinin profil/panel hesabina hicbir etkisi YOK. Sadece CAM
+#     (alüminyum profillerden ayri, Albert Genau'nun fiyat listesinde OLMAYAN,
+#     bayinin kendi tedarik ettigi bir kalem) genislige gore hesaplanir: sabit
+#     paneller 10mm temperli, hareketli paneller 8mm temperli cam kullanir;
+#     bayi cami kendi fiyatiyla (TL/m2) girer, yukseklik sabit 1850mm ile
+#     carpilip alan bulunur ve toplama en sonda eklenir.
+AIRFLEX_MODUL_YUKSEKLIK_M = 1.850
+AIRFLEX_SABIT_DIKME_KESIM_M = 1.000
+AIRFLEX_HAREKETLI_DIKME_KESIM_M = 0.850
+AIRFLEX_DIKME_ADET_KATSAYISI = 2  # sag + sol
+AIRFLEX_PANEL_TAKIM_ADET_KATSAYISI = 2  # sag + sol
+
+
+def calculate_airflex_module(
+    adet: int,
+    tekerlekli: bool = False,
+    kapi_var: bool = False,
+    kilit_var: bool = False,
+    cam_sabit_genislik_mm: float = 0.0,
+    cam_sabit_fiyat_m2: float = 0.0,
+    cam_hareketli_genislik_mm: float = 0.0,
+    cam_hareketli_fiyat_m2: float = 0.0,
+    finish: Optional[str] = None,
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+    price_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """AIRFLEX katlanir cam balkon sistemi icin adet-bazli fiyat hesabi.
+    Yukarida acikca belgelenen sabit is kurallarini kullanir (bkz. modul
+    basi yorum)."""
+    if adet is None or adet < 1:
+        raise ValueError("Adet en az 1 olmalidir")
+
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
+    finish_mult = _finish_multiplier(finish)
+
+    kalemler = []
+
+    def add_kalem(sku: str, qty: float):
+        item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku) or {}
+        label = item.get('name', sku)
+        price = _pl_price(pb, sku) * finish_mult
+        kalemler.append(Kalem(label=label, sku=sku, price=price, qty=qty))
+
+    # Dikme profilleri: adet x 2 (sag+sol), her biri sabit kesim boyunda.
+    add_kalem('B15199--', adet * AIRFLEX_DIKME_ADET_KATSAYISI * AIRFLEX_SABIT_DIKME_KESIM_M)
+    add_kalem('B15200--', adet * AIRFLEX_DIKME_ADET_KATSAYISI * AIRFLEX_HAREKETLI_DIKME_KESIM_M)
+
+    # Panel takimlari: adet x 2.
+    add_kalem('G05101', adet * AIRFLEX_PANEL_TAKIM_ADET_KATSAYISI)  # hareketli panel takimi
+    sabit_panel_sku = 'G05106' if tekerlekli else 'G05102'
+    add_kalem(sabit_panel_sku, adet * AIRFLEX_PANEL_TAKIM_ADET_KATSAYISI)
+
+    # Kapi + kilit: adetten bagimsiz, secilirse sabit 1 adet.
+    if kapi_var:
+        add_kalem('G05107', 1)
+    if kilit_var:
+        add_kalem('G05103', 1)
+
+    malzeme_toplam = sum(k.total for k in kalemler)
+
+    # Cam: Albert Genau fiyat listesinde YOK -- bayi kendi fiyatiyla girer.
+    # Panel sayisi kadar cam varsayilir (sabit/tekerlekli panel takimi ile
+    # hareketli panel takimi sayilari zaten adet x 2 idi).
+    cam_sabit_adet = adet * AIRFLEX_PANEL_TAKIM_ADET_KATSAYISI
+    cam_hareketli_adet = adet * AIRFLEX_PANEL_TAKIM_ADET_KATSAYISI
+    cam_sabit_alan_m2 = cam_sabit_adet * (cam_sabit_genislik_mm / 1000.0) * AIRFLEX_MODUL_YUKSEKLIK_M
+    cam_hareketli_alan_m2 = cam_hareketli_adet * (cam_hareketli_genislik_mm / 1000.0) * AIRFLEX_MODUL_YUKSEKLIK_M
+    cam_sabit_maliyet = cam_sabit_alan_m2 * cam_sabit_fiyat_m2
+    cam_hareketli_maliyet = cam_hareketli_alan_m2 * cam_hareketli_fiyat_m2
+    cam_toplam = cam_sabit_maliyet + cam_hareketli_maliyet
+
+    if cam_sabit_maliyet > 0:
+        kalemler.append(Kalem(
+            label=f"Cam (Sabit Panel, 10mm Temperli, {cam_sabit_genislik_mm:.0f}x{AIRFLEX_MODUL_YUKSEKLIK_M*1000:.0f}mm)",
+            sku='CAM-SABIT', price=cam_sabit_fiyat_m2, qty=round(cam_sabit_alan_m2, 3),
+        ))
+    if cam_hareketli_maliyet > 0:
+        kalemler.append(Kalem(
+            label=f"Cam (Hareketli Panel, 8mm Temperli, {cam_hareketli_genislik_mm:.0f}x{AIRFLEX_MODUL_YUKSEKLIK_M*1000:.0f}mm)",
+            sku='CAM-HAREKETLI', price=cam_hareketli_fiyat_m2, qty=round(cam_hareketli_alan_m2, 3),
+        ))
+
+    maliyet_toplam = malzeme_toplam + cam_toplam
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'airflex_modul',
+        'tip': 'airflex_modul',
+        'tipAdi': 'AIRFLEX (Katlanır Cam Balkon)',
+        'odemeTipi': odeme_tipi_eff,
+        'girdi': {
+            'adet': adet,
+            'tekerlekli': tekerlekli,
+            'kapiVar': kapi_var,
+            'kilitVar': kilit_var,
+            'yukseklikMm': AIRFLEX_MODUL_YUKSEKLIK_M * 1000,
+        },
+        'malzemeGrubuToplam': round(malzeme_toplam, 2),
+        'camGrubuToplam': round(cam_toplam, 2),
+        'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in kalemler],
+    }
+
+
 def parts_list_items(system_id: str, price_data: Optional[Dict[str, Any]] = None):
     """Frontend'in miktar giris formunu olusturabilmesi icin, bir parca
     listesi sisteminin kalemlerini (sku/isim/birim), Excel'deki sirasiyla

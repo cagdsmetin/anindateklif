@@ -26,8 +26,7 @@ import {
   AlbertGenauTypesResponseT,
   AlbertGenauCalculateInputT,
   AlbertGenauPriceListStatusT,
-  AlbertGenauPartsListItemT,
-  AlbertGenauPartsListResultT,
+  AlbertGenauAirflexModuleResultT,
   RatesT,
   fetchAlbertGenauExcelBytes,
   fetchAlbertGenauDrawingBytes,
@@ -95,14 +94,21 @@ export default function AlbertGenauScreen() {
 
   const [meta, setMeta] = useState<AlbertGenauTypesResponseT>({ types: FALLBACK_TYPES, finishes: FALLBACK_FINISHES, partsListSystems: FALLBACK_PARTS_LIST_SYSTEMS });
   // 'geometric' -- AG BIOFLEX/BIO: genişlik/derinlik/yükseklik ölçüsüne göre
-  // hesaplar. 'parts_list' -- AIRFLEX ve benzeri: düz bir parça listesinden
-  // her kalem için miktar girilir (bkz. backend calculate_parts_list).
-  const [family, setFamily] = useState<'geometric' | 'parts_list'>('geometric');
+  // hesaplar. 'airflex_modul' -- AIRFLEX: ölçü yerine ADET (kaç sistem) +
+  // birkaç seçenek girilir, yükseklik her zaman sabit 1850mm'dir (bkz.
+  // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
+  // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
+  // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
+  const [family, setFamily] = useState<'geometric' | 'airflex_modul'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
-  const [systemId, setSystemId] = useState('airflex');
-  const [partsListItems, setPartsListItems] = useState<AlbertGenauPartsListItemT[]>([]);
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
-  const [partsListLoading, setPartsListLoading] = useState(false);
+  const [afAdet, setAfAdet] = useState('1');
+  const [afTekerlekli, setAfTekerlekli] = useState(false);
+  const [afKapiVar, setAfKapiVar] = useState(false);
+  const [afKilitVar, setAfKilitVar] = useState(false);
+  const [afCamSabitGenislik, setAfCamSabitGenislik] = useState('');
+  const [afCamSabitFiyat, setAfCamSabitFiyat] = useState('');
+  const [afCamHareketliGenislik, setAfCamHareketliGenislik] = useState('');
+  const [afCamHareketliFiyat, setAfCamHareketliFiyat] = useState('');
   const [tip, setTip] = useState('4ayak_ustu');
   const [genislik, setGenislik] = useState('');
   const [derinlik, setDerinlik] = useState('');
@@ -121,7 +127,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauPartsListResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -151,21 +157,6 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     api.albertGenauTypes(activeCompany?.id).then(setMeta).catch(() => {});
   }, [activeCompany?.id]);
-
-  // AIRFLEX (ve ileride eklenecek diğer parça listesi aileleri) seçildiğinde,
-  // o sistemin kalem listesini (sku/isim/birim) çekip miktar giriş formunu
-  // bundan oluşturuyoruz -- yeni bir ürün ailesi eklendiğinde burada hiçbir
-  // kod değişikliği gerekmez.
-  useEffect(() => {
-    if (family !== 'parts_list') return;
-    let cancelled = false;
-    setPartsListLoading(true);
-    api.albertGenauPartsListItems(systemId, activeCompany?.id)
-      .then((res) => { if (!cancelled) setPartsListItems(res.items); })
-      .catch(() => { if (!cancelled) setPartsListItems([]); })
-      .finally(() => { if (!cancelled) setPartsListLoading(false); });
-    return () => { cancelled = true; };
-  }, [family, systemId, activeCompany?.id]);
 
   // Satış fiyatının (₺) altında canlı kurla $ / € karşılığını göstermek için
   // -- Geçmiş ekranındaki tutar kartlarıyla aynı desen (bkz. history.tsx
@@ -234,23 +225,24 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const onCalculatePartsList = async () => {
+  const onCalculateAirflexModule = async () => {
     setError('');
-    const quantitiesNum: Record<string, number> = {};
-    for (const it of partsListItems) {
-      const raw = quantities[it.sku];
-      const n = Number((raw || '').replace(',', '.'));
-      if (n > 0) quantitiesNum[it.sku] = n;
-    }
-    if (!Object.keys(quantitiesNum).length) { setError('En az bir kalem için miktar girin'); return; }
+    const adetNum = Math.round(Number(afAdet.replace(',', '.')));
+    if (!adetNum || adetNum < 1) { setError('Adet en az 1 olmalı'); return; }
     setBusy(true);
     setResult(null);
     setLastPayload(null);
     try {
-      const res = await api.albertGenauPartsListCalculate({
+      const res = await api.albertGenauAirflexModuleCalculate({
         companyId: activeCompany?.id,
-        systemId,
-        quantities: quantitiesNum,
+        adet: adetNum,
+        tekerlekli: afTekerlekli,
+        kapiVar: afKapiVar,
+        kilitVar: afKilitVar,
+        camSabitGenislikMm: Number(afCamSabitGenislik.replace(',', '.')) || 0,
+        camSabitFiyatM2: Number(afCamSabitFiyat.replace(',', '.')) || 0,
+        camHareketliGenislikMm: Number(afCamHareketliGenislik.replace(',', '.')) || 0,
+        camHareketliFiyatM2: Number(afCamHareketliFiyat.replace(',', '.')) || 0,
         finish,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
@@ -278,7 +270,7 @@ export default function AlbertGenauScreen() {
   };
 
   const onCalculate = async (depthOverrideMm?: number) => {
-    if (family === 'parts_list') { await onCalculatePartsList(); return; }
+    if (family === 'airflex_modul') { await onCalculateAirflexModule(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -364,9 +356,7 @@ export default function AlbertGenauScreen() {
       pathname: '/albert-genau-kalemler',
       params: {
         tipAdi: result.tipAdi,
-        // AIRFLEX gibi parça listesi sonuçlarında ölçü/modül bilgisi (girdi)
-        // yok -- o ekran sadece varsa gösterir, boş obje güvenli.
-        girdi: JSON.stringify(result.kind === 'parts_list' ? {} : result.girdi),
+        girdi: JSON.stringify(result.girdi || {}),
         kalemler: JSON.stringify(result.kalemler),
       },
     });
@@ -430,10 +420,12 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauPartsListResultT) => {
-    if (r.kind === 'parts_list') {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT) => {
+    if (r.kind === 'airflex_modul') {
       const parts = [
-        `${r.kalemler.length} kalem`,
+        `${r.girdi.adet} adet`,
+        r.girdi.tekerlekli ? 'Tekerlekli ayak' : 'Sabit ayak',
+        r.girdi.kapiVar ? 'Kapılı' : null,
         FINISH_LABELS[finish] || finish,
       ].filter(Boolean);
       return `${r.tipAdi} — ${parts.join(', ')}`;
@@ -525,11 +517,11 @@ export default function AlbertGenauScreen() {
                 {partsListSystems.map((sysOpt) => (
                   <TouchableOpacity
                     key={sysOpt.id}
-                    style={[s.typePill, family === 'parts_list' && systemId === sysOpt.id && s.typePillActive]}
-                    onPress={() => { setFamily('parts_list'); setSystemId(sysOpt.id); setResult(null); setError(''); }}
-                    testID={`ag-family-parts-${sysOpt.id}`}
+                    style={[s.typePill, family === 'airflex_modul' && s.typePillActive]}
+                    onPress={() => { setFamily('airflex_modul'); setResult(null); setError(''); }}
+                    testID={`ag-family-${sysOpt.id}`}
                   >
-                    <Text style={[s.typePillText, family === 'parts_list' && systemId === sysOpt.id && s.typePillTextActive]}>{sysOpt.label}</Text>
+                    <Text style={[s.typePillText, family === 'airflex_modul' && s.typePillTextActive]}>{sysOpt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -643,36 +635,53 @@ export default function AlbertGenauScreen() {
             </>
             )}
 
-            {family === 'parts_list' && (
-              <View style={s.card}>
-                <Text style={s.sectionTitle}>{partsListSystems.find((x) => x.id === systemId)?.label || systemId} Kalemleri</Text>
-                <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
-                  Sadece ihtiyacınız olan kalemler için miktar girin, diğerlerini boş bırakabilirsiniz.
-                </Text>
-                {partsListLoading ? (
-                  <ActivityIndicator color={theme.colors.primary} />
-                ) : (
-                  partsListItems.map((it) => (
-                    <View key={it.sku} style={s.partsRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.partsRowLabel} numberOfLines={2}>{it.label}</Text>
-                        <Text style={s.partsRowSub}>{it.sku} · {it.unit}</Text>
-                      </View>
-                      <View style={s.partsRowInputWrap}>
-                        <TextInput
-                          testID={`ag-parts-qty-${it.sku}`}
-                          value={quantities[it.sku] || ''}
-                          onChangeText={(v) => setQuantities((q) => ({ ...q, [it.sku]: v }))}
-                          keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
-                          placeholder="0"
-                          placeholderTextColor="#94a3b8"
-                          style={s.input}
-                        />
-                      </View>
-                    </View>
-                  ))
-                )}
-              </View>
+            {family === 'airflex_modul' && (
+              <>
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Sistem Adedi</Text>
+                  <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                    Yükseklik her sistemde sabit 1850mm'dir; ayrıca girmenize gerek yoktur.
+                  </Text>
+                  <NumField label="Adet" value={afAdet} onChange={setAfAdet} testID="ag-af-adet" />
+                  <Text style={[s.fieldLabel, { marginTop: 14 }]}>Sabit Panel Takımı Tipi</Text>
+                  <View style={s.payWrap}>
+                    <TouchableOpacity
+                      style={[s.payPill, !afTekerlekli && s.payPillActive]}
+                      onPress={() => { setAfTekerlekli(false); setResult(null); }}
+                      testID="ag-af-sabit"
+                    >
+                      <Text style={[s.payPillText, !afTekerlekli && s.payPillTextActive]}>Sabit Ayak</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.payPill, afTekerlekli && s.payPillActive]}
+                      onPress={() => { setAfTekerlekli(true); setResult(null); }}
+                      testID="ag-af-tekerlekli"
+                    >
+                      <Text style={[s.payPillText, afTekerlekli && s.payPillTextActive]}>Tekerlekli Ayak</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ToggleRow label="Kapı Panel Takımı Var" value={afKapiVar} onChange={setAfKapiVar} testID="ag-af-kapi" />
+                  <ToggleRow label="Kilit Takımı Var" value={afKilitVar} onChange={setAfKilitVar} testID="ag-af-kilit" />
+                  <Text style={s.hint}>Kapı ve kilit takımı seçilirse adetten bağımsız olarak 1'er adet fiyatlandırılır.</Text>
+                </View>
+
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Cam Hesabı</Text>
+                  <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                    Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin. Alan = Genişlik × 1850mm sabit yükseklik.
+                  </Text>
+                  <Text style={s.fieldLabel}>Sabit Panel Camı (10mm Temperli)</Text>
+                  <View style={s.row}>
+                    <NumField label="Genişlik (mm)" value={afCamSabitGenislik} onChange={setAfCamSabitGenislik} testID="ag-af-cam-sabit-genislik" />
+                    <NumField label="Fiyat (₺/m²)" value={afCamSabitFiyat} onChange={setAfCamSabitFiyat} testID="ag-af-cam-sabit-fiyat" />
+                  </View>
+                  <Text style={[s.fieldLabel, { marginTop: 10 }]}>Hareketli Panel Camı (8mm Temperli)</Text>
+                  <View style={s.row}>
+                    <NumField label="Genişlik (mm)" value={afCamHareketliGenislik} onChange={setAfCamHareketliGenislik} testID="ag-af-cam-hareketli-genislik" />
+                    <NumField label="Fiyat (₺/m²)" value={afCamHareketliFiyat} onChange={setAfCamHareketliFiyat} testID="ag-af-cam-hareketli-fiyat" />
+                  </View>
+                </View>
+              </>
             )}
 
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
@@ -822,19 +831,29 @@ export default function AlbertGenauScreen() {
                     <Text style={s.payBadgeText}>{result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'}</Text>
                   </View>
                 </View>
-                {result.kind === 'parts_list' ? (
-                  <Text style={s.resultSub}>{result.kalemler.length} kalem seçildi</Text>
+                {result.kind === 'airflex_modul' ? (
+                  <Text style={s.resultSub}>
+                    {result.girdi.adet} adet • {result.girdi.tekerlekli ? 'Tekerlekli' : 'Sabit'} ayak • Y:{result.girdi.yukseklikMm}mm
+                  </Text>
                 ) : (
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
                   </Text>
                 )}
 
-                {result.kind === 'parts_list' ? (
-                  <View style={s.breakdownRow}>
-                    <Text style={s.breakdownLabel}>Malzeme Grubu</Text>
-                    <Text style={s.breakdownValue}>₺{money(result.malzemeGrubuToplamFiresiz)}</Text>
-                  </View>
+                {result.kind === 'airflex_modul' ? (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Malzeme Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.malzemeGrubuToplam)}</Text>
+                    </View>
+                    {result.camGrubuToplam > 0 && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>Cam Grubu</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.camGrubuToplam)}</Text>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <>
                     <View style={s.breakdownRow}>
@@ -909,7 +928,7 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  {result.kind !== 'parts_list' && (
+                  {result.kind !== 'airflex_modul' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
                       {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
                         <>
@@ -921,7 +940,7 @@ export default function AlbertGenauScreen() {
                   )}
                 </View>
 
-                {result.kind !== 'parts_list' && (
+                {result.kind !== 'airflex_modul' && (
                   <TouchableOpacity
                     style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
                     onPress={onAddDrawing}

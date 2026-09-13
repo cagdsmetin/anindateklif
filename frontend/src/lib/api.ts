@@ -362,6 +362,8 @@ export const api = {
     req(`/albert-genau/parts-list-items?systemId=${encodeURIComponent(systemId)}${companyId ? `&companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauPartsListCalculate: (data: AlbertGenauPartsListCalculateInputT): Promise<AlbertGenauPartsListResultT> =>
     req('/albert-genau/parts-list/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  albertGenauAirflexModuleCalculate: (data: AlbertGenauAirflexModuleInputT): Promise<AlbertGenauAirflexModuleResultT> =>
+    req('/albert-genau/airflex-module/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -811,6 +813,41 @@ export type AlbertGenauPartsListResultT = {
   malzemeGrubuToplamFiresiz: number;
   fireOrani: number;
   fireTutari: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+export type AlbertGenauAirflexModuleInputT = {
+  companyId?: string;
+  adet: number;
+  tekerlekli?: boolean;
+  kapiVar?: boolean;
+  kilitVar?: boolean;
+  camSabitGenislikMm?: number;
+  camSabitFiyatM2?: number;
+  camHareketliGenislikMm?: number;
+  camHareketliFiyatM2?: number;
+  finish?: string | null;
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauAirflexModuleResultT = {
+  kind: 'airflex_modul';
+  tip: string;
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  girdi: { adet: number; tekerlekli: boolean; kapiVar: boolean; kilitVar: boolean; yukseklikMm: number };
+  malzemeGrubuToplam: number;
+  camGrubuToplam: number;
   maliyetToplam: number;
   alisIskontoPct: number;
   maliyetIndirimli: number;

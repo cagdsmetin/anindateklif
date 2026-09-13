@@ -2497,6 +2497,65 @@ class AlbertGenauPartsListCalculateRequest(BaseModel):
         return out
 
 
+class AlbertGenauAirflexModuleRequest(BaseModel):
+    # AIRFLEX katlanir cam balkon: olcu yerine ADET (kac sistem) girilir --
+    # yukseklik her zaman sabit 1850mm'dir (bkz. ag_calc.calculate_airflex_module
+    # ustundeki yorum, bayiden alinan gercek mühendislik kurallari).
+    companyId: Optional[str] = None
+    adet: int
+    tekerlekli: bool = False
+    kapiVar: bool = False
+    kilitVar: bool = False
+    camSabitGenislikMm: float = 0.0
+    camSabitFiyatM2: float = 0.0
+    camHareketliGenislikMm: float = 0.0
+    camHareketliFiyatM2: float = 0.0
+    finish: Optional[str] = None
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("adet")
+    @classmethod
+    def _adet_valid(cls, v: int) -> int:
+        if v is None or v < 1 or v > 500:
+            raise ValueError("Adet 1-500 araliginda olmalidir")
+        return v
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("camSabitGenislikMm", "camHareketliGenislikMm")
+    @classmethod
+    def _cam_genislik_valid(cls, v: float) -> float:
+        v = v or 0.0
+        if v < 0 or v > 5000:
+            raise ValueError("Cam genisligi 0-5000mm araliginda olmalidir")
+        return v
+
+    @field_validator("camSabitFiyatM2", "camHareketliFiyatM2")
+    @classmethod
+    def _cam_fiyat_valid(cls, v: float) -> float:
+        v = v or 0.0
+        if v < 0 or v > 1_000_000:
+            raise ValueError("Cam fiyati gecersiz")
+        return v
+
+
 class AlbertGenauItemCreate(BaseModel):
     companyId: str
     tip: str
@@ -2624,6 +2683,35 @@ async def albert_genau_parts_list_calculate(payload: AlbertGenauPartsListCalcula
     else:
         price_data = await _get_ag_price_data(None)
     return _run_ag_parts_list_calculate(payload, price_data)
+
+
+@api_router.post("/albert-genau/airflex-module/calculate")
+async def albert_genau_airflex_module_calculate(payload: AlbertGenauAirflexModuleRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+        price_data = await _require_company_ag_price_list(payload.companyId)
+    else:
+        price_data = await _get_ag_price_data(None)
+    try:
+        return ag_calc.calculate_airflex_module(
+            adet=payload.adet,
+            tekerlekli=payload.tekerlekli,
+            kapi_var=payload.kapiVar,
+            kilit_var=payload.kilitVar,
+            cam_sabit_genislik_mm=payload.camSabitGenislikMm,
+            cam_sabit_fiyat_m2=payload.camSabitFiyatM2,
+            cam_hareketli_genislik_mm=payload.camHareketliGenislikMm,
+            cam_hareketli_fiyat_m2=payload.camHareketliFiyatM2,
+            finish=payload.finish,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Optional[Dict[str, Any]]):

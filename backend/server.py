@@ -3269,7 +3269,11 @@ async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_c
             "vertiflexTypes": [{"id": t, "label": ag_calc.VERTIFLEX_TYPE_LABELS[t]} for t in ag_calc.VERTIFLEX_SYSTEM_TYPES],
             # KIŞ BAHÇESİ (sabit cam tavanli kis bahcesi, 2 alt tip) -- form
             # secenekleri icin bkz. /albert-genau/kis-bahcesi/types.
-            "kisBahcesiTypes": [{"id": t, "label": ag_calc.KIS_BAHCESI_TYPE_LABELS[t]} for t in ag_calc.KIS_BAHCESI_SYSTEM_TYPES]}
+            "kisBahcesiTypes": [{"id": t, "label": ag_calc.KIS_BAHCESI_TYPE_LABELS[t]} for t in ag_calc.KIS_BAHCESI_SYSTEM_TYPES],
+            # BC ailesi (TIARA/SLIDER NEXT/SLIDE MASTER/HD/TANGO/OPTIMA --
+            # 39 varyant) -- detayli (kanatInputs/flagInputs/camItems) meta
+            # icin bkz. /albert-genau/bc/types.
+            "bcTypes": [{"id": t, "label": ag_calc.BC_TYPE_LABELS[t]} for t in ag_calc.BC_SYSTEM_TYPES]}
 
 
 @api_router.get("/albert-genau/vertiflex/types")
@@ -3374,6 +3378,143 @@ async def albert_genau_kis_bahcesi_calculate(payload: AlbertGenauKisBahcesiCalcu
         _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_kis_bahcesi_calculate(payload, price_data)
+
+
+class AlbertGenauBcCalculateRequest(BaseModel):
+    # BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER,
+    # ATRIUM/MOMENTUM/CENTRUM HD, TANGO/OPTIMA -- 39 kaydirmali sistem
+    # varyanti). Diger ailelerden farkli olarak kanat/bayrak alanlari
+    # TIPE GORE DEGISIR (bkz. ag_calc.BC_TYPE_META[tip]) -- o yuzden sabit
+    # alanlar yerine genel {ref: deger} sozlukleri kullanilir; frontend
+    # ilgili tipin kanatInputs/flagInputs anahtarlarini bu sozluklerle
+    # doldurur.
+    companyId: Optional[str] = None
+    tip: str  # ag_calc.BC_SYSTEM_TYPES icinden biri
+    genislikMm: Optional[float] = None
+    yukseklikMm: Optional[float] = None
+    kanatMiktarlari: Dict[str, float] = {}   # {"C18": 4, ...}
+    bayrakDegerleri: Dict[str, float] = {}   # {"F14": 1, ...}
+    rayTipi: Optional[int] = None            # sadece hasRayType=true icin, 1-4
+    finish: Optional[str] = None
+    camFiyatlariM2: Dict[str, float] = {}    # {"CAM-bc_tiara_08-1": 1500} gibi
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("tip")
+    @classmethod
+    def _tip_valid(cls, v: str) -> str:
+        if v not in ag_calc.BC_SYSTEM_TYPES:
+            raise ValueError(f"Gecersiz BC sistem tipi: {v}")
+        return v
+
+    @field_validator("genislikMm", "yukseklikMm")
+    @classmethod
+    def _dim_valid(cls, v: Optional[float]) -> Optional[float]:
+        if v is None:
+            return None
+        if v <= 0 or v > 30000:
+            raise ValueError("Olcu 0-30000mm araliginda olmalidir")
+        return v
+
+    @field_validator("rayTipi")
+    @classmethod
+    def _ray_tipi_valid(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return None
+        if v not in (1, 2, 3, 4):
+            raise ValueError("Ray tipi 1-4 araliginda olmalidir")
+        return v
+
+    @field_validator("kanatMiktarlari", "bayrakDegerleri")
+    @classmethod
+    def _ref_map_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        out = {}
+        for ref, deger in list(v.items())[:40]:
+            d = float(deger or 0)
+            if d < 0 or d > 10000:
+                raise ValueError("Miktar/bayrak degeri gecersiz")
+            out[str(ref)[:10]] = d
+        return out
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("camFiyatlariM2")
+    @classmethod
+    def _cam_fiyat_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        out = {}
+        for sku, fiyat in list(v.items())[:10]:
+            f = float(fiyat or 0)
+            if f < 0 or f > 1_000_000:
+                raise ValueError("Cam fiyati gecersiz")
+            out[str(sku)[:60]] = f
+        return out
+
+
+@api_router.get("/albert-genau/bc/types")
+async def albert_genau_bc_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
+    # Her BC tipi icin frontend'in dinamik formu dogru cizebilmesi adina
+    # kanatInputs/flagInputs/camItems/hasRayType meta bilgisini dondurur
+    # (bkz. ag_calc.BC_TYPE_META) -- diger ailelerden farkli olarak bu
+    # alanlar TIPE GORE DEGISTIGI icin sabit form yerine veri-guduml (data-
+    # driven) bir form kurulmasi gerekiyor.
+    if companyId:
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
+    return {
+        "types": [
+            {"id": t, "label": ag_calc.BC_TYPE_LABELS[t], **ag_calc.BC_TYPE_META[t]}
+            for t in ag_calc.BC_SYSTEM_TYPES
+        ],
+        "finishes": list(ag_calc.FINISH_OPTIONS.keys()),
+    }
+
+
+def _run_ag_bc_calculate(payload: "AlbertGenauBcCalculateRequest", price_data: Optional[Dict[str, Any]]):
+    try:
+        return ag_calc.calculate_bc(
+            tip=payload.tip,
+            genislik_mm=payload.genislikMm,
+            yukseklik_mm=payload.yukseklikMm,
+            kanat_miktarlari=payload.kanatMiktarlari,
+            bayrak_degerleri=payload.bayrakDegerleri,
+            ray_tipi=payload.rayTipi,
+            finish=payload.finish,
+            cam_fiyatlari_m2=payload.camFiyatlariM2,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@api_router.post("/albert-genau/bc/calculate")
+async def albert_genau_bc_calculate(payload: AlbertGenauBcCalculateRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+    price_data = await _get_ag_price_data(payload.companyId)
+    return _run_ag_bc_calculate(payload, price_data)
 
 
 @api_router.get("/albert-genau/parts-list-items")

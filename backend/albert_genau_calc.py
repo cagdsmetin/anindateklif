@@ -33,6 +33,16 @@ _DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'albert_genau_price
 with open(_DATA_PATH, encoding='utf-8') as _f:
     _DEFAULT_DATA = json.load(_f)
 
+# BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER, ATRIUM/
+# MOMENTUM/CENTRUM HD, TANGO/OPTIMA -- 39 alt sistem) icin bkz. asagidaki
+# "BC AILESI" bolumu. Bu sistemlerin Excel formulleri elle degil, otomatik bir
+# formul-cozucu (bkz. _bc_parse_formula/_bc_eval_formula) ile cikarilip
+# Excel'in kendi cached ornek degerlerine karsi TAM (ondalik hanesine kadar,
+# hem toplam hem her kalemin miktari) dogrulanmistir -- bkz. bc_systems.json.
+_BC_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'bc_systems.json')
+with open(_BC_DATA_PATH, encoding='utf-8') as _f:
+    _BC_SYSTEMS_RAW = json.load(_f)['systems']
+
 SYSTEM_TYPES = [
     '4ayak_ustu',
     '2ayak_duvar',
@@ -1822,6 +1832,386 @@ def calculate_kis_bahcesi(
             'tavanBolumSayisi': tavan_bolum_sayisi,
             'arkaDuvarAltYukseklikMm': arka_duvar_alt_yukseklik_mm,
             'araDikmeSayisi': ara_dikme_sayisi,
+        },
+        'profilGrubuToplam': round(profil_toplam, 2),
+        'aksesuarGrubuToplam': round(aksesuar_toplam, 2),
+        'camGrubuToplam': round(cam_toplam, 2),
+        'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in (profil + aksesuar + cam_kalemleri)],
+    }
+
+
+# ============================================================
+# BC AILESI (TIARA / TIARA FLAT / TIARA INT / TIARA ZERO / TIARA SLIM,
+# SLIDER NEXT / SLIDER NEXT FLAT / SLIDER NEXT ALL GLASS,
+# SLIDE MASTER / SLIDE MASTER FLAT, ATRIUM HD / MOMENTUM HD / CENTRUM HD,
+# TANGO, OPTIMA -- 39 kaydirmali sistem varyanti)
+# ============================================================
+# Diger ailelerin aksine (formuller elle Python'a portlanmis), BC'nin 39
+# varyanti otomatik bir Excel-formul cozucu ile isleniyor: her sistemin
+# ham hucre formulleri (bkz. backend/data/bc_systems.json -> cellFormulas/
+# cellLiterals) BURADA, calisma zamaninda cozumleniyor. Bu yaklasim Excel'in
+# kendi cached degerlerine karsi TUM 39 sistemde, hem toplam maliyet hem her
+# kalemin miktarinda birebir (fark=0.0000) dogrulanmistir.
+
+import re as _bc_re
+
+_BC_TOKEN_RE = _bc_re.compile(r'''
+    \s*(?:
+        (?P<num>\d+\.\d+|\d+)
+      | (?P<str>"[^"]*")
+      | (?P<cell>\$?[A-Z]{1,3}\$?\d{1,4})
+      | (?P<op>[+\-*/(),])
+      | (?P<cmp><>|<=|>=|=|<|>)
+      | (?P<name>[A-Z]+)
+    )
+''', _bc_re.VERBOSE)
+
+
+def _bc_tokenize(s: str):
+    pos, toks = 0, []
+    while pos < len(s):
+        m = _BC_TOKEN_RE.match(s, pos)
+        if not m or m.end() == pos:
+            if s[pos].isspace():
+                pos += 1
+                continue
+            raise ValueError(f"BC formul tokenize hatasi: {pos}: {s[pos:pos+20]!r}")
+        pos = m.end()
+        kind = m.lastgroup
+        val = m.group(kind)
+        if kind is None:
+            continue
+        toks.append((kind, val))
+    return toks
+
+
+class _BcParser:
+    def __init__(self, toks):
+        self.toks = toks
+        self.i = 0
+
+    def peek(self):
+        return self.toks[self.i] if self.i < len(self.toks) else (None, None)
+
+    def next(self):
+        t = self.peek()
+        self.i += 1
+        return t
+
+    def expect(self, val):
+        k, v = self.next()
+        if v != val:
+            raise ValueError(f"BC formul parse hatasi: {val!r} beklendi, {v!r} bulundu")
+
+    def parse(self):
+        node = self.parse_cmp()
+        if self.i != len(self.toks):
+            raise ValueError(f"BC formul parse hatasi: fazladan token {self.toks[self.i:]}")
+        return node
+
+    def parse_cmp(self):
+        left = self.parse_expr()
+        k, v = self.peek()
+        if k == 'cmp':
+            self.next()
+            return ('cmp', v, left, self.parse_expr())
+        return left
+
+    def parse_expr(self):
+        node = self.parse_term()
+        while True:
+            k, v = self.peek()
+            if k == 'op' and v in ('+', '-'):
+                self.next()
+                node = ('binop', v, node, self.parse_term())
+            else:
+                break
+        return node
+
+    def parse_term(self):
+        node = self.parse_unary()
+        while True:
+            k, v = self.peek()
+            if k == 'op' and v in ('*', '/'):
+                self.next()
+                node = ('binop', v, node, self.parse_unary())
+            else:
+                break
+        return node
+
+    def parse_unary(self):
+        k, v = self.peek()
+        if k == 'op' and v == '-':
+            self.next()
+            return ('neg', self.parse_unary())
+        return self.parse_atom()
+
+    def parse_atom(self):
+        k, v = self.next()
+        if k == 'num':
+            return ('num', float(v))
+        if k == 'str':
+            return ('str', v[1:-1])
+        if k == 'cell':
+            return ('ref', v.replace('$', ''))
+        if k == 'name':
+            self.expect('(')
+            args = []
+            if self.peek()[1] != ')':
+                args.append(self.parse_cmp())
+                while self.peek()[1] == ',':
+                    self.next()
+                    args.append(self.parse_cmp())
+            self.expect(')')
+            return ('call', v, args)
+        if k == 'op' and v == '(':
+            node = self.parse_cmp()
+            self.expect(')')
+            return node
+        raise ValueError(f"BC formul parse hatasi: beklenmeyen token {k!r} {v!r}")
+
+
+def _bc_parse_formula(f: str):
+    assert f.startswith('=')
+    return _BcParser(_bc_tokenize(f[1:])).parse()
+
+
+def _bc_eval(node, resolve):
+    """resolve(cellref)->deger. IF/ROUND/AND/OR destekler (BC sistemlerinin
+    formullerinde kullanilan tum Excel fonksiyonlari bunlar)."""
+    kind = node[0]
+    if kind == 'num' or kind == 'str':
+        return node[1]
+    if kind == 'ref':
+        return resolve(node[1])
+    if kind == 'neg':
+        return -_bc_eval(node[1], resolve)
+    if kind == 'binop':
+        op, l, r = node[1], _bc_eval(node[2], resolve), _bc_eval(node[3], resolve)
+        l = 0 if l is None else l
+        r = 0 if r is None else r
+        if op == '+':
+            return l + r
+        if op == '-':
+            return l - r
+        if op == '*':
+            return l * r
+        if op == '/':
+            return l / r if r != 0 else 0
+    if kind == 'cmp':
+        op, l, r = node[1], _bc_eval(node[2], resolve), _bc_eval(node[3], resolve)
+        if op == '=':
+            return l == r
+        if op == '<>':
+            return l != r
+        if op == '<':
+            return l < r
+        if op == '>':
+            return l > r
+        if op == '<=':
+            return l <= r
+        if op == '>=':
+            return l >= r
+    if kind == 'call':
+        fname, args = node[1], node[2]
+        if fname == 'IF':
+            cond = _bc_eval(args[0], resolve)
+            return _bc_eval(args[1], resolve) if cond else _bc_eval(args[2], resolve)
+        if fname == 'ROUND':
+            val = _bc_eval(args[0], resolve)
+            nd = int(_bc_eval(args[1], resolve)) if len(args) > 1 else 0
+            return round(val, nd)
+        if fname in ('AND', 'OR'):
+            vals = [_bc_eval(a, resolve) for a in args]
+            return all(vals) if fname == 'AND' else any(vals)
+        raise ValueError(f"BC formul: desteklenmeyen fonksiyon {fname}")
+    raise ValueError(f"BC formul: bilinmeyen dugum {node}")
+
+
+BC_SYSTEM_TYPES = [
+    'bc_tiara_08', 'bc_tiara_10', 'bc_tiara_12', 'bc_tiara_twinmax',
+    'bc_tiara_flat_08', 'bc_tiara_flat_10', 'bc_tiara_flat_12', 'bc_tiara_flat_twinmax',
+    'bc_tiara_int_08', 'bc_tiara_int_10', 'bc_tiara_int_12', 'bc_tiara_int_twinmax',
+    'bc_tiara_zero_08', 'bc_tiara_zero_10', 'bc_tiara_zero_12', 'bc_tiara_zero_twinmax',
+    'bc_tiara_slim_08', 'bc_tiara_slim_10', 'bc_tiara_slim_12', 'bc_tiara_slim_twinmax',
+    'bc_slider_next_08', 'bc_slider_next_10',
+    'bc_slider_next_flat_08', 'bc_slider_next_flat_10',
+    'bc_slider_next_08_all_glass', 'bc_slider_next_10_all_glass',
+    'bc_slider_next_flat_08_all_glass', 'bc_slider_next_flat_10_all_glass',
+    'bc_slide_master_08', 'bc_slide_master_10', 'bc_slide_master_twin',
+    'bc_slide_master_flat_08', 'bc_slide_master_flat_10', 'bc_slide_master_flat_twin',
+    'bc_atrium_hd_10', 'bc_momentum_hd_10', 'bc_centrum_hd_10',
+    'bc_tango_08', 'bc_optima_08',
+]
+
+BC_TYPE_LABELS = {t: _BC_SYSTEMS_RAW[t]['label'] for t in BC_SYSTEM_TYPES}
+
+# Frontend'in dinamik form olusturmasi icin: her tipin ayarlanabilir
+# kanat/bayrak/cam kalemleri + varsayilan olcu + ray tipi secimi olup
+# olmadigi. Ham formuller (items/cellFormulas) burada YOK -- onlar sadece
+# calculate_bc() icinde, sunucu tarafinda kullanilir. Her cam kalemine,
+# bayinin m² fiyatini `cam_fiyatlari_m2` sozluguyle girebilmesi icin
+# sentetik (Excel'de karsiligi olmayan, biz uretiyoruz) bir 'camSku'
+# atanir -- KIS_BAHCESI'teki gercek cam SKU'lariyla ayni rolu oynar.
+BC_TYPE_META = {
+    t: {
+        'label': s['label'],
+        'defaultGenislik': s['defaultGenislik'],
+        'defaultYukseklik': s['defaultYukseklik'],
+        'kanatInputs': s['kanatInputs'],
+        'flagInputs': s['flagInputs'],
+        'camItems': [
+            {'camSku': f"CAM-{t}-{i + 1}", 'label': c['label'], 'unit': c['unit']}
+            for i, c in enumerate(s['camItems'])
+        ],
+        'hasRayType': s['hasRayType'],
+    }
+    for t, s in _BC_SYSTEMS_RAW.items()
+}
+
+
+def calculate_bc(
+    tip: str,
+    genislik_mm: Optional[float] = None,
+    yukseklik_mm: Optional[float] = None,
+    kanat_miktarlari: Optional[Dict[str, float]] = None,
+    bayrak_degerleri: Optional[Dict[str, float]] = None,
+    ray_tipi: Optional[int] = None,
+    finish: Optional[str] = None,
+    cam_fiyatlari_m2: Optional[Dict[str, float]] = None,
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+    price_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """BC ailesi (39 kaydirmali sistem varyanti) icin tam fiyat kirilimi.
+    VERTIFLEX/KIŞ BAHÇESİ'teki `calculate()` ile ayni sozlesmeyi paylasir.
+    Formuller elle portlanmadi -- her sistemin Excel'den otomatik cikarilan
+    hucre formulleri (bkz. bc_systems.json) burada calisma zamaninda
+    cozumlenir; bkz. _bc_eval/_bc_parse_formula.
+
+    kanat_miktarlari / bayrak_degerleri: {"C18": 4, ...} gibi, ilgili tipin
+    BC_TYPE_META[tip]['kanatInputs'/'flagInputs'] anahtarlarina karsilik
+    gelen hucre referanslariyla anahtarlanir; verilmeyenler kendi
+    varsayilanini kullanir.
+    ray_tipi: sadece hasRayType=True olan (SLIDER NEXT/FLAT) sistemlerde
+    gecerli, 1-4 arasi (5/4/3/2 rayli sistem secimi, Excel'deki AA5 hucresi).
+    cam_fiyatlari_m2: Albert Genau cami kendi fiyat listesinde SATMADIGI
+    icin bayi cami kendi m² fiyatiyla girer -- anahtar, BC_TYPE_META'daki
+    camItems[i]['camSku'] (sentetik anahtar, Excel'de gercek SKU'su yok)."""
+    if tip not in _BC_SYSTEMS_RAW:
+        raise ValueError(f"Bilinmeyen BC sistem tipi: {tip}")
+    sysd = _BC_SYSTEMS_RAW[tip]
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
+    finish_mult = _finish_multiplier(finish)
+
+    e2 = genislik_mm if genislik_mm is not None else sysd['defaultGenislik']
+    f2 = yukseklik_mm if yukseklik_mm is not None else sysd['defaultYukseklik']
+    kanat_over = dict(kanat_miktarlari or {})
+    flag_over = dict(bayrak_degerleri or {})
+    if sysd['hasRayType'] and ray_tipi is not None and ray_tipi not in (1, 2, 3, 4):
+        raise ValueError("Ray tipi 1-4 arasinda olmalidir")
+
+    cache: Dict[str, Any] = {}
+
+    def resolve(ref: str):
+        if ref in cache:
+            return cache[ref]
+        if ref == 'E2':
+            v = e2
+        elif ref == 'F2':
+            v = f2
+        elif ref == 'AA5' and sysd['hasRayType'] and ray_tipi is not None:
+            v = ray_tipi
+        elif ref in kanat_over:
+            v = kanat_over[ref]
+        elif ref in flag_over:
+            v = flag_over[ref]
+        elif ref in sysd['fixedConsts']:
+            v = sysd['fixedConsts'][ref]
+        elif ref in sysd['kanatInputs']:
+            v = sysd['kanatInputs'][ref]['default']
+        elif ref in sysd['flagInputs']:
+            v = sysd['flagInputs'][ref]['default']
+        elif ref in sysd['cellFormulas']:
+            v = _bc_eval(_bc_parse_formula(sysd['cellFormulas'][ref]), resolve)
+        elif ref in sysd['cellLiterals']:
+            v = sysd['cellLiterals'][ref]
+        else:
+            raise KeyError(f"BC ({tip}): cozumlenemeyen hucre referansi {ref}")
+        cache[ref] = v
+        return v
+
+    # ---- profil grubu (finish carpani UYGULANIR -- BC'nin kendi notu:
+    # renk farki sadece "profil grubu"na uygulanir, kanat takimi/cama degil)
+    profil: list = []
+    for it in sysd['items']:
+        skuf = it['skuFormula']
+        if isinstance(skuf, str) and skuf.startswith('='):
+            sku = _bc_eval(_bc_parse_formula(skuf), resolve)
+        else:
+            sku = skuf
+        mf = it['miktarFormula']
+        if isinstance(mf, str) and mf.startswith('='):
+            qty = _bc_eval(_bc_parse_formula(mf), resolve)
+        else:
+            qty = mf or 0
+        birim_fiyat = _pl_price(pb, sku) * finish_mult
+        pl_item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku) or {}
+        label = pl_item.get('name') or sku
+        profil.append(Kalem(label, sku, birim_fiyat, qty or 0))
+
+    # ---- kanat takimlari (finish carpani UYGULANMAZ)
+    aksesuar: list = []
+    for ref, meta in sysd['kanatInputs'].items():
+        qty = kanat_over.get(ref, meta['default'])
+        sku = meta['sku']
+        birim_fiyat = _pl_price(pb, sku)
+        aksesuar.append(Kalem(meta['label'], sku, birim_fiyat, qty or 0))
+
+    # ---- cam (bayi fiyatli, finish carpani UYGULANMAZ)
+    cam_fiyatlari = cam_fiyatlari_m2 or {}
+    cam_kalemleri: list = []
+    for i, it in enumerate(sysd['camItems']):
+        cam_sku = f"CAM-{tip}-{i + 1}"
+        mf = it['miktarFormula']
+        if isinstance(mf, str) and mf.startswith('='):
+            qty = _bc_eval(_bc_parse_formula(mf), resolve)
+        else:
+            qty = mf or 0
+        birim_fiyat = float(cam_fiyatlari.get(cam_sku) or 0)
+        cam_kalemleri.append(Kalem(f"{it['label']} ({qty:.2f} {it['unit']})", cam_sku, birim_fiyat, round(qty, 3)))
+
+    profil_toplam = sum(k.total for k in profil)
+    aksesuar_toplam = sum(k.total for k in aksesuar)
+    cam_toplam = sum(k.total for k in cam_kalemleri)
+    # Excel'in kendi notu: "SARF MALZEMELERİ, FİRE VB. GİDERLER DİKKATE
+    # ALINMAMIŞTIR" -- diger BC-benzeri ailelerdeki gibi fire_orani=0.
+    maliyet_toplam = profil_toplam + aksesuar_toplam + cam_toplam
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'bc',
+        'tip': tip,
+        'tipAdi': BC_TYPE_LABELS[tip],
+        'odemeTipi': odeme_tipi_eff,
+        'girdi': {
+            'genislikMm': e2,
+            'yukseklikMm': f2,
+            'rayTipi': ray_tipi if sysd['hasRayType'] else None,
         },
         'profilGrubuToplam': round(profil_toplam, 2),
         'aksesuarGrubuToplam': round(aksesuar_toplam, 2),

@@ -399,6 +399,14 @@ export const api = {
     req(`/albert-genau/kis-bahcesi/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauKisBahcesiCalculate: (data: AlbertGenauKisBahcesiCalculateInputT): Promise<AlbertGenauKisBahcesiResultT> =>
     req('/albert-genau/kis-bahcesi/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  // BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER,
+  // ATRIUM/MOMENTUM/CENTRUM HD, TANGO/OPTIMA — 39 kaydırmalı sistem
+  // varyantı). Diğer ailelerden farklı olarak kanat/bayrak/cam alanları
+  // TİPE GÖRE DEĞİŞİR — bkz. AlbertGenauBcTypeMetaT.
+  albertGenauBcTypes: (companyId?: string): Promise<AlbertGenauBcTypesResponseT> =>
+    req(`/albert-genau/bc/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
+  albertGenauBcCalculate: (data: AlbertGenauBcCalculateInputT): Promise<AlbertGenauBcResultT> =>
+    req('/albert-genau/bc/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -864,6 +872,8 @@ export type AlbertGenauTypesResponseT = {
   vertiflexTypes?: { id: string; label: string }[];
   // bkz. albertGenauKisBahcesiTypes() / AlbertGenauKisBahcesiTypesResponseT.
   kisBahcesiTypes?: { id: string; label: string }[];
+  // bkz. albertGenauBcTypes() / AlbertGenauBcTypesResponseT.
+  bcTypes?: { id: string; label: string }[];
 };
 
 export type AlbertGenauPartsListItemT = {
@@ -1053,6 +1063,66 @@ export type AlbertGenauKisBahcesiResultT = {
     arkaDuvarAltYukseklikMm: number;
     araDikmeSayisi: number;
   };
+  profilGrubuToplam: number;
+  aksesuarGrubuToplam: number;
+  camGrubuToplam: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+// BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER,
+// ATRIUM/MOMENTUM/CENTRUM HD, TANGO/OPTIMA — 39 kaydırmalı sistem
+// varyantı). Excel formülleri elle portlanmadı; her tipin ayarlanabilir
+// kanat/bayrak/cam kalemleri backend'den (ag_calc.BC_TYPE_META) tip
+// başına gelir — form bu meta'ya göre DİNAMİK kurulur.
+export type AlbertGenauBcKanatInputT = { sku: string; label: string; default: number };
+export type AlbertGenauBcFlagInputT = { label: string; kind: 'bool' | 'count'; default: number };
+export type AlbertGenauBcCamItemT = { camSku: string; label: string; unit: string };
+
+export type AlbertGenauBcTypeMetaT = {
+  id: string;
+  label: string;
+  defaultGenislik: number;
+  defaultYukseklik: number;
+  kanatInputs: Record<string, AlbertGenauBcKanatInputT>; // hücre ref -> kanat takımı girdisi
+  flagInputs: Record<string, AlbertGenauBcFlagInputT>;   // hücre ref -> köşe sayısı/delikli cam vb.
+  camItems: AlbertGenauBcCamItemT[];
+  hasRayType: boolean; // true ise ray tipi (1-4, 5/4/3/2 raylı) seçimi gösterilir
+};
+
+export type AlbertGenauBcTypesResponseT = {
+  types: AlbertGenauBcTypeMetaT[];
+  finishes: string[];
+};
+
+export type AlbertGenauBcCalculateInputT = {
+  companyId?: string;
+  tip: string;
+  genislikMm?: number | null;
+  yukseklikMm?: number | null;
+  kanatMiktarlari?: Record<string, number>;
+  bayrakDegerleri?: Record<string, number>;
+  rayTipi?: number | null;
+  finish?: string | null;
+  camFiyatlariM2?: Record<string, number>;
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauBcResultT = {
+  kind: 'bc';
+  tip: string;
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  girdi: { genislikMm: number; yukseklikMm: number; rayTipi: number | null };
   profilGrubuToplam: number;
   aksesuarGrubuToplam: number;
   camGrubuToplam: number;

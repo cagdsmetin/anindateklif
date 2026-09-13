@@ -1427,6 +1427,1752 @@
       "unit": "Tk.",
       "price": 221.5,
       "weight": null
+    },
+    "B15070--": {
+      "name": "61*52 SU TAHLİYELİ KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 775,
+      "weight": 0
+    },
+    "B15080--": {
+      "name": "23*100 SU TAHLİYELİ ALT KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 558.5,
+      "weight": 0
+    },
+    "B15125--": {
+      "name": "25*82 ALT KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 505,
+      "weight": 0
+    },
+    "B15126--": {
+      "name": "24*54 SU TAHLİYELİ ALT KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 440.5,
+      "weight": 0
+    },
+    "B15022--": {
+      "name": "46*28 KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 375,
+      "weight": 0
+    },
+    "B15010--": {
+      "name": "54*32 KANAT PROFİLİ MAX10 6,5 MT",
+      "unit": "Mt.",
+      "price": 509.5,
+      "weight": 0
+    },
+    "B15045--": {
+      "name": "54*32 KANAT PROFİLİ 10-12 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 528.5,
+      "weight": 0
+    },
+    "B15071--": {
+      "name": "47*35 KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 387,
+      "weight": 0
+    },
+    "B15072--": {
+      "name": "28*36 ARA DİKME PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 252.5,
+      "weight": 0
+    },
+    "B15074--": {
+      "name": "62*36 İSPANYOLET ARA DİKME PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 412.5,
+      "weight": 0
+    },
+    "B15073--": {
+      "name": "57*36 BİRLEŞİM PROFİLİ (90º) 6,5 MT",
+      "unit": "Mt.",
+      "price": 344.5,
+      "weight": 0
+    },
+    "B15043--": {
+      "name": "48*36 YAN KAPAMA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 259.5,
+      "weight": 0
+    },
+    "B15024--": {
+      "name": "43*36  U YAN KAPAMA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 259.5,
+      "weight": 0
+    },
+    "B15170--": {
+      "name": "54*30 TEK CAM İSPANYOLETLİ KİLİT PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 295.5,
+      "weight": 0
+    },
+    "B15171--": {
+      "name": "24*30 TEK CAM KİLİT KARŞILIK PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 215,
+      "weight": 0
+    },
+    "B15177--": {
+      "name": "54*30 TEK CAM İSPANYOLETLİ KİLİT PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 295.5,
+      "weight": 0
+    },
+    "B15178--": {
+      "name": "24*30 TEK CAM KİLİT KARŞILIK PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 215,
+      "weight": 0
+    },
+    "B15127--": {
+      "name": "50*36 ACILI BIRLESIM PROFILI (98°-112°) 6,5 MT",
+      "unit": "Mt.",
+      "price": 292.5,
+      "weight": 0
+    },
+    "B15128--": {
+      "name": "43*36 ACILI BIRLESIM PROFILI (113°-127°) 6,5 MT",
+      "unit": "Mt.",
+      "price": 274,
+      "weight": 0
+    },
+    "B15065--": {
+      "name": "39*36 135º AÇILI BİRLEŞİM PROFİLİ (128º - 142º) 6,5 MT",
+      "unit": "Mt.",
+      "price": 268,
+      "weight": 0
+    },
+    "B15078--": {
+      "name": "32*36 150º AÇILI BİRLEŞİM PROFİLİ (143º - 157º) 6,5 MT",
+      "unit": "Mt.",
+      "price": 247,
+      "weight": 0
+    },
+    "B15079--": {
+      "name": "23*36 165º AÇILI BİRLEŞİM PROFİLİ (158º - 172º) 6,5 MT",
+      "unit": "Mt.",
+      "price": 225,
+      "weight": 0
+    },
+    "B15067--": {
+      "name": "47*35 JALUZİLİ KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 406,
+      "weight": 0
+    },
+    "B15068--": {
+      "name": "28*36 JALUZİLİ ARA DİKME PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 201.5,
+      "weight": 0
+    },
+    "B15069--": {
+      "name": "57*36 JALUZİLİ BİRLEŞİM PROFİLİ (90º) 6,5 MT",
+      "unit": "Mt.",
+      "price": 318.5,
+      "weight": 0
+    },
+    "B15094--": {
+      "name": "62*36 JALUZİLİ İSPANYOLET ARA DİKME PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 406,
+      "weight": 0
+    },
+    "B15011--": {
+      "name": "h ALÜMİNYUM FİTİL PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 78,
+      "weight": 0
+    },
+    "B15012--": {
+      "name": "H ALÜMİNYUM FİTİL PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 115,
+      "weight": 0
+    },
+    "B15013--": {
+      "name": "AÇILI F ALÜMİNYUM FİTİL PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 87.5,
+      "weight": 0
+    },
+    "B15190--": {
+      "name": "22*18 DÖNÜŞLÜ F ALÜMİNYUM FİTİL PROFİLİ 8 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 74.5,
+      "weight": 0
+    },
+    "B15014--": {
+      "name": "h ALÜMİNYUM FİTİL PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 79,
+      "weight": 0
+    },
+    "B15015--": {
+      "name": "H ALÜMİNYUM FİTİL PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 119,
+      "weight": 0
+    },
+    "B15016--": {
+      "name": "AÇILI F ALÜMİNYUM FİTİL PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 92.5,
+      "weight": 0
+    },
+    "B15191--": {
+      "name": "23*18 DÖNÜŞLÜ F ALÜMİNYUM FİTİL PROFİLİ 10 mm. 6,5 MT",
+      "unit": "Mt.",
+      "price": 77,
+      "weight": 0
+    },
+    "B15095--": {
+      "name": "97*55 PERDE TAKILABİLEN AYAR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 569,
+      "weight": 0
+    },
+    "B15041--": {
+      "name": "63*55 PERDELİKSİZ AYAR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 442,
+      "weight": 0
+    },
+    "B15042--": {
+      "name": "55*58 OVAL KÜPEŞTE ADAPTOR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 448.5,
+      "weight": 0
+    },
+    "B15165--": {
+      "name": "AG SABİT BÖLME L KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 314.5,
+      "weight": 0
+    },
+    "B15166--": {
+      "name": "AG SABİT BÖLME T ORTAKAYIT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 360.5,
+      "weight": 0
+    },
+    "B15167--": {
+      "name": "AG SABİT BÖLME CAM ÇITASI ANT. GRİ (ISICAM) 6,5 MT",
+      "unit": "Mt.",
+      "price": 132.5,
+      "weight": 0
+    },
+    "B15168--": {
+      "name": "AG SABİT BÖLME CAM ÇITASI ANT. GRİ (TEKCAM) 6,5 MT",
+      "unit": "Mt.",
+      "price": 135,
+      "weight": 0
+    },
+    "B05293": {
+      "name": "TIARA 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 841,
+      "weight": 0
+    },
+    "B05292": {
+      "name": "TIARA 08 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 697,
+      "weight": 0
+    },
+    "B05350": {
+      "name": "TIARA 08 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 854,
+      "weight": 0
+    },
+    "B05457": {
+      "name": "TIARA 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1145,
+      "weight": 0
+    },
+    "B05462": {
+      "name": "TIARA 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1210.5,
+      "weight": 0
+    },
+    "B05294": {
+      "name": "TIARA 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 247.5,
+      "weight": 0
+    },
+    "B05303": {
+      "name": "TIARA 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 845,
+      "weight": 0
+    },
+    "B05302": {
+      "name": "TIARA 10 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 701.5,
+      "weight": 0
+    },
+    "B05351": {
+      "name": "TIARA 10 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 856.5,
+      "weight": 0
+    },
+    "B05467": {
+      "name": "TIARA 10 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1151,
+      "weight": 0
+    },
+    "B05472": {
+      "name": "TIARA 10 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm. ",
+      "unit": "Tk.",
+      "price": 1217.5,
+      "weight": 0
+    },
+    "B05304": {
+      "name": "TIARA 10 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 281.5,
+      "weight": 0
+    },
+    "B05313": {
+      "name": "TIARA 12 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 847,
+      "weight": 0
+    },
+    "B05312": {
+      "name": "TIARA 12 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 703,
+      "weight": 0
+    },
+    "B05352": {
+      "name": "TIARA 12 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 859,
+      "weight": 0
+    },
+    "B05314": {
+      "name": "TIARA 12 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 281.5,
+      "weight": 0
+    },
+    "B05323": {
+      "name": "TIARA TWINMAX KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 812.5,
+      "weight": 0
+    },
+    "B05322": {
+      "name": "TIARA TWINMAX MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 665.5,
+      "weight": 0
+    },
+    "B05325": {
+      "name": "TIARA TWINMAX İSPANYOLETLİ MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1457.5,
+      "weight": 0
+    },
+    "B05324": {
+      "name": "TIARA TWINMAX SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 232,
+      "weight": 0
+    },
+    "B05295": {
+      "name": "TIARA FLAT 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 575,
+      "weight": 0
+    },
+    "B05296": {
+      "name": "TIARA FLAT 08 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6521,
+      "weight": 0
+    },
+    "B05354": {
+      "name": "TIARA FLAT 08 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 839,
+      "weight": 0
+    },
+    "B05458": {
+      "name": "TIARA FLAT 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1079,
+      "weight": 0
+    },
+    "B05463": {
+      "name": "TIARA FLAT 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1158.5,
+      "weight": 0
+    },
+    "B05297": {
+      "name": "TIARA FLAT 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 488,
+      "weight": 0
+    },
+    "B05305": {
+      "name": "TIARA FLAT 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05306": {
+      "name": "TIARA FLAT 10 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6526,
+      "weight": 0
+    },
+    "B05355": {
+      "name": "TIARA FLAT 10 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 864,
+      "weight": 0
+    },
+    "B05468": {
+      "name": "TIARA FLAT 10 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1083.5,
+      "weight": 0
+    },
+    "B05473": {
+      "name": "TIARA FLAT 10 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1163.5,
+      "weight": 0
+    },
+    "B05307": {
+      "name": "TIARA FLAT 10 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 491,
+      "weight": 0
+    },
+    "B05315": {
+      "name": "TIARA FLAT 12 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05316": {
+      "name": "TIARA FLAT 12 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6528.5,
+      "weight": 0
+    },
+    "B05356": {
+      "name": "TIARA FLAT 12 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1161,
+      "weight": 0
+    },
+    "B05317": {
+      "name": "TIARA FLAT 12 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 495,
+      "weight": 0
+    },
+    "B05343": {
+      "name": "TIARA FLAT TWINMAX KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 642,
+      "weight": 0
+    },
+    "B05345": {
+      "name": "TIARA FLAT TWINMAX İSPANYOLETLİ MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1437.5,
+      "weight": 0
+    },
+    "B05346": {
+      "name": "TIARA FLAT TWINMAX SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 435,
+      "weight": 0
+    },
+    "B05357": {
+      "name": "TIARA INT 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 577.5,
+      "weight": 0
+    },
+    "B05358": {
+      "name": "TIARA INT 08 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 839,
+      "weight": 0
+    },
+    "B05459": {
+      "name": "TIARA INT 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1079,
+      "weight": 0
+    },
+    "B05464": {
+      "name": "TIARA INT 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1158.5,
+      "weight": 0
+    },
+    "B05359": {
+      "name": "TIARA INT 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 489.5,
+      "weight": 0
+    },
+    "B05360": {
+      "name": "TIARA INT 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05361": {
+      "name": "TIARA INT 10 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 864,
+      "weight": 0
+    },
+    "B05469": {
+      "name": "TIARA INT 10 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1083.5,
+      "weight": 0
+    },
+    "B05474": {
+      "name": "TIARA INT 10 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1163.5,
+      "weight": 0
+    },
+    "B05362": {
+      "name": "TIARA INT 10 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 491,
+      "weight": 0
+    },
+    "B05363": {
+      "name": "TIARA INT 12 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05364": {
+      "name": "TIARA INT 12 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 864,
+      "weight": 0
+    },
+    "B05365": {
+      "name": "TIARA INT 12 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 495,
+      "weight": 0
+    },
+    "B05366": {
+      "name": "TIARA INT TWINMAX KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 642,
+      "weight": 0
+    },
+    "B05367": {
+      "name": "TIARA INT TWINMAX İSPANYOLETLİ MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1437.5,
+      "weight": 0
+    },
+    "B05368": {
+      "name": "TIARA INT TWINMAX SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 437,
+      "weight": 0
+    },
+    "B05393": {
+      "name": "TIARA ZERO 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 575,
+      "weight": 0
+    },
+    "B05394": {
+      "name": "TIARA ZERO 08 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6521,
+      "weight": 0
+    },
+    "B05461": {
+      "name": "TIARA ZERO 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1079,
+      "weight": 0
+    },
+    "B05466": {
+      "name": "TIARA ZERO 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1158.5,
+      "weight": 0
+    },
+    "B05396": {
+      "name": "TIARA ZERO 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 488,
+      "weight": 0
+    },
+    "B05397": {
+      "name": "TIARA ZERO 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05398": {
+      "name": "TIARA ZERO 10 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6526,
+      "weight": 0
+    },
+    "B05471": {
+      "name": "TIARA ZERO 10 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1083.5,
+      "weight": 0
+    },
+    "B05476": {
+      "name": "TIARA ZERO 10 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1163.5,
+      "weight": 0
+    },
+    "B05400": {
+      "name": "TIARA ZERO 10 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 488,
+      "weight": 0
+    },
+    "B05401": {
+      "name": "TIARA ZERO 12 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05402": {
+      "name": "TIARA ZERO 12 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6528.5,
+      "weight": 0
+    },
+    "B05404": {
+      "name": "TIARA ZERO 12 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 488,
+      "weight": 0
+    },
+    "B05405": {
+      "name": "TIARA ZERO TWINMAX KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 642,
+      "weight": 0
+    },
+    "B05406": {
+      "name": "TIARA ZERO TWINMAX İSPANYOLETLİ MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1437.5,
+      "weight": 0
+    },
+    "B05407": {
+      "name": "TIARA ZERO TWINMAX SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 435,
+      "weight": 0
+    },
+    "B05378": {
+      "name": "TIARA SLIM 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 575,
+      "weight": 0
+    },
+    "B05379": {
+      "name": "TIARA SLIM 08 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6521,
+      "weight": 0
+    },
+    "B05380": {
+      "name": "TIARA SLIM 08 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 839,
+      "weight": 0
+    },
+    "B05460": {
+      "name": "TIARA SLIM 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1079,
+      "weight": 0
+    },
+    "B05465": {
+      "name": "TIARA SLIM 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1158.5,
+      "weight": 0
+    },
+    "B05381": {
+      "name": "TIARA SLIM 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 488,
+      "weight": 0
+    },
+    "B05382": {
+      "name": "TIARA SLIM 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05383": {
+      "name": "TIARA SLIM 10 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6526,
+      "weight": 0
+    },
+    "B05384": {
+      "name": "TIARA SLIM 10 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 864,
+      "weight": 0
+    },
+    "B05470": {
+      "name": "TIARA SLIM 10 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 1083.5,
+      "weight": 0
+    },
+    "B05475": {
+      "name": "TIARA SLIM 10 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 1163.5,
+      "weight": 0
+    },
+    "B05385": {
+      "name": "TIARA SLIM 10 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 491,
+      "weight": 0
+    },
+    "B05386": {
+      "name": "TIARA SLIM 12 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 615.5,
+      "weight": 0
+    },
+    "B05387": {
+      "name": "TIARA SLIM 12 KOLLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6528.5,
+      "weight": 0
+    },
+    "B05388": {
+      "name": "TIARA SLIM 12 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1161,
+      "weight": 0
+    },
+    "B05389": {
+      "name": "TIARA SLIM 12 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 495,
+      "weight": 0
+    },
+    "B05390": {
+      "name": "TIARA SLIM TWINMAX KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 642,
+      "weight": 0
+    },
+    "B05391": {
+      "name": "TIARA SLIM TWINMAX İSPANYOLETLİ MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1437.5,
+      "weight": 0
+    },
+    "B05392": {
+      "name": "TIARA SLIM TWINMAX SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 437,
+      "weight": 0
+    },
+    "B05600": {
+      "name": "TIARA GİZLİ KILAVUZ TAKIMI",
+      "unit": "Tk.",
+      "price": 198,
+      "weight": 0
+    },
+    "B8504601": {
+      "name": "90º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 46*28",
+      "unit": "Tk.",
+      "price": 39,
+      "weight": 0
+    },
+    "B8504636": {
+      "name": "135º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 46*28",
+      "unit": "Tk.",
+      "price": 71,
+      "weight": 0
+    },
+    "B8504622": {
+      "name": "90º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 54*32",
+      "unit": "Tk.",
+      "price": 44.5,
+      "weight": 0
+    },
+    "B8504705": {
+      "name": "AG 90*30 TEK PARCA AÇILI BİRLEŞİM LAMEL TAKIMI",
+      "unit": "Tk.",
+      "price": 63.5,
+      "weight": 0
+    },
+    "B05339": {
+      "name": "AYAR PROFİLİ MEKANİZMASI",
+      "unit": "Tk.",
+      "price": 50,
+      "weight": 0
+    },
+    "B8501616": {
+      "name": "KANAT SABİTLEME APARATI",
+      "unit": "Tk.",
+      "price": 179,
+      "weight": 0
+    },
+    "B8501603": {
+      "name": "KANAT SABİTLEME APARATI INOX",
+      "unit": "Tk.",
+      "price": 226,
+      "weight": 0
+    },
+    "B8501619": {
+      "name": "TIARA ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 87.5,
+      "weight": 0
+    },
+    "B8501620": {
+      "name": "TIARA FLAT ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 87.5,
+      "weight": 0
+    },
+    "B8501621": {
+      "name": "TIARA SLIM ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 85,
+      "weight": 0
+    },
+    "B8501622": {
+      "name": "TIARA ZERO ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 85,
+      "weight": 0
+    },
+    "B8505509": {
+      "name": "MIKNATISLI CONTA",
+      "unit": "Mt.",
+      "price": 58.5,
+      "weight": 0
+    },
+    "B8505601": {
+      "name": "CAM FİTİLİ 8 mm. h CO-EXTRUDED",
+      "unit": "Mt.",
+      "price": 42.9,
+      "weight": 0
+    },
+    "B8505604": {
+      "name": "CAM FİTİLİ 8 mm. H CO-EXTRUDED",
+      "unit": "Mt.",
+      "price": 43.8,
+      "weight": 0
+    },
+    "B8505602": {
+      "name": "CAM FİTİLİ AÇILI 8 mm. h CO-EXTRUDED",
+      "unit": "Mt.",
+      "price": 43.2,
+      "weight": 0
+    },
+    "B8505603": {
+      "name": "CAM FİTİLİ 10 mm. h CO-EXTRUDED",
+      "unit": "Mt.",
+      "price": 43.2,
+      "weight": 0
+    },
+    "B8505605": {
+      "name": "CAM FİTİLİ 10 mm. H CO-EXTRUDED ÇİFT YÖNLÜ",
+      "unit": "Mt.",
+      "price": 44.2,
+      "weight": 0
+    },
+    "B8505608": {
+      "name": "CAM FİTİLİ 12 mm. h CO-EXTRUDED",
+      "unit": "Mt.",
+      "price": 80.7,
+      "weight": 0
+    },
+    "B8505304": {
+      "name": "KIL FIRÇA 048*0800 (NYLON BARİYERLİ)",
+      "unit": "Mt.",
+      "price": 10.3,
+      "weight": 0
+    },
+    "B8505309": {
+      "name": "KIL FIRÇA 048*1000",
+      "unit": "Mt.",
+      "price": 7.5,
+      "weight": 0
+    },
+    "B15082--": {
+      "name": "42*123 KASA ÜST PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 810.5,
+      "weight": 0
+    },
+    "B15093--": {
+      "name": "15*123 KASA ALT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 697,
+      "weight": 0
+    },
+    "B15085--": {
+      "name": "96*26 KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 539.5,
+      "weight": 0
+    },
+    "B15086--": {
+      "name": "31*34 KANAT ÇEKTİRME PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 277.5,
+      "weight": 0
+    },
+    "B15084--": {
+      "name": "70*27 KİLİT ARA DİKME PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 365,
+      "weight": 0
+    },
+    "B15099--": {
+      "name": "70*44 ÇEKTİRMELİ KİLİT ARA DİKME PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 443,
+      "weight": 0
+    },
+    "B15087--": {
+      "name": "33*19 YAN BİRLEŞİM KİLİT KARŞILIK PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 200.5,
+      "weight": 0
+    },
+    "B15092--": {
+      "name": "42*36 TEK RAY PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 274.5,
+      "weight": 0
+    },
+    "B15091--": {
+      "name": "8*11 TEK RAY KAPAK PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 40,
+      "weight": 0
+    },
+    "B15088--": {
+      "name": "59*27 ORTA BİRLEŞİM KİLİT KARŞILIK PROFİLİ 5,5 MT",
+      "unit": "Mt.",
+      "price": 319.5,
+      "weight": 0
+    },
+    "B15089--": {
+      "name": "36*43 90° BİRLEŞİM KİLİT KARŞILIK PROFİLİ  5,5 MT",
+      "unit": "Mt.",
+      "price": 302.5,
+      "weight": 0
+    },
+    "B15090--": {
+      "name": "17*24 ADAPTÖR PROFİLİ (8mm.) 6,5 MT",
+      "unit": "Mt.",
+      "price": 105.5,
+      "weight": 0
+    },
+    "B15138--": {
+      "name": "18*24 ADAPTÖR PROFİLİ (10mm.) 6,5 MT",
+      "unit": "Mt.",
+      "price": 111.5,
+      "weight": 0
+    },
+    "B15081--": {
+      "name": "33*22 YATAY AYAR PROFILI 5,5 MT",
+      "unit": "Mt.",
+      "price": 208.5,
+      "weight": 0
+    },
+    "B15317--": {
+      "name": "72*27 SM ISPANYOLETLI KILIT PROFILI 5,5 MT",
+      "unit": "Mt.",
+      "price": 385.5,
+      "weight": 0
+    },
+    "B15157--": {
+      "name": "30*115 KASA PROFİLİ 5R 6,0 MT",
+      "unit": "Mt.",
+      "price": 751.5,
+      "weight": 0
+    },
+    "B15158--": {
+      "name": "60*115 ÜST KASA PROFİLİ 5R 6,0 MT",
+      "unit": "Mt.",
+      "price": 1216.5,
+      "weight": 0
+    },
+    "B15159--": {
+      "name": "16*67 KANAT PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 350,
+      "weight": 0
+    },
+    "B15160--": {
+      "name": "25*27 YATAY AYAR PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 201,
+      "weight": 0
+    },
+    "B15161--": {
+      "name": "21*26 KİLİT KARŞILIK PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 200.5,
+      "weight": 0
+    },
+    "B15162--": {
+      "name": "20*9 ARA ÇITA PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 111.5,
+      "weight": 0
+    },
+    "B15172--": {
+      "name": "16*67 KANAT PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 360.5,
+      "weight": 0
+    },
+    "B15173--": {
+      "name": "27*75 YAN DİKME KİLİT PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 538.5,
+      "weight": 0
+    },
+    "B15174--": {
+      "name": "36*39 ÇEKTİRMELİ KİLİT KARŞILIK PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 310.5,
+      "weight": 0
+    },
+    "B15175--": {
+      "name": "20*30 KANAT ÇEKTİRME PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 272,
+      "weight": 0
+    },
+    "B15176--": {
+      "name": "16*115 ALT KASA PROFİLİ 5R 6,0 MT",
+      "unit": "Mt.",
+      "price": 633.5,
+      "weight": 0
+    },
+    "B15179--": {
+      "name": "28*27 TIRNAKLI 90° BİRLEŞİM PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 255.5,
+      "weight": 0
+    },
+    "B15180--": {
+      "name": "16*27 TIRNAKSIZ 90° BİRLEŞİM PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 180,
+      "weight": 0
+    },
+    "B15181--": {
+      "name": "28*27 TIRNAKLI 90° BİRLEŞİM PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 255.5,
+      "weight": 0
+    },
+    "B15182--": {
+      "name": "16*27 TIRNAKSIZ 90° BİRLEŞİM PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 167.5,
+      "weight": 0
+    },
+    "B15183--": {
+      "name": "20*30 KANAT ÇEKTİRME PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 258,
+      "weight": 0
+    },
+    "B15184--": {
+      "name": "36*39 ÇEKTİRMELİ KİLİT KARŞILIK PROFİLİ (10mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 299,
+      "weight": 0
+    },
+    "B15186--": {
+      "name": "21*9 ARA ÇITA PROFİLİ (8mm.) 6,0 MT",
+      "unit": "Mt.",
+      "price": 125.5,
+      "weight": 0
+    },
+    "B15192--": {
+      "name": "60*70 ÜST KASA PROFİLİ 3R 6,0 MT",
+      "unit": "Mt.",
+      "price": 766,
+      "weight": 0
+    },
+    "B15193--": {
+      "name": "30*70 KASA PROFİLİ 3R 6,0 MT",
+      "unit": "Mt.",
+      "price": 509.5,
+      "weight": 0
+    },
+    "B15194--": {
+      "name": "16*70 ALT KASA PROFİLİ 3R 6,0 MT",
+      "unit": "Mt.",
+      "price": 408,
+      "weight": 0
+    },
+    "B15254--": {
+      "name": "60*92 ÜST KASA PROFİLİ 4R 4,0 MT",
+      "unit": "Mt.",
+      "price": 988,
+      "weight": 0
+    },
+    "B15255--": {
+      "name": "30*92 KASA PROFİLİ 4R 4,0 MT",
+      "unit": "Mt.",
+      "price": 578,
+      "weight": 0
+    },
+    "B15256--": {
+      "name": "16*92 ALT KASA PROFİLİ 4R 4,0 MT",
+      "unit": "Mt.",
+      "price": 464.5,
+      "weight": 0
+    },
+    "B15257--": {
+      "name": "11*115 YAN PROFİLİ 5R 6,0 MT",
+      "unit": "Mt.",
+      "price": 419.5,
+      "weight": 0
+    },
+    "B15258--": {
+      "name": "11*92 YAN PROFİLİ 4R 6,0 MT",
+      "unit": "Mt.",
+      "price": 352,
+      "weight": 0
+    },
+    "B15259--": {
+      "name": "11*70 YAN PROFİLİ 3R 6,0 MT",
+      "unit": "Mt.",
+      "price": 274,
+      "weight": 0
+    },
+    "B15222--": {
+      "name": "56*39 ÇİFT ÇEKTİRMELİ KİLİT KARŞILIK PROFİLİ 8MM 6,0 MT",
+      "unit": "Mt.",
+      "price": 392.5,
+      "weight": 0
+    },
+    "B15223--": {
+      "name": "56*39 ÇİFT ÇEKTİRMELİ KİLİT KARŞILIK PROFİLİ 10MM 6,0 MT",
+      "unit": "Mt.",
+      "price": 379,
+      "weight": 0
+    },
+    "B15260--": {
+      "name": "30*20 SURME SİNEKLİK PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 129,
+      "weight": 0
+    },
+    "B15039--": {
+      "name": "17*25 AKSESUAR ADAPTÖR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 95,
+      "weight": 0
+    },
+    "B05264": {
+      "name": "SLIDEMASTER KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 853.5,
+      "weight": 0
+    },
+    "B05267": {
+      "name": "SLIDEMASTER KAYAR KANAT TAKIMI (FLAT)",
+      "unit": "Tk.",
+      "price": 853.5,
+      "weight": 0
+    },
+    "B05481": {
+      "name": "SLIDER NEXT 08/10  ALL GLASS SAĞ KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 509,
+      "weight": 0
+    },
+    "B05482": {
+      "name": "SLIDER NEXT 08/10  ALL GLASS SOL KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 509,
+      "weight": 0
+    },
+    "B05483": {
+      "name": "SLIDER NEXT 08/10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 606.5,
+      "weight": 0
+    },
+    "B8501449": {
+      "name": "SLIDEMASTER HAVUZ KİLİT TAKIMI YAN BİRLEŞİM (İKİLİ)",
+      "unit": "Tk.",
+      "price": 1216,
+      "weight": 0
+    },
+    "B8501451": {
+      "name": "SLIDEMASTER HAVUZ KİLİT TAKIMI ORTA BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 844,
+      "weight": 0
+    },
+    "B8501454": {
+      "name": "SLIDEMASTER HAVUZ KİLİT TAKIMI 90º BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 618,
+      "weight": 0
+    },
+    "B05502": {
+      "name": "SM TEK KOLLU ISPANYOLET KILIT TAKIMI 800MM YAN BIRLESIM",
+      "unit": "Tk.",
+      "price": 529.5,
+      "weight": 0
+    },
+    "B05503": {
+      "name": "SM CIFT KOLLU ISPANYOLET KILIT TAKIMI 1800MM YAN BIRLESIM",
+      "unit": "Tk.",
+      "price": 1455,
+      "weight": 0
+    },
+    "B05504": {
+      "name": "SM TEK KOLLU ISPANYOLET KILIT TAKIMI 800MM ORTA BIRLESIM",
+      "unit": "Tk.",
+      "price": 558,
+      "weight": 0
+    },
+    "B05505": {
+      "name": "SM CIFT KOLLU ISPANYOLET KILIT TAKIMI 1800MM ORTA BIRLESIM",
+      "unit": "Tk.",
+      "price": 1483.5,
+      "weight": 0
+    },
+    "B05506": {
+      "name": "SM TEK KOLLU ISPANYOLET KILIT TAKIMI 800MM 90° BIRLESIM",
+      "unit": "Tk.",
+      "price": 538.5,
+      "weight": 0
+    },
+    "B05507": {
+      "name": "SM CIFT KOLLU ISPANYOLET KILIT TAKIMI 1800MM 90° BIRLESIM",
+      "unit": "Tk.",
+      "price": 1464.5,
+      "weight": 0
+    },
+    "B05275": {
+      "name": "SLIDEMASTER PUSH BUTONLU KANCA KİLİT YAN BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 450,
+      "weight": 0
+    },
+    "B05276": {
+      "name": "SLIDEMASTER PUSH BUTONLU KANCA KİLİT ORTA BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 676,
+      "weight": 0
+    },
+    "B05277": {
+      "name": "SLIDEMASTER PUSH BUTONLU KANCA KİLİT 90° BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 455.5,
+      "weight": 0
+    },
+    "B05278": {
+      "name": "SLIDEMASTER BARELSİZ KANCA KİLİT YAN BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 881.5,
+      "weight": 0
+    },
+    "B05279": {
+      "name": "SLIDEMASTER BARELSİZ KANCA KİLİT ORTA BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 1107.5,
+      "weight": 0
+    },
+    "B05280": {
+      "name": "SLIDEMASTER BARELSİZ KANCA KİLİT 90° BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 885.5,
+      "weight": 0
+    },
+    "B05484": {
+      "name": "KLIPSLI KILIT TAKIMI 70MM TAK-ÇIKAR YAN BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 371,
+      "weight": 0
+    },
+    "B05485": {
+      "name": "KLIPSLI KILIT TAKIMI 70MM TAK-ÇIKAR ORTA BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 695,
+      "weight": 0
+    },
+    "B05486": {
+      "name": "KLIPSLI KILIT TAKIMI 70MM TAK-ÇIKAR 90° BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 1179.5,
+      "weight": 0
+    },
+    "B05487": {
+      "name": "KLIPSLI KILIT TAKIMI 70MM TAK-ÇIKAR 90° BİRLEŞİM KÖŞE PROFİLLİ",
+      "unit": "Tk.",
+      "price": 330,
+      "weight": 0
+    },
+    "B05489": {
+      "name": "SLIDER NEXT BARELLİ KANCALI KİLİT TAKIMI",
+      "unit": "Tk.",
+      "price": 1693.5,
+      "weight": 0
+    },
+    "B05490": {
+      "name": "SLIDER NEXT SURME ISPANYOLETLİ KILIT TAKIMI 1800 MM",
+      "unit": "Tk.",
+      "price": 1597,
+      "weight": 0
+    },
+    "B05491": {
+      "name": "SLIDER NEXT PASLANMAZ BARELLİ CAM KİLİT TAKIMI YAN BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 6285.5,
+      "weight": 0
+    },
+    "B05492": {
+      "name": "SLIDER NEXT PASLANMAZ BARELLİ CAM KİLİT TAKIMI ORTA BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 8367,
+      "weight": 0
+    },
+    "B05493": {
+      "name": "SLIDER NEXT HAVUZ KİLİT TAKIMI YAN BİRLEŞİM",
+      "unit": "Tk.",
+      "price": 597,
+      "weight": 0
+    },
+    "B05261": {
+      "name": "SLIDEMASTER SİNEKLİK PANELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 1041.5,
+      "weight": 0
+    },
+    "B05262": {
+      "name": "SLIDER NEXT SİNEKLİK PANELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 506,
+      "weight": 0
+    },
+    "B8505413": {
+      "name": "SINEKLIK FİTİLİ 5MM ANTRASİT GRİ",
+      "unit": "Mt.",
+      "price": 3.3,
+      "weight": 0
+    },
+    "B8505306": {
+      "name": "KIL FIRÇA 048*0250",
+      "unit": "Mt.",
+      "price": 6.4,
+      "weight": 0
+    },
+    "B8505310": {
+      "name": "KIL FIRÇA 048*0450",
+      "unit": "Mt.",
+      "price": 6.4,
+      "weight": 0
+    },
+    "B8505313": {
+      "name": "KIL FIRÇA 048*0550",
+      "unit": "Mt.",
+      "price": 6.4,
+      "weight": 0
+    },
+    "B15108--": {
+      "name": "72*76 KASA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 2118,
+      "weight": 0
+    },
+    "B15107--": {
+      "name": "54*103 KANAT PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 1720.5,
+      "weight": 0
+    },
+    "B15109--": {
+      "name": "72*29  YAN KAPAMA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 478.5,
+      "weight": 0
+    },
+    "B15111--": {
+      "name": "21*27 YAN KAPAMA EK ÇITA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 178.5,
+      "weight": 0
+    },
+    "B850146--": {
+      "name": "ATRIUM HD PARK ALANI",
+      "unit": "Tk.",
+      "price": 12437.5,
+      "weight": 0
+    },
+    "B850147--": {
+      "name": "ATRIUM HD ÖZEL PARK ALANI",
+      "unit": "Tk.",
+      "price": 14302.5,
+      "weight": 0
+    },
+    "B05181": {
+      "name": "ATRIUM HD 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 4767,
+      "weight": 0
+    },
+    "B05182": {
+      "name": "ATRIUM HD 10 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 6586.5,
+      "weight": 0
+    },
+    "B05184": {
+      "name": "ATRIUM HD 10 BİTİM KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 4446,
+      "weight": 0
+    },
+    "B05205": {
+      "name": "ATRIUM HD 10 KAYAR-MENT. K.TK.ANT.GRİ",
+      "unit": "Tk.",
+      "price": 15865.5,
+      "weight": 0
+    },
+    "B05157": {
+      "name": "MOMENTUM HD 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 4021,
+      "weight": 0
+    },
+    "B05158": {
+      "name": "MOMENTUM HD 10 MENTEŞELİ KAN. TK.",
+      "unit": "Tk.",
+      "price": 5341.5,
+      "weight": 0
+    },
+    "B05159": {
+      "name": "MOMENTUM HD 10 YARIM PANEL KAN. TK. ",
+      "unit": "Tk.",
+      "price": 3216,
+      "weight": 0
+    },
+    "B05188": {
+      "name": "CENTRUM HD 10 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 3515,
+      "weight": 0
+    },
+    "B05193": {
+      "name": "CENTRUM HD 10 MENTEŞELİ KAN. TK.",
+      "unit": "Tk.",
+      "price": 6571,
+      "weight": 0
+    },
+    "B05190": {
+      "name": "CENTRUM HD 10 BİTİM KANAT TAKIMI ",
+      "unit": "Tk.",
+      "price": 2987,
+      "weight": 0
+    },
+    "B05174": {
+      "name": "KROMAJLI TUTAMAK TAKIMI (İç-Dış)",
+      "unit": "Tk.",
+      "price": 886.5,
+      "weight": 0
+    },
+    "B05173": {
+      "name": "PASLANMAZ ÇEKME KOLU TAKIMI H 60 cm. (İç-Dış)",
+      "unit": "Tk.",
+      "price": 1474.5,
+      "weight": 0
+    },
+    "B05199": {
+      "name": "PASLANMAZ ÇEKME KOLU TAKIMI H 150 cm. (İç-Dış,Kilitli)",
+      "unit": "Tk.",
+      "price": 11457,
+      "weight": 0
+    },
+    "B8501464": {
+      "name": "PASLANMAZ CAMDAN CAMA KOLLU KİLİT TAKIMI (İç-Dış)",
+      "unit": "Tk.",
+      "price": 6466.5,
+      "weight": 0
+    },
+    "B8504728": {
+      "name": "HD 135º BİRLEŞİM KAPAK TAKIMI 54*103 SİYAH",
+      "unit": "Tk.",
+      "price": 3606.5,
+      "weight": 0
+    },
+    "B8502801": {
+      "name": "HD DÜZ KAPAK 54*103 SİYAH (İKİLİ)",
+      "unit": "Tk.",
+      "price": 321.5,
+      "weight": 0
+    },
+    "B8502782": {
+      "name": "HD BİTİM KAPAK TAKIMI 54*103 SİYAH (İKİLİ)",
+      "unit": "Tk.",
+      "price": 333,
+      "weight": 0
+    },
+    "B8502792": {
+      "name": "HD 135º KASA BİRLEŞİM PARÇASI",
+      "unit": "Tk.",
+      "price": 4021,
+      "weight": 0
+    },
+    "B8502785": {
+      "name": "HD 90º KASA BİRLEŞİM PARÇASI",
+      "unit": "Tk.",
+      "price": 4021,
+      "weight": 0
+    },
+    "B8502787": {
+      "name": "HD ALIN SÜRGÜ SETİ",
+      "unit": "Tk.",
+      "price": 862,
+      "weight": 0
+    },
+    "B8502786": {
+      "name": "HD OTOMATİK SÜRGÜ SETİ",
+      "unit": "Tk.",
+      "price": 1079.5,
+      "weight": 0
+    },
+    "B15018--": {
+      "name": "58*40 KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 379.5,
+      "weight": 0
+    },
+    "B15017--": {
+      "name": "58*48 SU TAHLİYELİ KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 391.5,
+      "weight": 0
+    },
+    "B15019--": {
+      "name": "42*40 KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 240.5,
+      "weight": 0
+    },
+    "B15020--": {
+      "name": "28*40 YAN KAPAMA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 158.5,
+      "weight": 0
+    },
+    "B15096--": {
+      "name": "61*48 SU TAHLİYELİ KASA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 494,
+      "weight": 0
+    },
+    "B15097--": {
+      "name": "43*40 KANAT PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 280.5,
+      "weight": 0
+    },
+    "B15098--": {
+      "name": "42*32 YAN KAPAMA PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 187,
+      "weight": 0
+    },
+    "B15025--": {
+      "name": "48*43 DÜŞEY AYAR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 384,
+      "weight": 0
+    },
+    "B15005--": {
+      "name": "77*43 PERDE TAKILABİLEN AYAR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 631.5,
+      "weight": 0
+    },
+    "B15129--": {
+      "name": "93*45 PERDE TAKILABİLEN AYAR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 544.5,
+      "weight": 0
+    },
+    "B15031--": {
+      "name": "60*40 AKSESUAR ADAPTÖR PROFİLİ 6,5 MT",
+      "unit": "Mt.",
+      "price": 400.5,
+      "weight": 0
+    },
+    "B05326": {
+      "name": "TANGO 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 81.6,
+      "weight": 0
+    },
+    "B05327": {
+      "name": "TANGO 08 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 81.6,
+      "weight": 0
+    },
+    "B05477": {
+      "name": "TANGO 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 723,
+      "weight": 0
+    },
+    "B05478": {
+      "name": "TANGO 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 781,
+      "weight": 0
+    },
+    "B05328": {
+      "name": "TANGO 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 81.6,
+      "weight": 0
+    },
+    "B05340": {
+      "name": "OPTİMA 08 KAYAR KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 107.7,
+      "weight": 0
+    },
+    "B05341": {
+      "name": "OPTİMA 08 MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 107.7,
+      "weight": 0
+    },
+    "B05456": {
+      "name": "OPTİMA 08 TOPUZLU MENTEŞELİ KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 712.5,
+      "weight": 0
+    },
+    "B05479": {
+      "name": "OPTIMA 08 İSPANYOLETLİ MENTEŞELİ KT. 800 mm.",
+      "unit": "Tk.",
+      "price": 846,
+      "weight": 0
+    },
+    "B05480": {
+      "name": "OPTIMA 08 İSPANYOLETLİ MENTEŞELİ KT. 1400 mm.",
+      "unit": "Tk.",
+      "price": 920.5,
+      "weight": 0
+    },
+    "B05342": {
+      "name": "OPTİMA 08 SABİT KANAT TAKIMI",
+      "unit": "Tk.",
+      "price": 107.7,
+      "weight": 0
+    },
+    "B8504707": {
+      "name": "90º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 42*40",
+      "unit": "Tk.",
+      "price": 33.5,
+      "weight": 0
+    },
+    "B8504708": {
+      "name": "135º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 42*40",
+      "unit": "Tk.",
+      "price": 33.5,
+      "weight": 0
+    },
+    "B8504718": {
+      "name": "90º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 43*40",
+      "unit": "Tk.",
+      "price": 36,
+      "weight": 0
+    },
+    "B8504719": {
+      "name": "135º BİRLEŞİM DÖRTLÜ KAPAK TAKIMI 43*40",
+      "unit": "Tk.",
+      "price": 36,
+      "weight": 0
+    },
+    "B05347": {
+      "name": "AYAR PROFİLİ MEKANİZMASI (TANGO)",
+      "unit": "Tk.",
+      "price": 44,
+      "weight": 0
+    },
+    "B8501618": {
+      "name": "OPTIMA KANAT SABITLEME APARATI",
+      "unit": "Tk.",
+      "price": 189,
+      "weight": 0
+    },
+    "B8501625": {
+      "name": "TANGO KANAT SABITLEME APARATI",
+      "unit": "Tk.",
+      "price": 176.5,
+      "weight": 0
+    },
+    "B8501623": {
+      "name": "OPTIMA ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 71.5,
+      "weight": 0
+    },
+    "B8501624": {
+      "name": "TANGO ÇİFT ÇIKIŞ AĞZI TAKIMI",
+      "unit": "Tk.",
+      "price": 66,
+      "weight": 0
     }
   },
   "finish_multipliers": {

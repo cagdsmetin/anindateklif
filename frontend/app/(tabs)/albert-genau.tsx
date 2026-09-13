@@ -33,6 +33,9 @@ import {
   AlbertGenauKisBahcesiResultT,
   AlbertGenauKisBahcesiTypesResponseT,
   AlbertGenauKisBahcesiTypeMetaT,
+  AlbertGenauBcResultT,
+  AlbertGenauBcTypesResponseT,
+  AlbertGenauBcTypeMetaT,
   RatesT,
   fetchAlbertGenauExcelBytes,
   fetchAlbertGenauDrawingBytes,
@@ -90,6 +93,30 @@ const FALLBACK_KIS_BAHCESI_TYPES: AlbertGenauKisBahcesiTypeMetaT[] = [
   },
 ];
 
+// BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER,
+// ATRIUM/MOMENTUM/CENTRUM HD, TANGO/OPTIMA — 39 kaydırmalı sistem
+// varyantı) -- gerçek liste + tip bazlı dinamik meta /albert-genau/bc/types
+// üzerinden gelir (bkz. backend ag_calc.BC_TYPE_META). Bu sadece ilk
+// yükleme varsayımı; kanat/bayrak/cam alanları tipe göre değişir.
+const FALLBACK_BC_TYPES: AlbertGenauBcTypeMetaT[] = [
+  {
+    id: 'bc_tiara_08', label: 'TIARA 08', defaultGenislik: 3000, defaultYukseklik: 2000,
+    kanatInputs: {}, flagInputs: {}, camItems: [], hasRayType: false,
+  },
+];
+
+// BC tipleri 39 adet olduğu için tek satırda göstermek yerine alt-marka
+// bazında gruplanır (kullanıcı dostu). Grup eşleşmesi tip id önekine göre.
+const BC_GROUPS: { title: string; match: (id: string) => boolean }[] = [
+  { title: 'TIARA Ailesi', match: (id) => id.startsWith('bc_tiara_') },
+  { title: 'SLIDER NEXT Ailesi', match: (id) => id.startsWith('bc_slider_next_') },
+  { title: 'SLIDE MASTER Ailesi', match: (id) => id.startsWith('bc_slide_master_') },
+  { title: 'HD Ailesi (Atrium / Momentum / Centrum)', match: (id) => id.endsWith('_hd_10') },
+  { title: 'TANGO / OPTIMA', match: (id) => id.startsWith('bc_tango_') || id.startsWith('bc_optima_') },
+];
+
+const BC_RAY_TIPI_LABELS: Record<number, string> = { 1: '5 Raylı', 2: '4 Raylı', 3: '3 Raylı', 4: '2 Raylı' };
+
 const FINISH_LABELS: Record<string, string> = {
   SATINE_NATUREL: 'Satine Naturel',
   ANTRASIT_GRI: 'Antrasit Gri',
@@ -129,7 +156,7 @@ export default function AlbertGenauScreen() {
   // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
   // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
   // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
-  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi'>('geometric');
+  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi' | 'bc'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
   const vertiflexTypes = meta.vertiflexTypes && meta.vertiflexTypes.length ? meta.vertiflexTypes : [{ id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08' }];
 
@@ -219,6 +246,44 @@ export default function AlbertGenauScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kbTip]);
 
+  // BC ailesi (TIARA/SLIDER NEXT/SLIDE MASTER/HD/TANGO/OPTIMA -- 39 varyant).
+  // Diğer ailelerden farklı olarak kanat/bayrak/cam alanları TİPE GÖRE
+  // DEĞİŞİR -- form, backend'den gelen meta'ya (BC_TYPE_META) göre dinamik
+  // kurulur; sabit state alanları yerine {ref: değer} sözlükleri kullanılır.
+  const bcTypes = meta.bcTypes && meta.bcTypes.length ? meta.bcTypes : [{ id: 'bc_tiara_08', label: 'TIARA 08' }];
+  const [bcMeta, setBcMeta] = useState<AlbertGenauBcTypesResponseT>({ types: FALLBACK_BC_TYPES, finishes: FALLBACK_FINISHES });
+  const [bcTip, setBcTip] = useState('bc_tiara_08');
+  const bcTypeMeta: AlbertGenauBcTypeMetaT = useMemo(
+    () => bcMeta.types.find((t) => t.id === bcTip) || bcMeta.types[0] || FALLBACK_BC_TYPES[0],
+    [bcMeta.types, bcTip],
+  );
+  const [bcGenislik, setBcGenislik] = useState('');
+  const [bcYukseklik, setBcYukseklik] = useState('');
+  const [bcKanatMiktarlari, setBcKanatMiktarlari] = useState<Record<string, string>>({});
+  const [bcBayrakDegerleri, setBcBayrakDegerleri] = useState<Record<string, string>>({});
+  const [bcRayTipi, setBcRayTipi] = useState<number>(1);
+  const [bcCamFiyatlari, setBcCamFiyatlari] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.albertGenauBcTypes(activeCompany?.id).then(setBcMeta).catch(() => {});
+  }, [activeCompany?.id]);
+
+  // Tip değişince ölçü alanlarını o tipin varsayılanıyla doldur, kanat/bayrak/
+  // ray/cam girdilerini sıfırla -- bir önceki tipe ait ref'ler (örn. C18)
+  // farklı bir sistemde tamamen farklı bir anlam taşıyabilir.
+  useEffect(() => {
+    const tm = bcTypeMeta;
+    if (!tm) return;
+    setBcGenislik(String(tm.defaultGenislik || ''));
+    setBcYukseklik(String(tm.defaultYukseklik || ''));
+    setBcKanatMiktarlari({});
+    setBcBayrakDegerleri({});
+    setBcRayTipi(1);
+    setBcCamFiyatlari({});
+    setResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bcTip]);
+
   const [afAdet, setAfAdet] = useState('1');
   const [afTekerlekli, setAfTekerlekli] = useState(false);
   const [afKapiVar, setAfKapiVar] = useState(false);
@@ -245,7 +310,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -500,10 +565,77 @@ export default function AlbertGenauScreen() {
     }
   };
 
+  const onCalculateBc = async () => {
+    setError('');
+    const g = Number(bcGenislik.replace(',', '.'));
+    const y = Number(bcYukseklik.replace(',', '.'));
+    if (!g || g <= 0) { setError('Genişlik (mm) girin'); return; }
+    if (!y || y <= 0) { setError('Yükseklik (mm) girin'); return; }
+    const tm = bcTypeMeta;
+    setBusy(true);
+    setResult(null);
+    try {
+      const kanatMiktarlari: Record<string, number> = {};
+      Object.keys(tm?.kanatInputs || {}).forEach((ref) => {
+        const raw = bcKanatMiktarlari[ref];
+        if (raw !== undefined && raw !== '') {
+          const v = Number(raw.replace(',', '.'));
+          if (!Number.isNaN(v)) kanatMiktarlari[ref] = v;
+        }
+      });
+      const bayrakDegerleri: Record<string, number> = {};
+      Object.keys(tm?.flagInputs || {}).forEach((ref) => {
+        const raw = bcBayrakDegerleri[ref];
+        if (raw !== undefined && raw !== '') {
+          const v = Number(raw.replace(',', '.'));
+          if (!Number.isNaN(v)) bayrakDegerleri[ref] = v;
+        }
+      });
+      const camFiyatlariM2: Record<string, number> = {};
+      (tm?.camItems || []).forEach((c) => {
+        const v = Number((bcCamFiyatlari[c.camSku] || '').replace(',', '.'));
+        if (v > 0) camFiyatlariM2[c.camSku] = v;
+      });
+      const res = await api.albertGenauBcCalculate({
+        companyId: activeCompany?.id,
+        tip: bcTip,
+        genislikMm: g,
+        yukseklikMm: y,
+        kanatMiktarlari,
+        bayrakDegerleri,
+        rayTipi: tm?.hasRayType ? bcRayTipi : null,
+        finish,
+        camFiyatlariM2,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
+        montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
+      });
+      setResult(res);
+    } catch (e: any) {
+      if (e?.status === 403 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'price_list_required') {
+            setPriceListOpen(true);
+            setError(info.message || 'Hesaplama yapabilmek için önce fiyat listenizi yükleyin.');
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(e?.message || 'Hesaplanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
     if (family === 'airflex_modul') { await onCalculateAirflexModule(); return; }
     if (family === 'vertiflex') { await onCalculateVertiflex(); return; }
     if (family === 'kis_bahcesi') { await onCalculateKisBahcesi(); return; }
+    if (family === 'bc') { await onCalculateBc(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -653,7 +785,15 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT) => {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT) => {
+    if (r.kind === 'bc') {
+      const parts = [
+        `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
+        r.girdi.rayTipi ? BC_RAY_TIPI_LABELS[r.girdi.rayTipi] : null,
+        FINISH_LABELS[finish] || finish,
+      ].filter(Boolean);
+      return `${r.tipAdi} — ${parts.join(', ')}`;
+    }
     if (r.kind === 'airflex_modul') {
       const parts = [
         `${r.girdi.adet} adet`,
@@ -788,6 +928,13 @@ export default function AlbertGenauScreen() {
                   testID="ag-family-kis-bahcesi"
                 >
                   <Text style={[s.typePillText, family === 'kis_bahcesi' && s.typePillTextActive]}>KIŞ BAHÇESİ (Sabit Cam Tavan)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.typePill, family === 'bc' && s.typePillActive]}
+                  onPress={() => { setFamily('bc'); setResult(null); setError(''); }}
+                  testID="ag-family-bc"
+                >
+                  <Text style={[s.typePillText, family === 'bc' && s.typePillTextActive]}>BC AİLESİ (TIARA / SLIDER / SLIDE MASTER / HD / TANGO / OPTIMA)</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1167,6 +1314,126 @@ export default function AlbertGenauScreen() {
               </>
             )}
 
+            {family === 'bc' && (
+              <>
+                {/* Alt tip seçimi -- 39 varyant olduğu için alt-marka bazında
+                    gruplanmış (bkz. BC_GROUPS). */}
+                <View style={s.card}>
+                  <Text style={s.fieldLabel}>BC Alt Tipi</Text>
+                  {BC_GROUPS.map((g) => {
+                    const groupTypes = bcTypes.filter((t) => g.match(t.id));
+                    if (!groupTypes.length) return null;
+                    return (
+                      <View key={g.title} style={{ marginBottom: 10 }}>
+                        <Text style={s.hint}>{g.title}</Text>
+                        <View style={s.typeWrap}>
+                          {groupTypes.map((tp) => (
+                            <TouchableOpacity
+                              key={tp.id}
+                              style={[s.typePill, bcTip === tp.id && s.typePillActive]}
+                              onPress={() => setBcTip(tp.id)}
+                              testID={`ag-bc-type-${tp.id}`}
+                            >
+                              <Text style={[s.typePillText, bcTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Ölçüler */}
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
+                  <View style={s.row}>
+                    <NumField label="Genişlik" value={bcGenislik} onChange={setBcGenislik} testID="ag-bc-genislik" />
+                    <NumField label="Yükseklik" value={bcYukseklik} onChange={setBcYukseklik} testID="ag-bc-yukseklik" />
+                  </View>
+                </View>
+
+                {/* Ray tipi -- sadece SLIDER NEXT/FLAT sistemlerinde var */}
+                {bcTypeMeta.hasRayType && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Ray Tipi</Text>
+                    <View style={s.typeWrap}>
+                      {[1, 2, 3, 4].map((rt) => (
+                        <TouchableOpacity
+                          key={rt}
+                          style={[s.typePill, bcRayTipi === rt && s.typePillActive]}
+                          onPress={() => setBcRayTipi(rt)}
+                          testID={`ag-bc-ray-${rt}`}
+                        >
+                          <Text style={[s.typePillText, bcRayTipi === rt && s.typePillTextActive]}>{BC_RAY_TIPI_LABELS[rt]}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Kanat takımları -- tipe göre değişir (bkz. BC_TYPE_META.kanatInputs) */}
+                {Object.keys(bcTypeMeta.kanatInputs || {}).length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Kanat Takımları (Adet)</Text>
+                    {Object.entries(bcTypeMeta.kanatInputs).map(([ref, meta]) => (
+                      <NumField
+                        key={ref}
+                        label={meta.label}
+                        value={bcKanatMiktarlari[ref] ?? String(meta.default)}
+                        onChange={(v) => setBcKanatMiktarlari((prev) => ({ ...prev, [ref]: v }))}
+                        testID={`ag-bc-kanat-${ref}`}
+                      />
+                    ))}
+                  </View>
+                )}
+
+                {/* Bayrak/köşe girdileri -- tipe göre değişir (bkz. BC_TYPE_META.flagInputs) */}
+                {Object.keys(bcTypeMeta.flagInputs || {}).length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Ek Seçenekler</Text>
+                    {Object.entries(bcTypeMeta.flagInputs).map(([ref, meta]) =>
+                      meta.kind === 'bool' ? (
+                        <ToggleRow
+                          key={ref}
+                          label={meta.label}
+                          value={(bcBayrakDegerleri[ref] ?? String(meta.default)) === '1'}
+                          onChange={(v) => setBcBayrakDegerleri((prev) => ({ ...prev, [ref]: v ? '1' : '0' }))}
+                          testID={`ag-bc-bayrak-${ref}`}
+                        />
+                      ) : (
+                        <NumField
+                          key={ref}
+                          label={meta.label}
+                          value={bcBayrakDegerleri[ref] ?? String(meta.default)}
+                          onChange={(v) => setBcBayrakDegerleri((prev) => ({ ...prev, [ref]: v }))}
+                          testID={`ag-bc-bayrak-${ref}`}
+                        />
+                      ),
+                    )}
+                  </View>
+                )}
+
+                {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi fiyatını girer */}
+                {(bcTypeMeta.camItems || []).length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Cam Fiyatları</Text>
+                    <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                      Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
+                    </Text>
+                    {bcTypeMeta.camItems.map((c) => (
+                      <NumField
+                        key={c.camSku}
+                        label={`${c.label} (₺/${c.unit})`}
+                        value={bcCamFiyatlari[c.camSku] || ''}
+                        onChange={(v) => setBcCamFiyatlari((prev) => ({ ...prev, [c.camSku]: v }))}
+                        testID={`ag-bc-cam-${c.camSku}`}
+                      />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
                 ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
                 liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
@@ -1326,6 +1593,10 @@ export default function AlbertGenauScreen() {
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.derinlikMm}mm • {result.girdi.tavanBolumSayisi} tavan bölümü{result.girdi.araDikmeSayisi ? ` • ${result.girdi.araDikmeSayisi} ara dikme` : ''}
                   </Text>
+                ) : result.kind === 'bc' ? (
+                  <Text style={s.resultSub}>
+                    {result.girdi.genislikMm}×{result.girdi.yukseklikMm}mm{result.girdi.rayTipi ? ` • ${BC_RAY_TIPI_LABELS[result.girdi.rayTipi]}` : ''}
+                  </Text>
                 ) : (
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
@@ -1370,6 +1641,23 @@ export default function AlbertGenauScreen() {
                     </View>
                     <View style={s.breakdownRow}>
                       <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
+                    </View>
+                    {result.camGrubuToplam > 0 && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>Cam Grubu</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.camGrubuToplam)}</Text>
+                      </View>
+                    )}
+                  </>
+                ) : result.kind === 'bc' ? (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Profil Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplam)}</Text>
+                    </View>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Kanat Takımları</Text>
                       <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
                     </View>
                     {result.camGrubuToplam > 0 && (
@@ -1453,7 +1741,7 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && (
+                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
                       {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
                         <>
@@ -1465,7 +1753,7 @@ export default function AlbertGenauScreen() {
                   )}
                 </View>
 
-                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && (
+                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && (
                   <TouchableOpacity
                     style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
                     onPress={onAddDrawing}

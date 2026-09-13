@@ -2374,6 +2374,11 @@ async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
 # seyin ayni Excel dosyasini tekrar yuklemek olmasini saglar.
 
 class AlbertGenauCalculateRequest(BaseModel):
+    # Opsiyonel: gonderilirse hesaplama o firmanin kendi yukledigi Albert
+    # Genau fiyat listesini kullanir (bkz. _get_ag_price_data). Gonderilmezse
+    # (eski istemciler / geriye donuk uyumluluk) ortak/varsayilan listeye
+    # duser -- boylece bu alan eklendiginde mevcut akis kesintiye ugramaz.
+    companyId: Optional[str] = None
     tip: str  # ag_calc.SYSTEM_TYPES icinden biri
     genislikMm: float
     derinlikMm: float
@@ -2451,20 +2456,33 @@ class AlbertGenauItem(AlbertGenauItemCreate):
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
-async def _get_ag_price_data() -> Dict[str, Any]:
-    doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
-    if doc and doc.get("price_list"):
-        return doc
+async def _get_ag_price_data(company_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    # Her Albert Genau bayisi (firma) kendi Excel fiyat listesini kendi
+    # ekranindan yukleyebilir (bkz. /albert-genau/company-price-list/upload) --
+    # o zaman SADECE o firmanin hesaplamalari bu listeyi kullanir. Firma henuz
+    # kendi listesini yuklememisse, admin'in yukledigi ortak/varsayilan
+    # ("id": "default") resmi listeye duser -- yeni bir bayiye verdigimiz
+    # baslangic dosyasini kendisi yuklemeden once de calisir durumda olsun
+    # diye. O da yoksa ag_calc paketindeki kod-ici varsayilan kullanilir.
+    if company_id:
+        doc = await db.albert_genau_config.find_one({"companyId": company_id}, {"_id": 0})
+        if doc and doc.get("price_list"):
+            return doc
+    default_doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+    if default_doc and default_doc.get("price_list"):
+        return default_doc
     return None  # None -> ag_calc kendi paketindeki varsayilani kullanir
 
 
 @api_router.get("/albert-genau/types")
-async def albert_genau_types(user=Depends(get_current_user)):
+async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
     # depthValuesMm: standart panel-adimli derinlik tablosunun tüm degerleri --
     # frontend, kullanici derinlik yazarken (Hesapla'ya basmadan) bu degerlerle
     # karsilastirip tam denk gelmiyorsa alt/ust secim kutusunu HEMEN gösterebilsin
     # (bkz. PriceBook.depth_choice ile ayni mantik, istemci tarafinda tekrarlanir).
-    price_data = await _get_ag_price_data()
+    if companyId:
+        await _own_company(user, companyId)
+    price_data = await _get_ag_price_data(companyId)
     base = price_data or ag_calc._DEFAULT_DATA
     depth_values = sorted({float(v) for v in base["depth_table"].values()})
     return {"types": [{"id": t, "label": ag_calc.SYSTEM_TYPE_LABELS[t]} for t in ag_calc.SYSTEM_TYPES],
@@ -2510,13 +2528,17 @@ def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Option
 
 @api_router.post("/albert-genau/calculate")
 async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
-    price_data = await _get_ag_price_data()
+    if payload.companyId:
+        await _own_company(user, payload.companyId)
+    price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_calculate(payload, price_data)
 
 
 @api_router.post("/albert-genau/calculate/export-excel")
 async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
-    price_data = await _get_ag_price_data()
+    if payload.companyId:
+        await _own_company(user, payload.companyId)
+    price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
 
     from openpyxl import Workbook
@@ -2618,7 +2640,9 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     dondurulur ve frontend'de teklife ek (attachment) olarak eklenir.
     Gercek CAD cizimi degil, dealer'a ve musteriye kac modul/kanat oldugunu
     gosteren bir semadir."""
-    price_data = await _get_ag_price_data()
+    if payload.companyId:
+        await _own_company(user, payload.companyId)
+    price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
     girdi = result["girdi"]
 
@@ -2826,6 +2850,67 @@ async def albert_genau_price_list_upload(payload: Dict[str, str], user=Depends(g
         "updatedBy": user.get("email", ""),
     }
     await db.albert_genau_config.replace_one({"id": "default"}, updated_doc, upsert=True)
+    return {"ok": True, "skuCount": len(new_price_list)}
+
+
+# --- Firma-bazli (bayi) fiyat listesi -------------------------------------
+# Yukarisi (price-list/status, price-list/upload) admin-only ve TEK ortak
+# ("default") listeyi yonetiyor. Ancak her Albert Genau bayisi kendi Excel
+# fiyat listesini (ayni tablo duzeni, fiyatlar farkli) kendi hesabindan
+# yukleyebilmeli -- yeni bir bayiye verilen baslangic dosyasi budur, ve
+# zam geldiginde bayi sadece bu ekrandan yeni Excel'i tekrar yukler.
+# Sadece firma SAHIBI yukleyebilir (personel goremez/degistiremez).
+@api_router.get("/albert-genau/company-price-list/status")
+async def albert_genau_company_price_list_status(companyId: str, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, companyId)
+    doc = await db.albert_genau_config.find_one({"companyId": companyId}, {"_id": 0})
+    if not doc:
+        default_doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+        base = default_doc or ag_calc._DEFAULT_DATA
+        return {
+            "exists": False,
+            "skuCount": len(base.get("price_list", {})),
+            "source": "ortak/varsayılan liste (henüz kendi listenizi yüklemediniz)",
+        }
+    return {
+        "exists": True,
+        "skuCount": len(doc.get("price_list", {})),
+        "updatedAt": doc.get("updatedAt"),
+        "updatedBy": doc.get("updatedBy"),
+        "source": "kendi yüklediğiniz Excel",
+    }
+
+
+@api_router.post("/albert-genau/company-price-list/upload")
+async def albert_genau_company_price_list_upload(payload: Dict[str, str], user=Depends(get_current_user)):
+    _require_owner(user)
+    company_id = (payload or {}).get("companyId", "")
+    if not company_id:
+        raise HTTPException(status_code=422, detail="companyId zorunlu")
+    await _own_company(user, company_id)
+    b64 = (payload or {}).get("fileBase64", "")
+    if not b64 or "," not in b64:
+        raise HTTPException(status_code=422, detail="Geçersiz dosya verisi")
+    try:
+        file_bytes = base64.b64decode(b64.split(",", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=422, detail="Dosya çözümlenemedi")
+    if len(file_bytes) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Dosya çok büyük (maksimum 20MB)")
+    new_price_list = _parse_ag_price_excel(file_bytes)
+    existing = await db.albert_genau_config.find_one({"companyId": company_id}, {"_id": 0})
+    default_doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
+    base = existing or default_doc or ag_calc._DEFAULT_DATA
+    updated_doc = {
+        "companyId": company_id,
+        "price_list": new_price_list,
+        "depth_table": base["depth_table"],
+        "belt_table": base["belt_table"],
+        "updatedAt": utc_now_iso(),
+        "updatedBy": user.get("email", ""),
+    }
+    await db.albert_genau_config.replace_one({"companyId": company_id}, updated_doc, upsert=True)
     return {"ok": True, "skuCount": len(new_price_list)}
 
 

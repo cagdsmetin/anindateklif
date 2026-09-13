@@ -350,7 +350,8 @@ export const api = {
   // Albert Genau (parametrik pergola/bioklimatik hesaplayıcı) — ayrı katalog
   // türü: dealer genişlik/derinlik/yükseklik girer, Excel'den çıkarılmış
   // formüllerle tam malzeme listesi + fiyat otomatik hesaplanır.
-  albertGenauTypes: (): Promise<AlbertGenauTypesResponseT> => req('/albert-genau/types'),
+  albertGenauTypes: (companyId?: string): Promise<AlbertGenauTypesResponseT> =>
+    req(`/albert-genau/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauCalculate: (data: AlbertGenauCalculateInputT): Promise<AlbertGenauResultT> =>
     req('/albert-genau/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
@@ -360,10 +361,16 @@ export const api = {
   updateAlbertGenauItem: (id: string, data: any): Promise<AlbertGenauItemT> =>
     req(`/albert-genau/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteAlbertGenauItem: (id: string) => req(`/albert-genau/items/${id}`, { method: 'DELETE' }),
-  // Fiyat listesi güncelleme — sadece platform admini (Excel'i tekrar yükler)
+  // Fiyat listesi güncelleme — sadece platform admini (ortak/varsayılan listeyi yönetir)
   albertGenauPriceListStatus: (): Promise<AlbertGenauPriceListStatusT> => req('/albert-genau/price-list/status'),
   uploadAlbertGenauPriceList: (fileBase64: string): Promise<{ ok: boolean; skuCount: number }> =>
     req('/albert-genau/price-list/upload', { method: 'POST', body: JSON.stringify({ fileBase64 }) }, 40000),
+  // Firma-bazlı (bayi) fiyat listesi — firma sahibi kendi Excel'ini kendi
+  // hesabından yükler/görür, admin gerekmez (bkz. server.py company-price-list).
+  albertGenauCompanyPriceListStatus: (companyId: string): Promise<AlbertGenauPriceListStatusT> =>
+    req(`/albert-genau/company-price-list/status?companyId=${encodeURIComponent(companyId)}`),
+  uploadAlbertGenauCompanyPriceList: (companyId: string, fileBase64: string): Promise<{ ok: boolean; skuCount: number }> =>
+    req('/albert-genau/company-price-list/upload', { method: 'POST', body: JSON.stringify({ companyId, fileBase64 }) }, 40000),
   // Bayi (dealer) paketi — yeni bir Albert Genau bayisine kendi kurulumuna
   // yüklemesi için verilecek taşınabilir fiyat/tablo paketi.
   albertGenauExportPackage: (): Promise<any> => req('/albert-genau/export-package'),
@@ -751,6 +758,10 @@ export type AlbertGenauTypesResponseT = {
 };
 
 export type AlbertGenauCalculateInputT = {
+  // Gönderilirse hesaplama o firmanın kendi yüklediği fiyat listesini
+  // kullanır (bkz. server.py _get_ag_price_data) -- gönderilmezse ortak/
+  // varsayılan listeye düşer.
+  companyId?: string;
   tip: string;
   genislikMm: number;
   derinlikMm: number;

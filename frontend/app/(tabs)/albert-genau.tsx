@@ -16,9 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as DocumentPicker from 'expo-document-picker';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, RatesT, fetchAlbertGenauExcelBytes, fetchAlbertGenauDrawingBytes } from '@/src/lib/api';
+import { useAuth } from '@/src/state/AuthContext';
+import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, AlbertGenauPriceListStatusT, RatesT, fetchAlbertGenauExcelBytes, fetchAlbertGenauDrawingBytes } from '@/src/lib/api';
 import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
@@ -61,6 +63,8 @@ export default function AlbertGenauScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, showToast, toast, addPendingNewQuoteAttachment } = useApp();
+  const { user: me } = useAuth();
+  const isStaffUser = !!me?.is_staff;
   // Bu ekranın kendi geri-tuşlu üst çubuğu var (TopHeader değil), bu yüzden
   // masaüstü genişliğinde sidebar zaten (tabs)/_layout.tsx tarafından
   // gösteriliyor olsa da, dar/mobil genişlikte diğer ekranlardaki hamburger
@@ -117,8 +121,8 @@ export default function AlbertGenauScreen() {
   }, [derinlik, meta.depthValuesMm]);
 
   useEffect(() => {
-    api.albertGenauTypes().then(setMeta).catch(() => {});
-  }, []);
+    api.albertGenauTypes(activeCompany?.id).then(setMeta).catch(() => {});
+  }, [activeCompany?.id]);
 
   // Satış fiyatının (₺) altında canlı kurla $ / € karşılığını göstermek için
   // -- Geçmiş ekranındaki tutar kartlarıyla aynı desen (bkz. history.tsx
@@ -146,6 +150,47 @@ export default function AlbertGenauScreen() {
     [meta.types, tip],
   );
 
+  // Firma-bazlı fiyat listesi: her Albert Genau bayisi (firma) kendi Excel
+  // fiyat listesini kendi hesabından yükleyebilir -- yeni bir bayiye verilen
+  // başlangıç dosyası budur, zam geldiğinde de aynı yerden tekrar yüklenir.
+  // Ana hesaplama motoru/formüller hiç değişmez, sadece SKU->fiyat verisi.
+  // Sadece firma SAHİBİ görüp yükleyebilir (personel göremez).
+  const [priceListStatus, setPriceListStatus] = useState<AlbertGenauPriceListStatusT | null>(null);
+  const [priceListOpen, setPriceListOpen] = useState(false);
+  const [priceListUploading, setPriceListUploading] = useState(false);
+
+  const loadPriceListStatus = () => {
+    if (!activeCompany || isStaffUser) return;
+    api.albertGenauCompanyPriceListStatus(activeCompany.id).then(setPriceListStatus).catch(() => {});
+  };
+  useEffect(() => { loadPriceListStatus(); }, [activeCompany?.id, isStaffUser]);
+
+  const onPickAndUploadPriceList = async () => {
+    if (!activeCompany || priceListUploading) return;
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled) return;
+      const asset = res.assets?.[0];
+      if (!asset) return;
+      setPriceListUploading(true);
+      const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const dataUri = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${b64}`;
+      const result = await api.uploadAlbertGenauCompanyPriceList(activeCompany.id, dataUri);
+      showToast(`Fiyat listeniz güncellendi: ${result.skuCount} kalem`);
+      loadPriceListStatus();
+      // Ekrandaki mevcut hesap sonucu artik eski fiyatı gösteriyor olabilir --
+      // yeni derinlik tablosu da değişmiş olabileceğinden meta'yı da tazele.
+      api.albertGenauTypes(activeCompany.id).then(setMeta).catch(() => {});
+    } catch (e: any) {
+      showToast(e?.message || 'Fiyat listesi yüklenemedi');
+    } finally {
+      setPriceListUploading(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
     setError('');
     setDepthChoice(null);
@@ -159,6 +204,7 @@ export default function AlbertGenauScreen() {
     setResult(null);
     try {
       const payload: AlbertGenauCalculateInputT = {
+        companyId: activeCompany?.id,
         tip,
         genislikMm: g,
         derinlikMm: d,
@@ -353,6 +399,54 @@ export default function AlbertGenauScreen() {
               </View>
               <Text style={s.heroCaption}>Ölçüleri girin, sistem otomatik malzeme + fiyat hesabı yapsın</Text>
             </View>
+
+            {/* Firma-bazlı fiyat listesi -- sadece firma sahibi görür/yükler.
+                Yeni bir bayi bu programı aldığında verilen başlangıç Excel'ini,
+                zam geldiğinde de güncel Excel'i buradan kendisi yükler. */}
+            {!isStaffUser && (
+              <View style={[s.card, { marginBottom: 12 }]}>
+                <TouchableOpacity
+                  style={s.priceListToggle}
+                  onPress={() => setPriceListOpen((v) => !v)}
+                  testID="ag-price-list-toggle"
+                >
+                  <Ionicons name="pricetags-outline" size={16} color={theme.colors.primary} />
+                  <Text style={s.priceListToggleText}>
+                    Fiyat Listesi {priceListStatus ? `— ${priceListStatus.skuCount} kalem` : ''}
+                  </Text>
+                  <Ionicons name={priceListOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textMuted} />
+                </TouchableOpacity>
+                {priceListOpen && (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={s.priceListSource}>
+                      {priceListStatus?.exists ? 'Kendi yüklediğiniz Excel kullanılıyor' : 'Henüz kendi listenizi yüklemediniz — ortak/varsayılan liste kullanılıyor'}
+                    </Text>
+                    {priceListStatus?.updatedAt ? (
+                      <Text style={s.priceListMeta}>Son güncelleme: {new Date(priceListStatus.updatedAt).toLocaleString('tr-TR')}</Text>
+                    ) : null}
+                    <Text style={s.priceListHint}>
+                      Albert Genau'dan yeni bir fiyat Excel'i geldiğinde buradan tekrar yükleyin. Sadece fiyatlar
+                      değişir, hesaplama mantığı aynı kalır — sadece bu firma etkilenir.
+                    </Text>
+                    <TouchableOpacity
+                      style={[s.priceListUploadBtn, priceListUploading && { opacity: 0.6 }]}
+                      onPress={onPickAndUploadPriceList}
+                      disabled={priceListUploading}
+                      testID="ag-price-list-upload"
+                    >
+                      {priceListUploading ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                          <Text style={s.priceListUploadBtnText}>
+                            {priceListStatus?.exists ? 'Excel Dosyasını Güncelle' : 'Excel Dosyası Yükle'}
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
 
             {/* Sistem tipi */}
             <View style={s.card}>
@@ -689,6 +783,13 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerLeftGroup: { flexDirection: 'row', alignItems: 'center' },
+  priceListToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  priceListToggleText: { flex: 1, fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  priceListSource: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700', marginBottom: 4 },
+  priceListMeta: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8 },
+  priceListHint: { fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16, marginBottom: 12 },
+  priceListUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, paddingVertical: 12 },
+  priceListUploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   contentWrap: { width: '100%', maxWidth: 520, alignSelf: 'center' },

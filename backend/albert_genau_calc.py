@@ -999,3 +999,510 @@ def calculate_parts_list(
         'satisFiyati': round(satis_fiyati, 2),
         'kalemler': [k.dict() for k in kalemler],
     }
+
+
+# ============ VERTIFLEX (Giyotin/Dusey Sürme Cam Balkon) SISTEMLERI ============
+# 2026/04 Haziran "GİYOTİN" Excel'inden (6 sistem: V MONO 08, V TWIN,
+# V TAMBALKON, V UP TWIN, V MONO 08 ALL GLASS, STATU IMPETUS CLEAN TWIN) elle
+# port edilmis formuller. BIOFLEX gibi genislik/yukseklik (mm) girdili
+# GEOMETRIK bir aile ama farkli imalat mantigi (dusey giyotin, akordiyon
+# degil) oldugu icin ayri fonksiyonlar olarak tutuluyor. Her fonksiyonun
+# "profil_net" (kar/iskonto/fire oncesi profil+yan malzeme toplami) degeri,
+# Excel'in kendi ANALIZ sekmesindeki E2=3500/F2=2500 ornek degerlerine karsi
+# BIREBIR (ondalik hanesine kadar) capraz dogrulanmistir (bkz. gecmis/degisim
+# notlari). NOT: BIOFLEX'in aksine bu Excel'de ayri bir imalat/kesim FIRESI
+# orani belirtilmemis (tam tersine "FİRE VB. GİDERLER DİKKATE ALINMAMIŞTIR"
+# notu var) -- bu yuzden burada da (AIRFLEX'te oldugu gibi) fire_orani=0
+# kullanilir.
+VERTIFLEX_SYSTEM_TYPES = [
+    'vertiflex_mono08',
+    'vertiflex_twin',
+    'vertiflex_tambalkon',
+    'vertiflex_up_twin',
+    'vertiflex_mono08_all_glass',
+    'impetus_clean_twin',
+]
+
+VERTIFLEX_TYPE_LABELS = {
+    'vertiflex_mono08': 'VERTIFLEX MONO 08',
+    'vertiflex_twin': 'VERTIFLEX TWIN',
+    'vertiflex_tambalkon': 'VERTIFLEX TAMBALKON',
+    'vertiflex_up_twin': 'VERTIFLEX UP TWIN',
+    'vertiflex_mono08_all_glass': 'VERTIFLEX MONO 08 ALL GLASS',
+    'impetus_clean_twin': 'STATU IMPETUS CLEAN TWIN',
+}
+
+_KUMANDA_SKU = {
+    'ag': {1: 'G05010', 5: 'G05011', 16: 'G05012'},
+    'somfy': {1: 'G05013', 5: 'G05014'},
+}
+
+# Frontend'in her VERTIFLEX tipi icin dogru formu (panel sayisi / motor /
+# kumanda kanali / inox / alicisiz / su tahliyeli / secumax taraf / kac cam
+# kalemi) kod tekrari yapmadan cizebilmesi icin tip->secenekler haritasi.
+# calculate_vertiflex() icindeki dallanma mantigiyla (bkz. yukaridaki kwargs
+# derlemesi) BIREBIR ayni kurallari yansitir.
+VERTIFLEX_TYPE_META = {
+    'vertiflex_mono08': {
+        'panelSayisiOptions': ['2', '3'],
+        'motorOptions': ['ag', 'somfy'],
+        'kumandaKanalOptions': {'ag': [1, 5, 16], 'somfy': [1, 5]},
+        'kumandaOptional': True,
+        'inoxZincirli': True,
+        'alicisiz': False,
+        'suTahliyeliAltKasa': False,
+        'secumaxTaraf': False,
+        'camSkus': [{'sku': 'CAM-8MM-TEMPERLI', 'label': '8mm Temperli Cam'}],
+    },
+    'vertiflex_twin': {
+        'panelSayisiOptions': ['2', '3', '4'],
+        'motorOptions': ['ag', 'somfy'],
+        'kumandaKanalOptions': {'ag': [1, 5, 16], 'somfy': [1, 5]},
+        'kumandaOptional': True,
+        'inoxZincirli': True,
+        'alicisiz': True,
+        'suTahliyeliAltKasa': True,
+        'secumaxTaraf': False,
+        'camSkus': [{'sku': 'CAM-ISICAM-TEMPERLI', 'label': '5mm Temperli+12mm HB+5mm Temperli Isicam'}],
+    },
+    'vertiflex_tambalkon': {
+        'panelSayisiOptions': ['2', '3'],
+        'motorOptions': ['ag', 'somfy'],
+        'kumandaKanalOptions': {'ag': [1, 5, 16], 'somfy': [1, 5]},
+        'kumandaOptional': True,
+        'inoxZincirli': False,
+        'alicisiz': False,
+        'suTahliyeliAltKasa': False,
+        'secumaxTaraf': False,
+        'camSkus': [
+            {'sku': 'CAM-ISICAM-TEMPERLI', 'label': '5mm Temperli+12mm HB+5mm Temperli Isicam'},
+            {'sku': 'CAM-ISICAM-LAMINAT', 'label': '4+4.1mm Laminat+9mm HB+5mm Temperli Isicam'},
+        ],
+    },
+    'vertiflex_up_twin': {
+        'panelSayisiOptions': ['2', '3'],
+        'motorOptions': ['ag', 'somfy'],
+        'kumandaKanalOptions': {'ag': [1, 5, 16], 'somfy': [1, 5]},
+        'kumandaOptional': True,
+        'inoxZincirli': False,
+        'alicisiz': False,
+        'suTahliyeliAltKasa': False,
+        'secumaxTaraf': True,
+        'camSkus': [{'sku': 'CAM-ISICAM-TEMPERLI', 'label': '5mm Temperli+12mm HB+5mm Temperli Isicam'}],
+    },
+    'vertiflex_mono08_all_glass': {
+        'panelSayisiOptions': [],
+        'motorOptions': ['ag', 'somfy'],
+        'kumandaKanalOptions': {'ag': [1, 5, 16], 'somfy': [1, 5]},
+        'kumandaOptional': True,
+        'inoxZincirli': True,
+        'alicisiz': False,
+        'suTahliyeliAltKasa': False,
+        'secumaxTaraf': False,
+        'camSkus': [{'sku': 'CAM-8MM-TEMPERLI', 'label': '8mm Temperli Cam'}],
+    },
+    'impetus_clean_twin': {
+        'panelSayisiOptions': [],
+        'motorOptions': ['ag'],
+        'kumandaKanalOptions': {'ag': [1, 5, 15]},
+        'kumandaOptional': False,
+        'inoxZincirli': False,
+        'alicisiz': False,
+        'suTahliyeliAltKasa': False,
+        'secumaxTaraf': False,
+        'camSkus': [
+            {'sku': 'CAM-ISICAM-TEMPERLI', 'label': '5mm Temperli+12mm HB+5mm Temperli Isicam'},
+            {'sku': 'CAM-ISICAM-LAMINAT', 'label': '4+4.1mm Laminat+9mm HB+5mm Temperli Isicam'},
+        ],
+    },
+}
+
+
+def _vf_kalem(pb: 'PriceBook', sku: str, qty: float, finish_mult: float = 1.0, apply_finish: bool = False) -> Kalem:
+    """VERTIFLEX kalemi olustur -- sadece PROFIL (aluminyum) kalemlerine
+    finish_mult uygulanir (apply_finish=True), aksesuar/motor/panel-seti gibi
+    hazir parcalara uygulanmaz -- BIOFLEX'teki ayni kural (bkz. yukaridaki
+    _calc_4ayak_ustu ve benzerleri: sadece profil listesi finish_mult alır)."""
+    item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku) or {}
+    label = item.get('name', sku)
+    price = _pl_price(pb, sku) * (finish_mult if apply_finish else 1.0)
+    return Kalem(label=label, sku=sku, price=price, qty=qty)
+
+
+def _calc_vertiflex_mono08(pb, E2, F2, panel_sayisi='3', motor='ag', kumanda_kanal=5,
+                            inox_zincirli=False, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    uclu = panel_sayisi == '3'
+
+    b15133_qty = (E2 - 180) * 4 / 1000 if uclu else (E2 - 180) * 2 / 1000
+    profil = [
+        K('B15130--', (F2 - 137) * 2 / 1000),
+        K('B15131--', (F2 - 137) * 2 / 1000),
+        K('B15132--', (F2 - 137) * 4 / 1000),
+        K('B15133--', b15133_qty),
+        K('B15153--', (((F2 - 137) * 1 / 3) * 2) / 1000 if uclu else (((F2 - 137) * 1 / 2) * 2) / 1000),
+        K('B15135--', (((E2 - 90 - 90) * 2) + ((F2 - 137) * 1 / 3) * 2) / 1000 if uclu else ((E2 - 90 - 90) * 2) / 1000),
+        K('B15115--', ((E2 - 6) * 2) / 1000),
+        K('B15136--', ((F2 - 137) * 2) / 1000 if uclu else ((F2 - 137) + (F2 / 2)) * 2 / 1000),
+        K('B15119--', (E2 - 180) / 1000),
+        K('TS8503201', (E2 - 75) / 1000, fin=False),
+        K('B8505401', (((E2 - 6) * 3) + (E2 - 180) * 2) / 1000, fin=False),
+        K('B8505405', ((E2 - 6) * 1) / 1000, fin=False),
+        K('B8505308', b15133_qty * 2, fin=False),
+        K('B8505305', (F2 - 137) * 6 * 2 / 1000 if uclu else (F2 - 137) * 3 * 2 / 1000, fin=False),
+    ]
+
+    aksesuar = [K('G05032' if motor == 'ag' else 'G05033', 1, fin=False)]
+    kumanda_sku = _KUMANDA_SKU.get(motor, {}).get(kumanda_kanal)
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
+    if uclu:
+        aksesuar.append(K('G05063' if inox_zincirli else 'G05034', 1, fin=False))
+    else:
+        aksesuar.append(K('G05064' if inox_zincirli else 'G05035', 1, fin=False))
+
+    cam = [('8mm Temperli Cam', 'CAM-8MM-TEMPERLI', (E2 - 134) * (F2 - 185 - 37) / 1000000)]
+    return profil, aksesuar, cam
+
+
+def _calc_vertiflex_twin(pb, E2, F2, panel_sayisi='3', motor='ag', kumanda_kanal=5,
+                          inox_zincirli=False, alicisiz=False, su_tahliyeli=False, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    uclu, ikili, dortlu = panel_sayisi == '3', panel_sayisi == '2', panel_sayisi == '4'
+    F22 = 1 if su_tahliyeli else 0
+
+    profil = [
+        K('B15122--', (F2 - 137 - (F22 * 27)) * 2 / 1000),
+        K('B15118--', (F2 - 137 - (F22 * 27)) * 2 / 1000),
+        K('B15117--', (F2 - 137 - (F22 * 27)) * 4 / 1000),
+    ]
+    if dortlu:
+        profil.append(K('B15137--', (F2 - 137 - (F22 * 27)) * 2 / 1000))
+    if uclu:
+        b15114 = (E2 - 184) * 4 / 1000
+    elif ikili:
+        b15114 = (E2 - 184) * 2 / 1000
+    else:
+        b15114 = (E2 - 184) * 7 / 1000
+    profil.append(K('B15114--', b15114))
+    if uclu:
+        b15121 = (((E2 - 92 - 92) * 2) + ((F2 - 137 - (F22 * 27)) * 2 / 3) * 2) / 1000
+    elif ikili:
+        b15121 = (((E2 - 92 - 92) * 2) + ((F2 - 137 - (F22 * 27)) * 1 / 2) * 2) / 1000
+    else:
+        b15121 = (((E2 - 92 - 92) * 1) + ((F2 - 137 - (F22 * 27)) * (3 / 4)) * 2) / 1000
+    profil.append(K('B15121--', b15121))
+    profil.append(K('B15115--', ((E2 - 6) * 2) / 1000))
+    if uclu:
+        b15120 = ((F2 - 137 - (F22 * 27)) * 2) / 1000
+    elif ikili:
+        b15120 = ((F2 - 137 - (F22 * 27)) + ((F2 - 137 - (F22 * 27)) / 2)) * 2 / 1000
+    else:
+        b15120 = ((F2 - 137 - (F22 * 27)) + ((F2 - 137 - (F22 * 27)) / 2)) * 2 / 1000
+    profil.append(K('B15120--', b15120))
+    if not dortlu:
+        profil.append(K('B15119--', (E2 - 184) / 1000))
+    if F22 == 1 and not dortlu:
+        profil.append(K('B15281--', (E2 - 16 - 16) / 1000))
+    profil.append(K('TS8503201', (E2 - 75) / 1000, fin=False))
+    profil.append(K('B8505401', (((E2 - 6) * 3) + (E2 - 184) * 2) / 1000, fin=False))
+    profil.append(K('B8505405', ((E2 - 6) * 1) / 1000, fin=False))
+    profil.append(K('B8505308', b15114 * 2, fin=False))
+    if uclu:
+        b8505305 = (F2 - 137) * 6 * 2 / 1000
+    elif ikili:
+        b8505305 = (F2 - 137) * 4 * 2 / 1000
+    else:
+        b8505305 = (F2 - 137) * 8 * 2 / 1000
+    profil.append(K('B8505305', b8505305, fin=False))
+
+    if motor == 'ag':
+        motor_sku = 'G05039' if alicisiz else 'G05001'
+    else:
+        motor_sku = 'G05054' if alicisiz else 'G05002'
+    aksesuar = [K(motor_sku, 1, fin=False)]
+    kumanda_sku = _KUMANDA_SKU.get(motor, {}).get(kumanda_kanal)
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
+    if uclu:
+        panel_sku = 'G05060' if inox_zincirli else 'G05003'
+    elif ikili:
+        panel_sku = 'G05061' if inox_zincirli else 'G05004'
+    else:
+        panel_sku = 'G05062' if inox_zincirli else 'G05037'
+    aksesuar.append(K(panel_sku, 1, fin=False))
+    if F22 == 1 and not dortlu:
+        aksesuar.append(K('G8500205', 1, fin=False))
+
+    cam = [('5mm Temperli+12mm HB+5mm Temperli Isicam', 'CAM-ISICAM-TEMPERLI',
+            (E2 - 141) * (F2 - 185 - 37 - (F22 * 27)) / 1000000)]
+    return profil, aksesuar, cam
+
+
+def _calc_vertiflex_tambalkon(pb, E2, F2, panel_sayisi='3', motor='ag', kumanda_kanal=5, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    uclu = panel_sayisi == '3'
+
+    C14 = (((F2 - 137) * 1 / 3) * 2) / 1000 if uclu else (((F2 - 137) * 1 / 2) * 2) / 1000
+    b15114 = (E2 - 184) * 2 / 1000 if uclu else (E2 - 184) * 1 / 1000
+    profil = [
+        K('B15122--', (F2 - 137) * 2 / 1000),
+        K('B15118--', (F2 - 137) * 2 / 1000 - C14),
+        K('B15117--', ((F2 - 137) * 4 / 1000) - C14),
+        K('B15114--', b15114),
+        K('B15121--', ((((E2 - 92 - 92) * 1) + ((F2 - 137) * 2 / 3) * 2) / 1000) if uclu
+          else ((((E2 - 92 - 92) * 1) + ((F2 - 137) * 1 / 2) * 2) / 1000)),
+        K('B15115--', ((E2 - 6) * 2) / 1000),
+        K('B15120--', (((F2 - 137) * 2) / 1000) if uclu else (((F2 - 137) + (F2 / 2)) * 2 / 1000)),
+        K('B15119--', (E2 - 184) / 1000),
+        K('B15139--', ((E2 - 28) * 1) / 1000),
+        K('B15140--', (E2 - 184) * 2 / 1000 if uclu else (E2 - 184) * 1 / 1000),
+        K('B15141--', C14),
+        K('B15142--', C14),
+        K('B15143--', (E2 - 184) * 1 / 1000 if uclu else 0.0),
+        K('B15164--', C14),
+        K('B15145--', 0.0 if uclu else (E2 - 184) * 1 / 1000),
+        K('TS8503201', (E2 - 75) / 1000, fin=False),
+        K('B8505401', (((E2 - 6) * 3) + (E2 - 184) * 2) / 1000, fin=False),
+        K('AW1600106', E2 * 4 / 1000, fin=False),
+        K('B8505405', ((E2 - 6) * 1) / 1000, fin=False),
+        K('B8505308', b15114 * 2, fin=False),
+        K('B8505305', (((F2 - 137) * 6 * 2 / 1000) + (C14 * 2)) if uclu else (((F2 - 137) * 3 * 2 / 1000) + (C14 * 2)), fin=False),
+    ]
+
+    aksesuar = [K('G05001' if motor == 'ag' else 'G05002', 1, fin=False)]
+    kumanda_sku = _KUMANDA_SKU.get(motor, {}).get(kumanda_kanal)
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
+    aksesuar.append(K('G05040' if uclu else 'G05041', 1, fin=False))
+
+    if uclu:
+        cam_lam_m2 = ((E2 - 141) * (F2 - 185 - 37) / 1000000) * (1 / 3)
+    else:
+        cam_lam_m2 = ((E2 - 141) * (F2 - 185 - 37) / 1000000) * (1 / 2)
+    cam_temp_m2 = ((E2 - 141) * (F2 - 185 - 37) / 1000000) - cam_lam_m2
+    cam = [
+        ('5mm Temperli+12mm HB+5mm Temperli Isicam', 'CAM-ISICAM-TEMPERLI', cam_temp_m2),
+        ('4+4.1mm Laminat+9mm HB+5mm Temperli Isicam', 'CAM-ISICAM-LAMINAT', cam_lam_m2),
+    ]
+    return profil, aksesuar, cam
+
+
+def _calc_vertiflex_up_twin(pb, E2, F2, panel_sayisi='3', motor='ag', secumax_taraf='sag',
+                             kumanda_kanal=5, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    uclu = panel_sayisi == '3'
+
+    b15114 = (E2 - 184) * 4 / 1000 if uclu else (E2 - 184) * 2 / 1000
+    profil = [
+        K('B15122--', (F2 - 137) * 2 / 1000),
+        K('B15118--', (F2 - 137) * 2 / 1000),
+        K('B15117--', (F2 - 137) * 4 / 1000),
+    ]
+    if uclu:
+        profil.append(K('B15137--', (F2 - 137) * 2 / 1000))
+    profil.append(K('B15114--', b15114))
+    profil.append(K('B15121--', ((F2 - 137) * 2) / 1000))
+    profil.append(K('B15115--', ((E2 - 6) * 2) / 1000))
+    b15120 = ((F2 - 137) * 2 * 2) / 1000 if uclu else (((F2 - 137) + ((F2 - 137) / 2)) * 2) / 1000
+    profil.append(K('B15120--', b15120))
+    profil.append(K('B15144--', (E2 - 172) * 1 / 1000))
+    profil.append(K('B15123--', (E2 - 184) * 1 / 1000))
+    profil.append(K('B15169--', (E2 - 184) * 1 / 1000))
+    profil.append(K('TS8503201', (E2 - 75) / 1000, fin=False))
+    profil.append(K('B8505401', (((E2 - 6) * 4) + (E2 - 184) * 2) / 1000, fin=False))
+    profil.append(K('B8505308', b15114 * 2, fin=False))
+    b8505305 = (F2 - 137) * 6 * 2 / 1000 if uclu else (F2 - 137) * 4 * 2 / 1000
+    profil.append(K('B8505305', b8505305, fin=False))
+
+    if motor == 'ag':
+        secumax_sku = 'G05043' if secumax_taraf == 'sag' else 'G05044'
+    else:
+        secumax_sku = 'G05045' if secumax_taraf == 'sag' else 'G05046'
+    aksesuar = [K(secumax_sku, 1, fin=False)]
+    kumanda_sku = _KUMANDA_SKU.get(motor, {}).get(kumanda_kanal)
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
+    aksesuar.append(K('G05047' if uclu else 'G05048', 1, fin=False))
+
+    cam = [('5mm Temperli+12mm HB+5mm Temperli Isicam', 'CAM-ISICAM-TEMPERLI',
+            (E2 - 141) * (F2 - 185 - 37) / 1000000)]
+    return profil, aksesuar, cam
+
+
+def _calc_vertiflex_mono08_all_glass(pb, E2, F2, motor='ag', kumanda_kanal=5, inox=False, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    profil = [
+        K('B15130--', (F2 - 137) * 2 / 1000),
+        K('B15131--', (F2 - 137) * 2 / 1000),
+        K('B15132--', (F2 - 137) * 4 / 1000),
+        K('B15153--', (((F2 - 137) * 1 / 2) * 2) / 1000),
+        K('B15135--', ((E2 - 90 - 90) * 1) / 1000),
+        K('B15115--', ((E2 - 6) * 2) / 1000),
+        K('B15136--', ((F2 - 137) + (F2 / 2)) * 2 / 1000),
+        K('TS8503201', (E2 - 75) / 1000, fin=False),
+        K('B8505401', ((E2 - 6) * 2) / 1000, fin=False),
+        K('B8505305', (F2 - 137) * 3 * 2 / 1000, fin=False),
+    ]
+    aksesuar = [K('G05032' if motor == 'ag' else 'G05033', 1, fin=False)]
+    kumanda_sku = _KUMANDA_SKU.get(motor, {}).get(kumanda_kanal)
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
+    aksesuar.append(K('G05059' if inox else 'G05058', 1, fin=False))
+
+    cam = [('8mm Temperli Cam', 'CAM-8MM-TEMPERLI', (E2 - 134) * (F2 - 185 - 37) / 1000000)]
+    return profil, aksesuar, cam
+
+
+def _calc_impetus_clean_twin(pb, E2, F2, kumanda_kanal=1, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
+    C8 = (((F2 - 137 - 36) / 3) * 2) / 1000
+    C9 = (((F2 - 137 - 36) * 2 / 3) * 2) / 1000
+    b15119 = (E2 - 207) / 1000
+    b15316 = (E2 - 15 - 15) / 1000
+
+    profil = [
+        K('B15115--', ((E2 - 6) * 2) / 1000),
+        K('B15119--', b15119),
+        K('B15304--', ((F2 - 137 - 36) * 2) / 1000),
+        K('B15306--', ((F2 - 137 - 36) * 2) / 1000),
+        K('B15308--', C8),
+        K('B15309--', C9),
+        K('B15311--', C9),
+        K('B15312--', (E2 - 207) * 2 / 1000),
+        K('B15313--', (E2 - 207) * 1 / 1000),
+        K('B15314--', (E2 - 207) * 2 / 1000),
+        K('B15315--', (E2 - 207) * 1 / 1000),
+        K('B15316--', b15316),
+        K('TS8503201', (E2 - 75) / 1000, fin=False),
+        K('B8505305', ((E2 - 6) * 2) / 1000, fin=False),
+        K('B8505401', C8 + b15119 + C9, fin=False),
+        K('AW1600106', b15316, fin=False),
+        K('B8505405', ((E2 - 6) * 1) / 1000, fin=False),
+        K('B8505308', (((E2 - 207) * 10) + (F2 * 4 * 2)) / 1000, fin=False),
+    ]
+    kumanda_map = {1: 'G05087', 5: 'G05088', 15: 'G05089'}
+    aksesuar = [
+        K('G05080', 1, fin=False),
+        K(kumanda_map.get(kumanda_kanal, 'G05087'), 1, fin=False),
+        K('G05084', 1, fin=False),
+    ]
+    cam_lam_m2 = ((E2 - 117 - 117) * (F2 - 172 - 49) * (1 / 3)) / 1000000
+    cam_temp_m2 = ((E2 - 117 - 117) * (F2 - 172 - 49) / 1000000) - cam_lam_m2
+    cam = [
+        ('5mm Temperli+12mm HB+5mm Temperli Isicam', 'CAM-ISICAM-TEMPERLI', cam_temp_m2),
+        ('4+4.1mm Laminat+9mm HB+5mm Temperli Isicam', 'CAM-ISICAM-LAMINAT', cam_lam_m2),
+    ]
+    return profil, aksesuar, cam
+
+
+_VERTIFLEX_FUNCS = {
+    'vertiflex_mono08': _calc_vertiflex_mono08,
+    'vertiflex_twin': _calc_vertiflex_twin,
+    'vertiflex_tambalkon': _calc_vertiflex_tambalkon,
+    'vertiflex_up_twin': _calc_vertiflex_up_twin,
+    'vertiflex_mono08_all_glass': _calc_vertiflex_mono08_all_glass,
+    'impetus_clean_twin': _calc_impetus_clean_twin,
+}
+
+
+def calculate_vertiflex(
+    tip: str,
+    genislik_mm: float,
+    yukseklik_mm: float,
+    panel_sayisi: Optional[str] = None,        # '2' | '3' | '4' (tipe gore gecerli secenekler degisir)
+    motor: str = 'ag',                          # 'ag' | 'somfy'
+    kumanda_kanal: Optional[int] = None,        # 1 | 5 | 16 (ag) / 1 | 5 (somfy) / 1|5|15 (statu) -- None = kumanda eklenmez
+    secumax_taraf: str = 'sag',                 # sadece UP TWIN: 'sag' | 'sol'
+    inox_zincirli: bool = False,                # MONO 08 / TWIN panel setinde INOX zincirli alternatif
+    alicisiz: bool = False,                     # sadece TWIN: alicisiz motor seti
+    su_tahliyeli_alt_kasa: bool = False,        # sadece TWIN
+    finish: Optional[str] = None,
+    cam_fiyatlari_m2: Optional[Dict[str, float]] = None,  # {'CAM-8MM-TEMPERLI': 1200} gibi -- cam() etiketlerinden sku'ya gore
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+    price_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """VERTIFLEX/STATU IMPETUS (dusey giyotin cam balkon) ailesi icin tam fiyat
+    kirilimi. BIOFLEX'teki `calculate()` ile ayni sozlesmeyi (odeme_tipi,
+    price_data, iskonto/kar/montaj is kurallari) paylasir; Albert Genau'nun
+    cami kendi fiyat listesinde SATMADIGI icin (BIOFLEX'te de boyle) bayi cami
+    kendi m² fiyatiyla `cam_fiyatlari_m2` sozlugunden girer -- anahtar, ilgili
+    sistemin cam kaleminin sku'su (CAM-8MM-TEMPERLI / CAM-ISICAM-TEMPERLI /
+    CAM-ISICAM-LAMINAT); girilmezse o cam kalemi 0 TL ile (miktar bilgisi
+    korunarak) listelenir."""
+    if tip not in _VERTIFLEX_FUNCS:
+        raise ValueError(f"Bilinmeyen VERTIFLEX sistem tipi: {tip}")
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
+    finish_mult = _finish_multiplier(finish)
+    func = _VERTIFLEX_FUNCS[tip]
+
+    kwargs: Dict[str, Any] = dict(finish_mult=finish_mult)
+    default_panel = {'vertiflex_mono08': '3', 'vertiflex_twin': '3', 'vertiflex_tambalkon': '3',
+                      'vertiflex_up_twin': '3'}.get(tip)
+    if tip == 'vertiflex_mono08':
+        kwargs.update(panel_sayisi=panel_sayisi or default_panel, motor=motor,
+                      kumanda_kanal=kumanda_kanal, inox_zincirli=inox_zincirli)
+    elif tip == 'vertiflex_twin':
+        kwargs.update(panel_sayisi=panel_sayisi or default_panel, motor=motor,
+                      kumanda_kanal=kumanda_kanal, inox_zincirli=inox_zincirli,
+                      alicisiz=alicisiz, su_tahliyeli=su_tahliyeli_alt_kasa)
+    elif tip == 'vertiflex_tambalkon':
+        kwargs.update(panel_sayisi=panel_sayisi or default_panel, motor=motor, kumanda_kanal=kumanda_kanal)
+    elif tip == 'vertiflex_up_twin':
+        kwargs.update(panel_sayisi=panel_sayisi or default_panel, motor=motor,
+                      secumax_taraf=secumax_taraf, kumanda_kanal=kumanda_kanal)
+    elif tip == 'vertiflex_mono08_all_glass':
+        kwargs.update(motor=motor, kumanda_kanal=kumanda_kanal, inox=inox_zincirli)
+    else:  # impetus_clean_twin
+        kwargs.update(kumanda_kanal=kumanda_kanal or 1)
+
+    profil, aksesuar, cam_defs = func(pb, genislik_mm, yukseklik_mm, **kwargs)
+
+    cam_fiyatlari = cam_fiyatlari_m2 or {}
+    cam_kalemleri = []
+    cam_toplam = 0.0
+    for label, cam_sku, alan_m2 in cam_defs:
+        birim_fiyat = float(cam_fiyatlari.get(cam_sku) or 0)
+        k = Kalem(label=f"{label} ({alan_m2:.2f} m²)", sku=cam_sku, price=birim_fiyat, qty=round(alan_m2, 3))
+        cam_kalemleri.append(k)
+        cam_toplam += k.total
+
+    # BIOFLEX'in aksine bu ailede belgelenmis bir imalat firesi orani yok
+    # (Excel'in kendi notu: "FİRE VB. GİDERLER DİKKATE ALINMAMIŞTIR") --
+    # AIRFLEX'teki gibi fire_orani=0 kullanilir.
+    profil_toplam = sum(k.total for k in profil)
+    aksesuar_toplam = sum(k.total for k in aksesuar)
+    maliyet_toplam = profil_toplam + aksesuar_toplam + cam_toplam
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'vertiflex',
+        'tip': tip,
+        'tipAdi': VERTIFLEX_TYPE_LABELS[tip],
+        'odemeTipi': odeme_tipi_eff,
+        'girdi': {
+            'genislikMm': genislik_mm,
+            'yukseklikMm': yukseklik_mm,
+            'panelSayisi': kwargs.get('panel_sayisi'),
+            'motor': motor,
+        },
+        'profilGrubuToplam': round(profil_toplam, 2),
+        'aksesuarGrubuToplam': round(aksesuar_toplam, 2),
+        'camGrubuToplam': round(cam_toplam, 2),
+        'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in (profil + aksesuar + cam_kalemleri)],
+    }

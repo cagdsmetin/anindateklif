@@ -27,6 +27,9 @@ import {
   AlbertGenauCalculateInputT,
   AlbertGenauPriceListStatusT,
   AlbertGenauAirflexModuleResultT,
+  AlbertGenauVertiflexResultT,
+  AlbertGenauVertiflexTypesResponseT,
+  AlbertGenauVertiflexTypeMetaT,
   RatesT,
   fetchAlbertGenauExcelBytes,
   fetchAlbertGenauDrawingBytes,
@@ -59,6 +62,15 @@ const FALLBACK_FINISHES = ['SATINE_NATUREL', 'ANTRASIT_GRI', 'BRONZ_1122_BOYALI'
 // ayrı ayrı yükleyeceğim" dediği yeni ürün aileleri backend'e eklendikçe
 // burada hiçbir değişiklik gerekmeden otomatik görünür.
 const FALLBACK_PARTS_LIST_SYSTEMS = [{ id: 'airflex', label: 'AIRFLEX (Katlanır Cam Balkon)' }];
+
+// VERTIFLEX (dikey giyotin cam balkon, 6 alt tip) -- gerçek liste + tip
+// bazlı seçenekler /albert-genau/vertiflex/types üzerinden gelir (bkz.
+// backend ag_calc.VERTIFLEX_TYPE_META). Bu sadece ilk yükleme varsayımı.
+const FALLBACK_VERTIFLEX_TYPES: AlbertGenauVertiflexTypeMetaT[] = [
+  { id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08', panelSayisiOptions: ['2', '3'], motorOptions: ['ag', 'somfy'], kumandaKanalOptions: { ag: [1, 5, 16], somfy: [1, 5] }, kumandaOptional: true, inoxZincirli: true, alicisiz: false, suTahliyeliAltKasa: false, secumaxTaraf: false, camSkus: [{ sku: 'CAM-8MM-TEMPERLI', label: '8mm Temperli Cam' }] },
+];
+
+const VF_KUMANDA_LABELS: Record<number, string> = { 1: 'Tek Kanal', 5: '5 Kanal', 15: '15 Kanal', 16: '16 Kanal' };
 
 const FINISH_LABELS: Record<string, string> = {
   SATINE_NATUREL: 'Satine Naturel',
@@ -99,8 +111,59 @@ export default function AlbertGenauScreen() {
   // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
   // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
   // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
-  const [family, setFamily] = useState<'geometric' | 'airflex_modul'>('geometric');
+  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
+  const vertiflexTypes = meta.vertiflexTypes && meta.vertiflexTypes.length ? meta.vertiflexTypes : [{ id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08' }];
+
+  // VERTIFLEX (dikey giyotin cam balkon) -- tip-bazli secenekler icin ayrica
+  // /albert-genau/vertiflex/types cagirilir (bkz. ag_calc.VERTIFLEX_TYPE_META).
+  const [vfMeta, setVfMeta] = useState<AlbertGenauVertiflexTypesResponseT>({ types: FALLBACK_VERTIFLEX_TYPES, finishes: FALLBACK_FINISHES });
+  const [vfTip, setVfTip] = useState('vertiflex_mono08');
+  const vfTypeMeta: AlbertGenauVertiflexTypeMetaT = useMemo(
+    () => vfMeta.types.find((t) => t.id === vfTip) || vfMeta.types[0] || FALLBACK_VERTIFLEX_TYPES[0],
+    [vfMeta.types, vfTip],
+  );
+  const [vfGenislik, setVfGenislik] = useState('');
+  const [vfYukseklik, setVfYukseklik] = useState('');
+  const [vfPanelSayisi, setVfPanelSayisi] = useState('3');
+  const [vfMotor, setVfMotor] = useState<'ag' | 'somfy'>('ag');
+  const [vfKumandaKanal, setVfKumandaKanal] = useState<number | null>(null);
+  const [vfSecumaxTaraf, setVfSecumaxTaraf] = useState<'sag' | 'sol'>('sag');
+  const [vfInoxZincirli, setVfInoxZincirli] = useState(false);
+  const [vfAlicisiz, setVfAlicisiz] = useState(false);
+  const [vfSuTahliyeli, setVfSuTahliyeli] = useState(false);
+  const [vfCamFiyatlari, setVfCamFiyatlari] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.albertGenauVertiflexTypes(activeCompany?.id).then(setVfMeta).catch(() => {});
+  }, [activeCompany?.id]);
+
+  // Tip degisince o tipte gecerli olmayan secenekleri (onceki tipten kalma)
+  // sifirla -- orn. TAMBALKON'dan UP TWIN'e gecince inox secili kalmasin.
+  useEffect(() => {
+    const tm = vfTypeMeta;
+    if (!tm) return;
+    if (tm.panelSayisiOptions.length && !tm.panelSayisiOptions.includes(vfPanelSayisi)) {
+      setVfPanelSayisi(tm.panelSayisiOptions[0]);
+    }
+    if (!tm.motorOptions.includes(vfMotor)) setVfMotor(tm.motorOptions[0] || 'ag');
+    if (!tm.inoxZincirli) setVfInoxZincirli(false);
+    if (!tm.alicisiz) setVfAlicisiz(false);
+    if (!tm.suTahliyeliAltKasa) setVfSuTahliyeli(false);
+    setVfKumandaKanal(null);
+    setResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vfTip]);
+
+  // Motor markasi degisince (AG<->Somfy) o markanin gecerli kumanda kanali
+  // secenekleri farkli olabilir (bkz. VERTIFLEX_TYPE_META.kumandaKanalOptions) --
+  // eski secim artik gecersizse sifirla.
+  useEffect(() => {
+    const opts = vfTypeMeta?.kumandaKanalOptions?.[vfMotor] || [];
+    if (vfKumandaKanal != null && !opts.includes(vfKumandaKanal)) setVfKumandaKanal(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vfMotor, vfTip]);
+
   const [afAdet, setAfAdet] = useState('1');
   const [afTekerlekli, setAfTekerlekli] = useState(false);
   const [afKapiVar, setAfKapiVar] = useState(false);
@@ -127,7 +190,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -269,8 +332,63 @@ export default function AlbertGenauScreen() {
     }
   };
 
+  const onCalculateVertiflex = async () => {
+    setError('');
+    const g = Number(vfGenislik.replace(',', '.'));
+    const y = Number(vfYukseklik.replace(',', '.'));
+    if (!g || g <= 0) { setError('Genişlik (mm) girin'); return; }
+    if (!y || y <= 0) { setError('Yükseklik (mm) girin'); return; }
+    const tm = vfTypeMeta;
+    setBusy(true);
+    setResult(null);
+    try {
+      const camFiyatlariM2: Record<string, number> = {};
+      (tm?.camSkus || []).forEach((c) => {
+        const v = Number((vfCamFiyatlari[c.sku] || '').replace(',', '.'));
+        if (v > 0) camFiyatlariM2[c.sku] = v;
+      });
+      const res = await api.albertGenauVertiflexCalculate({
+        companyId: activeCompany?.id,
+        tip: vfTip,
+        genislikMm: g,
+        yukseklikMm: y,
+        panelSayisi: tm?.panelSayisiOptions?.length ? vfPanelSayisi : null,
+        motor: vfMotor,
+        kumandaKanal: vfKumandaKanal,
+        secumaxTaraf: vfSecumaxTaraf,
+        inoxZincirli: tm?.inoxZincirli ? vfInoxZincirli : false,
+        alicisiz: tm?.alicisiz ? vfAlicisiz : false,
+        suTahliyeliAltKasa: tm?.suTahliyeliAltKasa ? vfSuTahliyeli : false,
+        finish,
+        camFiyatlariM2,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
+        montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
+      });
+      setResult(res);
+    } catch (e: any) {
+      if (e?.status === 403 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'price_list_required') {
+            setPriceListOpen(true);
+            setError(info.message || 'Hesaplama yapabilmek için önce fiyat listenizi yükleyin.');
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(e?.message || 'Hesaplanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
     if (family === 'airflex_modul') { await onCalculateAirflexModule(); return; }
+    if (family === 'vertiflex') { await onCalculateVertiflex(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -420,12 +538,21 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT) => {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT) => {
     if (r.kind === 'airflex_modul') {
       const parts = [
         `${r.girdi.adet} adet`,
         r.girdi.tekerlekli ? 'Tekerlekli ayak' : 'Sabit ayak',
         r.girdi.kapiVar ? 'Kapılı' : null,
+        FINISH_LABELS[finish] || finish,
+      ].filter(Boolean);
+      return `${r.tipAdi} — ${parts.join(', ')}`;
+    }
+    if (r.kind === 'vertiflex') {
+      const parts = [
+        `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
+        r.girdi.panelSayisi ? `${r.girdi.panelSayisi} panelli` : null,
+        r.girdi.motor === 'somfy' ? 'Somfy motor' : 'AG motor',
         FINISH_LABELS[finish] || finish,
       ].filter(Boolean);
       return `${r.tipAdi} — ${parts.join(', ')}`;
@@ -524,6 +651,13 @@ export default function AlbertGenauScreen() {
                     <Text style={[s.typePillText, family === 'airflex_modul' && s.typePillTextActive]}>{sysOpt.label}</Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity
+                  style={[s.typePill, family === 'vertiflex' && s.typePillActive]}
+                  onPress={() => { setFamily('vertiflex'); setResult(null); setError(''); }}
+                  testID="ag-family-vertiflex"
+                >
+                  <Text style={[s.typePillText, family === 'vertiflex' && s.typePillTextActive]}>VERTIFLEX (Dikey Giyotin)</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -684,6 +818,150 @@ export default function AlbertGenauScreen() {
               </>
             )}
 
+            {family === 'vertiflex' && (
+              <>
+                {/* Alt tip seçimi */}
+                <View style={s.card}>
+                  <Text style={s.fieldLabel}>VERTIFLEX Alt Tipi</Text>
+                  <View style={s.typeWrap}>
+                    {vertiflexTypes.map((tp) => (
+                      <TouchableOpacity
+                        key={tp.id}
+                        style={[s.typePill, vfTip === tp.id && s.typePillActive]}
+                        onPress={() => setVfTip(tp.id)}
+                        testID={`ag-vf-type-${tp.id}`}
+                      >
+                        <Text style={[s.typePillText, vfTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Ölçüler */}
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
+                  <View style={s.row}>
+                    <NumField label="Genişlik" value={vfGenislik} onChange={setVfGenislik} testID="ag-vf-genislik" />
+                    <NumField label="Yükseklik" value={vfYukseklik} onChange={setVfYukseklik} testID="ag-vf-yukseklik" />
+                  </View>
+                </View>
+
+                {/* Panel sayısı -- sadece bu tipte gecerliyse gosterilir */}
+                {vfTypeMeta.panelSayisiOptions.length > 0 && (
+                  <View style={s.card}>
+                    <Text style={s.fieldLabel}>Panel Sayısı</Text>
+                    <View style={s.payWrap}>
+                      {vfTypeMeta.panelSayisiOptions.map((p) => (
+                        <TouchableOpacity
+                          key={p}
+                          style={[s.payPill, vfPanelSayisi === p && s.payPillActive]}
+                          onPress={() => { setVfPanelSayisi(p); setResult(null); }}
+                          testID={`ag-vf-panel-${p}`}
+                        >
+                          <Text style={[s.payPillText, vfPanelSayisi === p && s.payPillTextActive]}>{p} Panel</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Motor markası + kumanda kanalı */}
+                <View style={s.card}>
+                  <Text style={s.fieldLabel}>Motor Markası</Text>
+                  <View style={s.payWrap}>
+                    {vfTypeMeta.motorOptions.map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[s.payPill, vfMotor === m && s.payPillActive]}
+                        onPress={() => { setVfMotor(m); setResult(null); }}
+                        testID={`ag-vf-motor-${m}`}
+                      >
+                        <Text style={[s.payPillText, vfMotor === m && s.payPillTextActive]}>{m === 'ag' ? 'Albert Genau' : 'Somfy'}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={[s.fieldLabel, { marginTop: 12 }]}>Kumanda Kanalı{vfTypeMeta.kumandaOptional ? ' (opsiyonel)' : ''}</Text>
+                  <View style={s.typeWrap}>
+                    {vfTypeMeta.kumandaOptional && (
+                      <TouchableOpacity
+                        style={[s.finishPill, vfKumandaKanal === null && s.typePillActive]}
+                        onPress={() => { setVfKumandaKanal(null); setResult(null); }}
+                        testID="ag-vf-kumanda-none"
+                      >
+                        <Text style={[s.typePillText, vfKumandaKanal === null && s.typePillTextActive]}>Kumanda Yok</Text>
+                      </TouchableOpacity>
+                    )}
+                    {(vfTypeMeta.kumandaKanalOptions[vfMotor] || []).map((k) => (
+                      <TouchableOpacity
+                        key={k}
+                        style={[s.finishPill, vfKumandaKanal === k && s.typePillActive]}
+                        onPress={() => { setVfKumandaKanal(k); setResult(null); }}
+                        testID={`ag-vf-kumanda-${k}`}
+                      >
+                        <Text style={[s.typePillText, vfKumandaKanal === k && s.typePillTextActive]}>{VF_KUMANDA_LABELS[k] || `${k} Kanal`}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Secumax taraf (sadece UP TWIN) */}
+                {vfTypeMeta.secumaxTaraf && (
+                  <View style={s.card}>
+                    <Text style={s.fieldLabel}>Secumax Motor Tarafı</Text>
+                    <View style={s.payWrap}>
+                      <TouchableOpacity
+                        style={[s.payPill, vfSecumaxTaraf === 'sag' && s.payPillActive]}
+                        onPress={() => { setVfSecumaxTaraf('sag'); setResult(null); }}
+                        testID="ag-vf-secumax-sag"
+                      >
+                        <Text style={[s.payPillText, vfSecumaxTaraf === 'sag' && s.payPillTextActive]}>Sağ</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.payPill, vfSecumaxTaraf === 'sol' && s.payPillActive]}
+                        onPress={() => { setVfSecumaxTaraf('sol'); setResult(null); }}
+                        testID="ag-vf-secumax-sol"
+                      >
+                        <Text style={[s.payPillText, vfSecumaxTaraf === 'sol' && s.payPillTextActive]}>Sol</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* Tip-bazlı ek seçenekler (inox / alıcısız / su tahliyeli) */}
+                {(vfTypeMeta.inoxZincirli || vfTypeMeta.alicisiz || vfTypeMeta.suTahliyeliAltKasa) && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Seçenekler</Text>
+                    {vfTypeMeta.inoxZincirli && (
+                      <ToggleRow label="INOX zincirli panel seti" value={vfInoxZincirli} onChange={setVfInoxZincirli} testID="ag-vf-inox" />
+                    )}
+                    {vfTypeMeta.alicisiz && (
+                      <ToggleRow label="Alıcısız motor seti" value={vfAlicisiz} onChange={setVfAlicisiz} testID="ag-vf-alicisiz" />
+                    )}
+                    {vfTypeMeta.suTahliyeliAltKasa && (
+                      <ToggleRow label="Su tahliyeli alt kasa" value={vfSuTahliyeli} onChange={setVfSuTahliyeli} testID="ag-vf-sutahliyeli" />
+                    )}
+                  </View>
+                )}
+
+                {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi m² fiyatını girer */}
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Cam Fiyatları</Text>
+                  <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                    Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
+                  </Text>
+                  {vfTypeMeta.camSkus.map((c) => (
+                    <NumField
+                      key={c.sku}
+                      label={`${c.label} (₺/m²)`}
+                      value={vfCamFiyatlari[c.sku] || ''}
+                      onChange={(v) => setVfCamFiyatlari((prev) => ({ ...prev, [c.sku]: v }))}
+                      testID={`ag-vf-cam-${c.sku}`}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
+
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
                 ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
                 liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
@@ -835,6 +1113,10 @@ export default function AlbertGenauScreen() {
                   <Text style={s.resultSub}>
                     {result.girdi.adet} adet • {result.girdi.tekerlekli ? 'Tekerlekli' : 'Sabit'} ayak • Y:{result.girdi.yukseklikMm}mm
                   </Text>
+                ) : result.kind === 'vertiflex' ? (
+                  <Text style={s.resultSub}>
+                    {result.girdi.genislikMm}×{result.girdi.yukseklikMm}mm{result.girdi.panelSayisi ? ` • ${result.girdi.panelSayisi} panel` : ''} • {result.girdi.motor === 'somfy' ? 'Somfy' : 'AG'} motor
+                  </Text>
                 ) : (
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
@@ -846,6 +1128,23 @@ export default function AlbertGenauScreen() {
                     <View style={s.breakdownRow}>
                       <Text style={s.breakdownLabel}>Malzeme Grubu</Text>
                       <Text style={s.breakdownValue}>₺{money(result.malzemeGrubuToplam)}</Text>
+                    </View>
+                    {result.camGrubuToplam > 0 && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>Cam Grubu</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.camGrubuToplam)}</Text>
+                      </View>
+                    )}
+                  </>
+                ) : result.kind === 'vertiflex' ? (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Profil Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplam)}</Text>
+                    </View>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
                     </View>
                     {result.camGrubuToplam > 0 && (
                       <View style={s.breakdownRow}>
@@ -928,7 +1227,7 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  {result.kind !== 'airflex_modul' && (
+                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
                       {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
                         <>
@@ -940,7 +1239,7 @@ export default function AlbertGenauScreen() {
                   )}
                 </View>
 
-                {result.kind !== 'airflex_modul' && (
+                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && (
                   <TouchableOpacity
                     style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
                     onPress={onAddDrawing}

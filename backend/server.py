@@ -3016,6 +3016,104 @@ class AlbertGenauAirflexModuleRequest(BaseModel):
         return v
 
 
+class AlbertGenauVertiflexCalculateRequest(BaseModel):
+    # VERTIFLEX (dusey giyotin cam balkon, 6 alt tip) icin -- BIOFLEX gibi
+    # genislik/yukseklik (mm) girdili GEOMETRIK bir aile ama panel sayisi/
+    # motor markasi/kumanda kanali/inox/alicisiz/su-tahliyeli/secumax-taraf
+    # gibi tip-bazli ek secenekleri var (bkz. ag_calc.VERTIFLEX_TYPE_META).
+    companyId: Optional[str] = None
+    tip: str  # ag_calc.VERTIFLEX_SYSTEM_TYPES icinden biri
+    genislikMm: float
+    yukseklikMm: float
+    panelSayisi: Optional[str] = None  # '2' | '3' | '4' (tipe gore gecerli secenekler degisir)
+    motor: str = "ag"  # 'ag' | 'somfy'
+    kumandaKanal: Optional[int] = None  # None = kumanda eklenmez (bkz. VERTIFLEX_TYPE_META.kumandaOptional)
+    secumaxTaraf: str = "sag"  # sadece UP TWIN: 'sag' | 'sol'
+    inoxZincirli: bool = False
+    alicisiz: bool = False
+    suTahliyeliAltKasa: bool = False
+    finish: Optional[str] = None
+    camFiyatlariM2: Dict[str, float] = {}  # {'CAM-8MM-TEMPERLI': 1200} gibi
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("tip")
+    @classmethod
+    def _tip_valid(cls, v: str) -> str:
+        if v not in ag_calc.VERTIFLEX_SYSTEM_TYPES:
+            raise ValueError(f"Gecersiz VERTIFLEX sistem tipi: {v}")
+        return v
+
+    @field_validator("motor")
+    @classmethod
+    def _motor_valid(cls, v: str) -> str:
+        if v not in ("ag", "somfy"):
+            raise ValueError("motor 'ag' veya 'somfy' olmalidir")
+        return v
+
+    @field_validator("secumaxTaraf")
+    @classmethod
+    def _secumax_taraf_valid(cls, v: str) -> str:
+        if v not in ("sag", "sol"):
+            raise ValueError("secumaxTaraf 'sag' veya 'sol' olmalidir")
+        return v
+
+    @field_validator("panelSayisi")
+    @classmethod
+    def _panel_sayisi_valid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in ("2", "3", "4"):
+            raise ValueError("panelSayisi '2', '3' veya '4' olmalidir")
+        return v
+
+    @field_validator("kumandaKanal")
+    @classmethod
+    def _kumanda_kanal_valid(cls, v: Optional[int]) -> Optional[int]:
+        if v is None:
+            return v
+        if v not in (1, 5, 15, 16):
+            raise ValueError("kumandaKanal gecersiz")
+        return v
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("genislikMm", "yukseklikMm")
+    @classmethod
+    def _dim_positive(cls, v: float) -> float:
+        if v is None or v <= 0 or v > 20000:
+            raise ValueError("Olcu 0-20000mm araliginda olmalidir")
+        return v
+
+    @field_validator("camFiyatlariM2")
+    @classmethod
+    def _cam_fiyat_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        out = {}
+        for sku, fiyat in list(v.items())[:10]:
+            f = float(fiyat or 0)
+            if f < 0 or f > 1_000_000:
+                raise ValueError("Cam fiyati gecersiz")
+            out[str(sku)[:40]] = f
+        return out
+
+
 class AlbertGenauItemCreate(BaseModel):
     companyId: str
     tip: str
@@ -3084,7 +3182,62 @@ async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_c
             # Olcu bazli (genislik/derinlik) degil, duz parca listesi + miktar
             # girisiyle calisan urun aileleri (orn. AIRFLEX) -- bkz.
             # ag_calc.PARTS_LIST_SYSTEMS / /albert-genau/parts-list-items.
-            "partsListSystems": [{"id": k, "label": v["label"]} for k, v in ag_calc.PARTS_LIST_SYSTEMS.items()]}
+            "partsListSystems": [{"id": k, "label": v["label"]} for k, v in ag_calc.PARTS_LIST_SYSTEMS.items()],
+            # VERTIFLEX (dusey giyotin) -- form secenekleri icin bkz.
+            # /albert-genau/vertiflex/types (tip-bazli detayli meta doner).
+            "vertiflexTypes": [{"id": t, "label": ag_calc.VERTIFLEX_TYPE_LABELS[t]} for t in ag_calc.VERTIFLEX_SYSTEM_TYPES]}
+
+
+@api_router.get("/albert-genau/vertiflex/types")
+async def albert_genau_vertiflex_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
+    # Her VERTIFLEX tipi icin frontend'in formu dogru cizebilmesi adina
+    # panel sayisi/motor/kumanda kanali/inox/alicisiz/su-tahliyeli/secumax-
+    # taraf secenekleri + kac cam kalemi girilmesi gerektigini dondurur
+    # (bkz. ag_calc.VERTIFLEX_TYPE_META).
+    if companyId:
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
+    return {
+        "types": [
+            {"id": t, "label": ag_calc.VERTIFLEX_TYPE_LABELS[t], **ag_calc.VERTIFLEX_TYPE_META[t]}
+            for t in ag_calc.VERTIFLEX_SYSTEM_TYPES
+        ],
+        "finishes": list(ag_calc.FINISH_OPTIONS.keys()),
+    }
+
+
+def _run_ag_vertiflex_calculate(payload: "AlbertGenauVertiflexCalculateRequest", price_data: Optional[Dict[str, Any]]):
+    try:
+        return ag_calc.calculate_vertiflex(
+            tip=payload.tip,
+            genislik_mm=payload.genislikMm,
+            yukseklik_mm=payload.yukseklikMm,
+            panel_sayisi=payload.panelSayisi,
+            motor=payload.motor,
+            kumanda_kanal=payload.kumandaKanal,
+            secumax_taraf=payload.secumaxTaraf,
+            inox_zincirli=payload.inoxZincirli,
+            alicisiz=payload.alicisiz,
+            su_tahliyeli_alt_kasa=payload.suTahliyeliAltKasa,
+            finish=payload.finish,
+            cam_fiyatlari_m2=payload.camFiyatlariM2,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@api_router.post("/albert-genau/vertiflex/calculate")
+async def albert_genau_vertiflex_calculate(payload: AlbertGenauVertiflexCalculateRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+    price_data = await _get_ag_price_data(payload.companyId)
+    return _run_ag_vertiflex_calculate(payload, price_data)
 
 
 @api_router.get("/albert-genau/parts-list-items")

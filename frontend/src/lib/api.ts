@@ -385,6 +385,13 @@ export const api = {
     req('/albert-genau/parts-list/calculate', { method: 'POST', body: JSON.stringify(data) }),
   albertGenauAirflexModuleCalculate: (data: AlbertGenauAirflexModuleInputT): Promise<AlbertGenauAirflexModuleResultT> =>
     req('/albert-genau/airflex-module/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  // VERTIFLEX (dikey giyotin cam balkon, 6 alt tip) -- genişlik/yükseklik
+  // girdili geometrik aile, tip-bazlı panel sayısı/motor/kumanda/inox/vs.
+  // seçenekleri için bkz. AlbertGenauVertiflexTypesResponseT.
+  albertGenauVertiflexTypes: (companyId?: string): Promise<AlbertGenauVertiflexTypesResponseT> =>
+    req(`/albert-genau/vertiflex/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
+  albertGenauVertiflexCalculate: (data: AlbertGenauVertiflexCalculateInputT): Promise<AlbertGenauVertiflexResultT> =>
+    req('/albert-genau/vertiflex/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -845,6 +852,9 @@ export type AlbertGenauTypesResponseT = {
   // Ölçü (genişlik/derinlik) yerine düz parça listesi + miktar girişiyle
   // çalışan ürün aileleri (örn. AIRFLEX) -- bkz. AlbertGenauPartsListItemsResponseT.
   partsListSystems?: { id: string; label: string }[];
+  // VERTIFLEX (dikey giyotin) alt tipleri -- detaylı seçenekler için ayrıca
+  // bkz. albertGenauVertiflexTypes() / AlbertGenauVertiflexTypesResponseT.
+  vertiflexTypes?: { id: string; label: string }[];
 };
 
 export type AlbertGenauPartsListItemT = {
@@ -912,6 +922,67 @@ export type AlbertGenauAirflexModuleResultT = {
   odemeTipi: 'nakit' | 'kredi_karti';
   girdi: { adet: number; tekerlekli: boolean; kapiVar: boolean; kilitVar: boolean; yukseklikMm: number };
   malzemeGrubuToplam: number;
+  camGrubuToplam: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+// VERTIFLEX (dikey giyotin cam balkon) — tip başına geçerli seçenekler
+// backend'den (ag_calc.VERTIFLEX_TYPE_META) gelir ki formda tip değişince
+// hangi alanların gösterileceği kod tekrarı olmadan belirlenebilsin.
+export type AlbertGenauVertiflexTypeMetaT = {
+  id: string;
+  label: string;
+  panelSayisiOptions: string[]; // boşsa bu tipte panel sayısı seçimi yok
+  motorOptions: ('ag' | 'somfy')[];
+  kumandaKanalOptions: Record<string, number[]>; // motor -> geçerli kanal seçenekleri
+  kumandaOptional: boolean; // false ise kumanda zorunlu (örn. STATU IMPETUS)
+  inoxZincirli: boolean;
+  alicisiz: boolean;
+  suTahliyeliAltKasa: boolean;
+  secumaxTaraf: boolean;
+  camSkus: { sku: string; label: string }[]; // kaç adet cam fiyatı (TL/m²) girilmesi gerektiğini de belirler
+};
+
+export type AlbertGenauVertiflexTypesResponseT = {
+  types: AlbertGenauVertiflexTypeMetaT[];
+  finishes: string[];
+};
+
+export type AlbertGenauVertiflexCalculateInputT = {
+  companyId?: string;
+  tip: string;
+  genislikMm: number;
+  yukseklikMm: number;
+  panelSayisi?: string | null;
+  motor?: 'ag' | 'somfy';
+  kumandaKanal?: number | null;
+  secumaxTaraf?: 'sag' | 'sol';
+  inoxZincirli?: boolean;
+  alicisiz?: boolean;
+  suTahliyeliAltKasa?: boolean;
+  finish?: string | null;
+  camFiyatlariM2?: Record<string, number>;
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauVertiflexResultT = {
+  kind: 'vertiflex';
+  tip: string;
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  girdi: { genislikMm: number; yukseklikMm: number; panelSayisi: string | null; motor: string };
+  profilGrubuToplam: number;
+  aksesuarGrubuToplam: number;
   camGrubuToplam: number;
   maliyetToplam: number;
   alisIskontoPct: number;

@@ -593,6 +593,570 @@
       "unit": "Ad.",
       "price": 36.5,
       "weight": 0
+    },
+    "B15115--": {
+      "name": "137*127 MOTOR KAPAĞI PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 753.5,
+      "weight": 1742
+    },
+    "B15114--": {
+      "name": "35*34 ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 448,
+      "weight": 937
+    },
+    "B15119--": {
+      "name": "117*28 TRABZAN PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 350,
+      "weight": 728
+    },
+    "B15118--": {
+      "name": "61*74 YAN DİKME İKİLİ KANAL PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 764.5,
+      "weight": 1760
+    },
+    "B15147--": {
+      "name": "61*74 YAN DİKME İKİLİ KANAL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 764.5,
+      "weight": 1760
+    },
+    "B15117--": {
+      "name": "19*84 YAN DİKME TEKLİ KANAL PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 356.5,
+      "weight": 743
+    },
+    "B15146--": {
+      "name": "19*84 YAN DİKME TEKLİ KANAL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 356.5,
+      "weight": 743
+    },
+    "B15122--": {
+      "name": "16*116 YAN DİKME PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 580,
+      "weight": 1336
+    },
+    "B15149--": {
+      "name": "16*116 YAN DİKME PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 580,
+      "weight": 1336
+    },
+    "B15139--": {
+      "name": "37*127 ALT KASA PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 717.5,
+      "weight": 1654
+    },
+    "B15143--": {
+      "name": "74*36 ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 547.5,
+      "weight": 1262
+    },
+    "B15145--": {
+      "name": "73*36 UZAK ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 618.5,
+      "weight": 1424
+    },
+    "B15140--": {
+      "name": "35*48 ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 510.5,
+      "weight": 1065
+    },
+    "B15141--": {
+      "name": "65*43 İSPANYOLET KİLİT PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 519,
+      "weight": 1088
+    },
+    "B15142--": {
+      "name": "38*30 KİLİT KARŞILIK PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 265.5,
+      "weight": 559
+    },
+    "B15164--": {
+      "name": "61*74 YAN DİKME TIRNAKSIZ İKİLİ KANAL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 551.5,
+      "weight": 1269
+    },
+    "B15121--": {
+      "name": "18*50 PANEL PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 471,
+      "weight": 983
+    },
+    "B15120--": {
+      "name": "35*14 YAN DİKME KAPAK PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 197.5,
+      "weight": 374
+    },
+    "B15148--": {
+      "name": "35*14 YAN DİKME KAPAK PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 197.5,
+      "weight": 374
+    },
+    "B15137--": {
+      "name": "86*58 YAN DİKME EK KANAL PROFİLİ 5,0 MT (TWIN)",
+      "unit": "Mt.",
+      "price": 582.5,
+      "weight": 1286
+    },
+    "B15155--": {
+      "name": "86*58 YAN DİKME EK KANAL PROFİLİ 6,0 MT (TWIN)",
+      "unit": "Mt.",
+      "price": 582.5,
+      "weight": 1286
+    },
+    "B15281--": {
+      "name": "127*37 SU TAHLİYELİ ALT KASA PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 573.5,
+      "weight": 1386
+    },
+    "B15130--": {
+      "name": "20*70 YAN DİKME PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 448,
+      "weight": 931
+    },
+    "B15150--": {
+      "name": "20*70 YAN DİKME PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 448,
+      "weight": 931
+    },
+    "B15131--": {
+      "name": "36*70 YAN DİKME İKİLİ KANAL PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 509.5,
+      "weight": 1072
+    },
+    "B15151--": {
+      "name": "36*70 YAN DİKME İKİLİ KANAL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 509.5,
+      "weight": 1072
+    },
+    "B15132--": {
+      "name": "30*84 YAN DİKME TEKLİ KANAL PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 418,
+      "weight": 873
+    },
+    "B15152--": {
+      "name": "30*84 YAN DİKME TEKLİ KANAL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 418,
+      "weight": 873
+    },
+    "B15133--": {
+      "name": "35*23 ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 352,
+      "weight": 736
+    },
+    "B15153--": {
+      "name": "16*50 PANEL PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 356.5,
+      "weight": 745
+    },
+    "B15135--": {
+      "name": "35*15 PANEL PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 253.5,
+      "weight": 484
+    },
+    "B15136--": {
+      "name": "23*14 YAN DİKME KAPAK PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 97,
+      "weight": 187
+    },
+    "B15154--": {
+      "name": "23*14 YAN DİKME KAPAK PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 97,
+      "weight": 187
+    },
+    "B15144--": {
+      "name": "38*27 U KAPAMA PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 245.5,
+      "weight": 1424
+    },
+    "B15123--": {
+      "name": "35*26 DİŞSİZ ÇEKTİRME PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 324,
+      "weight": 1424
+    },
+    "B15169--": {
+      "name": "75*40 TAŞIMA PROFİLİ 6,7 MT",
+      "unit": "Mt.",
+      "price": 635.5,
+      "weight": 1424
+    },
+    "B15188--": {
+      "name": "150*150*3 AKSESUAR ADAPTÖR PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 2010.5,
+      "weight": 4.78
+    },
+    "AW1600106": {
+      "name": "AG806 CONTA",
+      "unit": "Mt.",
+      "price": 8.3,
+      "weight": 17
+    },
+    "B8505405": {
+      "name": "15*18 BALON CONTA",
+      "unit": "Mt.",
+      "price": 41.3,
+      "weight": 17
+    },
+    "AW1600112": {
+      "name": "CF CONTA 6.8*6.3",
+      "unit": "Mt.",
+      "price": 50,
+      "weight": 8
+    },
+    "B8506102": {
+      "name": "LINERA 12*10 GEÇME CONTA 8/8",
+      "unit": "Mt.",
+      "price": 38.8,
+      "weight": 8
+    },
+    "B8505308": {
+      "name": "KIL FIRÇA 048*0800",
+      "unit": "Mt.",
+      "price": 7.5,
+      "weight": 7
+    },
+    "G05001": {
+      "name": "VERTIFLEX TWIN ALBERT GENAU ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 14591.5,
+      "weight": 6500
+    },
+    "G05002": {
+      "name": "VERTIFLEX TWIN SOMFY ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 26405,
+      "weight": 5500
+    },
+    "G05043": {
+      "name": "VERTIFLEX UP ALBERT GENAU SECUMAX SAĞ ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 25295,
+      "weight": 5500
+    },
+    "G05044": {
+      "name": "VERTIFLEX UP ALBERT GENAU SECUMAX SOL ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 25295,
+      "weight": 5500
+    },
+    "G05045": {
+      "name": "VERTIFLEX UP SOMFY SECUMAX SAĞ ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 37128,
+      "weight": 5500
+    },
+    "G05046": {
+      "name": "VERTIFLEX UP SOMFY SECUMAX SOL ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 37128,
+      "weight": 5500
+    },
+    "G05032": {
+      "name": "VERTIFLEX MONO ALBERT GENAU ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 14591.5,
+      "weight": 6500
+    },
+    "G05033": {
+      "name": "VERTIFLEX MONO SOMFY ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 26405,
+      "weight": 5500
+    },
+    "G05039": {
+      "name": "VERTIFLEX TWIN ALBERT GENAU ALICISIZ ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 14503,
+      "weight": 6500
+    },
+    "G05054": {
+      "name": "VERTIFLEX TWIN SOMFY ALICISIZ ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 26405,
+      "weight": 6500
+    },
+    "G05003": {
+      "name": "VERTIFLEX TWIN ÜÇLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 6517.5,
+      "weight": 7800
+    },
+    "G05004": {
+      "name": "VERTIFLEX TWIN İKİLİ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 6318,
+      "weight": 7600
+    },
+    "G05037": {
+      "name": "VERTIFLEX TWIN DÖRTLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 6582,
+      "weight": 7900
+    },
+    "G05034": {
+      "name": "VERTIFLEX MONO 08 ÜÇLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 6099,
+      "weight": 7800
+    },
+    "G05035": {
+      "name": "VERTIFLEX MONO 08 İKİLİ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 5999.5,
+      "weight": 7600
+    },
+    "G05040": {
+      "name": "VERTIFLEX CLEAN TWIN INOX ÜÇLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 10032.5,
+      "weight": 8100
+    },
+    "G05041": {
+      "name": "VERTIFLEX CLEAN TWIN INOX İKİLİ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 9735,
+      "weight": 7900
+    },
+    "G05047": {
+      "name": "VERTIFLEX UP TWIN ÜÇLÜ PANEL SETI",
+      "unit": "Tk.",
+      "price": 6439.5,
+      "weight": 7900
+    },
+    "G05048": {
+      "name": "VERTIFLEX UP TWIN İKİLİ PANEL SETI",
+      "unit": "Tk.",
+      "price": 6251.5,
+      "weight": 7900
+    },
+    "G05060": {
+      "name": "VERTIFLEX TWIN INOX ZİNCİRLİ ÜÇLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 8769,
+      "weight": 7800
+    },
+    "G05061": {
+      "name": "VERTIFLEX TWIN INOX ZINCIRLI İKİLİ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 8582.5,
+      "weight": 7600
+    },
+    "G05062": {
+      "name": "VERTIFLEX TWIN INOX ZİNCİRLİ DÖRTLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 8846,
+      "weight": 7900
+    },
+    "G05063": {
+      "name": "VERTIFLEX MONO 08 INOX ZİNCİRLİ ÜÇLÜ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 8484.5,
+      "weight": 7800
+    },
+    "G05064": {
+      "name": "VERTIFLEX MONO 08 INOX ZİNCİRLİ İKİLİ PANEL SETİ",
+      "unit": "Tk.",
+      "price": 8339.5,
+      "weight": 7600
+    },
+    "G05067": {
+      "name": "VERTIFLEX UP TWIN INOX ZİNCİRLİ ÜÇLÜ PANEL SETI",
+      "unit": "Tk.",
+      "price": 9020.5,
+      "weight": 7900
+    },
+    "G05068": {
+      "name": "VERTIFLEX UP TWIN INOX ZİNCİRLİ İKİLİ PANEL SETI",
+      "unit": "Tk.",
+      "price": 8846,
+      "weight": 7900
+    },
+    "G05058": {
+      "name": "VERTIFLEX MONO 08 ALL GLASS IKILI PANEL SETI",
+      "unit": "Tk.",
+      "price": 5999.5,
+      "weight": null
+    },
+    "G05059": {
+      "name": "VERTIFLEX MONO 08 ALL GLASS INOX IKILI PANEL SETI",
+      "unit": "Tk.",
+      "price": 8668.5,
+      "weight": null
+    },
+    "G05009": {
+      "name": "VERTIFLEX ZİNCİR UZATMA TAKIMI",
+      "unit": "Tk.",
+      "price": 314,
+      "weight": 3500
+    },
+    "G05069": {
+      "name": "VERTIFLEX INOX ZİNCİR UZATMA TAKIMI",
+      "unit": "Tk.",
+      "price": 568,
+      "weight": 3500
+    },
+    "G8500205": {
+      "name": "VERTIFLEX ALT KASA-YAN DIKME BAĞLANTI TAKIMI(SOL-SAĞ)",
+      "unit": "Tk.",
+      "price": 45,
+      "weight": 3500
+    },
+    "G05036": {
+      "name": "VERTIFLEX MONO STOPER TAKIMI",
+      "unit": "Tk.",
+      "price": 205,
+      "weight": 96
+    },
+    "G05027": {
+      "name": "VERTIFLEX TWIN STOPER TAKIMI",
+      "unit": "Tk.",
+      "price": 205,
+      "weight": 96
+    },
+    "B15304--": {
+      "name": "96*117 YAN DIKME PROFILI 5,0 MT",
+      "unit": "Mt.",
+      "price": 795,
+      "weight": 1802
+    },
+    "B15305--": {
+      "name": "96*117 YAN DIKME PROFILI 6,0 MT",
+      "unit": "Mt.",
+      "price": 795,
+      "weight": 1802
+    },
+    "B15306--": {
+      "name": "66*64 YAN DIKME ORTA KANAL PROFILI 5,0 MT",
+      "unit": "Mt.",
+      "price": 362.5,
+      "weight": 750
+    },
+    "B15307--": {
+      "name": "66*64 YAN DIKME ORTA KANAL PROFILI 6,0 MT",
+      "unit": "Mt.",
+      "price": 362.5,
+      "weight": 750
+    },
+    "B15308--": {
+      "name": "101*55 ISPANYOLET KILIT PROFILI 6,0 MT",
+      "unit": "Mt.",
+      "price": 560,
+      "weight": 1269
+    },
+    "B15309--": {
+      "name": "65*55 YAN DIKME SABIT PROFILI 5,0 MT",
+      "unit": "Mt.",
+      "price": 407,
+      "weight": 841
+    },
+    "B15310--": {
+      "name": "65*55 YAN DIKME SABIT PROFILI 6,0 MT",
+      "unit": "Mt.",
+      "price": 407,
+      "weight": 841
+    },
+    "B15311--": {
+      "name": "56*26 PANEL DIKEY PROFILI 6,0 MT",
+      "unit": "Mt.",
+      "price": 392.5,
+      "weight": 811
+    },
+    "B15312--": {
+      "name": "33*27 PANEL YATAY PROFILI 6,7 MT",
+      "unit": "Mt.",
+      "price": 255,
+      "weight": 527
+    },
+    "B15313--": {
+      "name": "33*36 CEKTIRME PROFILI 6,7 MT",
+      "unit": "Mt.",
+      "price": 352.5,
+      "weight": 728
+    },
+    "B15314--": {
+      "name": "65*32 CEKTIRME PROFILI 6,7 MT",
+      "unit": "Mt.",
+      "price": 372,
+      "weight": 769
+    },
+    "B15315--": {
+      "name": "36*32 CEKTIRME PROFILI 6,7 MT",
+      "unit": "Mt.",
+      "price": 316,
+      "weight": 654
+    },
+    "B15316--": {
+      "name": "117*36 SU TAHLIYELI ALT KASA PROFILI 7,0 MT",
+      "unit": "Mt.",
+      "price": 688.5,
+      "weight": 1559
+    },
+    "G05080": {
+      "name": "IMPETUS TWIN STATU ELEKTROMEKANIK SET",
+      "unit": "Tk.",
+      "price": 7100,
+      "weight": 6500
+    },
+    "G05084": {
+      "name": "IMPETUS CLEAN TWIN UCLU PANEL SETI",
+      "unit": "Tk.",
+      "price": 3575,
+      "weight": 5500
+    },
+    "G05087": {
+      "name": "STATU TEK KANAL KUMANDA",
+      "unit": "Tk.",
+      "price": 529.5,
+      "weight": 5500
+    },
+    "G05088": {
+      "name": "STATU 5 KANAL KUMANDA",
+      "unit": "Tk.",
+      "price": 809,
+      "weight": 5500
+    },
+    "G05089": {
+      "name": "STATU 15 KANAL KUMANDA",
+      "unit": "Tk.",
+      "price": 1011,
+      "weight": 5500
+    },
+    "G05090": {
+      "name": "STATU ZİNCİR UZATMA TAKIMI",
+      "unit": "Tk.",
+      "price": 157,
+      "weight": 3500
     }
   },
   "finish_multipliers": {

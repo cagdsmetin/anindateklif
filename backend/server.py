@@ -3047,13 +3047,15 @@ class AlbertGenauItem(AlbertGenauItemCreate):
 
 
 async def _get_ag_price_data(company_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    # Her Albert Genau bayisi (firma) kendi Excel fiyat listesini kendi
-    # ekranindan yukleyebilir (bkz. /albert-genau/company-price-list/upload) --
-    # o zaman SADECE o firmanin hesaplamalari bu listeyi kullanir. Firma henuz
-    # kendi listesini yuklememisse, admin'in yukledigi ortak/varsayilan
-    # ("id": "default") resmi listeye duser -- yeni bir bayiye verdigimiz
-    # baslangic dosyasini kendisi yuklemeden once de calisir durumda olsun
-    # diye. O da yoksa ag_calc paketindeki kod-ici varsayilan kullanilir.
+    # Fiyat listesi MERKEZI olarak yonetilir: admin (Albert Genau distributor'u)
+    # yeni fiyatlar geldikce tek bir yerden (bkz. /albert-genau/price-list/upload,
+    # "id": "default") gunceller ve albertGenauEnabled=true olan TUM firmalar
+    # otomatik olarak bu guncel listeyi kullanir -- her bayinin kendi Excel'ini
+    # ayrica yuklemesi ZORUNLU DEGIL (onceki surumde oyleydi, bkz. git gecmisi
+    # _require_company_ag_price_list). Bir firma isterse yine de KENDI ozel
+    # fiyat listesini yukleyip (bkz. /albert-genau/company-price-list/upload)
+    # merkezi listenin onune gecebilir -- o yuzden company-bazli liste hala
+    # ilk once kontrol ediliyor, sadece artik ZORUNLU degil.
     if company_id:
         doc = await db.albert_genau_config.find_one({"companyId": company_id}, {"_id": 0})
         if doc and doc.get("price_list"):
@@ -3062,22 +3064,6 @@ async def _get_ag_price_data(company_id: Optional[str] = None) -> Optional[Dict[
     if default_doc and default_doc.get("price_list"):
         return default_doc
     return None  # None -> ag_calc kendi paketindeki varsayilani kullanir
-
-
-async def _require_company_ag_price_list(company_id: str) -> Dict[str, Any]:
-    # Admin bir firma icin Albert Genau'yu actiktan (albertGenauEnabled) sonra
-    # bile, o firma GERCEKTEN HESAPLAMA yapabilmek icin kendi fiyat listesi
-    # Excel'ini kendi hesabindan yuklemis olmali -- ortak/varsayilan listeye
-    # sessizce dusup calismasina izin VERMIYORUZ: admin'in dagitmadigi bir
-    # bayi, sirf modul acildi diye baskasinin fiyat listesiyle hesap
-    # yapamasin diye. (bkz. /albert-genau/company-price-list/upload)
-    doc = await db.albert_genau_config.find_one({"companyId": company_id}, {"_id": 0})
-    if not doc or not doc.get("price_list"):
-        raise HTTPException(status_code=403, detail={
-            "code": "price_list_required",
-            "message": "Hesaplama yapabilmek için önce kendi Albert Genau fiyat listenizi (Excel) yüklemeniz gerekiyor.",
-        })
-    return doc
 
 
 @api_router.get("/albert-genau/types")
@@ -3139,9 +3125,7 @@ async def albert_genau_parts_list_calculate(payload: AlbertGenauPartsListCalcula
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-        price_data = await _require_company_ag_price_list(payload.companyId)
-    else:
-        price_data = await _get_ag_price_data(None)
+    price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_parts_list_calculate(payload, price_data)
 
 
@@ -3150,9 +3134,7 @@ async def albert_genau_airflex_module_calculate(payload: AlbertGenauAirflexModul
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-        price_data = await _require_company_ag_price_list(payload.companyId)
-    else:
-        price_data = await _get_ag_price_data(None)
+    price_data = await _get_ag_price_data(payload.companyId)
     try:
         return ag_calc.calculate_airflex_module(
             adet=payload.adet,
@@ -3215,9 +3197,7 @@ async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depe
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-        price_data = await _require_company_ag_price_list(payload.companyId)
-    else:
-        price_data = await _get_ag_price_data(None)
+    price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_calculate(payload, price_data)
 
 
@@ -3226,9 +3206,7 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-        price_data = await _require_company_ag_price_list(payload.companyId)
-    else:
-        price_data = await _get_ag_price_data(None)
+    price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
 
     from openpyxl import Workbook
@@ -3333,9 +3311,7 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-        price_data = await _require_company_ag_price_list(payload.companyId)
-    else:
-        price_data = await _get_ag_price_data(None)
+    price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
     girdi = result["girdi"]
 

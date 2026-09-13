@@ -414,7 +414,7 @@ export default function AdsIntelScreen() {
             <TextInput style={s.input} placeholder="İlk görülme tarihi YYYY-MM-DD (boşsa bugün)" placeholderTextColor="#94a3b8" value={addIlkGorulme} onChangeText={setAddIlkGorulme} testID="ads-add-ilkgorulme" />
             <TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Not (opsiyonel)" placeholderTextColor="#94a3b8" value={addNotlar} onChangeText={setAddNotlar} testID="ads-add-notlar" />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAddOpen(false)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setAddOpen(false)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={addRecord} disabled={addSaving} testID="ads-add-save">
@@ -442,7 +442,7 @@ export default function AdsIntelScreen() {
               testID="ads-import-text"
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setImportOpen(false)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setImportOpen(false)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={doImport} disabled={importBusy} testID="ads-import-save">
@@ -469,7 +469,7 @@ export default function AdsIntelScreen() {
             <TextInput style={s.input} placeholder="YYYY-MM-DD" placeholderTextColor="#94a3b8" value={editSonGorulme} onChangeText={setEditSonGorulme} testID="ads-edit-songorulme" />
             <TextInput style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]} multiline placeholder="Not" placeholderTextColor="#94a3b8" value={editNotlar} onChangeText={setEditNotlar} testID="ads-edit-notlar" />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setEditFor(null)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setEditFor(null)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>Vazgeç</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveEdit} testID="ads-edit-save">
@@ -502,7 +502,7 @@ const s = StyleSheet.create({
   distChipText: { fontSize: 11, fontWeight: '800', color: theme.colors.text },
   input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
   watchAddBtn: { width: 44, height: 44, borderRadius: 10, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' },
-  watchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
+  watchChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.surfaceSoft, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
   watchChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.text },
   addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, backgroundColor: theme.colors.surface },
   addManualBtnText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },

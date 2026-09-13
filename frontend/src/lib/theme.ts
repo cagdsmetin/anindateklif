@@ -70,23 +70,26 @@ const lightColors = {
   },
 };
 
-// Koyu tema paleti — MyDijital OS benzeri koyu lacivert/slate zemin.
-// Renk anlamları (primary/gold/red/green vb.) aynı kalır, sadece kontrast
-// koyu zemine göre yeniden ayarlanır: zemin/yüzeyler koyulaşır, metin
-// açılır, "Soft" arka planlar (rozet/etiket zeminleri) koyu tonlu tutulup
-// üzerlerindeki metin rengi açık tonda okunur.
+// Koyu tema paleti — MyDijital OS'un canlı /crm/leads ekranından ölçülen
+// gerçek renklere göre kalibre edildi (bkz. getComputedStyle ile alınan
+// body/kart/kenarlık/metin değerleri): çok koyu lacivert zemin (#090E14),
+// hafif daha açık kart yüzeyleri (#111923), belirgin mavi-mor vurgu rengi
+// (#5B7CFF) ve yumuşak gri-mavi kenarlıklar (#253244). Renk ANLAMLARI
+// (primary/gold/red/green vb.) aynı kalır, sadece kontrast koyu zemine göre
+// yeniden ayarlanır: "Soft" arka planlar (rozet/etiket zeminleri) koyu
+// tonlu tutulup üzerlerindeki metin rengi açık tonda okunur.
 const darkColors = {
-  primary: '#6366F1',
-  primaryDark: '#818CF8',
-  primarySoft: '#1E1B4B',
-  primaryBorder: '#3730A3',
+  primary: '#5B7CFF',
+  primaryDark: '#7C97FF',
+  primarySoft: '#182148',
+  primaryBorder: '#33407A',
 
   navy: '#1E293B',
-  navyDark: '#0B1220',
+  navyDark: '#090E14',
 
-  accent: '#6366F1',
-  accentSoft: '#1E1B4B',
-  accentBorder: '#3730A3',
+  accent: '#5B7CFF',
+  accentSoft: '#182148',
+  accentBorder: '#33407A',
   gold: '#FBBF24',
   goldSoft: '#78350F',
   goldDark: '#FCD34D',
@@ -99,15 +102,15 @@ const darkColors = {
   yellow: '#FCD34D',
   yellowSoft: '#78350F',
 
-  text: '#F1F5F9',
-  textMuted: '#94A3B8',
-  textOnDark: '#94A3B8',
-  textSoft: '#CBD5E1',
-  bg: '#0B1220',
-  surface: '#111827',
-  surfaceSoft: '#1E293B',
-  line: '#1F2937',
-  lineDark: '#334155',
+  text: '#F3F6FB',
+  textMuted: '#91A0B5',
+  textOnDark: '#91A0B5',
+  textSoft: '#C3CDDB',
+  bg: '#090E14',
+  surface: '#111923',
+  surfaceSoft: '#0D141C',
+  line: '#253244',
+  lineDark: '#33455C',
 
   modules: {
     teklif: '#818CF8',

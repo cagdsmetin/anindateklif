@@ -545,17 +545,17 @@ export default function AlbertGenauScreen() {
                 </TouchableOpacity>
                 {priceListOpen && (
                   <View style={{ marginTop: 10 }}>
-                    <Text style={[s.priceListSource, !priceListStatus?.exists && s.priceListSourceWarn]}>
+                    <Text style={s.priceListSource}>
                       {priceListStatus?.exists
-                        ? 'Kendi yüklediğiniz Excel kullanılıyor'
-                        : 'Henüz yüklenmedi — Excel dosyanızı yüklemeden hesaplama yapamazsınız'}
+                        ? 'Kendi yüklediğiniz özel Excel kullanılıyor'
+                        : 'Merkezi (güncel) fiyat listesi kullanılıyor — isterseniz kendi özel listenizi yükleyip önceliklendirebilirsiniz'}
                     </Text>
                     {priceListStatus?.updatedAt ? (
                       <Text style={s.priceListMeta}>Son güncelleme: {new Date(priceListStatus.updatedAt).toLocaleString('tr-TR')}</Text>
                     ) : null}
                     <Text style={s.priceListHint}>
-                      Albert Genau'dan yeni bir fiyat Excel'i geldiğinde buradan tekrar yükleyin. Sadece fiyatlar
-                      değişir, hesaplama mantığı aynı kalır — sadece bu firma etkilenir.
+                      Fiyatlar merkezi olarak yönetilir; yeni bir fiyat güncellemesi geldiğinde otomatik olarak
+                      yansır. Sadece kendi özel fiyatlarınızla çalışmak isterseniz buradan bir Excel yükleyebilirsiniz.
                     </Text>
                     <TouchableOpacity
                       style={[s.priceListUploadBtn, priceListUploading && { opacity: 0.6 }]}

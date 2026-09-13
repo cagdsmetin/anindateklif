@@ -693,7 +693,9 @@ export default function LeadsScreen() {
                           <Text style={[s.kanbanColTitle, { color: DURUM_COLORS[d] }]} numberOfLines={1}>{statusLabel(lang, d)}</Text>
                           <Text style={s.kanbanColCount}>{items.length}</Text>
                         </View>
-                        {colToplam > 0 && <Text style={s.kanbanColTotal}>₺{money(colToplam)}</Text>}
+                        <Text style={s.kanbanColSummary}>
+                          {items.length} kayıt{colToplam > 0 ? ` · ₺${money(colToplam)}` : ''}
+                        </Text>
                         {items.length === 0 ? (
                           <Text style={s.kanbanEmpty}>—</Text>
                         ) : (
@@ -702,11 +704,19 @@ export default function LeadsScreen() {
                             return (
                               <View key={lead.id} style={s.kanbanCard} testID={`kanban-card-${lead.id}`}>
                                 <TouchableOpacity onPress={() => openNotes(lead)}>
-                                  <Text style={s.kanbanCardTitle} numberOfLines={1}>{lead.firma}</Text>
-                                  {!!lead.firsatTutari && <Text style={s.kanbanCardAmount}>₺{money(lead.firsatTutari)}</Text>}
-                                  {!!lead.atananKullaniciId && (
-                                    <Text style={s.kanbanCardAssigned} numberOfLines={1}>👤 {staffLabelById[lead.atananKullaniciId] || 'Personel'}</Text>
-                                  )}
+                                  <View style={s.kanbanCardTopRow}>
+                                    <Text style={s.kanbanCardTitle} numberOfLines={1}>{lead.firma}</Text>
+                                    <View style={[s.kanbanCardBadge, { borderColor: DURUM_COLORS[d] }]}>
+                                      <View style={[s.kanbanCardBadgeDot, { backgroundColor: DURUM_COLORS[d] }]} />
+                                      <Text style={[s.kanbanCardBadgeText, { color: DURUM_COLORS[d] }]} numberOfLines={1}>{statusLabel(lang, d)}</Text>
+                                    </View>
+                                  </View>
+                                  <View style={s.kanbanCardMetaRow}>
+                                    <Text style={s.kanbanCardAssigned} numberOfLines={1}>
+                                      {lead.atananKullaniciId ? `👤 ${staffLabelById[lead.atananKullaniciId] || 'Personel'}` : 'Atanmadı'}
+                                    </Text>
+                                    {!!lead.firsatTutari && <Text style={s.kanbanCardAmount}>₺{money(lead.firsatTutari)}</Text>}
+                                  </View>
                                 </TouchableOpacity>
                                 <View style={s.kanbanCardMoveRow}>
                                   <TouchableOpacity
@@ -857,7 +867,7 @@ export default function LeadsScreen() {
               <Text style={s.reminderChosenText}>{t('leads.s065')}{trDateShort(reminderDate)} {t('leads.s066')}</Text>
             )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setNotesFor(null)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setNotesFor(null)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveNote}>
@@ -894,7 +904,7 @@ export default function LeadsScreen() {
               placeholderTextColor="#94a3b8"
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setWaLead(null)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setWaLead(null)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#16a34a', flexDirection: 'row', gap: 6 }]} onPress={sendWaText} testID="wa-send-btn">
@@ -954,7 +964,7 @@ export default function LeadsScreen() {
               testID="lead-add-firsat"
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAddOpen(false)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setAddOpen(false)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={addLeadManual} disabled={addSaving} testID="lead-add-save">
@@ -996,7 +1006,7 @@ export default function LeadsScreen() {
               </>
             )}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAssignFor(null)}>
+              <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.surfaceSoft }]} onPress={() => setAssignFor(null)}>
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               {!!assignFor?.atananKullaniciId && (
@@ -1016,97 +1026,107 @@ export default function LeadsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.bg },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  statCard: { flexBasis: '48%', flexGrow: 1, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
+  statCard: { flexBasis: '48%', flexGrow: 1, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
   statValue: { fontSize: 22, fontWeight: '900', color: theme.colors.navy },
   statLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, marginTop: 4, letterSpacing: 0.3 },
   tabRow: { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
-  tabBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#F1F5F9' },
-  tabReorderToggle: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  tabBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
+  tabReorderToggle: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft },
   tabReorderToggleActive: { backgroundColor: theme.colors.primary },
-  tabReorderBtn: { width: 22, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9', borderRadius: 6 },
+  tabReorderBtn: { width: 22, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft, borderRadius: 6 },
   tabReorderBtnDisabled: { opacity: 0.3 },
   tabBtnActive: { backgroundColor: theme.colors.primary },
   tabText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
   tabTextActive: { color: '#fff' },
-  dailyBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.line },
+  dailyBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.line },
   dailyLabel: { flex: 1, fontSize: 12, fontWeight: '700', color: theme.colors.text },
-  dailyInput: { width: 56, height: 36, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line, textAlign: 'center', backgroundColor: '#fff', fontSize: 13 },
+  dailyInput: { width: 56, height: 36, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line, textAlign: 'center', backgroundColor: theme.colors.surface, color: theme.colors.text, fontSize: 13 },
   dailySaveBtn: { backgroundColor: theme.colors.primary, paddingHorizontal: 12, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   dailySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 15 },
   sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
-  tumuFilterChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1 },
+  tumuFilterChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: theme.colors.surface, borderWidth: 1 },
   tumuFilterChipText: { fontSize: 11, fontWeight: '800' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center', paddingHorizontal: 20 },
   ctaTalepBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primary, borderRadius: 10, paddingHorizontal: 16, height: 40, marginTop: 12 },
   ctaTalepBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
-  addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, marginBottom: 12, backgroundColor: '#fff' },
+  addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, marginBottom: 12, backgroundColor: theme.colors.surface },
   addManualBtnText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
-  leadCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
-  leadCardAssigned: { borderColor: '#f59e0b', borderWidth: 1.5, backgroundColor: '#FFFBEB' },
-  assignBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EDE9FE', alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
-  assignBadgeText: { fontSize: 10.5, fontWeight: '800', color: '#5b21b6' },
+  leadCard: { flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
+  leadCardAssigned: { borderColor: '#f59e0b', borderWidth: 1.5, backgroundColor: theme.colors.goldSoft },
+  assignBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
+  assignBadgeText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primaryDark },
   assignSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: '#b45309', textTransform: 'uppercase', letterSpacing: 0.4 },
+  assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.goldDark, textTransform: 'uppercase', letterSpacing: 0.4 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
   leadNote: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, fontStyle: 'italic' },
   durumChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   durumChipText: { fontSize: 10, fontWeight: '800' },
-  iconBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  waBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center' },
-  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: '#fff', marginBottom: 10 },
+  iconBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
+  waBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' },
+  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, height: 46, marginTop: 4 },
   submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
-  reqCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8, gap: 8 },
+  reqCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8, gap: 8 },
   reqSektor: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
   reqAciklama: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   reqDurum: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  reqDurumPending: { backgroundColor: '#FEF3C7' },
-  reqDurumDone: { backgroundColor: '#DCFCE7' },
+  reqDurumPending: { backgroundColor: theme.colors.goldSoft },
+  reqDurumDone: { backgroundColor: theme.colors.greenSoft },
   reqDurumText: { fontSize: 10.5, fontWeight: '800' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modalBox: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
+  modalBox: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 18 },
   modalTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 12 },
   modalBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   modalBtnText: { fontSize: 13, fontWeight: '800' },
-  tagPill: { backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  tagPill: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   tagPillText: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   phoneRowText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary, textDecorationLine: 'underline' },
-  reminderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 8 },
-  reminderBadgeText: { fontSize: 10.5, fontWeight: '800', color: '#b45309' },
+  reminderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.goldSoft, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 8 },
+  reminderBadgeText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.goldDark },
   modalSubLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
-  waTemplateChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: '#F8FAFC' },
+  waTemplateChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
   waTemplateChipActive: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
   waTemplateChipText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.text },
   waTemplateChipTextActive: { color: '#fff' },
-  reminderPreset: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F8FAFC' },
+  reminderPreset: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: theme.colors.surfaceSoft },
   reminderPresetText: { fontSize: 11, fontWeight: '700', color: theme.colors.text },
   reminderChosenText: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
-  viewToggleWrap: { flexDirection: 'row', gap: 4, backgroundColor: '#F1F5F9', borderRadius: 10, padding: 3 },
+  viewToggleWrap: { flexDirection: 'row', gap: 4, backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, padding: 3 },
   viewToggleBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   viewToggleBtnActive: { backgroundColor: theme.colors.primary },
-  kanbanCol: { width: 190, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 8 },
-  kanbanColHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, paddingBottom: 6, marginBottom: 6 },
-  kanbanColTitle: { fontSize: 11, fontWeight: '900', flex: 1 },
-  kanbanColCount: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
-  kanbanColTotal: { fontSize: 10.5, fontWeight: '800', color: theme.colors.green, marginBottom: 6 },
-  kanbanEmpty: { fontSize: 11, color: theme.colors.textMuted, textAlign: 'center', paddingVertical: 10 },
-  kanbanCard: { backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 8, marginBottom: 6, ...theme.shadow.sm },
-  kanbanCardTitle: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
-  kanbanCardAmount: { fontSize: 11, fontWeight: '800', color: theme.colors.green, marginTop: 2 },
-  kanbanCardAssigned: { fontSize: 9.5, color: '#5b21b6', marginTop: 2 },
-  kanbanCardMoveRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  kanbanMoveBtn: { width: 26, height: 22, borderRadius: 6, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  // Kanban pano -- MyDijital OS'un /crm/leads panosundan alınan referansla
+  // hizalanmış görsel dil: sütun ve kart aynı koyu yüzey tonunu paylaşır,
+  // aradaki fark ince kenarlık ve gölgeyle verilir; başlık altında
+  // "N kayıt · ₺toplam" özet satırı, kart üzerinde durum rozeti (nokta +
+  // etiket) ve alt satırda atanan kişi/₺tutar ayrımı bulunur.
+  kanbanCol: { width: 220, backgroundColor: theme.colors.surfaceSoft, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 10 },
+  kanbanColHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 2, borderBottomWidth: 2 },
+  kanbanColTitle: { fontSize: 11.5, fontWeight: '900', flex: 1, textTransform: 'uppercase', letterSpacing: 0.4 },
+  kanbanColCount: { fontSize: 10.5, fontWeight: '800', color: theme.colors.text, backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden' },
+  kanbanColSummary: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '700', marginBottom: 10 },
+  kanbanEmpty: { fontSize: 11, color: theme.colors.textMuted, textAlign: 'center', paddingVertical: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.line, borderRadius: 10 },
+  kanbanCard: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8, ...theme.shadow.sm },
+  kanbanCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  kanbanCardTitle: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, flex: 1 },
+  kanbanCardBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
+  kanbanCardBadgeDot: { width: 6, height: 6, borderRadius: 3 },
+  kanbanCardBadgeText: { fontSize: 9.5, fontWeight: '800' },
+  kanbanCardMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
+  kanbanCardAssigned: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted, flex: 1 },
+  kanbanCardAmount: { fontSize: 12, fontWeight: '900', color: theme.colors.text },
+  kanbanCardMoveRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  kanbanMoveBtn: { width: 28, height: 24, borderRadius: 7, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
   kanbanMoveBtnDisabled: { opacity: 0.25 },
 });

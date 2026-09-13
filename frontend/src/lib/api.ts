@@ -392,6 +392,13 @@ export const api = {
     req(`/albert-genau/vertiflex/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauVertiflexCalculate: (data: AlbertGenauVertiflexCalculateInputT): Promise<AlbertGenauVertiflexResultT> =>
     req('/albert-genau/vertiflex/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  // KIŞ BAHÇESİ (sabit cam tavanlı, 2 alt tip: PREMIUM 08-10 / PREMIUM TWIN)
+  // -- genişlik/derinlik/tavan bölüm sayısı/arka duvar yüksekliği girdili
+  // geometrik aile, bkz. AlbertGenauKisBahcesiTypesResponseT.
+  albertGenauKisBahcesiTypes: (companyId?: string): Promise<AlbertGenauKisBahcesiTypesResponseT> =>
+    req(`/albert-genau/kis-bahcesi/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
+  albertGenauKisBahcesiCalculate: (data: AlbertGenauKisBahcesiCalculateInputT): Promise<AlbertGenauKisBahcesiResultT> =>
+    req('/albert-genau/kis-bahcesi/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -855,6 +862,8 @@ export type AlbertGenauTypesResponseT = {
   // VERTIFLEX (dikey giyotin) alt tipleri -- detaylı seçenekler için ayrıca
   // bkz. albertGenauVertiflexTypes() / AlbertGenauVertiflexTypesResponseT.
   vertiflexTypes?: { id: string; label: string }[];
+  // bkz. albertGenauKisBahcesiTypes() / AlbertGenauKisBahcesiTypesResponseT.
+  kisBahcesiTypes?: { id: string; label: string }[];
 };
 
 export type AlbertGenauPartsListItemT = {
@@ -981,6 +990,69 @@ export type AlbertGenauVertiflexResultT = {
   tipAdi: string;
   odemeTipi: 'nakit' | 'kredi_karti';
   girdi: { genislikMm: number; yukseklikMm: number; panelSayisi: string | null; motor: string };
+  profilGrubuToplam: number;
+  aksesuarGrubuToplam: number;
+  camGrubuToplam: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+// KIŞ BAHÇESİ (sabit cam tavanlı kış bahçesi) — tip başına geçerli
+// seçenekler backend'den (ag_calc.KIS_BAHCESI_TYPE_META) gelir; PREMIUM
+// 08-10'da ayrıca "ayarlı duvar bağlantısı" seçeneği vardır, TWIN'de yok.
+export type AlbertGenauKisBahcesiTypeMetaT = {
+  id: string;
+  label: string;
+  ayarliDuvarBaglantisi: boolean; // sadece PREMIUM 08-10'da anlamlı
+  kirisUstuVidaKapama: boolean;
+  ortaKayit: boolean;
+  ucgenMikroPencere: boolean;
+  camSkus: { sku: string; label: string }[]; // kaç adet cam fiyatı (TL/m²) girilmesi gerektiğini belirler
+};
+
+export type AlbertGenauKisBahcesiTypesResponseT = {
+  types: AlbertGenauKisBahcesiTypeMetaT[];
+  finishes: string[];
+};
+
+export type AlbertGenauKisBahcesiCalculateInputT = {
+  companyId?: string;
+  tip: string;
+  genislikMm: number;
+  derinlikMm: number;
+  tavanBolumSayisi: number;
+  arkaDuvarAltYukseklikMm: number;
+  araDikmeSayisi?: number;
+  ayarliDuvarBaglantisi?: boolean;
+  kirisUstuVidaKapama?: boolean;
+  ortaKayit?: boolean;
+  ucgenMikroPencere?: boolean;
+  finish?: string | null;
+  camFiyatlariM2?: Record<string, number>;
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauKisBahcesiResultT = {
+  kind: 'kis_bahcesi';
+  tip: string;
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  girdi: {
+    genislikMm: number;
+    derinlikMm: number;
+    tavanBolumSayisi: number;
+    arkaDuvarAltYukseklikMm: number;
+    araDikmeSayisi: number;
+  };
   profilGrubuToplam: number;
   aksesuarGrubuToplam: number;
   camGrubuToplam: number;

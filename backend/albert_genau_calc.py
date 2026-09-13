@@ -1506,3 +1506,332 @@ def calculate_vertiflex(
         'satisFiyati': round(satis_fiyati, 2),
         'kalemler': [k.dict() for k in (profil + aksesuar + cam_kalemleri)],
     }
+
+
+# ============ KIŞ BAHÇESİ (Kompozit/Alüminyum Sabit Cam Tavan) SISTEMLERI ============
+# 2026/04 Haziran "KIŞ BAHÇESİ" Excel'inden (2 sistem: PREMIUM 08-10 tek cam,
+# PREMIUM TWIN cift cam/isicam) elle port edilmis formuller. Genislik/derinlik
+# (mm) + tavan bolum sayisi + arka duvar alt yuksekligi girdili GEOMETRIK bir
+# aile. Her fonksiyonun "camsiz toplam" degeri, Excel'in kendi ANALIZ
+# sekmelerindeki C2=4000/E2=3000/G2=4/C3=2901 ornek degerlerine karsi BIREBIR
+# (ondalik hanesine kadar) capraz dogrulanmistir. NOT: VERTIFLEX/AIRFLEX'te
+# oldugu gibi bu Excel'de de ayri bir imalat/kesim FIRESI orani belirtilmemis
+# (Excel'in kendi notu: "SARF MALZEMELERİ, FİRE VB. GİDERLER DİKKATE
+# ALINMAMIŞTIR") -- bu yuzden burada da fire_orani=0 kullanilir.
+#
+# Excel'de K05006 (on-arka oluk ekleme lamel takimi -- genislik profil boyunu
+# astiginda ek splice parcasi), K05007/P05025/P05026/K05008/K05012 (opsiyonel
+# LED aydinlatma seti + trafo) satirlarinin formul HUCRESI YOK -- bunlar
+# Excel'de bos birakilip bayinin gerektiginde ELLE girdigi serbest alanlar
+# (bkz. F29/F30/F31 formulsuz). Ayni sekilde B15215-- (polikarbonat F cita)
+# ve B15279--/B15280-- (LED'li orta kiris profili) SKU'lari her iki ANALIZ
+# sekmesinde de hic satir olarak kullanilmiyor. Excel'in kendi otomatik
+# hesaplama mantigina sadik kalmak icin bu opsiyonel/manuel kalemler otomatik
+# hesaba DAHIL EDILMEZ (Excel'in varsayilan bos/0 durumuyla ayni) -- SKU'lar
+# yine de fiyat listesinde durur, ileride manuel kalem eklemek istenirse kullanilabilir.
+KIS_BAHCESI_SYSTEM_TYPES = ['kis_bahcesi_premium_08_10', 'kis_bahcesi_premium_twin']
+
+KIS_BAHCESI_TYPE_LABELS = {
+    'kis_bahcesi_premium_08_10': 'KIŞ BAHÇESİ PREMIUM 08-10',
+    'kis_bahcesi_premium_twin': 'KIŞ BAHÇESİ PREMIUM TWIN',
+}
+
+# Frontend'in tip-bazli formu (hangi bayrak/secenekler gecerli, kac cam kalemi
+# girilmesi gerektigi) kod tekrari yapmadan cizebilmesi icin meta harita.
+KIS_BAHCESI_TYPE_META = {
+    'kis_bahcesi_premium_08_10': {
+        # Sadece 08-10'da var: G34=1 yazilirsa sabit (B15207) duvar baglanti
+        # profili yerine ayarli (B15269+B15270) versiyonu kullanilir.
+        'ayarliDuvarBaglantisi': True,
+        'kirisUstuVidaKapama': True,
+        'ortaKayit': True,
+        'ucgenMikroPencere': True,
+        'camSkus': [
+            {'sku': 'CAM-KB0810-TAVAN', 'label': '4.4.2 (8,76) / 5.5.2 (10,76) Laminat Cam (Tavan)'},
+            {'sku': 'CAM-KB0810-MIKROPENCERE', 'label': '8mm Temperli Cam (Üçgen Mikro Pencere)'},
+        ],
+    },
+    'kis_bahcesi_premium_twin': {
+        # TWIN'de duvar baglanti profili HER ZAMAN ayarli versiyondur (Excel'de
+        # sabit/B15207 secenegi bu aile icin hic yok) -- bu yuzden bayrak yok.
+        'ayarliDuvarBaglantisi': False,
+        'kirisUstuVidaKapama': True,
+        'ortaKayit': True,
+        'ucgenMikroPencere': True,
+        'camSkus': [
+            {'sku': 'CAM-KBTWIN-TAVAN', 'label': '4.4.2 Laminat+16HB+6 Temperli Isicam (30,76) (Tavan)'},
+            {'sku': 'CAM-KBTWIN-MIKROPENCERE', 'label': '4mm+10HB+4mm Temperli Isicam (18) (Üçgen Mikro Pencere)'},
+        ],
+    },
+}
+
+
+def _kb_kalem(pb: 'PriceBook', sku: str, qty: float, finish_mult: float = 1.0, apply_finish: bool = False) -> Kalem:
+    """KIŞ BAHÇESİ kalemi olustur -- sadece PROFIL (aluminyum, B15xxx/TS15xxx/
+    B1521802 SKU'lari) kalemlerine finish_mult uygulanir, conta/takim/aksesuar
+    (K0xxxx/P0xxxx/B8505xxx) kalemlerine uygulanmaz (BIOFLEX/VERTIFLEX'teki
+    ayni kural)."""
+    item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku) or {}
+    label = item.get('name', sku)
+    price = _pl_price(pb, sku) * (finish_mult if apply_finish else 1.0)
+    return Kalem(label=label, sku=sku, price=price, qty=qty)
+
+
+def _calc_kis_bahcesi_08_10(pb, genislik_mm, derinlik_mm, tavan_bolum_sayisi,
+                             arka_duvar_alt_yukseklik_mm, ara_dikme_sayisi=0,
+                             ayarli_duvar_baglantisi=False, kiris_ustu_vida_kapama=False,
+                             orta_kayit=False, ucgen_mikro_pencere=False, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _kb_kalem(pb, sku, qty, finish_mult, fin)
+    C2, E2, G2, C3 = genislik_mm, derinlik_mm, tavan_bolum_sayisi, arka_duvar_alt_yukseklik_mm
+    G3 = ara_dikme_sayisi or 0
+    G34 = 1 if ayarli_duvar_baglantisi else 0
+    G35 = 1 if kiris_ustu_vida_kapama else 0
+    G36 = 1 if orta_kayit else 0
+    G37 = 1 if ucgen_mikro_pencere else 0
+
+    # On dikme yuksekligi -- arka duvar alt yuksekliginden 8 derece egimle
+    # (kis bahcesi catisinin egimi) hesaplanir, dogrudan girilmez.
+    E3 = round(C3 - math.tan(math.radians(8)) * (E2 - 132 - 12 * G34), 0) if C3 else 0
+
+    F5 = C2 / 1000
+    F6 = F5 if G34 == 0 else 0
+    F7 = (E2 - 121) * 2 / 1000
+    F8 = ((E2 - 121) * (G2 - 1) + (G36 * (C2 - (55 * (G2 + 2))))) / 1000
+    F9 = ((C2 * 2) - (55 * (G2 + 2))) / 1000
+    F10 = (E2 - 121 + 40) * (G2 - 1) / 1000
+    F11 = (E2 - 121 + 40) * 2 / 1000
+    F26 = G2 + 1
+    F28 = 2 + G3
+    F12 = E3 * F28 / 1000
+    F13 = (F10 + F11) if G35 == 1 else 0
+    F14 = F5 if G34 == 1 else 0
+    F15 = F5 if G34 == 1 else 0
+    F16 = (F7 + F8) if E2 > 3000 else 0
+    F17 = ((E2 * 2 / 1000) * 2) if G37 == 1 else 0
+    F18 = (0.5 * 2) if G37 == 1 else 0
+    F19 = (F17 + F18) if G37 == 1 else 0
+    F20 = 2 if G37 == 1 else 0
+    F21 = (F8 * 2) + F7 + F9
+    F22 = C2 / 1000
+    F23 = C2 / 1000
+    F24 = (F8 * 2) + F7
+    F32 = 1 if G37 == 1 else 0
+    F33 = G36 * G2
+
+    profil = [
+        K('B15261--', F5),    # 201*129 oluk profili
+        K('B15207--', F6),    # 70*151 duvar baglanti profili (sabit)
+        K('B15208--', F7),    # 55*128 yan kiris profili
+        K('B15209--', F8),    # 55*112 orta kiris profili
+        K('B15210--', F9),    # 48*97 oluk kapak profili
+        K('B15211--', F10),   # 52*18 orta kiris ust kapak profili
+        K('B15212--', F11),   # 54*54 yan kiris ust kapak profili
+        K('B15268--', F12),   # 125*125 dikme profili
+        K('B15214--', F13),   # 55*15 kiris vida kapama profili
+        K('B15269--', F14),   # 61*140 duvar baglanti alt profili (ayarli)
+        K('B15270--', F15),   # 69*65 duvar baglanti ust profili (ayarli)
+        K('B1521802', F16),   # 90*50 kiris destek profili (derinlik>3000mm)
+        K('TS15018--', F17),  # mikro pencere kasa profili
+        K('TS15019--', F18),  # mikro pencere ortakayit profili
+        K('TS15021--', F19),  # mikro pencere tek cam cita profili
+    ]
+    aksesuar = [
+        K('K85050--', F20, fin=False),  # mikro pencere sabit parca
+        K('B8505406', F21, fin=False),  # kiris alt basma contasi
+        K('B8505407', F22, fin=False),  # arka duvar contasi
+        K('B8505408', F23, fin=False),  # oluk contasi
+        K('B8505403', F24, fin=False),  # gecme conta
+        K('K05001', 1, fin=False),      # on-arka yan kapak takimi
+        K('K05002', F26, fin=False),    # kiris takimi
+        K('K05004', 1, fin=False),      # su drenaj takimi
+        K('K05005', F28, fin=False),    # gizli ayak baglanti takimi
+        K('K05009', F32, fin=False),    # mikro pencere baglanti takimi
+        K('K05010', F33, fin=False),    # orta kayit baglanti takimi
+    ]
+    cam_tavan_m2 = (C2 - 37.1 - 37.1 - (F26 * 19.2)) * (E2 - 81) / 1000000
+    cam_mikro_m2 = ((E2 - 500) * 500 / 2 * 2 / 1000000) if G37 == 1 else 0
+    cam = [
+        ('4.4.2 (8,76) / 5.5.2 (10,76) Laminat Cam', 'CAM-KB0810-TAVAN', cam_tavan_m2),
+        ('8mm Temperli Cam', 'CAM-KB0810-MIKROPENCERE', cam_mikro_m2),
+    ]
+    return profil, aksesuar, cam
+
+
+def _calc_kis_bahcesi_twin(pb, genislik_mm, derinlik_mm, tavan_bolum_sayisi,
+                            arka_duvar_alt_yukseklik_mm, ara_dikme_sayisi=0,
+                            kiris_ustu_vida_kapama=False, orta_kayit=False,
+                            ucgen_mikro_pencere=False, finish_mult=1.0):
+    K = lambda sku, qty, fin=True: _kb_kalem(pb, sku, qty, finish_mult, fin)
+    C2, E2, G2, C3 = genislik_mm, derinlik_mm, tavan_bolum_sayisi, arka_duvar_alt_yukseklik_mm
+    G3 = ara_dikme_sayisi or 0
+    G34 = 1 if kiris_ustu_vida_kapama else 0
+    G35 = 1 if orta_kayit else 0
+    G36 = 1 if ucgen_mikro_pencere else 0
+
+    # TWIN'de duvar baglanti profili her zaman "ayarli" versiyondur -- 08-10'un
+    # aksine G34 (ayarli duvar baglantisi) bayragi/duz alternatifi yoktur, bu
+    # yuzden on dikme yuksekligi formulunde de bu bayraga referans verilmez.
+    E3 = round(C3 - math.tan(math.radians(8)) * (E2 - 144), 0) if C3 else 0
+
+    F5 = C2 / 1000
+    F6 = (E2 - 121) * 2 / 1000
+    F7 = ((E2 - 121) * (G2 - 1) + (G35 * (C2 - (55 * (G2 + 2))))) / 1000
+    F8 = ((C2 * 2) - (55 * (G2 + 2))) / 1000
+    F9 = (E2 - 121 + 40) * (G2 - 1) / 1000
+    F10 = (E2 - 121 + 40) * 2 / 1000
+    F26 = G2 + 1
+    F28 = 2 + G3
+    F11 = E3 * F28 / 1000
+    F12 = (F9 + F10) if G34 == 1 else 0
+    F13 = F5
+    F14 = F5
+    F15 = (F7 + F8) if E2 > 3000 else 0
+    F16 = ((E2 * 2 / 1000) * 2) if G36 == 1 else 0
+    F17 = (0.5 * 2) if G36 == 1 else 0
+    F18 = (F16 + F17) if G36 == 1 else 0
+    F19 = 2 if G36 == 1 else 0
+    F20 = F6 + F7
+    F21 = (F7 * 2) + F6 + F8
+    F22 = C2 / 1000
+    F23 = C2 / 1000
+    F24 = (F7 * 2) + F6
+    F32 = 1 if G36 == 1 else 0
+    F33 = G35 * G2
+
+    profil = [
+        K('B15261--', F5),    # 201*129 oluk profili
+        K('B15208--', F6),    # 55*128 yan kiris profili
+        K('B15209--', F7),    # 55*112 orta kiris profili
+        K('B15210--', F8),    # 48*97 oluk kapak profili
+        K('B15211--', F9),    # 52*18 orta kiris ust kapak profili
+        K('B15212--', F10),   # 54*54 yan kiris ust kapak profili
+        K('B15268--', F11),   # 125*125 dikme profili
+        K('B15214--', F12),   # 55*15 kiris vida kapama profili
+        K('B15269--', F13),   # 61*140 duvar baglanti alt profili
+        K('B15270--', F14),   # 69*65 duvar baglanti ust profili
+        K('B1521802', F15),   # 90*50 kiris destek profili (derinlik>3000mm)
+        K('TS15018--', F16),  # mikro pencere kasa profili
+        K('TS15019--', F17),  # mikro pencere ortakayit profili
+        K('TS15022--', F18),  # mikro pencere cift cam cita profili
+    ]
+    aksesuar = [
+        K('K85050--', F19, fin=False),   # mikro pencere sabit parca
+        K('B8505701', F20, fin=False),   # poliamid isicam adaptor cita
+        K('B8505406', F21, fin=False),   # kiris alt basma contasi
+        K('B8505407', F22, fin=False),   # arka duvar contasi
+        K('B8505408', F23, fin=False),   # oluk contasi
+        K('B8505403', F24, fin=False),   # gecme conta
+        K('K05001', 1, fin=False),       # on-arka yan kapak takimi
+        K('K05002', F26, fin=False),     # kiris takimi
+        K('K05004', 1, fin=False),       # su drenaj takimi
+        K('K05005', F28, fin=False),     # gizli ayak baglanti takimi
+        K('K05009', F32, fin=False),     # mikro pencere baglanti takimi
+        K('K05010', F33, fin=False),     # orta kayit baglanti takimi
+    ]
+    cam_tavan_m2 = (C2 - 37.1 - 37.1 - (F26 * 19.2)) * (E2 - 81) / 1000000
+    cam_mikro_m2 = ((E2 - 500) * 500 / 2 * 2 / 1000000) if G36 == 1 else 0
+    cam = [
+        ('4.4.2 Laminat+16HB+6 Temperli Isicam', 'CAM-KBTWIN-TAVAN', cam_tavan_m2),
+        ('4mm+10HB+4mm Temperli Isicam', 'CAM-KBTWIN-MIKROPENCERE', cam_mikro_m2),
+    ]
+    return profil, aksesuar, cam
+
+
+_KIS_BAHCESI_FUNCS = {
+    'kis_bahcesi_premium_08_10': _calc_kis_bahcesi_08_10,
+    'kis_bahcesi_premium_twin': _calc_kis_bahcesi_twin,
+}
+
+
+def calculate_kis_bahcesi(
+    tip: str,
+    genislik_mm: float,
+    derinlik_mm: float,
+    tavan_bolum_sayisi: int,
+    arka_duvar_alt_yukseklik_mm: float,
+    ara_dikme_sayisi: int = 0,
+    ayarli_duvar_baglantisi: bool = False,   # sadece PREMIUM 08-10
+    kiris_ustu_vida_kapama: bool = False,
+    orta_kayit: bool = False,
+    ucgen_mikro_pencere: bool = False,
+    finish: Optional[str] = None,
+    cam_fiyatlari_m2: Optional[Dict[str, float]] = None,  # {'CAM-KB0810-TAVAN': 1500} gibi
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+    price_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """KIŞ BAHÇESİ (sabit cam tavanli kompozit/aluminyum kis bahcesi) ailesi
+    icin tam fiyat kirilimi. VERTIFLEX/BIOFLEX'teki `calculate()` ile ayni
+    sozlesmeyi (odeme_tipi, price_data, iskonto/kar/montaj is kurallari)
+    paylasir; Albert Genau cami kendi fiyat listesinde SATMADIGI icin bayi
+    cami kendi m² fiyatiyla `cam_fiyatlari_m2` sozlugunden girer -- anahtar,
+    ilgili sistemin cam kaleminin sku'su (bkz. KIS_BAHCESI_TYPE_META.camSkus);
+    girilmezse o cam kalemi 0 TL ile (alan bilgisi korunarak) listelenir."""
+    if tip not in _KIS_BAHCESI_FUNCS:
+        raise ValueError(f"Bilinmeyen KIŞ BAHÇESİ sistem tipi: {tip}")
+    if not tavan_bolum_sayisi or tavan_bolum_sayisi < 1:
+        raise ValueError("Tavan bölüm sayısı en az 1 olmalıdır")
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
+    finish_mult = _finish_multiplier(finish)
+    func = _KIS_BAHCESI_FUNCS[tip]
+
+    kwargs: Dict[str, Any] = dict(
+        ara_dikme_sayisi=ara_dikme_sayisi,
+        kiris_ustu_vida_kapama=kiris_ustu_vida_kapama,
+        orta_kayit=orta_kayit,
+        ucgen_mikro_pencere=ucgen_mikro_pencere,
+        finish_mult=finish_mult,
+    )
+    if tip == 'kis_bahcesi_premium_08_10':
+        kwargs['ayarli_duvar_baglantisi'] = ayarli_duvar_baglantisi
+
+    profil, aksesuar, cam_defs = func(pb, genislik_mm, derinlik_mm, tavan_bolum_sayisi,
+                                       arka_duvar_alt_yukseklik_mm, **kwargs)
+
+    cam_fiyatlari = cam_fiyatlari_m2 or {}
+    cam_kalemleri = []
+    cam_toplam = 0.0
+    for label, cam_sku, alan_m2 in cam_defs:
+        birim_fiyat = float(cam_fiyatlari.get(cam_sku) or 0)
+        k = Kalem(label=f"{label} ({alan_m2:.2f} m²)", sku=cam_sku, price=birim_fiyat, qty=round(alan_m2, 3))
+        cam_kalemleri.append(k)
+        cam_toplam += k.total
+
+    # Excel'in kendi notu: "SARF MALZEMELERİ, FİRE VB. GİDERLER DİKKATE
+    # ALINMAMIŞTIR" -- VERTIFLEX/AIRFLEX'teki gibi fire_orani=0 kullanilir.
+    profil_toplam = sum(k.total for k in profil)
+    aksesuar_toplam = sum(k.total for k in aksesuar)
+    maliyet_toplam = profil_toplam + aksesuar_toplam + cam_toplam
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'kis_bahcesi',
+        'tip': tip,
+        'tipAdi': KIS_BAHCESI_TYPE_LABELS[tip],
+        'odemeTipi': odeme_tipi_eff,
+        'girdi': {
+            'genislikMm': genislik_mm,
+            'derinlikMm': derinlik_mm,
+            'tavanBolumSayisi': tavan_bolum_sayisi,
+            'arkaDuvarAltYukseklikMm': arka_duvar_alt_yukseklik_mm,
+            'araDikmeSayisi': ara_dikme_sayisi,
+        },
+        'profilGrubuToplam': round(profil_toplam, 2),
+        'aksesuarGrubuToplam': round(aksesuar_toplam, 2),
+        'camGrubuToplam': round(cam_toplam, 2),
+        'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in (profil + aksesuar + cam_kalemleri)],
+    }

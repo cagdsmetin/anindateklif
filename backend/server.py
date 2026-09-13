@@ -3114,6 +3114,87 @@ class AlbertGenauVertiflexCalculateRequest(BaseModel):
         return out
 
 
+class AlbertGenauKisBahcesiCalculateRequest(BaseModel):
+    # KIŞ BAHÇESİ (sabit cam tavanli kompozit/aluminyum kis bahcesi, 2 alt
+    # tip) icin -- genislik/derinlik (mm) + tavan bolum sayisi + arka duvar
+    # alt yukseklik girdili GEOMETRIK bir aile (bkz. ag_calc.KIS_BAHCESI_TYPE_META).
+    companyId: Optional[str] = None
+    tip: str  # ag_calc.KIS_BAHCESI_SYSTEM_TYPES icinden biri
+    genislikMm: float
+    derinlikMm: float
+    tavanBolumSayisi: int
+    arkaDuvarAltYukseklikMm: float
+    araDikmeSayisi: int = 0
+    ayarliDuvarBaglantisi: bool = False  # sadece PREMIUM 08-10
+    kirisUstuVidaKapama: bool = False
+    ortaKayit: bool = False
+    ucgenMikroPencere: bool = False
+    finish: Optional[str] = None
+    camFiyatlariM2: Dict[str, float] = {}  # {'CAM-KB0810-TAVAN': 1200} gibi
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("tip")
+    @classmethod
+    def _tip_valid(cls, v: str) -> str:
+        if v not in ag_calc.KIS_BAHCESI_SYSTEM_TYPES:
+            raise ValueError(f"Gecersiz KIŞ BAHÇESİ sistem tipi: {v}")
+        return v
+
+    @field_validator("tavanBolumSayisi")
+    @classmethod
+    def _tavan_bolum_valid(cls, v: int) -> int:
+        if v is None or v < 1 or v > 50:
+            raise ValueError("Tavan bölüm sayısı 1-50 aralığında olmalıdır")
+        return v
+
+    @field_validator("araDikmeSayisi")
+    @classmethod
+    def _ara_dikme_valid(cls, v: int) -> int:
+        if v is None:
+            return 0
+        if v < 0 or v > 50:
+            raise ValueError("Ara dikme sayısı 0-50 aralığında olmalıdır")
+        return v
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("genislikMm", "derinlikMm", "arkaDuvarAltYukseklikMm")
+    @classmethod
+    def _dim_positive(cls, v: float) -> float:
+        if v is None or v <= 0 or v > 30000:
+            raise ValueError("Olcu 0-30000mm araliginda olmalidir")
+        return v
+
+    @field_validator("camFiyatlariM2")
+    @classmethod
+    def _cam_fiyat_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        out = {}
+        for sku, fiyat in list(v.items())[:10]:
+            f = float(fiyat or 0)
+            if f < 0 or f > 1_000_000:
+                raise ValueError("Cam fiyati gecersiz")
+            out[str(sku)[:40]] = f
+        return out
+
+
 class AlbertGenauItemCreate(BaseModel):
     companyId: str
     tip: str
@@ -3185,7 +3266,10 @@ async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_c
             "partsListSystems": [{"id": k, "label": v["label"]} for k, v in ag_calc.PARTS_LIST_SYSTEMS.items()],
             # VERTIFLEX (dusey giyotin) -- form secenekleri icin bkz.
             # /albert-genau/vertiflex/types (tip-bazli detayli meta doner).
-            "vertiflexTypes": [{"id": t, "label": ag_calc.VERTIFLEX_TYPE_LABELS[t]} for t in ag_calc.VERTIFLEX_SYSTEM_TYPES]}
+            "vertiflexTypes": [{"id": t, "label": ag_calc.VERTIFLEX_TYPE_LABELS[t]} for t in ag_calc.VERTIFLEX_SYSTEM_TYPES],
+            # KIŞ BAHÇESİ (sabit cam tavanli kis bahcesi, 2 alt tip) -- form
+            # secenekleri icin bkz. /albert-genau/kis-bahcesi/types.
+            "kisBahcesiTypes": [{"id": t, "label": ag_calc.KIS_BAHCESI_TYPE_LABELS[t]} for t in ag_calc.KIS_BAHCESI_SYSTEM_TYPES]}
 
 
 @api_router.get("/albert-genau/vertiflex/types")
@@ -3238,6 +3322,58 @@ async def albert_genau_vertiflex_calculate(payload: AlbertGenauVertiflexCalculat
         _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_vertiflex_calculate(payload, price_data)
+
+
+@api_router.get("/albert-genau/kis-bahcesi/types")
+async def albert_genau_kis_bahcesi_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
+    # Her KIŞ BAHÇESİ tipi icin frontend'in formu dogru cizebilmesi adina
+    # ayarli-duvar-baglantisi/kiris-ustu-vida-kapama/orta-kayit/ucgen-mikro-
+    # pencere secenekleri + kac cam kalemi girilmesi gerektigini dondurur
+    # (bkz. ag_calc.KIS_BAHCESI_TYPE_META).
+    if companyId:
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
+    return {
+        "types": [
+            {"id": t, "label": ag_calc.KIS_BAHCESI_TYPE_LABELS[t], **ag_calc.KIS_BAHCESI_TYPE_META[t]}
+            for t in ag_calc.KIS_BAHCESI_SYSTEM_TYPES
+        ],
+        "finishes": list(ag_calc.FINISH_OPTIONS.keys()),
+    }
+
+
+def _run_ag_kis_bahcesi_calculate(payload: "AlbertGenauKisBahcesiCalculateRequest", price_data: Optional[Dict[str, Any]]):
+    try:
+        return ag_calc.calculate_kis_bahcesi(
+            tip=payload.tip,
+            genislik_mm=payload.genislikMm,
+            derinlik_mm=payload.derinlikMm,
+            tavan_bolum_sayisi=payload.tavanBolumSayisi,
+            arka_duvar_alt_yukseklik_mm=payload.arkaDuvarAltYukseklikMm,
+            ara_dikme_sayisi=payload.araDikmeSayisi,
+            ayarli_duvar_baglantisi=payload.ayarliDuvarBaglantisi,
+            kiris_ustu_vida_kapama=payload.kirisUstuVidaKapama,
+            orta_kayit=payload.ortaKayit,
+            ucgen_mikro_pencere=payload.ucgenMikroPencere,
+            finish=payload.finish,
+            cam_fiyatlari_m2=payload.camFiyatlariM2,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@api_router.post("/albert-genau/kis-bahcesi/calculate")
+async def albert_genau_kis_bahcesi_calculate(payload: AlbertGenauKisBahcesiCalculateRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+    price_data = await _get_ag_price_data(payload.companyId)
+    return _run_ag_kis_bahcesi_calculate(payload, price_data)
 
 
 @api_router.get("/albert-genau/parts-list-items")

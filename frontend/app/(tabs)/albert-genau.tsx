@@ -30,6 +30,9 @@ import {
   AlbertGenauVertiflexResultT,
   AlbertGenauVertiflexTypesResponseT,
   AlbertGenauVertiflexTypeMetaT,
+  AlbertGenauKisBahcesiResultT,
+  AlbertGenauKisBahcesiTypesResponseT,
+  AlbertGenauKisBahcesiTypeMetaT,
   RatesT,
   fetchAlbertGenauExcelBytes,
   fetchAlbertGenauDrawingBytes,
@@ -72,6 +75,21 @@ const FALLBACK_VERTIFLEX_TYPES: AlbertGenauVertiflexTypeMetaT[] = [
 
 const VF_KUMANDA_LABELS: Record<number, string> = { 1: 'Tek Kanal', 5: '5 Kanal', 15: '15 Kanal', 16: '16 Kanal' };
 
+// KIŞ BAHÇESİ (sabit cam tavanlı, 2 alt tip: PREMIUM 08-10 / PREMIUM TWIN) --
+// gerçek liste + tip bazlı seçenekler /albert-genau/kis-bahcesi/types
+// üzerinden gelir (bkz. backend ag_calc.KIS_BAHCESI_TYPE_META). Bu sadece
+// ilk yükleme varsayımı.
+const FALLBACK_KIS_BAHCESI_TYPES: AlbertGenauKisBahcesiTypeMetaT[] = [
+  {
+    id: 'kis_bahcesi_premium_08_10', label: 'KIŞ BAHÇESİ PREMIUM 08-10',
+    ayarliDuvarBaglantisi: true, kirisUstuVidaKapama: true, ortaKayit: true, ucgenMikroPencere: true,
+    camSkus: [
+      { sku: 'CAM-KB0810-TAVAN', label: '4.4.2 (8,76) / 5.5.2 (10,76) Laminat Cam (Tavan)' },
+      { sku: 'CAM-KB0810-MIKROPENCERE', label: '8mm Temperli Cam (Üçgen Mikro Pencere)' },
+    ],
+  },
+];
+
 const FINISH_LABELS: Record<string, string> = {
   SATINE_NATUREL: 'Satine Naturel',
   ANTRASIT_GRI: 'Antrasit Gri',
@@ -111,7 +129,7 @@ export default function AlbertGenauScreen() {
   // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
   // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
   // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
-  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex'>('geometric');
+  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
   const vertiflexTypes = meta.vertiflexTypes && meta.vertiflexTypes.length ? meta.vertiflexTypes : [{ id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08' }];
 
@@ -164,6 +182,43 @@ export default function AlbertGenauScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vfMotor, vfTip]);
 
+  // KIŞ BAHÇESİ (sabit cam tavanlı) -- tip-bazli secenekler icin ayrica
+  // /albert-genau/kis-bahcesi/types cagirilir (bkz. ag_calc.KIS_BAHCESI_TYPE_META).
+  const kisBahcesiTypes = meta.kisBahcesiTypes && meta.kisBahcesiTypes.length ? meta.kisBahcesiTypes : [{ id: 'kis_bahcesi_premium_08_10', label: 'KIŞ BAHÇESİ PREMIUM 08-10' }];
+  const [kbMeta, setKbMeta] = useState<AlbertGenauKisBahcesiTypesResponseT>({ types: FALLBACK_KIS_BAHCESI_TYPES, finishes: FALLBACK_FINISHES });
+  const [kbTip, setKbTip] = useState('kis_bahcesi_premium_08_10');
+  const kbTypeMeta: AlbertGenauKisBahcesiTypeMetaT = useMemo(
+    () => kbMeta.types.find((t) => t.id === kbTip) || kbMeta.types[0] || FALLBACK_KIS_BAHCESI_TYPES[0],
+    [kbMeta.types, kbTip],
+  );
+  const [kbGenislik, setKbGenislik] = useState('');
+  const [kbDerinlik, setKbDerinlik] = useState('');
+  const [kbTavanBolumSayisi, setKbTavanBolumSayisi] = useState('4');
+  const [kbArkaDuvarAltYukseklik, setKbArkaDuvarAltYukseklik] = useState('');
+  const [kbAraDikmeSayisi, setKbAraDikmeSayisi] = useState('0');
+  const [kbAyarliDuvarBaglantisi, setKbAyarliDuvarBaglantisi] = useState(false);
+  const [kbKirisUstuVidaKapama, setKbKirisUstuVidaKapama] = useState(false);
+  const [kbOrtaKayit, setKbOrtaKayit] = useState(false);
+  const [kbUcgenMikroPencere, setKbUcgenMikroPencere] = useState(false);
+  const [kbCamFiyatlari, setKbCamFiyatlari] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.albertGenauKisBahcesiTypes(activeCompany?.id).then(setKbMeta).catch(() => {});
+  }, [activeCompany?.id]);
+
+  // Tip degisince o tipte gecerli olmayan secenekleri sifirla -- orn.
+  // PREMIUM 08-10'dan TWIN'e gecince ayarli-duvar-baglantisi secili kalmasin.
+  useEffect(() => {
+    const tm = kbTypeMeta;
+    if (!tm) return;
+    if (!tm.ayarliDuvarBaglantisi) setKbAyarliDuvarBaglantisi(false);
+    if (!tm.kirisUstuVidaKapama) setKbKirisUstuVidaKapama(false);
+    if (!tm.ortaKayit) setKbOrtaKayit(false);
+    if (!tm.ucgenMikroPencere) setKbUcgenMikroPencere(false);
+    setResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kbTip]);
+
   const [afAdet, setAfAdet] = useState('1');
   const [afTekerlekli, setAfTekerlekli] = useState(false);
   const [afKapiVar, setAfKapiVar] = useState(false);
@@ -190,7 +245,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -386,9 +441,69 @@ export default function AlbertGenauScreen() {
     }
   };
 
+  const onCalculateKisBahcesi = async () => {
+    setError('');
+    const g = Number(kbGenislik.replace(',', '.'));
+    const d = Number(kbDerinlik.replace(',', '.'));
+    const tavanBolum = Math.round(Number(kbTavanBolumSayisi.replace(',', '.')));
+    const arkaDuvar = Number(kbArkaDuvarAltYukseklik.replace(',', '.'));
+    const araDikme = Math.round(Number(kbAraDikmeSayisi.replace(',', '.'))) || 0;
+    if (!g || g <= 0) { setError('Genişlik (mm) girin'); return; }
+    if (!d || d <= 0) { setError('Derinlik (mm) girin'); return; }
+    if (!tavanBolum || tavanBolum < 1) { setError('Tavan bölüm sayısı en az 1 olmalı'); return; }
+    if (!arkaDuvar || arkaDuvar <= 0) { setError('Arka duvar alt yüksekliği (mm) girin'); return; }
+    const tm = kbTypeMeta;
+    setBusy(true);
+    setResult(null);
+    try {
+      const camFiyatlariM2: Record<string, number> = {};
+      (tm?.camSkus || []).forEach((c) => {
+        const v = Number((kbCamFiyatlari[c.sku] || '').replace(',', '.'));
+        if (v > 0) camFiyatlariM2[c.sku] = v;
+      });
+      const res = await api.albertGenauKisBahcesiCalculate({
+        companyId: activeCompany?.id,
+        tip: kbTip,
+        genislikMm: g,
+        derinlikMm: d,
+        tavanBolumSayisi: tavanBolum,
+        arkaDuvarAltYukseklikMm: arkaDuvar,
+        araDikmeSayisi: araDikme,
+        ayarliDuvarBaglantisi: tm?.ayarliDuvarBaglantisi ? kbAyarliDuvarBaglantisi : false,
+        kirisUstuVidaKapama: tm?.kirisUstuVidaKapama ? kbKirisUstuVidaKapama : false,
+        ortaKayit: tm?.ortaKayit ? kbOrtaKayit : false,
+        ucgenMikroPencere: tm?.ucgenMikroPencere ? kbUcgenMikroPencere : false,
+        finish,
+        camFiyatlariM2,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
+        montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
+      });
+      setResult(res);
+    } catch (e: any) {
+      if (e?.status === 403 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'price_list_required') {
+            setPriceListOpen(true);
+            setError(info.message || 'Hesaplama yapabilmek için önce fiyat listenizi yükleyin.');
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(e?.message || 'Hesaplanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
     if (family === 'airflex_modul') { await onCalculateAirflexModule(); return; }
     if (family === 'vertiflex') { await onCalculateVertiflex(); return; }
+    if (family === 'kis_bahcesi') { await onCalculateKisBahcesi(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -538,7 +653,7 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT) => {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT) => {
     if (r.kind === 'airflex_modul') {
       const parts = [
         `${r.girdi.adet} adet`,
@@ -553,6 +668,15 @@ export default function AlbertGenauScreen() {
         `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
         r.girdi.panelSayisi ? `${r.girdi.panelSayisi} panelli` : null,
         r.girdi.motor === 'somfy' ? 'Somfy motor' : 'AG motor',
+        FINISH_LABELS[finish] || finish,
+      ].filter(Boolean);
+      return `${r.tipAdi} — ${parts.join(', ')}`;
+    }
+    if (r.kind === 'kis_bahcesi') {
+      const parts = [
+        `${r.girdi.genislikMm}×${r.girdi.derinlikMm}mm`,
+        `${r.girdi.tavanBolumSayisi} tavan bölümü`,
+        r.girdi.araDikmeSayisi ? `${r.girdi.araDikmeSayisi} ara dikme` : null,
         FINISH_LABELS[finish] || finish,
       ].filter(Boolean);
       return `${r.tipAdi} — ${parts.join(', ')}`;
@@ -657,6 +781,13 @@ export default function AlbertGenauScreen() {
                   testID="ag-family-vertiflex"
                 >
                   <Text style={[s.typePillText, family === 'vertiflex' && s.typePillTextActive]}>VERTIFLEX (Dikey Giyotin)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.typePill, family === 'kis_bahcesi' && s.typePillActive]}
+                  onPress={() => { setFamily('kis_bahcesi'); setResult(null); setError(''); }}
+                  testID="ag-family-kis-bahcesi"
+                >
+                  <Text style={[s.typePillText, family === 'kis_bahcesi' && s.typePillTextActive]}>KIŞ BAHÇESİ (Sabit Cam Tavan)</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -962,6 +1093,80 @@ export default function AlbertGenauScreen() {
               </>
             )}
 
+            {family === 'kis_bahcesi' && (
+              <>
+                {/* Alt tip seçimi */}
+                <View style={s.card}>
+                  <Text style={s.fieldLabel}>KIŞ BAHÇESİ Alt Tipi</Text>
+                  <View style={s.typeWrap}>
+                    {kisBahcesiTypes.map((tp) => (
+                      <TouchableOpacity
+                        key={tp.id}
+                        style={[s.typePill, kbTip === tp.id && s.typePillActive]}
+                        onPress={() => setKbTip(tp.id)}
+                        testID={`ag-kb-type-${tp.id}`}
+                      >
+                        <Text style={[s.typePillText, kbTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Ölçüler */}
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
+                  <View style={s.row}>
+                    <NumField label="Genişlik" value={kbGenislik} onChange={setKbGenislik} testID="ag-kb-genislik" />
+                    <NumField label="Derinlik" value={kbDerinlik} onChange={setKbDerinlik} testID="ag-kb-derinlik" />
+                  </View>
+                  <View style={s.row}>
+                    <NumField label="Tavan Bölüm Sayısı" value={kbTavanBolumSayisi} onChange={setKbTavanBolumSayisi} testID="ag-kb-tavan-bolum" />
+                    <NumField label="Arka Duvar Alt Yüksekliği" value={kbArkaDuvarAltYukseklik} onChange={setKbArkaDuvarAltYukseklik} testID="ag-kb-arka-duvar" />
+                  </View>
+                  <Text style={[s.hint, { marginTop: -4 }]}>
+                    Ön dikme yüksekliği, arka duvar yüksekliğinden 8° çatı eğimine göre otomatik hesaplanır.
+                  </Text>
+                  <NumField label="Ara Dikme Sayısı (opsiyonel)" value={kbAraDikmeSayisi} onChange={setKbAraDikmeSayisi} testID="ag-kb-ara-dikme" />
+                </View>
+
+                {/* Tip-bazlı ek seçenekler */}
+                {(kbTypeMeta.ayarliDuvarBaglantisi || kbTypeMeta.kirisUstuVidaKapama || kbTypeMeta.ortaKayit || kbTypeMeta.ucgenMikroPencere) && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Seçenekler</Text>
+                    {kbTypeMeta.ayarliDuvarBaglantisi && (
+                      <ToggleRow label="Ayarlı duvar bağlantı profili" value={kbAyarliDuvarBaglantisi} onChange={setKbAyarliDuvarBaglantisi} testID="ag-kb-ayarli-duvar" />
+                    )}
+                    {kbTypeMeta.kirisUstuVidaKapama && (
+                      <ToggleRow label="Kiriş üstü vida kapama profili" value={kbKirisUstuVidaKapama} onChange={setKbKirisUstuVidaKapama} testID="ag-kb-kiris-vida" />
+                    )}
+                    {kbTypeMeta.ortaKayit && (
+                      <ToggleRow label="Orta kayıt" value={kbOrtaKayit} onChange={setKbOrtaKayit} testID="ag-kb-orta-kayit" />
+                    )}
+                    {kbTypeMeta.ucgenMikroPencere && (
+                      <ToggleRow label="Üçgen mikro pencere" value={kbUcgenMikroPencere} onChange={setKbUcgenMikroPencere} testID="ag-kb-ucgen-mikro" />
+                    )}
+                  </View>
+                )}
+
+                {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi m² fiyatını girer */}
+                <View style={s.card}>
+                  <Text style={s.sectionTitle}>Cam Fiyatları</Text>
+                  <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                    Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
+                  </Text>
+                  {kbTypeMeta.camSkus.map((c) => (
+                    <NumField
+                      key={c.sku}
+                      label={`${c.label} (₺/m²)`}
+                      value={kbCamFiyatlari[c.sku] || ''}
+                      onChange={(v) => setKbCamFiyatlari((prev) => ({ ...prev, [c.sku]: v }))}
+                      testID={`ag-kb-cam-${c.sku}`}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
+
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
                 ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
                 liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
@@ -1117,6 +1322,10 @@ export default function AlbertGenauScreen() {
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yukseklikMm}mm{result.girdi.panelSayisi ? ` • ${result.girdi.panelSayisi} panel` : ''} • {result.girdi.motor === 'somfy' ? 'Somfy' : 'AG'} motor
                   </Text>
+                ) : result.kind === 'kis_bahcesi' ? (
+                  <Text style={s.resultSub}>
+                    {result.girdi.genislikMm}×{result.girdi.derinlikMm}mm • {result.girdi.tavanBolumSayisi} tavan bölümü{result.girdi.araDikmeSayisi ? ` • ${result.girdi.araDikmeSayisi} ara dikme` : ''}
+                  </Text>
                 ) : (
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
@@ -1137,6 +1346,23 @@ export default function AlbertGenauScreen() {
                     )}
                   </>
                 ) : result.kind === 'vertiflex' ? (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Profil Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplam)}</Text>
+                    </View>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
+                    </View>
+                    {result.camGrubuToplam > 0 && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>Cam Grubu</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.camGrubuToplam)}</Text>
+                      </View>
+                    )}
+                  </>
+                ) : result.kind === 'kis_bahcesi' ? (
                   <>
                     <View style={s.breakdownRow}>
                       <Text style={s.breakdownLabel}>Profil Grubu</Text>
@@ -1227,7 +1453,7 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && (
+                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
                       {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
                         <>
@@ -1239,7 +1465,7 @@ export default function AlbertGenauScreen() {
                   )}
                 </View>
 
-                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && (
+                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && (
                   <TouchableOpacity
                     style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
                     onPress={onAddDrawing}

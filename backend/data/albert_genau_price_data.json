@@ -1157,6 +1157,276 @@
       "unit": "Tk.",
       "price": 157,
       "weight": 3500
+    },
+    "B15261--": {
+      "name": "201*129 OLUK PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 1822.5,
+      "weight": 3955
+    },
+    "B15262--": {
+      "name": "201*129 OLUK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 1822.5,
+      "weight": 3955
+    },
+    "B15207--": {
+      "name": "70*151 DUVAR BAĞLANTI PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 914,
+      "weight": 1987
+    },
+    "B15208--": {
+      "name": "55*128 YAN KİRİŞ PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 737,
+      "weight": 1601
+    },
+    "B15263--": {
+      "name": "55*128 YAN KİRİŞ PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 737,
+      "weight": 1601
+    },
+    "B15209--": {
+      "name": "55*112 ORTA KİRİŞ PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 722.5,
+      "weight": 1561
+    },
+    "B15264--": {
+      "name": "55*112 ORTA KİRİŞ PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 722.5,
+      "weight": 1561
+    },
+    "B15210--": {
+      "name": "48*97 OLUK KAPAK PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 312.5,
+      "weight": 611
+    },
+    "B15211--": {
+      "name": "52*18 ORTA KİRİŞ ÜST KAPAK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 243.5,
+      "weight": 438
+    },
+    "B15265--": {
+      "name": "52*18 ORTA KİRİŞ ÜST KAPAK PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 243.5,
+      "weight": 438
+    },
+    "B15212--": {
+      "name": "54*54 YAN KİRİŞ ÜST KAPAK PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 314,
+      "weight": 617
+    },
+    "B15266--": {
+      "name": "54*54 YAN KİRİŞ ÜST KAPAK PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 314,
+      "weight": 617
+    },
+    "B15268--": {
+      "name": "125*125 DİKME PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 1422,
+      "weight": 3081
+    },
+    "B15214--": {
+      "name": "55*15 KİRİŞ VİDA KAPAMA PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 177,
+      "weight": 317
+    },
+    "B15267--": {
+      "name": "55*15 KİRİŞ VİDA KAPAMA PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 177,
+      "weight": 317
+    },
+    "B15215--": {
+      "name": "18*30 POLİKARBONAT F ÇITA PROFİLİ 6 MT",
+      "unit": "Mt.",
+      "price": 123,
+      "weight": 221
+    },
+    "B15269--": {
+      "name": "61*140 DUVAR BAĞLANTI ALT PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 930.5,
+      "weight": 2015
+    },
+    "B15271--": {
+      "name": "61*140 DUVAR BAĞLANTI ALT PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 930.5,
+      "weight": 2015
+    },
+    "B15270--": {
+      "name": "69*65 DUVAR BAĞLANTI ÜST PROFİLİ 5,0 MT",
+      "unit": "Mt.",
+      "price": 421.5,
+      "weight": 826
+    },
+    "B15272--": {
+      "name": "69*65 DUVAR BAĞLANTI ÜST PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 421.5,
+      "weight": 826
+    },
+    "B1521802": {
+      "name": "90*50 KİRİŞ DESTEK PROFİLİ 4 MT N.A.",
+      "unit": "Mt.",
+      "price": 933,
+      "weight": 2019
+    },
+    "B15279--": {
+      "name": "55*112 LEDLİ ORTA KİRİŞ PROFİLİ 4,0 MT",
+      "unit": "Mt.",
+      "price": 807.5,
+      "weight": 1751
+    },
+    "B15280--": {
+      "name": "55*112 LEDLİ ORTA KİRİŞ PROFİLİ 7,0 MT",
+      "unit": "Mt.",
+      "price": 807.5,
+      "weight": 1751
+    },
+    "TS15018--": {
+      "name": "MİKRO PENCERE KASA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 255,
+      "weight": 454
+    },
+    "TS15019--": {
+      "name": "MİKRO PENCERE ORTAKAYIT PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 298,
+      "weight": 578
+    },
+    "TS15021--": {
+      "name": "MİKRO PENCERE TEK CAM ÇITA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 82.5,
+      "weight": 144
+    },
+    "TS15022--": {
+      "name": "MİKRO PENCERE ÇİFT CAM ÇITA PROFİLİ 6,0 MT",
+      "unit": "Mt.",
+      "price": 134,
+      "weight": 232
+    },
+    "K85050--": {
+      "name": "MİKRO PENCERE SABİT PARÇA 500MM - 8°",
+      "unit": "Ad.",
+      "price": 1390.5,
+      "weight": 314
+    },
+    "B15007--": {
+      "name": "20*20 L KAPAMA PROFİLİ",
+      "unit": "Mt.",
+      "price": 72,
+      "weight": 314
+    },
+    "B15008--": {
+      "name": "40*20 L KAPAMA PROFİLİ",
+      "unit": "Mt.",
+      "price": 108,
+      "weight": 314
+    },
+    "B15009--": {
+      "name": "60*20 L KAPAMA PROFİLİ",
+      "unit": "Mt.",
+      "price": 117.5,
+      "weight": 314
+    },
+    "B8505701": {
+      "name": "9*19 POLIAMID ISICAM ADAPTOR CITA",
+      "unit": "Mt.",
+      "price": 78.2,
+      "weight": null
+    },
+    "B8505406": {
+      "name": "7*5 KİRİŞ ALT BASMA CONTASI (TPE)",
+      "unit": "Mt.",
+      "price": 17.2,
+      "weight": null
+    },
+    "B8505407": {
+      "name": "38*35 ARKA DUVAR CONTASI",
+      "unit": "Mt.",
+      "price": 55.6,
+      "weight": null
+    },
+    "B8505408": {
+      "name": "19*18 OLUK CONTASI",
+      "unit": "Mt.",
+      "price": 49,
+      "weight": null
+    },
+    "B8505403": {
+      "name": "8*8*48 GEÇME CONTA",
+      "unit": "Mt.",
+      "price": 24,
+      "weight": null
+    },
+    "K05001": {
+      "name": "PREMIUM ÖN - ARKA YAN KAPAK TAKIMI",
+      "unit": "Tk.",
+      "price": 2092.5,
+      "weight": null
+    },
+    "K05002": {
+      "name": "PREMIUM KIRIŞ TAKIMI",
+      "unit": "Tk.",
+      "price": 325.5,
+      "weight": null
+    },
+    "K05005": {
+      "name": "PREMIUM 125*125 GİZLİ AYAK BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 866,
+      "weight": null
+    },
+    "K05006": {
+      "name": "PREMIUM ÖN - ARKA OLUK EKLEME LAMEL TAKIMI",
+      "unit": "Tk.",
+      "price": 953,
+      "weight": null
+    },
+    "K05007": {
+      "name": "LED AYDINLATMA TAKIMI WARM WHITE IŞIK (8'LI)",
+      "unit": "Tk.",
+      "price": 672,
+      "weight": null
+    },
+    "K05008": {
+      "name": "24V 60W IP67 TRAFO VE KUMANDALI DIMMER TAKIMI ",
+      "unit": "Tk.",
+      "price": 5834.5,
+      "weight": null
+    },
+    "K05012": {
+      "name": "24V 200W IP67 TRAFO VE KUMANDALI DIMMER TAKIMI ",
+      "unit": "Tk.",
+      "price": 8111.5,
+      "weight": null
+    },
+    "K05009": {
+      "name": "MİKRO PENCERE BAĞLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 664,
+      "weight": null
+    },
+    "K05010": {
+      "name": "PREMIUM ORTA KAYIT BAGLANTI TAKIMI",
+      "unit": "Tk.",
+      "price": 221.5,
+      "weight": null
     }
   },
   "finish_multipliers": {

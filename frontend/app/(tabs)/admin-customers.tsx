@@ -39,6 +39,7 @@ export default function AdminCustomersScreen() {
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState('');
   const [agBusyId, setAgBusyId] = useState('');
+  const [onlyAlbertGenau, setOnlyAlbertGenau] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -57,13 +58,24 @@ export default function AdminCustomersScreen() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) =>
+    let list = customers;
+    if (onlyAlbertGenau) list = list.filter((c) => c.albert_genau_claimed || c.albert_genau_enabled);
+    if (!q) return list;
+    return list.filter((c) =>
       (c.company_name || '').toLowerCase().includes(q) ||
       (c.name || '').toLowerCase().includes(q) ||
       (c.email || '').toLowerCase().includes(q)
     );
-  }, [customers, query]);
+  }, [customers, query, onlyAlbertGenau]);
+
+  // Firma sayısı arttıkça admin, kim "Albert Genau bayisiyim" dedi ama henüz
+  // erişim açılmadı, bunu listenin tamamını taramadan görsün diye ayrı bir
+  // "bekleyen başvurular" kutusu -- onaylanınca (enabled=true) otomatik
+  // buradan düşer.
+  const pendingAlbertGenau = useMemo(
+    () => customers.filter((c) => c.albert_genau_claimed && !c.albert_genau_enabled),
+    [customers]
+  );
 
   const isAdmin = (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com';
 
@@ -157,6 +169,31 @@ export default function AdminCustomersScreen() {
             </Text>
           </View>
 
+          {pendingAlbertGenau.length > 0 ? (
+            <View style={s.pendingBox}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name="flag" size={15} color="#92400E" />
+                <Text style={s.pendingTitle}>Bekleyen Albert Genau Başvuruları ({pendingAlbertGenau.length})</Text>
+              </View>
+              {pendingAlbertGenau.map((c) => (
+                <View key={c.user_id} style={s.pendingRow}>
+                  <Text style={s.pendingRowTitle} numberOfLines={1}>{c.company_name || c.name || c.email}</Text>
+                  <TouchableOpacity
+                    style={[s.pendingEnableBtn, agBusyId === c.user_id && { opacity: 0.6 }]}
+                    onPress={() => onToggleAlbertGenau(c, true)}
+                    disabled={agBusyId === c.user_id || !c.company_id}
+                  >
+                    {agBusyId === c.user_id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={s.pendingEnableBtnText}>Aç</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           <TextInput
             style={s.search}
             placeholder="Firma, isim veya e-posta ara..."
@@ -164,6 +201,16 @@ export default function AdminCustomersScreen() {
             value={query}
             onChangeText={setQuery}
           />
+
+          <TouchableOpacity
+            style={[s.filterChip, onlyAlbertGenau && s.filterChipActive]}
+            onPress={() => setOnlyAlbertGenau((v) => !v)}
+          >
+            <Ionicons name="filter" size={13} color={onlyAlbertGenau ? '#fff' : theme.colors.textMuted} />
+            <Text style={[s.filterChipText, onlyAlbertGenau && s.filterChipTextActive]}>
+              Sadece Albert Genau ile ilgili firmalar
+            </Text>
+          </TouchableOpacity>
 
           {error ? <Text style={s.errorText}>{error}</Text> : null}
 
@@ -260,6 +307,25 @@ const s = StyleSheet.create({
     color: theme.colors.text,
   },
   errorText: { color: theme.colors.red, fontSize: 13, fontWeight: '700', marginTop: 12, textAlign: 'center' },
+  pendingBox: {
+    backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A',
+    borderRadius: 14, padding: 12, marginBottom: 14,
+  },
+  pendingTitle: { fontSize: 12.5, fontWeight: '800', color: '#92400E' },
+  pendingRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 6,
+  },
+  pendingRowTitle: { flex: 1, fontSize: 12.5, fontWeight: '700', color: theme.colors.text, marginRight: 8 },
+  pendingEnableBtn: { backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6, minWidth: 44, alignItems: 'center' },
+  pendingEnableBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    backgroundColor: '#F1F5F9', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginTop: 10,
+  },
+  filterChipActive: { backgroundColor: theme.colors.primary },
+  filterChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
+  filterChipTextActive: { color: '#fff' },
   sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
   row: {
     flexDirection: 'row',

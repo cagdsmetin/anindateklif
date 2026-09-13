@@ -358,6 +358,10 @@ export const api = {
     req(`/albert-genau/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauCalculate: (data: AlbertGenauCalculateInputT): Promise<AlbertGenauResultT> =>
     req('/albert-genau/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  albertGenauPartsListItems: (systemId: string, companyId?: string): Promise<AlbertGenauPartsListItemsResponseT> =>
+    req(`/albert-genau/parts-list-items?systemId=${encodeURIComponent(systemId)}${companyId ? `&companyId=${encodeURIComponent(companyId)}` : ''}`),
+  albertGenauPartsListCalculate: (data: AlbertGenauPartsListCalculateInputT): Promise<AlbertGenauPartsListResultT> =>
+    req('/albert-genau/parts-list/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -771,6 +775,50 @@ export type AlbertGenauTypesResponseT = {
   // bunu kullanarak kullanıcı derinlik yazarken (Hesapla'ya basmadan) tam
   // denk gelip gelmediğini anında kontrol edip alt/üst seçim kutusunu gösterir.
   depthValuesMm?: number[];
+  // Ölçü (genişlik/derinlik) yerine düz parça listesi + miktar girişiyle
+  // çalışan ürün aileleri (örn. AIRFLEX) -- bkz. AlbertGenauPartsListItemsResponseT.
+  partsListSystems?: { id: string; label: string }[];
+};
+
+export type AlbertGenauPartsListItemT = {
+  sku: string;
+  label: string;
+  unit: string;
+};
+
+export type AlbertGenauPartsListItemsResponseT = {
+  systemId: string;
+  systemLabel: string;
+  items: AlbertGenauPartsListItemT[];
+};
+
+export type AlbertGenauPartsListCalculateInputT = {
+  companyId?: string;
+  systemId: string;
+  quantities: Record<string, number>;
+  finish?: string | null;
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauPartsListResultT = {
+  kind: 'parts_list';
+  tip: string;
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  malzemeGrubuToplamFiresiz: number;
+  fireOrani: number;
+  fireTutari: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
 };
 
 export type AlbertGenauCalculateInputT = {
@@ -804,6 +852,7 @@ export type AlbertGenauKalemT = {
 };
 
 export type AlbertGenauResultT = {
+  kind?: 'geometric';
   tip: string;
   tipAdi: string;
   odemeTipi: 'nakit' | 'kredi_karti';

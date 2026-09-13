@@ -705,6 +705,7 @@ def calculate(
     satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
 
     return {
+        'kind': 'geometric',
         'tip': tip,
         'tipAdi': SYSTEM_TYPE_LABELS[tip],
         'odemeTipi': odeme_tipi_eff,
@@ -736,4 +737,131 @@ def calculate(
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
         'kalemler': [k.dict() for k in (profil + aksesuar + opsiyonel_kalemler)],
+    }
+
+
+# ============ PARCA LISTESI SISTEMLERI (AIRFLEX ve benzerleri) ============
+# BIOFLEX/BIO sistemlerinin aksine bu urun aileleri genislik/derinlik/yukseklik
+# gibi bir OLCUYE degil, Albert Genau'nun kendi "SIPARIS FORMU" sekmesindeki
+# duz parca listesi mantigina dayanir: bayi her kalem (profil/panel takimi/
+# aksesuar) icin doğrudan MIKTAR girer, sistem kendisi bir geometriden
+# turetilmez. Hangi SKU'lerin hangi sirada bir "sistem" olusturdugu burada
+# SABIT KOD olarak tanimlanir (urun imalat mantigi degismedikce degismez);
+# SKU'lerin isim/fiyati ise her zamanki gibi price_list veri katmanindan
+# gelir -- boylece Albert Genau yeni bir fiyat listesi yayinladiginda burada
+# hicbir sey degismeden sadece rakamlar guncellenir. Yeni bir urun ailesi
+# (kullanicinin "hepsini ayri ayri yukleyecegim" dedigi diger Excel'ler)
+# eklenecegi zaman, tek yapilmasi gereken: 1) SKU'lerini price_list'e eklemek,
+# 2) burada PARTS_LIST_SYSTEMS'e yeni bir anahtar acmak -- yeni bir hesap
+# fonksiyonu YAZMAYA gerek yok, calculate_parts_list() hepsini karsilar.
+PARTS_LIST_SYSTEMS = {
+    'airflex': {
+        'label': 'AIRFLEX (Katlanır Cam Balkon)',
+        'items': [
+            'B15199--', 'B15200--', 'B15201--', 'B15202--', 'B15077--',
+            'G05101', 'G05102', 'G05106', 'G05107',
+            'G8505005', 'G8505006',
+            'G05103', 'G05104', 'G05105',
+        ],
+    },
+}
+
+
+def _pl_price(pb: 'PriceBook', sku: str) -> float:
+    """calculate_parts_list icin fiyat okuma yardimcisi. Normal PriceBook.price()
+    ile ayni kural (odeme tipine gore NAKIT_FACTOR) uygulanir, ama SKU aktif
+    fiyat listesinde (orn. firmanin AIRFLEX eklenmeden ONCE yukledigi eski
+    kendi Excel'i) bulunamazsa, hesaplama tumden KILITLENMEK yerine bu
+    paketin kendi varsayilan (Albert Genau'nun resmi) fiyatina duser --
+    firma yeni urun ailesinin fiyatlarini kendi listesine ekleyip tekrar
+    yukleyene kadar boslukta kalmasin diye. Bu, mevcut fiyat listesindeki bir
+    SKU icin GERCEKTEN eksik/bozuk veri varsa hatayi gizlemez (o SKU zaten
+    _DEFAULT_DATA'da da yoksa yine KeyError firlatilir)."""
+    item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku)
+    if not item:
+        raise KeyError(f"Fiyat listesinde bulunamayan SKU: {sku}")
+    base = float(item['price'])
+    return base * PriceBook.NAKIT_FACTOR if pb.odeme_tipi == 'nakit' else base
+
+
+def parts_list_items(system_id: str, price_data: Optional[Dict[str, Any]] = None):
+    """Frontend'in miktar giris formunu olusturabilmesi icin, bir parca
+    listesi sisteminin kalemlerini (sku/isim/birim), Excel'deki sirasiyla
+    dondurur."""
+    system = PARTS_LIST_SYSTEMS.get(system_id)
+    if not system:
+        raise ValueError(f"Bilinmeyen parca listesi sistemi: {system_id}")
+    active = (price_data or {}).get('price_list') or {}
+    default = _DEFAULT_DATA['price_list']
+    out = []
+    for sku in system['items']:
+        item = active.get(sku) or default.get(sku) or {}
+        out.append({'sku': sku, 'label': item.get('name', sku), 'unit': item.get('unit', '')})
+    return out
+
+
+def calculate_parts_list(
+    system_id: str,
+    quantities: Dict[str, float],
+    finish: Optional[str] = None,
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+    price_data: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """AIRFLEX gibi "duz parca listesi" urun aileleri icin fiyat hesabi.
+
+    Not (bilinen varsayim): kaynak Excel'de (BIOFLEX'in aksine, bkz. yukaridaki
+    PROFIL_FIRE_ORANI notu) ayri bir imalat/kesim FIRESI orani belirtilmemis --
+    bu yuzden burada fire payi UYGULANMAZ (fireOrani=0). Albert Genau ileride
+    bunun icin de bir oran belirtirse `PARTS_LIST_FIRE_ORANI` guncellenmelidir.
+    """
+    system = PARTS_LIST_SYSTEMS.get(system_id)
+    if not system:
+        raise ValueError(f"Bilinmeyen parca listesi sistemi: {system_id}")
+
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
+    finish_mult = _finish_multiplier(finish)
+
+    kalemler = []
+    for sku in system['items']:
+        qty = float((quantities or {}).get(sku) or 0)
+        if qty <= 0:
+            continue
+        item = pb.price_list.get(sku) or _DEFAULT_DATA['price_list'].get(sku) or {}
+        label = item.get('name', sku)
+        price = _pl_price(pb, sku) * finish_mult
+        kalemler.append(Kalem(label=label, sku=sku, price=price, qty=qty))
+
+    if not kalemler:
+        raise ValueError("En az bir kalem icin miktar girilmelidir")
+
+    PARTS_LIST_FIRE_ORANI = 0.0
+    malzeme_toplam_firesiz = sum(k.total for k in kalemler)
+    fire_tutari = malzeme_toplam_firesiz * PARTS_LIST_FIRE_ORANI
+    maliyet_toplam = malzeme_toplam_firesiz + fire_tutari
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'parts_list',
+        'tip': system_id,
+        'tipAdi': system['label'],
+        'odemeTipi': odeme_tipi_eff,
+        'malzemeGrubuToplamFiresiz': round(malzeme_toplam_firesiz, 2),
+        'fireOrani': PARTS_LIST_FIRE_ORANI,
+        'fireTutari': round(fire_tutari, 2),
+        'maliyetToplam': round(maliyet_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in kalemler],
     }

@@ -509,6 +509,90 @@
       "unit": "Tk.",
       "price": 437.5,
       "weight": null
+    },
+    "B15199--": {
+      "name": "47*97 SABİT DİKME PROFİLİ 4,80 MT (İKİ MODÜL)",
+      "unit": "Mt.",
+      "price": 1296,
+      "weight": 0
+    },
+    "B15200--": {
+      "name": "33*51 HAREKETLİ DİKME PROFİLİ 4,60 MT (İKİ MODÜL)",
+      "unit": "Mt.",
+      "price": 456.5,
+      "weight": 0
+    },
+    "B15201--": {
+      "name": "27*15 AIRFLEX TRABZAN PROFİLİ 6,00 MT",
+      "unit": "Mt.",
+      "price": 189,
+      "weight": 0
+    },
+    "B15202--": {
+      "name": "34*15 AIRFLEX TRABZAN LED PROFİLİ 6,00 MT",
+      "unit": "Mt.",
+      "price": 221,
+      "weight": 0
+    },
+    "B15077--": {
+      "name": "95*50 AKSESUAR ADAPTÖR PROFİLİ 6,00 MT",
+      "unit": "Mt.",
+      "price": 530.5,
+      "weight": 0
+    },
+    "G05101": {
+      "name": "AIRFLEX AG AMORTİSÖRLÜ HAREKETLİ PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 5650,
+      "weight": 0
+    },
+    "G05102": {
+      "name": "AIRFLEX SABİT PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 1084.5,
+      "weight": 0
+    },
+    "G05106": {
+      "name": "AIRFLEX TEKERLİ SABİT PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 4397.5,
+      "weight": 0
+    },
+    "G05107": {
+      "name": "AIRFLEX KAPI PANEL TAKIMI",
+      "unit": "Tk.",
+      "price": 3244,
+      "weight": 0
+    },
+    "G8505005": {
+      "name": "29MM x 25M SABİT PROFİL ÇİFT TARAFLI SİYAH KÖPÜK BANT 3MM",
+      "unit": "Mt.",
+      "price": 50.5,
+      "weight": 0
+    },
+    "G8505006": {
+      "name": "19MM x 25M HAREKETLİ PROFİL ÇİFT TARAFLI SİYAH KÖPÜK BANT 3MM",
+      "unit": "Mt.",
+      "price": 32.5,
+      "weight": 0
+    },
+    "G05103": {
+      "name": "AIRFLEX KİLİT TAKIMI",
+      "unit": "Ad.",
+      "price": 196,
+      "weight": 0
+    },
+    "G05104": {
+      "name": "27*15 AIRFLEX TRABZAN KAPAK TAKIMI",
+      "unit": "Ad.",
+      "price": 36.5,
+      "weight": 0
+    },
+    "G05105": {
+      "name": "34*15 AIRFLEX TRABZAN LED KAPAK TAKIMI",
+      "unit": "Ad.",
+      "price": 36.5,
+      "weight": 0
     }
   },
   "finish_multipliers": {

@@ -2446,6 +2446,57 @@ class AlbertGenauCalculateRequest(BaseModel):
         return v
 
 
+class AlbertGenauPartsListCalculateRequest(BaseModel):
+    # AIRFLEX gibi "duz parca listesi" urun aileleri icin: genislik/derinlik
+    # yerine, sistemi olusturan her SKU'ye bayinin girdigi MIKTAR kullanilir
+    # (bkz. ag_calc.PARTS_LIST_SYSTEMS / calculate_parts_list).
+    companyId: Optional[str] = None
+    systemId: str  # ag_calc.PARTS_LIST_SYSTEMS icinden biri (orn. 'airflex')
+    quantities: Dict[str, float] = {}
+    finish: Optional[str] = None
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("systemId")
+    @classmethod
+    def _system_valid(cls, v: str) -> str:
+        if v not in ag_calc.PARTS_LIST_SYSTEMS:
+            raise ValueError(f"Gecersiz parca listesi sistemi: {v}")
+        return v
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("quantities")
+    @classmethod
+    def _qty_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        if len(v) > 200:
+            raise ValueError("Cok fazla kalem")
+        out = {}
+        for sku, qty in v.items():
+            q = float(qty or 0)
+            if q < 0 or q > 100000:
+                raise ValueError("Miktar 0-100000 araliginda olmalidir")
+            out[str(sku)[:40]] = q
+        return out
+
+
 class AlbertGenauItemCreate(BaseModel):
     companyId: str
     tip: str
@@ -2524,7 +2575,55 @@ async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_c
     depth_values = sorted({float(v) for v in base["depth_table"].values()})
     return {"types": [{"id": t, "label": ag_calc.SYSTEM_TYPE_LABELS[t]} for t in ag_calc.SYSTEM_TYPES],
             "finishes": list(ag_calc.FINISH_OPTIONS.keys()),
-            "depthValuesMm": depth_values}
+            "depthValuesMm": depth_values,
+            # Olcu bazli (genislik/derinlik) degil, duz parca listesi + miktar
+            # girisiyle calisan urun aileleri (orn. AIRFLEX) -- bkz.
+            # ag_calc.PARTS_LIST_SYSTEMS / /albert-genau/parts-list-items.
+            "partsListSystems": [{"id": k, "label": v["label"]} for k, v in ag_calc.PARTS_LIST_SYSTEMS.items()]}
+
+
+@api_router.get("/albert-genau/parts-list-items")
+async def albert_genau_parts_list_items(systemId: str, companyId: Optional[str] = None, user=Depends(get_current_user)):
+    # AIRFLEX gibi bir "parca listesi" sisteminin kalemlerini (sku/isim/birim)
+    # dondurur ki frontend miktar giris formunu bunlardan olustursun.
+    if systemId not in ag_calc.PARTS_LIST_SYSTEMS:
+        raise HTTPException(status_code=422, detail="Gecersiz parca listesi sistemi")
+    if companyId:
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
+    price_data = await _get_ag_price_data(companyId)
+    return {
+        "systemId": systemId,
+        "systemLabel": ag_calc.PARTS_LIST_SYSTEMS[systemId]["label"],
+        "items": ag_calc.parts_list_items(systemId, price_data),
+    }
+
+
+def _run_ag_parts_list_calculate(payload: "AlbertGenauPartsListCalculateRequest", price_data: Optional[Dict[str, Any]]):
+    try:
+        return ag_calc.calculate_parts_list(
+            system_id=payload.systemId,
+            quantities=payload.quantities,
+            finish=payload.finish,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+            price_data=price_data,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@api_router.post("/albert-genau/parts-list/calculate")
+async def albert_genau_parts_list_calculate(payload: AlbertGenauPartsListCalculateRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+        price_data = await _require_company_ag_price_list(payload.companyId)
+    else:
+        price_data = await _get_ag_price_data(None)
+    return _run_ag_parts_list_calculate(payload, price_data)
 
 
 def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Optional[Dict[str, Any]]):

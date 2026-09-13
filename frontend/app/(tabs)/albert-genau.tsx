@@ -20,7 +20,18 @@ import * as DocumentPicker from 'expo-document-picker';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
-import { api, AlbertGenauResultT, AlbertGenauTypesResponseT, AlbertGenauCalculateInputT, AlbertGenauPriceListStatusT, RatesT, fetchAlbertGenauExcelBytes, fetchAlbertGenauDrawingBytes } from '@/src/lib/api';
+import {
+  api,
+  AlbertGenauResultT,
+  AlbertGenauTypesResponseT,
+  AlbertGenauCalculateInputT,
+  AlbertGenauPriceListStatusT,
+  AlbertGenauPartsListItemT,
+  AlbertGenauPartsListResultT,
+  RatesT,
+  fetchAlbertGenauExcelBytes,
+  fetchAlbertGenauDrawingBytes,
+} from '@/src/lib/api';
 import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
@@ -41,6 +52,14 @@ const FALLBACK_TYPES = [
 ];
 
 const FALLBACK_FINISHES = ['SATINE_NATUREL', 'ANTRASIT_GRI', 'BRONZ_1122_BOYALI', 'DIGER_RAL', 'BRONZ_ELOKSAL', 'PRES'];
+
+// Ölçü (genişlik/derinlik) yerine düz parça listesi + miktar girişiyle çalışan
+// ürün aileleri (bkz. backend/albert_genau_calc.py PARTS_LIST_SYSTEMS). Bu
+// dizi sadece ilk yüklemede (meta gelene kadar) kısa bir varsayım -- gerçek
+// liste her zaman /albert-genau/types üzerinden gelir, kullanıcının "hepsini
+// ayrı ayrı yükleyeceğim" dediği yeni ürün aileleri backend'e eklendikçe
+// burada hiçbir değişiklik gerekmeden otomatik görünür.
+const FALLBACK_PARTS_LIST_SYSTEMS = [{ id: 'airflex', label: 'AIRFLEX (Katlanır Cam Balkon)' }];
 
 const FINISH_LABELS: Record<string, string> = {
   SATINE_NATUREL: 'Satine Naturel',
@@ -74,7 +93,16 @@ export default function AlbertGenauScreen() {
   const showHamburger = !(Platform.OS === 'web' && winWidth >= 900);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  const [meta, setMeta] = useState<AlbertGenauTypesResponseT>({ types: FALLBACK_TYPES, finishes: FALLBACK_FINISHES });
+  const [meta, setMeta] = useState<AlbertGenauTypesResponseT>({ types: FALLBACK_TYPES, finishes: FALLBACK_FINISHES, partsListSystems: FALLBACK_PARTS_LIST_SYSTEMS });
+  // 'geometric' -- AG BIOFLEX/BIO: genişlik/derinlik/yükseklik ölçüsüne göre
+  // hesaplar. 'parts_list' -- AIRFLEX ve benzeri: düz bir parça listesinden
+  // her kalem için miktar girilir (bkz. backend calculate_parts_list).
+  const [family, setFamily] = useState<'geometric' | 'parts_list'>('geometric');
+  const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
+  const [systemId, setSystemId] = useState('airflex');
+  const [partsListItems, setPartsListItems] = useState<AlbertGenauPartsListItemT[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [partsListLoading, setPartsListLoading] = useState(false);
   const [tip, setTip] = useState('4ayak_ustu');
   const [genislik, setGenislik] = useState('');
   const [derinlik, setDerinlik] = useState('');
@@ -93,7 +121,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauPartsListResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -123,6 +151,21 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     api.albertGenauTypes(activeCompany?.id).then(setMeta).catch(() => {});
   }, [activeCompany?.id]);
+
+  // AIRFLEX (ve ileride eklenecek diğer parça listesi aileleri) seçildiğinde,
+  // o sistemin kalem listesini (sku/isim/birim) çekip miktar giriş formunu
+  // bundan oluşturuyoruz -- yeni bir ürün ailesi eklendiğinde burada hiçbir
+  // kod değişikliği gerekmez.
+  useEffect(() => {
+    if (family !== 'parts_list') return;
+    let cancelled = false;
+    setPartsListLoading(true);
+    api.albertGenauPartsListItems(systemId, activeCompany?.id)
+      .then((res) => { if (!cancelled) setPartsListItems(res.items); })
+      .catch(() => { if (!cancelled) setPartsListItems([]); })
+      .finally(() => { if (!cancelled) setPartsListLoading(false); });
+    return () => { cancelled = true; };
+  }, [family, systemId, activeCompany?.id]);
 
   // Satış fiyatının (₺) altında canlı kurla $ / € karşılığını göstermek için
   // -- Geçmiş ekranındaki tutar kartlarıyla aynı desen (bkz. history.tsx
@@ -191,7 +234,51 @@ export default function AlbertGenauScreen() {
     }
   };
 
+  const onCalculatePartsList = async () => {
+    setError('');
+    const quantitiesNum: Record<string, number> = {};
+    for (const it of partsListItems) {
+      const raw = quantities[it.sku];
+      const n = Number((raw || '').replace(',', '.'));
+      if (n > 0) quantitiesNum[it.sku] = n;
+    }
+    if (!Object.keys(quantitiesNum).length) { setError('En az bir kalem için miktar girin'); return; }
+    setBusy(true);
+    setResult(null);
+    setLastPayload(null);
+    try {
+      const res = await api.albertGenauPartsListCalculate({
+        companyId: activeCompany?.id,
+        systemId,
+        quantities: quantitiesNum,
+        finish,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
+        montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
+      });
+      setResult(res);
+    } catch (e: any) {
+      if (e?.status === 403 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'price_list_required') {
+            setPriceListOpen(true);
+            setError(info.message || 'Hesaplama yapabilmek için önce fiyat listenizi yükleyin.');
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
+      setError(e?.message || 'Hesaplanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
+    if (family === 'parts_list') { await onCalculatePartsList(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -277,7 +364,9 @@ export default function AlbertGenauScreen() {
       pathname: '/albert-genau-kalemler',
       params: {
         tipAdi: result.tipAdi,
-        girdi: JSON.stringify(result.girdi),
+        // AIRFLEX gibi parça listesi sonuçlarında ölçü/modül bilgisi (girdi)
+        // yok -- o ekran sadece varsa gösterir, boş obje güvenli.
+        girdi: JSON.stringify(result.kind === 'parts_list' ? {} : result.girdi),
         kalemler: JSON.stringify(result.kalemler),
       },
     });
@@ -341,7 +430,14 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT) => {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauPartsListResultT) => {
+    if (r.kind === 'parts_list') {
+      const parts = [
+        `${r.kalemler.length} kalem`,
+        FINISH_LABELS[finish] || finish,
+      ].filter(Boolean);
+      return `${r.tipAdi} — ${parts.join(', ')}`;
+    }
     const parts = [
       `${r.girdi.genislikMm}×${r.girdi.yapilabilirDerinlikMm}mm`,
       r.girdi.yukseklikMm ? `Y:${r.girdi.yukseklikMm}mm` : null,
@@ -414,6 +510,31 @@ export default function AlbertGenauScreen() {
               <Text style={s.heroCaption}>Ölçüleri girin, sistem otomatik malzeme + fiyat hesabı yapsın</Text>
             </View>
 
+            {/* Ürün ailesi: AG BIOFLEX/BIO ölçüye göre, AIRFLEX (ve ileride
+                eklenecek diğerleri) düz parça listesi + miktara göre hesaplar. */}
+            <View style={s.card}>
+              <Text style={s.fieldLabel}>Ürün Ailesi</Text>
+              <View style={s.typeWrap}>
+                <TouchableOpacity
+                  style={[s.typePill, family === 'geometric' && s.typePillActive]}
+                  onPress={() => { setFamily('geometric'); setResult(null); setError(''); }}
+                  testID="ag-family-geometric"
+                >
+                  <Text style={[s.typePillText, family === 'geometric' && s.typePillTextActive]}>AG BIOFLEX / BIO (Ölçü Bazlı)</Text>
+                </TouchableOpacity>
+                {partsListSystems.map((sysOpt) => (
+                  <TouchableOpacity
+                    key={sysOpt.id}
+                    style={[s.typePill, family === 'parts_list' && systemId === sysOpt.id && s.typePillActive]}
+                    onPress={() => { setFamily('parts_list'); setSystemId(sysOpt.id); setResult(null); setError(''); }}
+                    testID={`ag-family-parts-${sysOpt.id}`}
+                  >
+                    <Text style={[s.typePillText, family === 'parts_list' && systemId === sysOpt.id && s.typePillTextActive]}>{sysOpt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Firma-bazlı fiyat listesi -- sadece firma sahibi görür/yükler.
                 Yeni bir bayi bu programı aldığında verilen başlangıç Excel'ini,
                 zam geldiğinde de güncel Excel'i buradan kendisi yükler. */}
@@ -464,6 +585,8 @@ export default function AlbertGenauScreen() {
               </View>
             )}
 
+            {family === 'geometric' && (
+            <>
             {/* Sistem tipi */}
             <View style={s.card}>
               <Text style={s.fieldLabel}>Sistem Tipi</Text>
@@ -517,6 +640,40 @@ export default function AlbertGenauScreen() {
                 <Text style={s.hint}>Bu tip ayaksız (iki duvar arasına monte) olduğu için yükseklik girilmez.</Text>
               )}
             </View>
+            </>
+            )}
+
+            {family === 'parts_list' && (
+              <View style={s.card}>
+                <Text style={s.sectionTitle}>{partsListSystems.find((x) => x.id === systemId)?.label || systemId} Kalemleri</Text>
+                <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
+                  Sadece ihtiyacınız olan kalemler için miktar girin, diğerlerini boş bırakabilirsiniz.
+                </Text>
+                {partsListLoading ? (
+                  <ActivityIndicator color={theme.colors.primary} />
+                ) : (
+                  partsListItems.map((it) => (
+                    <View key={it.sku} style={s.partsRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.partsRowLabel} numberOfLines={2}>{it.label}</Text>
+                        <Text style={s.partsRowSub}>{it.sku} · {it.unit}</Text>
+                      </View>
+                      <View style={s.partsRowInputWrap}>
+                        <TextInput
+                          testID={`ag-parts-qty-${it.sku}`}
+                          value={quantities[it.sku] || ''}
+                          onChangeText={(v) => setQuantities((q) => ({ ...q, [it.sku]: v }))}
+                          keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+                          placeholder="0"
+                          placeholderTextColor="#94a3b8"
+                          style={s.input}
+                        />
+                      </View>
+                    </View>
+                  ))
+                )}
+              </View>
+            )}
 
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
                 ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
@@ -547,17 +704,24 @@ export default function AlbertGenauScreen() {
               </Text>
             </View>
 
-            {/* Opsiyonlar */}
+            {/* Opsiyonlar (sadece ölçü bazlı AG BIOFLEX/BIO) */}
+            {family === 'geometric' && (
+              <View style={s.card}>
+                <Text style={s.sectionTitle}>Seçenekler</Text>
+                <ToggleRow label="Düz köşe kapağı" value={cornerFlat} onChange={setCornerFlat} testID="ag-cornerflat" />
+                {hasMotorOption(tip) && (
+                  <ToggleRow label="Motorlu (Somfy)" value={somfy} onChange={setSomfy} testID="ag-somfy" />
+                )}
+                {hasWallBracketOption(tip) && (
+                  <ToggleRow label="Duvar bağlantı aparatı kullanılmayacak" value={noWallBracket} onChange={setNoWallBracket} testID="ag-nowallbracket" />
+                )}
+              </View>
+            )}
+
+            {/* Kaplama / Renk -- her iki ürün ailesinde de ortak (bkz.
+                ag_calc.FINISH_OPTIONS / _finish_multiplier). */}
             <View style={s.card}>
-              <Text style={s.sectionTitle}>Seçenekler</Text>
-              <ToggleRow label="Düz köşe kapağı" value={cornerFlat} onChange={setCornerFlat} testID="ag-cornerflat" />
-              {hasMotorOption(tip) && (
-                <ToggleRow label="Motorlu (Somfy)" value={somfy} onChange={setSomfy} testID="ag-somfy" />
-              )}
-              {hasWallBracketOption(tip) && (
-                <ToggleRow label="Duvar bağlantı aparatı kullanılmayacak" value={noWallBracket} onChange={setNoWallBracket} testID="ag-nowallbracket" />
-              )}
-              <Text style={[s.fieldLabel, { marginTop: 8 }]}>Kaplama / Renk</Text>
+              <Text style={s.fieldLabel}>Kaplama / Renk</Text>
               <View style={s.typeWrap}>
                 {meta.finishes.map((f) => (
                   <TouchableOpacity
@@ -572,26 +736,28 @@ export default function AlbertGenauScreen() {
               </View>
             </View>
 
-            {/* LED + Köpük */}
-            <View style={s.card}>
-              <Text style={s.sectionTitle}>LED Aydınlatma &amp; Panel Dolgu</Text>
-              <View style={s.typeWrap}>
-                <TouchableOpacity style={[s.finishPill, ledOption === '' && s.typePillActive]} onPress={() => setLedOption('')} testID="ag-led-none">
-                  <Text style={[s.typePillText, ledOption === '' && s.typePillTextActive]}>LED Yok</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.finishPill, ledOption === 'warm' && s.typePillActive]} onPress={() => setLedOption('warm')} testID="ag-led-warm">
-                  <Text style={[s.typePillText, ledOption === 'warm' && s.typePillTextActive]}>Sıcak Beyaz LED</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.finishPill, ledOption === 'warm_rgb' && s.typePillActive]} onPress={() => setLedOption('warm_rgb')} testID="ag-led-rgb">
-                  <Text style={[s.typePillText, ledOption === 'warm_rgb' && s.typePillTextActive]}>Sıcak + RGB LED</Text>
-                </TouchableOpacity>
+            {/* LED + Köpük (sadece ölçü bazlı AG BIOFLEX/BIO) */}
+            {family === 'geometric' && (
+              <View style={s.card}>
+                <Text style={s.sectionTitle}>LED Aydınlatma &amp; Panel Dolgu</Text>
+                <View style={s.typeWrap}>
+                  <TouchableOpacity style={[s.finishPill, ledOption === '' && s.typePillActive]} onPress={() => setLedOption('')} testID="ag-led-none">
+                    <Text style={[s.typePillText, ledOption === '' && s.typePillTextActive]}>LED Yok</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.finishPill, ledOption === 'warm' && s.typePillActive]} onPress={() => setLedOption('warm')} testID="ag-led-warm">
+                    <Text style={[s.typePillText, ledOption === 'warm' && s.typePillTextActive]}>Sıcak Beyaz LED</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.finishPill, ledOption === 'warm_rgb' && s.typePillActive]} onPress={() => setLedOption('warm_rgb')} testID="ag-led-rgb">
+                    <Text style={[s.typePillText, ledOption === 'warm_rgb' && s.typePillTextActive]}>Sıcak + RGB LED</Text>
+                  </TouchableOpacity>
+                </View>
+                {!!ledOption && (
+                  <ToggleRow label="LED, orta destek profiline bağlansın" value={ledMidSupport} onChange={setLedMidSupport} testID="ag-led-midsupport" />
+                )}
+                <ToggleRow label="Panel dolgu (köpük) eklensin" value={kopuk} onChange={setKopuk} testID="ag-kopuk" />
+                <Text style={s.hint}>LED ve köpük fiyatları da aynı Excel formülleriyle otomatik hesaplanır; ekstra bir şey girmenize gerek yok.</Text>
               </View>
-              {!!ledOption && (
-                <ToggleRow label="LED, orta destek profiline bağlansın" value={ledMidSupport} onChange={setLedMidSupport} testID="ag-led-midsupport" />
-              )}
-              <ToggleRow label="Panel dolgu (köpük) eklensin" value={kopuk} onChange={setKopuk} testID="ag-kopuk" />
-              <Text style={s.hint}>LED ve köpük fiyatları da aynı Excel formülleriyle otomatik hesaplanır; ekstra bir şey girmenize gerek yok.</Text>
-            </View>
+            )}
 
             {/* İskonto + Montaj + Kar */}
             <View style={s.card}>
@@ -656,29 +822,42 @@ export default function AlbertGenauScreen() {
                     <Text style={s.payBadgeText}>{result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'}</Text>
                   </View>
                 </View>
-                <Text style={s.resultSub}>
-                  {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
-                </Text>
-
-                <View style={s.breakdownRow}>
-                  <Text style={s.breakdownLabel}>Profil Grubu</Text>
-                  <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplamFiresiz ?? result.profilGrubuToplam)}</Text>
-                </View>
-                {!!result.profilFireTutari && (
-                  <View style={s.breakdownRow}>
-                    <Text style={s.breakdownLabel}>Profil Fire Payı (%{Math.round((result.profilFireOrani ?? 0.1) * 100)})</Text>
-                    <Text style={s.breakdownValue}>₺{money(result.profilFireTutari)}</Text>
-                  </View>
+                {result.kind === 'parts_list' ? (
+                  <Text style={s.resultSub}>{result.kalemler.length} kalem seçildi</Text>
+                ) : (
+                  <Text style={s.resultSub}>
+                    {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
+                  </Text>
                 )}
-                <View style={s.breakdownRow}>
-                  <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
-                  <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
-                </View>
-                {result.opsiyonelToplam > 0 && (
+
+                {result.kind === 'parts_list' ? (
                   <View style={s.breakdownRow}>
-                    <Text style={s.breakdownLabel}>LED / Köpük</Text>
-                    <Text style={s.breakdownValue}>₺{money(result.opsiyonelToplam)}</Text>
+                    <Text style={s.breakdownLabel}>Malzeme Grubu</Text>
+                    <Text style={s.breakdownValue}>₺{money(result.malzemeGrubuToplamFiresiz)}</Text>
                   </View>
+                ) : (
+                  <>
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Profil Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.profilGrubuToplamFiresiz ?? result.profilGrubuToplam)}</Text>
+                    </View>
+                    {!!result.profilFireTutari && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>Profil Fire Payı (%{Math.round((result.profilFireOrani ?? 0.1) * 100)})</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.profilFireTutari)}</Text>
+                      </View>
+                    )}
+                    <View style={s.breakdownRow}>
+                      <Text style={s.breakdownLabel}>Aksesuar Grubu</Text>
+                      <Text style={s.breakdownValue}>₺{money(result.aksesuarGrubuToplam)}</Text>
+                    </View>
+                    {result.opsiyonelToplam > 0 && (
+                      <View style={s.breakdownRow}>
+                        <Text style={s.breakdownLabel}>LED / Köpük</Text>
+                        <Text style={s.breakdownValue}>₺{money(result.opsiyonelToplam)}</Text>
+                      </View>
+                    )}
+                  </>
                 )}
                 <View style={[s.breakdownRow, { borderTopWidth: 1, borderTopColor: theme.colors.line, paddingTop: 8, marginTop: 4 }]}>
                   <Text style={[s.breakdownLabel, { fontWeight: '800' }]}>Malzeme Maliyeti</Text>
@@ -730,29 +909,33 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
-                    {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
+                  {result.kind !== 'parts_list' && (
+                    <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
+                      {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
+                        <>
+                          <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
+                          <Text style={s.excelBtnText}>Excel</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {result.kind !== 'parts_list' && (
+                  <TouchableOpacity
+                    style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
+                    onPress={onAddDrawing}
+                    disabled={addingDrawing}
+                    testID="ag-add-drawing"
+                  >
+                    {addingDrawing ? <ActivityIndicator color={theme.colors.primary} /> : (
                       <>
-                        <Ionicons name="document-text-outline" size={18} color={theme.colors.primary} />
-                        <Text style={s.excelBtnText}>Excel</Text>
+                        <Ionicons name="image-outline" size={17} color={theme.colors.primary} />
+                        <Text style={s.drawingBtnText}>Teknik Çizim Ekle (Teklife PDF ek olarak eklenir)</Text>
                       </>
                     )}
                   </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity
-                  style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
-                  onPress={onAddDrawing}
-                  disabled={addingDrawing}
-                  testID="ag-add-drawing"
-                >
-                  {addingDrawing ? <ActivityIndicator color={theme.colors.primary} /> : (
-                    <>
-                      <Ionicons name="image-outline" size={17} color={theme.colors.primary} />
-                      <Text style={s.drawingBtnText}>Teknik Çizim Ekle (Teklife PDF ek olarak eklenir)</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -834,6 +1017,10 @@ const s = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 12, minHeight: 42 },
   input: { flex: 1, fontSize: 13.5, color: theme.colors.text, paddingVertical: 0, ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}) },
   hint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, lineHeight: 15 },
+  partsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  partsRowLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text },
+  partsRowSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2, fontWeight: '600' },
+  partsRowInputWrap: { width: 84, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 10, minHeight: 40 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center' },
   checkboxActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },

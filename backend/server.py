@@ -2655,6 +2655,195 @@ async def delete_ad_watchlist_item(item_id: str, user=Depends(get_current_user))
     return {"ok": True}
 
 
+# ============ E-FATURA (Nilvera entegrasyonu) ============
+# MyDijital OS'teki "E-Fatura" modulunun karsiligi. Nilvera gercek bir
+# e-fatura/e-arsiv API saglayicisidir (https://developer.nilvera.com):
+#   - Kimlik dogrulama: "Authorization: Bearer {API_ANAHTARI}" header'i.
+#   - Test ortami tabani: https://apitest.nilvera.com
+#   - Canli ortam tabani: https://api.nilvera.com
+# v1 kapsami BILEREK sinirli: kimlik bilgisi saklama + GERCEK bir baglanti
+# testi (GET /general/GlobalCompany -- Nilvera'nin dogruladigimiz, hafif,
+# mukellef listesi donen ucu). Fatura KESME (belge olusturma/gonderme) bu
+# surumde YOK -- kullanicinin kendi Nilvera hesabinda dogru sablon/seri
+# ayarlarinin dogrulanmasi ve daha genis test gerektirir; sahte/calismayan
+# bir "fatura kes" ucu eklemek yerine, once gercekten calisan bir baglanti
+# testiyle baslayip fatura kesmeyi ayrica ele almak tercih edildi.
+NILVERA_BASE_URLS = {
+    "test": "https://apitest.nilvera.com",
+    "canli": "https://api.nilvera.com",
+}
+
+
+def _efatura_mask_key(api_key: str) -> str:
+    if not api_key:
+        return ""
+    if len(api_key) <= 6:
+        return "*" * len(api_key)
+    return f"{api_key[:3]}{'*' * (len(api_key) - 6)}{api_key[-3:]}"
+
+
+class EFaturaConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    apiKey: str = ""
+    ortam: str = "test"  # "test" | "canli" -- canli'ya sadece basarili test sonrasi gecilebilir
+    firmaVergiNo: str = ""
+    firmaUnvani: str = ""
+    firmaAdres: str = ""
+    faturaSerisi: str = ""
+    sablonId: str = ""
+    lastTestOk: bool = False
+    lastTestAt: Optional[str] = None
+    lastTestMessage: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class EFaturaConfigUpdate(BaseModel):
+    companyId: str
+    apiKey: Optional[str] = None  # None = degistirme; "" = temizle
+    ortam: Optional[str] = None
+    firmaVergiNo: Optional[str] = None
+    firmaUnvani: Optional[str] = None
+    firmaAdres: Optional[str] = None
+    faturaSerisi: Optional[str] = None
+    sablonId: Optional[str] = None
+
+    @field_validator("ortam")
+    @classmethod
+    def _ortam_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("test", "canli"):
+            raise ValueError("Geçersiz ortam")
+        return v
+
+
+class EFaturaConfigOut(BaseModel):
+    companyId: str
+    apiKeyMasked: str = ""
+    hasApiKey: bool = False
+    ortam: str = "test"
+    firmaVergiNo: str = ""
+    firmaUnvani: str = ""
+    firmaAdres: str = ""
+    faturaSerisi: str = ""
+    sablonId: str = ""
+    lastTestOk: bool = False
+    lastTestAt: Optional[str] = None
+    lastTestMessage: str = ""
+
+
+class EFaturaTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
+def _efatura_out(doc: Dict[str, Any], company_id: str) -> EFaturaConfigOut:
+    if not doc:
+        return EFaturaConfigOut(companyId=company_id)
+    return EFaturaConfigOut(
+        companyId=company_id,
+        apiKeyMasked=_efatura_mask_key(doc.get("apiKey", "")),
+        hasApiKey=bool(doc.get("apiKey")),
+        ortam=doc.get("ortam", "test"),
+        firmaVergiNo=doc.get("firmaVergiNo", ""),
+        firmaUnvani=doc.get("firmaUnvani", ""),
+        firmaAdres=doc.get("firmaAdres", ""),
+        faturaSerisi=doc.get("faturaSerisi", ""),
+        sablonId=doc.get("sablonId", ""),
+        lastTestOk=bool(doc.get("lastTestOk", False)),
+        lastTestAt=doc.get("lastTestAt"),
+        lastTestMessage=doc.get("lastTestMessage", ""),
+    )
+
+
+@api_router.get("/efatura/config/{company_id}", response_model=EFaturaConfigOut)
+async def get_efatura_config(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    doc = await db.efatura_configs.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0})
+    return _efatura_out(doc, company_id)
+
+
+@api_router.put("/efatura/config", response_model=EFaturaConfigOut)
+async def update_efatura_config(payload: EFaturaConfigUpdate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    existing = await db.efatura_configs.find_one({"companyId": payload.companyId, "userId": user["user_id"]}, {"_id": 0})
+    now = utc_now_iso()
+    updates: Dict[str, Any] = {"updatedAt": now}
+    if payload.apiKey is not None:
+        updates["apiKey"] = payload.apiKey.strip()[:500]
+        # API anahtari degisince onceki testin gecerliligi kalmaz.
+        updates["lastTestOk"] = False
+        updates["lastTestMessage"] = ""
+    if payload.ortam is not None:
+        # Canli ortama sadece test ortaminda basarili bir baglanti testi
+        # yapildiktan sonra gecilebilir -- MyDijital'in de uyguladigi,
+        # yanlislikla gercek fatura kesmeyi engelleyen bir emniyet kemeri.
+        if payload.ortam == "canli":
+            already_ok = bool((existing or {}).get("lastTestOk")) and (existing or {}).get("ortam") != "canli"
+            just_tested = bool((existing or {}).get("lastTestOk"))
+            if not just_tested:
+                raise HTTPException(400, "Canlı ortama geçmeden önce test ortamında bağlantıyı başarıyla test etmelisiniz")
+        updates["ortam"] = payload.ortam
+    if payload.firmaVergiNo is not None:
+        updates["firmaVergiNo"] = payload.firmaVergiNo.strip()[:20]
+    if payload.firmaUnvani is not None:
+        updates["firmaUnvani"] = payload.firmaUnvani.strip()[:200]
+    if payload.firmaAdres is not None:
+        updates["firmaAdres"] = payload.firmaAdres.strip()[:500]
+    if payload.faturaSerisi is not None:
+        updates["faturaSerisi"] = payload.faturaSerisi.strip()[:20]
+    if payload.sablonId is not None:
+        updates["sablonId"] = payload.sablonId.strip()[:100]
+
+    if existing:
+        await db.efatura_configs.update_one({"id": existing["id"]}, {"$set": updates})
+        merged = {**existing, **updates}
+    else:
+        obj = EFaturaConfig(userId=user["user_id"], companyId=payload.companyId, **{
+            k: v for k, v in updates.items() if k in EFaturaConfig.model_fields and k != "updatedAt"
+        })
+        await db.efatura_configs.insert_one(obj.model_dump())
+        merged = obj.model_dump()
+    return _efatura_out(merged, payload.companyId)
+
+
+@api_router.post("/efatura/test/{company_id}", response_model=EFaturaTestResult)
+async def test_efatura_connection(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    doc = await db.efatura_configs.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc or not doc.get("apiKey"):
+        raise HTTPException(400, "Önce Nilvera API anahtarınızı kaydedin")
+    ortam = doc.get("ortam", "test")
+    base_url = NILVERA_BASE_URLS.get(ortam, NILVERA_BASE_URLS["test"])
+    now = utc_now_iso()
+    try:
+        resp = await asyncio.to_thread(
+            requests.get,
+            f"{base_url}/general/GlobalCompany",
+            headers={"Authorization": f"Bearer {doc['apiKey']}", "Accept": "application/json"},
+            params={"PageSize": "1", "Page": "1"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            ok, msg = True, "Bağlantı başarılı — Nilvera API anahtarınız doğrulandı."
+        elif resp.status_code == 401:
+            ok, msg = False, "API anahtarı geçersiz veya yetkisiz (401)."
+        else:
+            ok, msg = False, f"Nilvera bağlantı hatası (HTTP {resp.status_code})."
+    except requests.exceptions.Timeout:
+        ok, msg = False, "Nilvera'ya bağlanılamadı (zaman aşımı)."
+    except Exception as e:
+        logger.error(f"efatura test error: {e}")
+        ok, msg = False, "Bağlantı testi sırasında beklenmeyen bir hata oluştu."
+
+    await db.efatura_configs.update_one(
+        {"companyId": company_id, "userId": user["user_id"]},
+        {"$set": {"lastTestOk": ok, "lastTestAt": now, "lastTestMessage": msg, "updatedAt": now}},
+    )
+    return EFaturaTestResult(ok=ok, message=msg)
+
+
 # ============ ALBERT GENAU (parametrik pergola/bioklimatik hesaplayici) ============
 # Bu bolum, Albert Genau'nun kendi Excel maliyet analizi dosyalarindan
 # (bkz. backend/albert_genau_calc.py) cikarilan gercek formullerle genislik/

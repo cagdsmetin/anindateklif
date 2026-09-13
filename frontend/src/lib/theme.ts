@@ -66,6 +66,7 @@ const lightColors = {
     mesaj: '#7C3AED',
     lead: '#B45309',
     reklam: '#DC2626',
+    efatura: '#0F766E',
   },
 };
 
@@ -123,6 +124,7 @@ const darkColors = {
     mesaj: '#A78BFA',
     lead: '#FBBF24',
     reklam: '#F87171',
+    efatura: '#2DD4BF',
   },
 };
 

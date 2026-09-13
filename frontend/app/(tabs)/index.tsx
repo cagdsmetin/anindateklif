@@ -564,6 +564,7 @@ export default function PanelScreen() {
           <ModuleTile icon="megaphone" label={t('panel.s006')} color={theme.colors.modules.kampanya} onPress={() => router.push('/(tabs)/campaigns')} />
           <ModuleTile icon="search" label={t('panel.s068')} color={theme.colors.modules.lead} onPress={() => router.push('/(tabs)/leads' as any)} />
           <ModuleTile icon="megaphone" label="Reklam İstihbaratı" color={theme.colors.modules.reklam} onPress={() => router.push('/(tabs)/ads-intel' as any)} />
+          <ModuleTile icon="receipt" label="e-Fatura" color={theme.colors.modules.efatura} onPress={() => router.push('/(tabs)/efatura' as any)} />
           <ModuleTile icon="calendar" label={t('panel.s069')} color={theme.colors.modules.hatirlatma} onPress={() => router.push('/(tabs)/calendar' as any)} />
           <ModuleTile icon="notifications" label={t('panel.s070')} color={theme.colors.modules.hatirlatma} onPress={() => router.push('/reminders' as any)} />
           <ModuleTile icon="bar-chart" label={t('panel.s071')} color={theme.colors.modules.raporlar} onPress={() => router.push('/reports' as any)} />

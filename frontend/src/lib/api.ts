@@ -261,6 +261,12 @@ export const api = {
   createAdWatchlistItem: (companyId: string, terim: string): Promise<AdWatchItemT> =>
     req('/ads-intel/watchlist', { method: 'POST', body: JSON.stringify({ companyId, terim }) }),
   deleteAdWatchlistItem: (id: string) => req(`/ads-intel/watchlist/${id}`, { method: 'DELETE' }),
+  // e-Fatura (Nilvera)
+  getEFaturaConfig: (companyId: string): Promise<EFaturaConfigT> => req(`/efatura/config/${companyId}`),
+  updateEFaturaConfig: (data: { companyId: string; apiKey?: string; ortam?: 'test' | 'canli'; firmaVergiNo?: string; firmaUnvani?: string; firmaAdres?: string; faturaSerisi?: string; sablonId?: string }): Promise<EFaturaConfigT> =>
+    req('/efatura/config', { method: 'PUT', body: JSON.stringify(data) }),
+  testEFaturaConnection: (companyId: string): Promise<{ ok: boolean; message: string }> =>
+    req(`/efatura/test/${companyId}`, { method: 'POST' }),
   setLeadDailyCount: (companyId: string, dailyCount: number) =>
     req(`/company/${companyId}/lead-daily-count`, { method: 'PATCH', body: JSON.stringify({ dailyCount }) }),
   createLeadSearchRequest: (companyId: string, sektor: string, bolge: string, aciklama: string) =>
@@ -650,6 +656,21 @@ export type AdWatchItemT = {
   companyId: string;
   terim: string;
   createdAt: string;
+};
+
+export type EFaturaConfigT = {
+  companyId: string;
+  apiKeyMasked: string;
+  hasApiKey: boolean;
+  ortam: 'test' | 'canli';
+  firmaVergiNo: string;
+  firmaUnvani: string;
+  firmaAdres: string;
+  faturaSerisi: string;
+  sablonId: string;
+  lastTestOk: boolean;
+  lastTestAt: string | null;
+  lastTestMessage: string;
 };
 
 export type CatalogItemT = {

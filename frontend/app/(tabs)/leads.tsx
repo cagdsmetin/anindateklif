@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -77,6 +78,9 @@ export default function LeadsScreen() {
   // aşağısında kalıyordu -- bunun yerine küçük filtre çipleriyle tek seferde
   // sadece bir grup gösteriyoruz.
   const [tumuFilter, setTumuFilter] = useState<string>(t('leads.s001'));
+  // Kanban pano görünümü -- "Liste" (durum filtre çipleri) ya da "Pano"
+  // (6 sütun, her sütun bir durum, sütun başına fırsat tutarı toplamı).
+  const [tumuView, setTumuView] = useState<'liste' | 'pano'>('liste');
   const [reorderingTabs, setReorderingTabs] = useState(false);
   const { order: tabOrder, moveLeft: moveTabLeft, moveRight: moveTabRight } = useOrderedNames(
     'leadsTabOrder_v1',
@@ -99,6 +103,7 @@ export default function LeadsScreen() {
   const [notesFor, setNotesFor] = useState<LeadCompanyT | null>(null);
   const [noteText, setNoteText] = useState('');
   const [reminderDate, setReminderDate] = useState('');
+  const [noteFirsat, setNoteFirsat] = useState('');
 
   const [waLead, setWaLead] = useState<LeadCompanyT | null>(null);
   const [waTemplateId, setWaTemplateId] = useState(WHATSAPP_TEMPLATES[0].id);
@@ -113,6 +118,7 @@ export default function LeadsScreen() {
   const [addBolge, setAddBolge] = useState('');
   const [addKategori, setAddKategori] = useState('');
   const [addTelefon, setAddTelefon] = useState('');
+  const [addFirsat, setAddFirsat] = useState('');
   const [addSaving, setAddSaving] = useState(false);
 
   // Yönetici bir firmayı personele "ara, iletişime geç" notuyla atayabilsin
@@ -172,6 +178,22 @@ export default function LeadsScreen() {
     const kapanan = allLeads.filter((l) => l.durum === 'Kapandı').length;
     return { total, aranan, olumlu, kapanan };
   }, [allLeads]);
+
+  // Kanban pano özet kartları -- "açık" (kaybedilmemiş/kazanılmamış) fırsatlar
+  // üzerinden hesaplanır. MyDijital Lead Radar'daki "Toplam açık aday / Açık
+  // fırsat değeri / Kazanılan adaylar / Atanmamış açık aday" kartlarının
+  // karşılığı -- tamamı burada, ekstra bir uca gitmeden, mevcut veriden
+  // türetiliyor.
+  const kanbanStats = useMemo(() => {
+    const acikLeads = allLeads.filter((l) => l.durum !== 'Kapandı' && l.durum !== 'Olumsuz Dönüş');
+    const toplamAcikAday = acikLeads.length;
+    const acikFirsatDegeri = acikLeads.reduce((sum, l) => sum + (l.firsatTutari || 0), 0);
+    const kazanilanAdaylar = allLeads.filter((l) => l.durum === 'Kapandı').length;
+    const atanmamisAcikAday = acikLeads.filter((l) => !l.atananKullaniciId).length;
+    return { toplamAcikAday, acikFirsatDegeri, kazanilanAdaylar, atanmamisAcikAday };
+  }, [allLeads]);
+
+  const money = (n: number) => (n || 0).toLocaleString('tr-TR', { maximumFractionDigits: 0 });
 
   // "Tüm Firmalar" sekmesinde yeni eklenen (özellikle yapay zekanın bulduğu)
   // firmalar en üste çıksın diye en yeni ilk sıralıyoruz -- eskiler kaybolmuyor,
@@ -304,14 +326,16 @@ export default function LeadsScreen() {
       return;
     }
     setAddSaving(true);
+    const firsatNum = Number((addFirsat || '0').replace(',', '.'));
     try {
       await api.createLead(companyId, {
         firma: addFirma.trim(),
         bolge: addBolge.trim(),
         kategori: addKategori.trim(),
         telefon: addTelefon.trim(),
+        firsatTutari: isNaN(firsatNum) ? 0 : firsatNum,
       });
-      setAddFirma(''); setAddBolge(''); setAddKategori(''); setAddTelefon('');
+      setAddFirma(''); setAddBolge(''); setAddKategori(''); setAddTelefon(''); setAddFirsat('');
       setAddOpen(false);
       showToast('Firma eklendi');
       await load();
@@ -326,6 +350,7 @@ export default function LeadsScreen() {
     setNotesFor(lead);
     setNoteText(lead.notlar || '');
     setReminderDate(lead.tekrarTarihi || '');
+    setNoteFirsat(lead.firsatTutari ? String(lead.firsatTutari) : '');
   };
 
   const openAssign = (lead: LeadCompanyT) => {
@@ -381,13 +406,25 @@ export default function LeadsScreen() {
 
   const saveNote = async () => {
     if (!notesFor) return;
+    const firsatNum = Number((noteFirsat || '0').replace(',', '.'));
     try {
-      await api.updateLead(notesFor.id, { notlar: noteText, tekrarTarihi: reminderDate });
+      await api.updateLead(notesFor.id, { notlar: noteText, tekrarTarihi: reminderDate, firsatTutari: isNaN(firsatNum) ? 0 : firsatNum });
       setNotesFor(null);
       await load();
     } catch (e: any) {
       showToast('Hata: ' + (e?.message || ''));
     }
+  };
+
+  // Kanban pano: sürükle-bırak yerine (RN'de web+mobil'de güvenilir çalışan
+  // gesture kütüphanesi gerektirir), her kartta önceki/sonraki duruma tek
+  // dokunuşla taşıma oku -- aynı "leadsTabOrder" sekme sıralamasında
+  // kullanılan ok-butonlu taşıma deseninin (bkz. useOrderedNames) karşılığı.
+  const moveKanbanCard = async (lead: LeadCompanyT, dir: -1 | 1) => {
+    const idx = DURUM_OPTIONS.indexOf(lead.durum);
+    const nextIdx = idx + dir;
+    if (nextIdx < 0 || nextIdx >= DURUM_OPTIONS.length) return;
+    await updateStatus(lead, DURUM_OPTIONS[nextIdx]);
   };
 
   const callLead = (lead: LeadCompanyT) => {
@@ -607,10 +644,28 @@ export default function LeadsScreen() {
 
         {!loading && tab === 'tumu' && (
           <>
-            <TouchableOpacity style={s.addManualBtn} onPress={() => setAddOpen(true)} testID="lead-add-manual-open">
-              <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
-              <Text style={s.addManualBtnText}>{t('leads.s047')}</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              <TouchableOpacity style={[s.addManualBtn, { flex: 1, marginBottom: 0 }]} onPress={() => setAddOpen(true)} testID="lead-add-manual-open">
+                <Ionicons name="add-circle-outline" size={16} color={theme.colors.primary} />
+                <Text style={s.addManualBtnText}>{t('leads.s047')}</Text>
+              </TouchableOpacity>
+              <View style={s.viewToggleWrap}>
+                <TouchableOpacity
+                  style={[s.viewToggleBtn, tumuView === 'liste' && s.viewToggleBtnActive]}
+                  onPress={() => setTumuView('liste')}
+                  testID="lead-view-liste"
+                >
+                  <Ionicons name="list" size={15} color={tumuView === 'liste' ? '#fff' : theme.colors.textMuted} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.viewToggleBtn, tumuView === 'pano' && s.viewToggleBtnActive]}
+                  onPress={() => setTumuView('pano')}
+                  testID="lead-view-pano"
+                >
+                  <Ionicons name="grid" size={15} color={tumuView === 'pano' ? '#fff' : theme.colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
             {allLeads.length === 0 ? (
               <View style={s.emptyBox}>
                 <Ionicons name="business-outline" size={26} color={theme.colors.textMuted} />
@@ -620,6 +675,66 @@ export default function LeadsScreen() {
                   <Text style={s.ctaTalepBtnText}>{t('leads.s006')}</Text>
                 </TouchableOpacity>
               </View>
+            ) : tumuView === 'pano' ? (
+              <>
+                <View style={s.statGrid}>
+                  <View style={s.statCard}><Text style={s.statValue}>{kanbanStats.toplamAcikAday}</Text><Text style={s.statLabel}>TOPLAM AÇIK ADAY</Text></View>
+                  <View style={s.statCard}><Text style={s.statValue}>₺{money(kanbanStats.acikFirsatDegeri)}</Text><Text style={s.statLabel}>AÇIK FIRSAT DEĞERİ</Text></View>
+                  <View style={s.statCard}><Text style={s.statValue}>{kanbanStats.kazanilanAdaylar}</Text><Text style={s.statLabel}>KAZANILAN ADAYLAR</Text></View>
+                  <View style={s.statCard}><Text style={s.statValue}>{kanbanStats.atanmamisAcikAday}</Text><Text style={s.statLabel}>ATANMAMIŞ AÇIK ADAY</Text></View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
+                  {DURUM_OPTIONS.map((d) => {
+                    const items = tumuGroups[d] || [];
+                    const colToplam = items.reduce((sum, l) => sum + (l.firsatTutari || 0), 0);
+                    return (
+                      <View key={d} style={s.kanbanCol}>
+                        <View style={[s.kanbanColHeader, { borderColor: DURUM_COLORS[d] }]}>
+                          <Text style={[s.kanbanColTitle, { color: DURUM_COLORS[d] }]} numberOfLines={1}>{statusLabel(lang, d)}</Text>
+                          <Text style={s.kanbanColCount}>{items.length}</Text>
+                        </View>
+                        {colToplam > 0 && <Text style={s.kanbanColTotal}>₺{money(colToplam)}</Text>}
+                        {items.length === 0 ? (
+                          <Text style={s.kanbanEmpty}>—</Text>
+                        ) : (
+                          items.map((lead) => {
+                            const idx = DURUM_OPTIONS.indexOf(lead.durum);
+                            return (
+                              <View key={lead.id} style={s.kanbanCard} testID={`kanban-card-${lead.id}`}>
+                                <TouchableOpacity onPress={() => openNotes(lead)}>
+                                  <Text style={s.kanbanCardTitle} numberOfLines={1}>{lead.firma}</Text>
+                                  {!!lead.firsatTutari && <Text style={s.kanbanCardAmount}>₺{money(lead.firsatTutari)}</Text>}
+                                  {!!lead.atananKullaniciId && (
+                                    <Text style={s.kanbanCardAssigned} numberOfLines={1}>👤 {staffLabelById[lead.atananKullaniciId] || 'Personel'}</Text>
+                                  )}
+                                </TouchableOpacity>
+                                <View style={s.kanbanCardMoveRow}>
+                                  <TouchableOpacity
+                                    style={[s.kanbanMoveBtn, idx === 0 && s.kanbanMoveBtnDisabled]}
+                                    disabled={idx === 0}
+                                    onPress={() => moveKanbanCard(lead, -1)}
+                                    testID={`kanban-move-left-${lead.id}`}
+                                  >
+                                    <Ionicons name="chevron-back" size={13} color={theme.colors.text} />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={[s.kanbanMoveBtn, idx === DURUM_OPTIONS.length - 1 && s.kanbanMoveBtnDisabled]}
+                                    disabled={idx === DURUM_OPTIONS.length - 1}
+                                    onPress={() => moveKanbanCard(lead, 1)}
+                                    testID={`kanban-move-right-${lead.id}`}
+                                  >
+                                    <Ionicons name="chevron-forward" size={13} color={theme.colors.text} />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            );
+                          })
+                        )}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </>
             ) : (
               <>
                 {myAssignedLeads.length > 0 && (
@@ -707,6 +822,16 @@ export default function LeadsScreen() {
               placeholder={t('leads.s058')}
               placeholderTextColor="#94a3b8"
               autoFocus
+            />
+            <Text style={s.modalSubLabel}>Fırsat Tutarı (₺)</Text>
+            <TextInput
+              style={s.input}
+              placeholder="0"
+              placeholderTextColor="#94a3b8"
+              value={noteFirsat}
+              onChangeText={setNoteFirsat}
+              keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+              testID="lead-note-firsat"
             />
             <Text style={s.modalSubLabel}>{t('leads.s059')}</Text>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
@@ -818,6 +943,15 @@ export default function LeadsScreen() {
               onChangeText={setAddTelefon}
               keyboardType="phone-pad"
               testID="lead-add-telefon"
+            />
+            <TextInput
+              style={s.input}
+              placeholder="Fırsat Tutarı (₺, opsiyonel)"
+              placeholderTextColor="#94a3b8"
+              value={addFirsat}
+              onChangeText={setAddFirsat}
+              keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+              testID="lead-add-firsat"
             />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#F1F5F9' }]} onPress={() => setAddOpen(false)}>
@@ -959,4 +1093,20 @@ const s = StyleSheet.create({
   reminderPreset: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F8FAFC' },
   reminderPresetText: { fontSize: 11, fontWeight: '700', color: theme.colors.text },
   reminderChosenText: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
+  viewToggleWrap: { flexDirection: 'row', gap: 4, backgroundColor: '#F1F5F9', borderRadius: 10, padding: 3 },
+  viewToggleBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  viewToggleBtnActive: { backgroundColor: theme.colors.primary },
+  kanbanCol: { width: 190, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 8 },
+  kanbanColHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, paddingBottom: 6, marginBottom: 6 },
+  kanbanColTitle: { fontSize: 11, fontWeight: '900', flex: 1 },
+  kanbanColCount: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+  kanbanColTotal: { fontSize: 10.5, fontWeight: '800', color: theme.colors.green, marginBottom: 6 },
+  kanbanEmpty: { fontSize: 11, color: theme.colors.textMuted, textAlign: 'center', paddingVertical: 10 },
+  kanbanCard: { backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 8, marginBottom: 6, ...theme.shadow.sm },
+  kanbanCardTitle: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
+  kanbanCardAmount: { fontSize: 11, fontWeight: '800', color: theme.colors.green, marginTop: 2 },
+  kanbanCardAssigned: { fontSize: 9.5, color: '#5b21b6', marginTop: 2 },
+  kanbanCardMoveRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  kanbanMoveBtn: { width: 26, height: 22, borderRadius: 6, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  kanbanMoveBtnDisabled: { opacity: 0.25 },
 });

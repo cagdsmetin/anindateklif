@@ -591,6 +591,7 @@ class UserOut(BaseModel):
     currency: str = ""
     tax_label: str = ""
     language: str = "tr"
+    theme: str = "light"
     onboarding_completed: bool = False
     is_staff: bool = False
     staff_role: Optional[str] = None
@@ -612,6 +613,7 @@ class UserProfileUpdate(BaseModel):
     currency: Optional[str] = None
     tax_label: Optional[str] = None
     language: Optional[str] = None
+    theme: Optional[str] = None
     onboarding_completed: Optional[bool] = None
 
     @field_validator("language")
@@ -619,6 +621,13 @@ class UserProfileUpdate(BaseModel):
     def _lang_allowed(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in ("tr", "en", "it"):
             raise ValueError("Gecersiz dil kodu")
+        return v
+
+    @field_validator("theme")
+    @classmethod
+    def _theme_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("light", "dark"):
+            raise ValueError("Gecersiz tema")
         return v
 
 
@@ -737,6 +746,7 @@ def _user_out(u: Dict[str, Any]) -> UserOut:
         currency=u.get("currency", ""),
         tax_label=u.get("tax_label", ""),
         language=u.get("language", "tr"),
+        theme=u.get("theme", "light"),
         onboarding_completed=bool(u.get("onboarding_completed", False)),
         is_staff=bool(u.get("staff_owner_user_id")),
         staff_role=u.get("staff_role"),
@@ -2381,6 +2391,267 @@ async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Dep
 async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     _require_owner(user)
     await db.catalog.delete_one({"id": item_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ REKLAM ISTIHBARATI (rakip reklam takibi / "ad-spy") ============
+# MyDijital OS'teki "Reklam Istihbarati" modulunun karsiligi: rakiplerin
+# (Meta/Instagram/Facebook vb.) reklamlarini kaydedip, ne kadar suredir
+# yayinda olduklarina bakarak bir "kazanma sinyali" puani hesapliyoruz --
+# bir reklam ne kadar uzun sure durmadan yayinda kaliyorsa, reklamverenin
+# onu o kadar "kazanan" (donusum getiren) bir reklam olarak degerlendirip
+# butcesini kesmedigi varsayilir; bu tum ad-spy araclarinin (MyDijital
+# dahil) kullandigi standart, kabaca dogru bir sezgidir.
+#
+# Canli Meta Reklam Kutuphanesi taramasi resmi bir Facebook Gelistirici
+# uygulamasi + erisim jetonu gerektirdigi icin (bkz. sohbet gecmisi), ilk
+# surum MyDijital'in kendisinin de sundugu JSON/CSV ice aktarma yolunu
+# birincil veri girisi olarak kullanir -- bayi, kendi bulduklarini (ekran
+# goruntusu + not olarak, ya da baska bir arac ile) buraya elle veya toplu
+# olarak ekler; canli otomatik tarama ileride ayri bir gelistirme.
+AD_DURUM_VALUES = {"Aktif", "Pasif"}
+
+
+def _ad_gun_sayisi(ilk: str, son: str, durum: str) -> int:
+    """Ilk ve son gorulme tarihleri arasindaki gun sayisi (yayin suresi).
+    Durum "Aktif" ise 'son gorulme' yerine bugun kullanilir -- hala
+    yayinda oldugu icin suresi her gecen gun artmaya devam eder."""
+    try:
+        d1 = datetime.strptime((ilk or "")[:10], "%Y-%m-%d")
+    except ValueError:
+        return 0
+    if durum == "Aktif":
+        d2 = _utc().replace(tzinfo=None)
+    else:
+        try:
+            d2 = datetime.strptime((son or ilk or "")[:10], "%Y-%m-%d")
+        except ValueError:
+            d2 = d1
+    return max(0, (d2 - d1).days)
+
+
+def _ad_kazanma_skoru(gun: int) -> int:
+    # 0-100 arasi kaba bir puan: her gun ~3 puan, 34+ gunde tavan (100).
+    return min(100, round(gun * 3))
+
+
+def _ad_kazanma_sinyali(gun: int) -> str:
+    if gun >= 30:
+        return "Çok Güçlü"
+    if gun >= 14:
+        return "Güçlü"
+    if gun >= 5:
+        return "Test Edilebilir"
+    return "Zayıf"
+
+
+def _ad_record_out(d: Dict[str, Any]) -> Dict[str, Any]:
+    gun = _ad_gun_sayisi(d.get("ilkGorulmeTarihi", ""), d.get("sonGorulmeTarihi", ""), d.get("durum", "Aktif"))
+    d = dict(d)
+    d["yayinGunSayisi"] = gun
+    d["kazanmaSkoru"] = _ad_kazanma_skoru(gun)
+    d["kazanmaSinyali"] = _ad_kazanma_sinyali(gun)
+    return d
+
+
+class AdRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    reklamveren: str
+    baslik: str = ""
+    mecra: str = "Meta"
+    gorselUrl: str = ""
+    ilkGorulmeTarihi: str = Field(default_factory=lambda: utc_now_iso()[:10])
+    sonGorulmeTarihi: str = ""
+    durum: str = "Aktif"
+    favori: bool = False
+    notlar: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class AdRecordCreate(BaseModel):
+    companyId: str
+    reklamveren: str
+    baslik: str = ""
+    mecra: str = "Meta"
+    gorselUrl: str = ""
+    ilkGorulmeTarihi: str = ""
+    sonGorulmeTarihi: str = ""
+    durum: str = "Aktif"
+    notlar: str = ""
+
+    @field_validator("reklamveren")
+    @classmethod
+    def _reklamveren_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Reklamveren adı zorunlu")
+        if len(v) > 200:
+            raise ValueError("Reklamveren adı çok uzun")
+        return v
+
+    @field_validator("durum")
+    @classmethod
+    def _durum_valid(cls, v: str) -> str:
+        if v not in AD_DURUM_VALUES:
+            raise ValueError("Geçersiz durum")
+        return v
+
+
+class AdRecordUpdate(BaseModel):
+    reklamveren: Optional[str] = None
+    baslik: Optional[str] = None
+    mecra: Optional[str] = None
+    gorselUrl: Optional[str] = None
+    ilkGorulmeTarihi: Optional[str] = None
+    sonGorulmeTarihi: Optional[str] = None
+    durum: Optional[str] = None
+    favori: Optional[bool] = None
+    notlar: Optional[str] = None
+
+
+class AdBulkImportRequest(BaseModel):
+    companyId: str
+    items: List[AdRecordCreate]
+
+
+class AdWatchItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    terim: str
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class AdWatchItemCreate(BaseModel):
+    companyId: str
+    terim: str
+
+    @field_validator("terim")
+    @classmethod
+    def _terim_len(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Terim zorunlu")
+        if len(v) > 150:
+            raise ValueError("Terim çok uzun")
+        return v
+
+
+@api_router.get("/ads-intel/records/{company_id}")
+async def list_ad_records(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.ad_records.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    return [_ad_record_out(d) for d in docs]
+
+
+@api_router.post("/ads-intel/records")
+async def create_ad_record(payload: AdRecordCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    obj = AdRecord(
+        userId=user["user_id"],
+        companyId=payload.companyId,
+        reklamveren=payload.reklamveren,
+        baslik=payload.baslik.strip()[:300],
+        mecra=payload.mecra.strip()[:50] or "Meta",
+        gorselUrl=payload.gorselUrl.strip()[:1000],
+        ilkGorulmeTarihi=(payload.ilkGorulmeTarihi or utc_now_iso()[:10])[:10],
+        sonGorulmeTarihi=payload.sonGorulmeTarihi[:10] if payload.sonGorulmeTarihi else "",
+        durum=payload.durum,
+        notlar=payload.notlar.strip()[:1000],
+    )
+    await db.ad_records.insert_one(obj.model_dump())
+    return _ad_record_out(obj.model_dump())
+
+
+@api_router.post("/ads-intel/records/import")
+async def import_ad_records(payload: AdBulkImportRequest, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    if len(payload.items) > 500:
+        raise HTTPException(400, "Tek seferde en fazla 500 kayıt içe aktarılabilir")
+    created = []
+    for item in payload.items:
+        obj = AdRecord(
+            userId=user["user_id"],
+            companyId=payload.companyId,
+            reklamveren=item.reklamveren,
+            baslik=item.baslik.strip()[:300],
+            mecra=(item.mecra or "Meta").strip()[:50] or "Meta",
+            gorselUrl=item.gorselUrl.strip()[:1000],
+            ilkGorulmeTarihi=(item.ilkGorulmeTarihi or utc_now_iso()[:10])[:10],
+            sonGorulmeTarihi=item.sonGorulmeTarihi[:10] if item.sonGorulmeTarihi else "",
+            durum=item.durum if item.durum in AD_DURUM_VALUES else "Aktif",
+            notlar=item.notlar.strip()[:1000],
+        )
+        created.append(obj)
+    if created:
+        await db.ad_records.insert_many([c.model_dump() for c in created])
+    return {"created": len(created)}
+
+
+@api_router.patch("/ads-intel/records/{record_id}")
+async def update_ad_record(record_id: str, payload: AdRecordUpdate, user=Depends(get_current_user)):
+    doc = await db.ad_records.find_one({"id": record_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Kayıt bulunamadı")
+    updates: Dict[str, Any] = {"updatedAt": utc_now_iso()}
+    if payload.reklamveren is not None:
+        v = payload.reklamveren.strip()
+        if not v:
+            raise HTTPException(400, "Reklamveren adı boş olamaz")
+        updates["reklamveren"] = v[:200]
+    if payload.baslik is not None:
+        updates["baslik"] = payload.baslik.strip()[:300]
+    if payload.mecra is not None:
+        updates["mecra"] = payload.mecra.strip()[:50] or "Meta"
+    if payload.gorselUrl is not None:
+        updates["gorselUrl"] = payload.gorselUrl.strip()[:1000]
+    if payload.ilkGorulmeTarihi is not None:
+        updates["ilkGorulmeTarihi"] = payload.ilkGorulmeTarihi[:10]
+    if payload.sonGorulmeTarihi is not None:
+        updates["sonGorulmeTarihi"] = payload.sonGorulmeTarihi[:10]
+    if payload.durum is not None:
+        if payload.durum not in AD_DURUM_VALUES:
+            raise HTTPException(400, "Geçersiz durum")
+        updates["durum"] = payload.durum
+    if payload.favori is not None:
+        updates["favori"] = payload.favori
+    if payload.notlar is not None:
+        updates["notlar"] = payload.notlar.strip()[:1000]
+    await db.ad_records.update_one({"id": record_id, "userId": user["user_id"]}, {"$set": updates})
+    doc.update(updates)
+    return _ad_record_out(doc)
+
+
+@api_router.delete("/ads-intel/records/{record_id}")
+async def delete_ad_record(record_id: str, user=Depends(get_current_user)):
+    await db.ad_records.delete_one({"id": record_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+@api_router.get("/ads-intel/watchlist/{company_id}", response_model=List[AdWatchItem])
+async def list_ad_watchlist(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.ad_watchlist.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(200)
+    return [AdWatchItem(**d) for d in docs]
+
+
+@api_router.post("/ads-intel/watchlist", response_model=AdWatchItem)
+async def create_ad_watchlist_item(payload: AdWatchItemCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    existing = await db.ad_watchlist.count_documents({"companyId": payload.companyId, "userId": user["user_id"]})
+    if existing >= 100:
+        raise HTTPException(400, "İzleme listesi dolu (en fazla 100 terim)")
+    obj = AdWatchItem(userId=user["user_id"], companyId=payload.companyId, terim=payload.terim)
+    await db.ad_watchlist.insert_one(obj.model_dump())
+    return obj
+
+
+@api_router.delete("/ads-intel/watchlist/{item_id}")
+async def delete_ad_watchlist_item(item_id: str, user=Depends(get_current_user)):
+    await db.ad_watchlist.delete_one({"id": item_id, "userId": user["user_id"]})
     return {"ok": True}
 
 
@@ -4795,6 +5066,12 @@ class LeadCompany(BaseModel):
     # (örn. "Cevap Yok" dendiğinde 3 gün sonra tekrar ara). Boşsa özel bir
     # tarih yok demektir. "YYYY-MM-DD" formatında.
     tekrarTarihi: str = ""
+    # Kanban pano yükseltmesi: fırsat (potansiyel satış) tutarı -- TL bazında,
+    # "Açık Fırsat Değeri" özet kartı ve sütun toplamları için kullanılır.
+    firsatTutari: float = 0.0
+    # Aynı durum (kanban sütunu) içindeki sürükle-bırak sırasını korumak için.
+    # createdAt'e güvenilmez çünkü kullanıcı sürükleyerek elle sıralama yapabilir.
+    siraNo: float = 0.0
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -4807,6 +5084,7 @@ class LeadCompanyCreate(BaseModel):
     telefon: str = ""
     website: str = ""
     email: str = ""
+    firsatTutari: float = 0.0
 
     @field_validator("firma")
     @classmethod
@@ -4849,6 +5127,18 @@ class LeadStatusUpdate(BaseModel):
     email: Optional[str] = None
     atananKullaniciId: Optional[str] = None
     atananNot: Optional[str] = None
+    firsatTutari: Optional[float] = None
+    siraNo: Optional[float] = None
+
+
+class LeadReorderItem(BaseModel):
+    id: str
+    durum: str
+    siraNo: float
+
+
+class LeadReorderRequest(BaseModel):
+    items: List[LeadReorderItem]
 
 
 class LeadDailyCountUpdate(BaseModel):
@@ -4907,6 +5197,7 @@ async def create_lead(payload: LeadCompanyCreate, user=Depends(get_current_user)
         telefon=payload.telefon,
         website=payload.website,
         email=payload.email,
+        firsatTutari=payload.firsatTutari or 0.0,
     )
     await db.leads.insert_one(obj.model_dump())
     return obj
@@ -5022,9 +5313,32 @@ async def update_lead(lead_id: str, payload: LeadStatusUpdate, user=Depends(get_
             updates["atananKullaniciId"] = payload.atananKullaniciId.strip()
         if payload.atananNot is not None:
             updates["atananNot"] = payload.atananNot.strip()[:500]
+    if payload.firsatTutari is not None:
+        if payload.firsatTutari < 0 or payload.firsatTutari > 100_000_000:
+            raise HTTPException(400, "Geçersiz fırsat tutarı")
+        updates["firsatTutari"] = payload.firsatTutari
+    if payload.siraNo is not None:
+        updates["siraNo"] = payload.siraNo
     await db.leads.update_one({"id": lead_id, "userId": user["user_id"]}, {"$set": updates})
     doc.update(updates)
     return LeadCompany(**doc)
+
+
+# Kanban panosunda sürükle-bırak sonrası -- sütun (durum) değişimi ve/veya
+# sütun içi sıra değişimi tek istekte toplu güncellenir (tek tek PATCH yerine).
+@api_router.patch("/leads/reorder")
+async def reorder_leads(payload: LeadReorderRequest, user=Depends(get_current_user)):
+    if len(payload.items) > 500:
+        raise HTTPException(400, "Çok fazla kayıt")
+    now = utc_now_iso()
+    for item in payload.items:
+        if item.durum not in LEAD_DURUM_VALUES:
+            raise HTTPException(400, "Geçersiz durum")
+        await db.leads.update_one(
+            {"id": item.id, "userId": user["user_id"]},
+            {"$set": {"durum": item.durum, "siraNo": item.siraNo, "updatedAt": now}},
+        )
+    return {"ok": True}
 
 
 @api_router.delete("/leads/{lead_id}")

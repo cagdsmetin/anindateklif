@@ -241,11 +241,26 @@ export const api = {
   // Firma Arama Takibi (lead)
   listLeads: (companyId: string) => req(`/leads/${companyId}`),
   listLeadsToday: (companyId: string) => req(`/leads/${companyId}/today`),
-  createLead: (companyId: string, data: { firma: string; bolge?: string; kategori?: string; telefon?: string; website?: string; email?: string }) =>
+  createLead: (companyId: string, data: { firma: string; bolge?: string; kategori?: string; telefon?: string; website?: string; email?: string; firsatTutari?: number }) =>
     req('/leads', { method: 'POST', body: JSON.stringify({ companyId, ...data }) }),
-  updateLead: (id: string, data: { durum?: string; notlar?: string; tekrarTarihi?: string; website?: string; email?: string; atananKullaniciId?: string; atananNot?: string }) =>
+  updateLead: (id: string, data: { durum?: string; notlar?: string; tekrarTarihi?: string; website?: string; email?: string; atananKullaniciId?: string; atananNot?: string; firsatTutari?: number; siraNo?: number }) =>
     req(`/leads/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  reorderLeads: (items: { id: string; durum: string; siraNo: number }[]) =>
+    req('/leads/reorder', { method: 'PATCH', body: JSON.stringify({ items }) }),
   deleteLead: (id: string) => req(`/leads/${id}`, { method: 'DELETE' }),
+  // Reklam İstihbaratı (rakip reklam takibi / ad-spy)
+  listAdRecords: (companyId: string): Promise<AdRecordT[]> => req(`/ads-intel/records/${companyId}`),
+  createAdRecord: (data: { companyId: string; reklamveren: string; baslik?: string; mecra?: string; gorselUrl?: string; ilkGorulmeTarihi?: string; sonGorulmeTarihi?: string; durum?: string; notlar?: string }): Promise<AdRecordT> =>
+    req('/ads-intel/records', { method: 'POST', body: JSON.stringify(data) }),
+  importAdRecords: (companyId: string, items: any[]): Promise<{ created: number }> =>
+    req('/ads-intel/records/import', { method: 'POST', body: JSON.stringify({ companyId, items }) }),
+  updateAdRecord: (id: string, data: Partial<{ reklamveren: string; baslik: string; mecra: string; gorselUrl: string; ilkGorulmeTarihi: string; sonGorulmeTarihi: string; durum: string; favori: boolean; notlar: string }>): Promise<AdRecordT> =>
+    req(`/ads-intel/records/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteAdRecord: (id: string) => req(`/ads-intel/records/${id}`, { method: 'DELETE' }),
+  listAdWatchlist: (companyId: string): Promise<AdWatchItemT[]> => req(`/ads-intel/watchlist/${companyId}`),
+  createAdWatchlistItem: (companyId: string, terim: string): Promise<AdWatchItemT> =>
+    req('/ads-intel/watchlist', { method: 'POST', body: JSON.stringify({ companyId, terim }) }),
+  deleteAdWatchlistItem: (id: string) => req(`/ads-intel/watchlist/${id}`, { method: 'DELETE' }),
   setLeadDailyCount: (companyId: string, dailyCount: number) =>
     req(`/company/${companyId}/lead-daily-count`, { method: 'PATCH', body: JSON.stringify({ dailyCount }) }),
   createLeadSearchRequest: (companyId: string, sektor: string, bolge: string, aciklama: string) =>
@@ -449,6 +464,7 @@ export type UserT = {
   currency: string;
   tax_label: string;
   language?: 'tr' | 'en' | 'it';
+  theme?: 'light' | 'dark';
   onboarding_completed: boolean;
   is_staff?: boolean;
   staff_role?: string | null;
@@ -593,6 +609,8 @@ export type LeadCompanyT = {
   durum: string;
   notlar: string;
   tekrarTarihi: string;
+  firsatTutari: number;
+  siraNo: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -605,6 +623,32 @@ export type LeadSearchRequestT = {
   bolge: string;
   aciklama: string;
   durum: string;
+  createdAt: string;
+};
+
+export type AdRecordT = {
+  id: string;
+  companyId: string;
+  reklamveren: string;
+  baslik: string;
+  mecra: string;
+  gorselUrl: string;
+  ilkGorulmeTarihi: string;
+  sonGorulmeTarihi: string;
+  durum: 'Aktif' | 'Pasif';
+  favori: boolean;
+  notlar: string;
+  yayinGunSayisi: number;
+  kazanmaSkoru: number;
+  kazanmaSinyali: 'Çok Güçlü' | 'Güçlü' | 'Test Edilebilir' | 'Zayıf';
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdWatchItemT = {
+  id: string;
+  companyId: string;
+  terim: string;
   createdAt: string;
 };
 

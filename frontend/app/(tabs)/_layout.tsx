@@ -228,6 +228,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="albert-genau-kalemler" options={{ href: null }} />
       <Tabs.Screen name="lead-admin" options={{ href: null }} />
       <Tabs.Screen name="leads" options={{ href: null }} />
+      <Tabs.Screen name="ads-intel" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="customer-ledger" options={{ href: null }} />
       <Tabs.Screen name="borclu-musteriler" options={{ href: null }} />

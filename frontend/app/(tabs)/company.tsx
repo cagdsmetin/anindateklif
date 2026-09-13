@@ -20,6 +20,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage, LANGUAGES } from '@/src/lib/i18n';
+import { useAppTheme } from '@/src/lib/theme-context';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
 
@@ -268,6 +269,11 @@ export default function CompanyScreen() {
           <SectionHeader title={t('firma.appLanguage')} />
           <LanguageSwitcher />
 
+          {/* Görünüm — açık/koyu tema. Dil ile aynı desen: seçim backend'e
+              (User.theme) kaydedilir, tüm cihazlarda aynı temada açılır. */}
+          <SectionHeader title="Görünüm" />
+          <ThemeSwitcher />
+
           {/* Hesabım — e-posta + telefon doğrulama */}
           <SectionHeader title={t('firma.myAccount')} />
           {user?.email_verified === false && (
@@ -385,6 +391,49 @@ export default function CompanyScreen() {
 }
 
 function SectionHeader({ title }: { title: string }) { return <Text style={s.sectionH}>{title}</Text>; }
+
+function ThemeSwitcher() {
+  const { mode, setMode } = useAppTheme();
+  const { showToast } = useApp();
+  const OPTIONS: { code: 'light' | 'dark'; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { code: 'light', label: 'Açık', icon: 'sunny-outline' },
+    { code: 'dark', label: 'Koyu', icon: 'moon-outline' },
+  ];
+  return (
+    <View style={{ marginBottom: 10 }}>
+      <Text style={{ fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 10 }}>
+        Uygulamanın açık veya koyu renk temasıyla açılmasını seçin. Tercih hesabınıza kaydedilir, tüm cihazlarda aynı temada açılır.
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {OPTIONS.map((o) => {
+          const active = o.code === mode;
+          return (
+            <TouchableOpacity
+              key={o.code}
+              onPress={async () => { await setMode(o.code); showToast('Tema değiştirildi'); }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingVertical: 10,
+                borderRadius: 10,
+                borderWidth: 1.5,
+                borderColor: active ? theme.colors.primary : theme.colors.line,
+                backgroundColor: active ? theme.colors.primary + '12' : theme.colors.surface,
+              }}
+              testID={`theme-${o.code}`}
+            >
+              <Ionicons name={o.icon} size={16} color={active ? theme.colors.primary : theme.colors.textMuted} />
+              <Text style={{ fontSize: 12.5, fontWeight: active ? '900' : '600', color: active ? theme.colors.primary : theme.colors.text }}>{o.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 function LanguageSwitcher() {
   const { lang, setLang, t } = useLanguage();

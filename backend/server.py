@@ -1240,6 +1240,11 @@ class Company(BaseModel):
     hazirlayanEmails: List[str] = Field(default_factory=list)
     sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
     leadDailyCount: int = 10  # Firma Arama Takibi: günde kaç firma "Bugün Aranacaklar" listesine düşsün
+    # Albert Genau modülü SADECE gerçekten Albert Genau bayisi olan firmalarda
+    # görünsün diye (bkz. /admin/companies/{id}/albert-genau-enabled) --
+    # varsayılan kapalı, sadece platform admini açar. CompanyCreate/Update
+    # modelinde YOK bilerek: firma sahibi kendi kendine açamaz.
+    albertGenauEnabled: bool = False
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -1720,6 +1725,15 @@ async def _own_company(user: Dict[str, Any], company_id: str):
     if user.get("is_staff") and staff_company and staff_company != company_id:
         raise HTTPException(status_code=403, detail="Bu firmaya erişim izniniz yok")
     return doc
+
+
+def _require_albert_genau_enabled(company_doc: Optional[Dict[str, Any]]):
+    # Albert Genau modulu, admin bu firma icin acmadikca (bkz.
+    # PATCH /admin/companies/{id}/albert-genau-enabled) kullanilamaz --
+    # ownership dogrulamasi (_own_company) tek basina yeterli degil, cunku
+    # o sadece "bu firma senin" der, "bu firma Albert Genau bayisi" demez.
+    if not company_doc or not company_doc.get("albertGenauEnabled"):
+        raise HTTPException(status_code=403, detail="Bu firma icin Albert Genau modulu aktif degil")
 
 
 # ============ COMPANY ROUTES ============
@@ -2481,7 +2495,8 @@ async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_c
     # karsilastirip tam denk gelmiyorsa alt/ust secim kutusunu HEMEN gösterebilsin
     # (bkz. PriceBook.depth_choice ile ayni mantik, istemci tarafinda tekrarlanir).
     if companyId:
-        await _own_company(user, companyId)
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(companyId)
     base = price_data or ag_calc._DEFAULT_DATA
     depth_values = sorted({float(v) for v in base["depth_table"].values()})
@@ -2529,7 +2544,8 @@ def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Option
 @api_router.post("/albert-genau/calculate")
 async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
     if payload.companyId:
-        await _own_company(user, payload.companyId)
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(payload.companyId)
     return _run_ag_calculate(payload, price_data)
 
@@ -2537,7 +2553,8 @@ async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depe
 @api_router.post("/albert-genau/calculate/export-excel")
 async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=Depends(get_current_user)):
     if payload.companyId:
-        await _own_company(user, payload.companyId)
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
 
@@ -2641,7 +2658,8 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     Gercek CAD cizimi degil, dealer'a ve musteriye kac modul/kanat oldugunu
     gosteren bir semadir."""
     if payload.companyId:
-        await _own_company(user, payload.companyId)
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
     price_data = await _get_ag_price_data(payload.companyId)
     result = _run_ag_calculate(payload, price_data)
     girdi = result["girdi"]
@@ -2863,7 +2881,8 @@ async def albert_genau_price_list_upload(payload: Dict[str, str], user=Depends(g
 @api_router.get("/albert-genau/company-price-list/status")
 async def albert_genau_company_price_list_status(companyId: str, user=Depends(get_current_user)):
     _require_owner(user)
-    await _own_company(user, companyId)
+    company_doc = await _own_company(user, companyId)
+    _require_albert_genau_enabled(company_doc)
     doc = await db.albert_genau_config.find_one({"companyId": companyId}, {"_id": 0})
     if not doc:
         default_doc = await db.albert_genau_config.find_one({"id": "default"}, {"_id": 0})
@@ -2888,7 +2907,8 @@ async def albert_genau_company_price_list_upload(payload: Dict[str, str], user=D
     company_id = (payload or {}).get("companyId", "")
     if not company_id:
         raise HTTPException(status_code=422, detail="companyId zorunlu")
-    await _own_company(user, company_id)
+    company_doc = await _own_company(user, company_id)
+    _require_albert_genau_enabled(company_doc)
     b64 = (payload or {}).get("fileBase64", "")
     if not b64 or "," not in b64:
         raise HTTPException(status_code=422, detail="Geçersiz dosya verisi")
@@ -4982,6 +5002,8 @@ class AdminCustomerOut(BaseModel):
     name: str = ""
     phone: str = ""
     company_name: str = ""
+    company_id: Optional[str] = None
+    albert_genau_enabled: bool = False
     created_at: Optional[str] = None
     subscription_active: bool = False
 
@@ -5007,17 +5029,40 @@ async def admin_list_customers(user=Depends(get_current_user)):
         email = (d.get("email") or "").strip().lower()
         if email in ADMIN_EMAILS:
             continue
-        company = await db.companies.find_one({"userId": d["user_id"]}, {"_id": 0, "sirketAdi": 1})
+        company = await db.companies.find_one(
+            {"userId": d["user_id"]}, {"_id": 0, "id": 1, "sirketAdi": 1, "albertGenauEnabled": 1}
+        )
         out.append(AdminCustomerOut(
             user_id=d["user_id"],
             email=d.get("email", ""),
             name=d.get("name", ""),
             phone=d.get("phone", ""),
             company_name=(company or {}).get("sirketAdi", ""),
+            company_id=(company or {}).get("id"),
+            albert_genau_enabled=bool((company or {}).get("albertGenauEnabled", False)),
             created_at=d.get("createdAt"),
             subscription_active=_is_subscription_active(d),
         ))
     return out
+
+
+class AlbertGenauEnabledRequest(BaseModel):
+    enabled: bool
+
+
+@api_router.patch("/admin/companies/{company_id}/albert-genau-enabled")
+async def admin_set_albert_genau_enabled(company_id: str, payload: AlbertGenauEnabledRequest, user=Depends(get_current_user)):
+    # Albert Genau modülünün hangi firmalarda görüneceğini SADECE platform
+    # admini belirler -- firma sahibi kendi kendine açamaz (bkz. Company.albertGenauEnabled).
+    _require_admin(user)
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0, "id": 1})
+    if not company:
+        raise HTTPException(status_code=404, detail="Firma bulunamadı")
+    await db.companies.update_one(
+        {"id": company_id},
+        {"$set": {"albertGenauEnabled": bool(payload.enabled), "updatedAt": utc_now_iso()}},
+    )
+    return {"ok": True, "companyId": company_id, "albertGenauEnabled": bool(payload.enabled)}
 
 
 @api_router.post("/admin/impersonate/{target_user_id}", response_model=ImpersonateResponse)

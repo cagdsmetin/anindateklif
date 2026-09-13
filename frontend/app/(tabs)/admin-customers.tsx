@@ -5,6 +5,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -37,6 +38,7 @@ export default function AdminCustomersScreen() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState('');
+  const [agBusyId, setAgBusyId] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +84,21 @@ export default function AdminCustomersScreen() {
       setError(msg);
     } finally {
       setBusyId('');
+    }
+  };
+
+  const onToggleAlbertGenau = async (c: AdminCustomerT, next: boolean) => {
+    if (!c.company_id || agBusyId) return;
+    setAgBusyId(c.user_id);
+    // İyimser güncelle -- yanlışsa aşağıda geri alınır.
+    setCustomers((prev) => prev.map((x) => (x.user_id === c.user_id ? { ...x, albert_genau_enabled: next } : x)));
+    try {
+      await api.adminSetAlbertGenauEnabled(c.company_id, next);
+    } catch {
+      setCustomers((prev) => prev.map((x) => (x.user_id === c.user_id ? { ...x, albert_genau_enabled: !next } : x)));
+      setError('Albert Genau ayarı güncellenemedi.');
+    } finally {
+      setAgBusyId('');
     }
   };
 
@@ -167,6 +184,18 @@ export default function AdminCustomersScreen() {
                     </View>
                     {c.created_at ? <Text style={s.rowDate}>{fmtDate(c.created_at)}</Text> : null}
                   </View>
+                  {c.company_id ? (
+                    <View style={s.agRow}>
+                      <Text style={s.agLabel}>Albert Genau bayisi</Text>
+                      <Switch
+                        value={!!c.albert_genau_enabled}
+                        onValueChange={(v) => onToggleAlbertGenau(c, v)}
+                        disabled={agBusyId === c.user_id}
+                        trackColor={{ false: '#E2E8F0', true: theme.colors.primary }}
+                        thumbColor="#fff"
+                      />
+                    </View>
+                  ) : null}
                 </View>
                 <TouchableOpacity
                   style={[s.enterBtn, busyId === c.user_id && { opacity: 0.6 }]}
@@ -241,6 +270,8 @@ const s = StyleSheet.create({
   rowTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text },
   rowMeta: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   rowDate: { fontSize: 10.5, color: theme.colors.textMuted },
+  agRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  agLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   badgeActive: { backgroundColor: theme.colors.greenSoft },
   badgeInactive: { backgroundColor: '#F1F5F9' },

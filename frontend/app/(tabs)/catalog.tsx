@@ -617,17 +617,21 @@ export default function CatalogScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Albert Genau — genel katalog/yapılandırıcıdan tamamen ayrı, ölçüye
-            göre otomatik fiyat hesaplayan özel bölüm. */}
-        <TouchableOpacity style={s.agCard} onPress={() => router.push('/albert-genau')} testID="open-albert-genau" activeOpacity={0.9}>
-          <View style={s.agIcon}>
-            <Ionicons name="calculator" size={22} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.agTitle}>Albert Genau Fiyat Hesaplama</Text>
-            <Text style={s.agDesc}>Ölçüleri girin, malzeme + fiyat otomatik hesaplansın</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.navy} />
-        </TouchableOpacity>
+            göre otomatik fiyat hesaplayan özel bölüm. Sadece admin bu firma
+            için açtıysa görünür (bkz. Company.albertGenauEnabled) -- başka
+            marka bayileri bu kartı hiç görmez. */}
+        {!!activeCompany?.albertGenauEnabled && (
+          <TouchableOpacity style={s.agCard} onPress={() => router.push('/albert-genau')} testID="open-albert-genau" activeOpacity={0.9}>
+            <View style={s.agIcon}>
+              <Ionicons name="calculator" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.agTitle}>Albert Genau Fiyat Hesaplama</Text>
+              <Text style={s.agDesc}>Ölçüleri girin, malzeme + fiyat otomatik hesaplansın</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.navy} />
+          </TouchableOpacity>
+        )}
 
         {/* System Configurator — the star of the show */}
         <Text style={s.sectionH}>{t('catalog.s026')}</Text>

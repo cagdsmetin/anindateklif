@@ -209,6 +209,10 @@ export const api = {
   impersonateCustomer: (userId: string): Promise<{ access_token: string; user: UserT; company_name: string }> =>
     req(`/admin/impersonate/${userId}`, { method: 'POST' }),
   endImpersonation: () => req('/admin/impersonate/end', { method: 'POST' }),
+  // Albert Genau modülünün hangi firmalarda görüneceğini SADECE admin
+  // belirler -- firma sahibi kendi kendine açamaz.
+  adminSetAlbertGenauEnabled: (companyId: string, enabled: boolean): Promise<{ ok: boolean; albertGenauEnabled: boolean }> =>
+    req(`/admin/companies/${companyId}/albert-genau-enabled`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
 
   // Companies
   listCompanies: () => req('/companies'),
@@ -453,6 +457,8 @@ export type AdminCustomerT = {
   name: string;
   phone: string;
   company_name: string;
+  company_id?: string | null;
+  albert_genau_enabled?: boolean;
   created_at?: string | null;
   subscription_active: boolean;
 };
@@ -555,6 +561,10 @@ export type CompanyT = {
   hazirlayanEmails: string[];
   sistemTipleri: SystemTypeDefT[];
   leadDailyCount: number;
+  // Albert Genau modülü SADECE admin bu firma için açtıysa true olur
+  // (bkz. PATCH /admin/companies/{id}/albert-genau-enabled) -- firma
+  // sahibi kendi kendine açamaz.
+  albertGenauEnabled?: boolean;
 };
 
 export type LeadCompanyT = {

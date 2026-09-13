@@ -237,6 +237,20 @@ export default function AlbertGenauScreen() {
           }
         } catch {}
       }
+      if (e?.status === 403 && e?.body) {
+        try {
+          const parsed = JSON.parse(e.body);
+          const info = parsed?.detail;
+          if (info?.code === 'price_list_required') {
+            // Firma kendi fiyat listesini henüz yüklemedi -- Fiyat Listesi
+            // kartını açıp kullanıcıyı doğrudan oraya yönlendiriyoruz.
+            setPriceListOpen(true);
+            setError(info.message || 'Hesaplama yapabilmek için önce fiyat listenizi yükleyin.');
+            setBusy(false);
+            return;
+          }
+        } catch {}
+      }
       setError(e?.message || 'Hesaplanamadı');
     } finally {
       setBusy(false);
@@ -418,8 +432,10 @@ export default function AlbertGenauScreen() {
                 </TouchableOpacity>
                 {priceListOpen && (
                   <View style={{ marginTop: 10 }}>
-                    <Text style={s.priceListSource}>
-                      {priceListStatus?.exists ? 'Kendi yüklediğiniz Excel kullanılıyor' : 'Henüz kendi listenizi yüklemediniz — ortak/varsayılan liste kullanılıyor'}
+                    <Text style={[s.priceListSource, !priceListStatus?.exists && s.priceListSourceWarn]}>
+                      {priceListStatus?.exists
+                        ? 'Kendi yüklediğiniz Excel kullanılıyor'
+                        : 'Henüz yüklenmedi — Excel dosyanızı yüklemeden hesaplama yapamazsınız'}
                     </Text>
                     {priceListStatus?.updatedAt ? (
                       <Text style={s.priceListMeta}>Son güncelleme: {new Date(priceListStatus.updatedAt).toLocaleString('tr-TR')}</Text>
@@ -786,6 +802,7 @@ const s = StyleSheet.create({
   priceListToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   priceListToggleText: { flex: 1, fontSize: 13, fontWeight: '800', color: theme.colors.text },
   priceListSource: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700', marginBottom: 4 },
+  priceListSourceWarn: { color: theme.colors.red },
   priceListMeta: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8 },
   priceListHint: { fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16, marginBottom: 12 },
   priceListUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, paddingVertical: 12 },

@@ -1328,6 +1328,9 @@ const tr: Dict = {
     s048: 'Örn: Ölçü, Cam Kalınlığı, Motor Çeşidi',
     s049: 'Kurulumu tamamladığında ilk teklifini oluşturmaya hazır olacaksın!',
     s050: 'İleri',
+    s051: 'Albert Genau bayisi misiniz?',
+    s052: 'Bunu işaretlemek hesaplama aracına otomatik erişim sağlamaz — sadece bilgi amaçlıdır. Albert Genau bayisiyseniz işaretleyin, ekibimiz sizinle iletişime geçip erişimi açacaktır.',
+    s053: 'Evet, Albert Genau bayisiyim',
   },
 };
 
@@ -2548,6 +2551,9 @@ const en: Dict = {
     s048: 'e.g., Measurement, Glass Thickness, Motor Type',
     s049: "Once you finish setup, you'll be ready to create your first quote!",
     s050: 'Next',
+    s051: 'Are you an Albert Genau dealer?',
+    s052: "Checking this doesn't automatically grant access to the calculation tool — it's for information only. If you're an Albert Genau dealer, check this box and our team will get in touch to enable access.",
+    s053: "Yes, I'm an Albert Genau dealer",
   },
 };
 
@@ -3768,6 +3774,9 @@ const it: Dict = {
     s048: 'Es: Misura, Spessore del Vetro, Tipo di Motore',
     s049: 'Al termine della configurazione sarai pronto a creare il tuo primo preventivo!',
     s050: 'Avanti',
+    s051: 'Sei un rivenditore Albert Genau?',
+    s052: "Selezionare questa opzione non concede automaticamente l'accesso allo strumento di calcolo — è solo a scopo informativo. Se sei un rivenditore Albert Genau, selezionalo e il nostro team ti contatterà per attivare l'accesso.",
+    s053: 'Sì, sono un rivenditore Albert Genau',
   },
 };
 

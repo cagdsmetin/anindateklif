@@ -459,6 +459,9 @@ export type AdminCustomerT = {
   company_name: string;
   company_id?: string | null;
   albert_genau_enabled?: boolean;
+  // Firma sahibinin kendi beyanı ("Albert Genau bayisiyim") -- sadece admin'e
+  // bilgi verir, erişimi tek başına açmaz (bkz. albert_genau_enabled).
+  albert_genau_claimed?: boolean;
   created_at?: string | null;
   subscription_active: boolean;
 };
@@ -565,6 +568,9 @@ export type CompanyT = {
   // (bkz. PATCH /admin/companies/{id}/albert-genau-enabled) -- firma
   // sahibi kendi kendine açamaz.
   albertGenauEnabled?: boolean;
+  // Firma sahibinin kendi beyanı ("Albert Genau bayisiyim") -- kayıt
+  // sırasında veya sonradan kendisi değiştirebilir, erişim açmaz.
+  albertGenauClaimed?: boolean;
 };
 
 export type LeadCompanyT = {

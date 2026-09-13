@@ -1245,6 +1245,11 @@ class Company(BaseModel):
     # varsayılan kapalı, sadece platform admini açar. CompanyCreate/Update
     # modelinde YOK bilerek: firma sahibi kendi kendine açamaz.
     albertGenauEnabled: bool = False
+    # Firma sahibinin kendi beyanı: "Albert Genau bayisiyim" -- admin'e bilgi
+    # vermek icindir, TEK BASINA erisim ACMAZ (albertGenauEnabled hala admin
+    # tarafindan ayrica acilmali). Bu yuzden bilerek CompanyCreate'de de var --
+    # albertGenauEnabled'in aksine firma sahibi bunu ozgurce degistirebilir.
+    albertGenauClaimed: bool = False
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -1264,6 +1269,7 @@ class CompanyCreate(BaseModel):
     banklar: List[BankAccount] = Field(default_factory=list)
     hazirlayanEmails: List[str] = Field(default_factory=list)
     sistemTipleri: List[SystemTypeDef] = Field(default_factory=list)
+    albertGenauClaimed: bool = False
 
     @field_validator("logoBase64")
     @classmethod
@@ -2488,6 +2494,22 @@ async def _get_ag_price_data(company_id: Optional[str] = None) -> Optional[Dict[
     return None  # None -> ag_calc kendi paketindeki varsayilani kullanir
 
 
+async def _require_company_ag_price_list(company_id: str) -> Dict[str, Any]:
+    # Admin bir firma icin Albert Genau'yu actiktan (albertGenauEnabled) sonra
+    # bile, o firma GERCEKTEN HESAPLAMA yapabilmek icin kendi fiyat listesi
+    # Excel'ini kendi hesabindan yuklemis olmali -- ortak/varsayilan listeye
+    # sessizce dusup calismasina izin VERMIYORUZ: admin'in dagitmadigi bir
+    # bayi, sirf modul acildi diye baskasinin fiyat listesiyle hesap
+    # yapamasin diye. (bkz. /albert-genau/company-price-list/upload)
+    doc = await db.albert_genau_config.find_one({"companyId": company_id}, {"_id": 0})
+    if not doc or not doc.get("price_list"):
+        raise HTTPException(status_code=403, detail={
+            "code": "price_list_required",
+            "message": "Hesaplama yapabilmek için önce kendi Albert Genau fiyat listenizi (Excel) yüklemeniz gerekiyor.",
+        })
+    return doc
+
+
 @api_router.get("/albert-genau/types")
 async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
     # depthValuesMm: standart panel-adimli derinlik tablosunun tüm degerleri --
@@ -2546,7 +2568,9 @@ async def albert_genau_calculate(payload: AlbertGenauCalculateRequest, user=Depe
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-    price_data = await _get_ag_price_data(payload.companyId)
+        price_data = await _require_company_ag_price_list(payload.companyId)
+    else:
+        price_data = await _get_ag_price_data(None)
     return _run_ag_calculate(payload, price_data)
 
 
@@ -2555,7 +2579,9 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-    price_data = await _get_ag_price_data(payload.companyId)
+        price_data = await _require_company_ag_price_list(payload.companyId)
+    else:
+        price_data = await _get_ag_price_data(None)
     result = _run_ag_calculate(payload, price_data)
 
     from openpyxl import Workbook
@@ -2660,7 +2686,9 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-    price_data = await _get_ag_price_data(payload.companyId)
+        price_data = await _require_company_ag_price_list(payload.companyId)
+    else:
+        price_data = await _get_ag_price_data(None)
     result = _run_ag_calculate(payload, price_data)
     girdi = result["girdi"]
 
@@ -2890,7 +2918,7 @@ async def albert_genau_company_price_list_status(companyId: str, user=Depends(ge
         return {
             "exists": False,
             "skuCount": len(base.get("price_list", {})),
-            "source": "ortak/varsayılan liste (henüz kendi listenizi yüklemediniz)",
+            "source": "henüz yüklenmedi — Excel dosyanızı yüklemeden hesaplama yapamazsınız",
         }
     return {
         "exists": True,
@@ -5004,6 +5032,7 @@ class AdminCustomerOut(BaseModel):
     company_name: str = ""
     company_id: Optional[str] = None
     albert_genau_enabled: bool = False
+    albert_genau_claimed: bool = False
     created_at: Optional[str] = None
     subscription_active: bool = False
 
@@ -5030,7 +5059,8 @@ async def admin_list_customers(user=Depends(get_current_user)):
         if email in ADMIN_EMAILS:
             continue
         company = await db.companies.find_one(
-            {"userId": d["user_id"]}, {"_id": 0, "id": 1, "sirketAdi": 1, "albertGenauEnabled": 1}
+            {"userId": d["user_id"]},
+            {"_id": 0, "id": 1, "sirketAdi": 1, "albertGenauEnabled": 1, "albertGenauClaimed": 1},
         )
         out.append(AdminCustomerOut(
             user_id=d["user_id"],
@@ -5040,6 +5070,7 @@ async def admin_list_customers(user=Depends(get_current_user)):
             company_name=(company or {}).get("sirketAdi", ""),
             company_id=(company or {}).get("id"),
             albert_genau_enabled=bool((company or {}).get("albertGenauEnabled", False)),
+            albert_genau_claimed=bool((company or {}).get("albertGenauClaimed", False)),
             created_at=d.get("createdAt"),
             subscription_active=_is_subscription_active(d),
         ))

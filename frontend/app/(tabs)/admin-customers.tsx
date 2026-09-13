@@ -194,6 +194,12 @@ export default function AdminCustomersScreen() {
                         trackColor={{ false: '#E2E8F0', true: theme.colors.primary }}
                         thumbColor="#fff"
                       />
+                      {c.albert_genau_claimed ? (
+                        <View style={s.claimBadge}>
+                          <Ionicons name="flag" size={10} color="#92400E" />
+                          <Text style={s.claimBadgeText}>Bayilik belirtti</Text>
+                        </View>
+                      ) : null}
                     </View>
                   ) : null}
                 </View>
@@ -270,8 +276,13 @@ const s = StyleSheet.create({
   rowTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text },
   rowMeta: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   rowDate: { fontSize: 10.5, color: theme.colors.textMuted },
-  agRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  agRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' },
   agLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
+  claimBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FEF3C7', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  claimBadgeText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
   badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   badgeActive: { backgroundColor: theme.colors.greenSoft },
   badgeInactive: { backgroundColor: '#F1F5F9' },

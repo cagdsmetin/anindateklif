@@ -46,6 +46,7 @@ export default function SetupWizard() {
   // Step 2 – business identity
   const [sirketAdi, setSirketAdi] = useState('');
   const [imzaMetni, setImzaMetni] = useState(user?.name || '');
+  const [albertGenauClaimed, setAlbertGenauClaimed] = useState(false);
   // Step 3 – logo
   const [logoBase64, setLogoBase64] = useState('');
   // Step 4 – contact
@@ -120,6 +121,7 @@ export default function SetupWizard() {
         banklar: cleanBanks,
         hazirlayanEmails: user?.email ? [user.email] : [],
         sistemTipleri,
+        albertGenauClaimed,
       });
 
       // 3) Mark onboarding complete → route guard sends to tabs
@@ -241,6 +243,20 @@ export default function SetupWizard() {
                   testID="setup-signature"
                 />
               </Field>
+              <TouchableOpacity
+                style={s.checkRow}
+                onPress={() => setAlbertGenauClaimed(!albertGenauClaimed)}
+                activeOpacity={0.8}
+                testID="setup-albert-genau-claim"
+              >
+                <View style={[s.checkbox, albertGenauClaimed && s.checkboxOn]}>
+                  {albertGenauClaimed ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.checkTitle}>{t('wizard.s051')}</Text>
+                  <Text style={s.checkHint}>{t('wizard.s052')}</Text>
+                </View>
+              </TouchableOpacity>
             </StepShell>
           )}
 
@@ -453,6 +469,19 @@ const s = StyleSheet.create({
     ...Platform.select({ web: { outlineWidth: 0 } as any }),
   },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
+  checkRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: authTheme.card, borderColor: authTheme.cardBorder, borderWidth: 1,
+    borderRadius: authRadius.lg, paddingHorizontal: 14, paddingVertical: 14, marginTop: 4,
+  },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, marginTop: 1,
+    borderWidth: 1.5, borderColor: authTheme.cardBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: authTheme.primary, borderColor: authTheme.primary },
+  checkTitle: { color: authTheme.text, fontSize: 14, fontWeight: '800' },
+  checkHint: { color: authTheme.textMuted, fontSize: 11.5, marginTop: 3, lineHeight: 16 },
   row: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: authTheme.card, borderColor: authTheme.cardBorder, borderWidth: 1,

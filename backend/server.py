@@ -3245,6 +3245,19 @@ async def _get_ag_price_data(company_id: Optional[str] = None) -> Optional[Dict[
     return None  # None -> ag_calc kendi paketindeki varsayilani kullanir
 
 
+async def _get_yedek_parca_data() -> Optional[Dict[str, Any]]:
+    # YEDEK PARÇA, digger urun ailelerinden farkli olarak KENDI ayri
+    # kataloguna sahip (bkz. albert_genau_calc.py modul-ustu notu -- B8505102
+    # SKU'sunun ana price_list'te ve bu katalogda FARKLI fiyatlarda olmasi
+    # yuzunden bilerek birlestirilmedi). Bu yuzden firma-bazli override YOK --
+    # tek bir merkezi ("default") katalog var, admin yukleyince tum bayilere
+    # aninda yansir (bkz. /albert-genau/yedek-parca/admin-upload).
+    doc = await db.yedek_parca_config.find_one({"id": "default"}, {"_id": 0})
+    if doc and doc.get("items"):
+        return doc
+    return None  # None -> ag_calc paket-ici varsayilan (yedek_parca.json) kullanir
+
+
 @api_router.get("/albert-genau/types")
 async def albert_genau_types(companyId: Optional[str] = None, user=Depends(get_current_user)):
     # depthValuesMm: standart panel-adimli derinlik tablosunun tüm degerleri --
@@ -3562,16 +3575,21 @@ class AlbertGenauYedekParcaCalculateRequest(BaseModel):
 
 @api_router.get("/albert-genau/yedek-parca/items")
 async def albert_genau_yedek_parca_items(companyId: Optional[str] = None, user=Depends(get_current_user)):
-    # Katalog sabit (firma-bazli fiyat listesi override'indan etkilenmez --
-    # bkz. albert_genau_calc.py modul-ustu notu), o yuzden companyId burada
-    # sadece albertGenauEnabled kontrolu icin kullanilir.
+    # Katalog firma-bazli fiyat listesi override'indan etkilenmez (bkz.
+    # albert_genau_calc.py modul-ustu notu) -- ama admin'in Mongo'ya
+    # yukledigi TEK merkezi katalog varsa (bkz. _get_yedek_parca_data) o
+    # kullanilir, yoksa paket-ici varsayilana (yedek_parca.json) dusulur.
+    # companyId burada sadece albertGenauEnabled kontrolu icin kullanilir.
     if companyId:
         company_doc = await _own_company(user, companyId)
         _require_albert_genau_enabled(company_doc)
+    catalog = await _get_yedek_parca_data()
+    if catalog:
+        return {"items": catalog["items"], "groups": catalog["groups"]}
     return {"items": ag_calc.YEDEK_PARCA_ITEMS, "groups": ag_calc.YEDEK_PARCA_GROUPS}
 
 
-def _run_ag_yedek_parca_calculate(payload: "AlbertGenauYedekParcaCalculateRequest"):
+def _run_ag_yedek_parca_calculate(payload: "AlbertGenauYedekParcaCalculateRequest", catalog_data: Optional[Dict[str, Any]]):
     try:
         return ag_calc.calculate_yedek_parca(
             quantities=payload.quantities,
@@ -3579,6 +3597,7 @@ def _run_ag_yedek_parca_calculate(payload: "AlbertGenauYedekParcaCalculateReques
             montaj_bedeli=payload.montajBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
+            catalog_data=catalog_data,
         )
     except (ValueError, KeyError) as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -3589,7 +3608,8 @@ async def albert_genau_yedek_parca_calculate(payload: AlbertGenauYedekParcaCalcu
     if payload.companyId:
         company_doc = await _own_company(user, payload.companyId)
         _require_albert_genau_enabled(company_doc)
-    return _run_ag_yedek_parca_calculate(payload)
+    catalog_data = await _get_yedek_parca_data()
+    return _run_ag_yedek_parca_calculate(payload, catalog_data)
 
 
 @api_router.get("/albert-genau/parts-list-items")
@@ -3987,6 +4007,58 @@ def _parse_ag_price_excel(file_bytes: bytes) -> Dict[str, Any]:
     return price_list
 
 
+def _parse_yedek_parca_excel(file_bytes: bytes) -> Dict[str, Any]:
+    """"YEDEK PARÇA" sayfasindaki dagitik parca katalogunu okur (bkz.
+    backend/data/yedek_parca.json'un asil kaynagi). Sutunlar: A=grup adi
+    (seyrek -- sadece bir grubun ilk satirinda dolu), B=SKU, C=aciklama,
+    D=birim, E=fiyat. Veri 4. satirdan baslar. Ayni SKU birden fazla kez
+    gecerse (kaynak Excel'de bilinen bir veri kalitesi sorunu) SON gecen
+    deger kazanir ama sozlukteki KONUMU ilk-gorulme sirasinda kalir (Python
+    dict overwrite semantigi) -- bu, ilk entegrasyondaki dedup kuraliyla
+    birebir aynidir."""
+    try:
+        wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Excel dosyasi okunamadi: {e}")
+    sheet_name = "YEDEK PARÇA" if "YEDEK PARÇA" in wb.sheetnames else None
+    if not sheet_name:
+        for name in wb.sheetnames:
+            if "YEDEK" in name.upper() and "PAR" in name.upper():
+                sheet_name = name
+                break
+    if not sheet_name:
+        raise HTTPException(status_code=422, detail="Bu dosyada 'YEDEK PARÇA' sayfasi bulunamadi")
+    ws = wb[sheet_name]
+    dedup: Dict[str, Dict[str, Any]] = {}
+    current_group = ""
+    for row in range(4, ws.max_row + 2):
+        group_cell = ws.cell(row=row, column=1).value
+        sku = ws.cell(row=row, column=2).value
+        name = ws.cell(row=row, column=3).value
+        unit = ws.cell(row=row, column=4).value
+        price = ws.cell(row=row, column=5).value
+        if group_cell and str(group_cell).strip():
+            current_group = str(group_cell).strip()
+        if not sku or not isinstance(sku, str) or name is None or price is None:
+            continue
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            continue
+        dedup[sku.strip()] = {
+            "sku": sku.strip(),
+            "name": str(name).strip(),
+            "unit": str(unit).strip() if unit else "",
+            "price": price,
+            "group": current_group or "GENEL",
+        }
+    items = list(dedup.values())
+    if len(items) < 20:
+        raise HTTPException(status_code=422, detail="Yedek parça listesinde beklenenden az kalem bulundu, dosyayi kontrol edin")
+    groups = list(dict.fromkeys(it["group"] for it in items))
+    return {"items": items, "groups": groups}
+
+
 @api_router.get("/albert-genau/price-list/status")
 async def albert_genau_price_list_status(user=Depends(get_current_user)):
     _require_admin(user)
@@ -4025,6 +4097,46 @@ async def albert_genau_price_list_upload(payload: Dict[str, str], user=Depends(g
     }
     await db.albert_genau_config.replace_one({"id": "default"}, updated_doc, upsert=True)
     return {"ok": True, "skuCount": len(new_price_list)}
+
+
+# --- Yedek Parça kataloğu (admin-only, TEK merkezi kayıt) -----------------
+# Yukarıdaki price-list/* ana Excel'i (BIOFLEX/AIRFLEX/VERTIFLEX/KIŞ BAHÇESİ/
+# BC'nin HEPSİNİN kullandığı ortak SKU->fiyat listesi) günceller. YEDEK PARÇA
+# ise kasıtlı olarak AYRI bir katalogdur (bkz. albert_genau_calc.py modül-üstü
+# notu -- B8505102 SKU'sunun iki listede FARKLI fiyatta olması), o yüzden
+# kendi admin status/upload çiftine sahip.
+@api_router.get("/albert-genau/yedek-parca/admin-status")
+async def albert_genau_yedek_parca_admin_status(user=Depends(get_current_user)):
+    _require_admin(user)
+    doc = await db.yedek_parca_config.find_one({"id": "default"}, {"_id": 0})
+    if not doc:
+        return {"exists": False, "itemCount": len(ag_calc.YEDEK_PARCA_ITEMS), "source": "varsayılan (paket içinde)"}
+    return {"exists": True, "itemCount": len(doc.get("items", [])), "updatedAt": doc.get("updatedAt"),
+            "updatedBy": doc.get("updatedBy"), "source": "yüklenen Excel"}
+
+
+@api_router.post("/albert-genau/yedek-parca/admin-upload")
+async def albert_genau_yedek_parca_admin_upload(payload: Dict[str, str], user=Depends(get_current_user)):
+    _require_admin(user)
+    b64 = (payload or {}).get("fileBase64", "")
+    if not b64 or "," not in b64:
+        raise HTTPException(status_code=422, detail="Geçersiz dosya verisi")
+    try:
+        file_bytes = base64.b64decode(b64.split(",", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=422, detail="Dosya çözümlenemedi")
+    if len(file_bytes) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Dosya çok büyük (maksimum 20MB)")
+    parsed = _parse_yedek_parca_excel(file_bytes)
+    updated_doc = {
+        "id": "default",
+        "items": parsed["items"],
+        "groups": parsed["groups"],
+        "updatedAt": utc_now_iso(),
+        "updatedBy": user.get("email", ""),
+    }
+    await db.yedek_parca_config.replace_one({"id": "default"}, updated_doc, upsert=True)
+    return {"ok": True, "itemCount": len(parsed["items"])}
 
 
 # --- Firma-bazli (bayi) fiyat listesi -------------------------------------

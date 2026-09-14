@@ -425,6 +425,12 @@ export const api = {
   albertGenauPriceListStatus: (): Promise<AlbertGenauPriceListStatusT> => req('/albert-genau/price-list/status'),
   uploadAlbertGenauPriceList: (fileBase64: string): Promise<{ ok: boolean; skuCount: number }> =>
     req('/albert-genau/price-list/upload', { method: 'POST', body: JSON.stringify({ fileBase64 }) }, 40000),
+  // Yedek Parça kataloğu — ana fiyat listesinden AYRI, kendi admin
+  // status/upload çifti (bkz. server.py modül-üstü notu).
+  albertGenauYedekParcaAdminStatus: (): Promise<AlbertGenauYedekParcaAdminStatusT> =>
+    req('/albert-genau/yedek-parca/admin-status'),
+  uploadAlbertGenauYedekParcaCatalog: (fileBase64: string): Promise<{ ok: boolean; itemCount: number }> =>
+    req('/albert-genau/yedek-parca/admin-upload', { method: 'POST', body: JSON.stringify({ fileBase64 }) }, 40000),
   // Firma-bazlı (bayi) fiyat listesi — firma sahibi kendi Excel'ini kendi
   // hesabından yükler/görür, admin gerekmez (bkz. server.py company-price-list).
   albertGenauCompanyPriceListStatus: (companyId: string): Promise<AlbertGenauPriceListStatusT> =>
@@ -1253,6 +1259,14 @@ export type AlbertGenauItemT = {
 export type AlbertGenauPriceListStatusT = {
   exists: boolean;
   skuCount: number;
+  updatedAt?: string;
+  updatedBy?: string;
+  source: string;
+};
+
+export type AlbertGenauYedekParcaAdminStatusT = {
+  exists: boolean;
+  itemCount: number;
   updatedAt?: string;
   updatedBy?: string;
   source: string;

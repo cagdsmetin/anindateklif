@@ -2253,6 +2253,7 @@ def calculate_yedek_parca(
     montaj_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
+    catalog_data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """YEDEK PARÇA katalogundan bayinin serbestçe seçtiği kalem+miktar
     kombinasyonu için fiyat hesabı. Diğer ailelerin aksine sabit bir
@@ -2262,16 +2263,24 @@ def calculate_yedek_parca(
     override'ından ETKİLENMEZ (kasıtlı -- yukarıdaki modül-üstü nota bkz.);
     ödeme tipine göre uygulanan NAKİT/KREDİ KARTI ayrımı ise diğer tüm
     ailelerle tutarlılık için (bkz. PriceBook.NAKIT_FACTOR) aynen uygulanır.
+
+    `catalog_data`: admin'in Mongo'ya yüklediği güncel katalog (bkz.
+    server.py: _get_yedek_parca_data / /albert-genau/yedek-parca/admin-upload).
+    Verilmezse bu paketin içindeki varsayılan (yedek_parca.json) kullanılır --
+    firma-bazlı DEĞİL, TEK merkezi bir kayıt (fiyat listesindeki gibi).
     """
     odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
     factor = PriceBook.NAKIT_FACTOR if odeme_tipi_eff == 'nakit' else 1.0
+    by_sku = _YEDEK_PARCA_BY_SKU
+    if catalog_data and catalog_data.get('items'):
+        by_sku = {it['sku']: it for it in catalog_data['items']}
 
     kalemler = []
     for sku, qty in (quantities or {}).items():
         q = float(qty or 0)
         if q <= 0:
             continue
-        item = _YEDEK_PARCA_BY_SKU.get(sku)
+        item = by_sku.get(sku)
         if not item:
             raise KeyError(f"Yedek parça listesinde bulunamayan SKU: {sku}")
         price = float(item['price']) * factor

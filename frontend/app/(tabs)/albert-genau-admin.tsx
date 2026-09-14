@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { theme } from '@/src/lib/theme';
-import { api, fetchAlbertGenauPriceCsv, AlbertGenauPriceListStatusT } from '@/src/lib/api';
+import { api, fetchAlbertGenauPriceCsv, AlbertGenauPriceListStatusT, AlbertGenauYedekParcaAdminStatusT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { downloadFileWeb } from '@/src/lib/web-download';
 
@@ -36,8 +36,16 @@ export default function AlbertGenauAdminScreen() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Yedek Parça kataloğu -- ana fiyat listesinden AYRI, kendi durum/yükleme
+  // akışı (bkz. server.py: /albert-genau/yedek-parca/admin-status|upload).
+  const [ypStatus, setYpStatus] = useState<AlbertGenauYedekParcaAdminStatusT | null>(null);
+  const [ypUploading, setYpUploading] = useState(false);
+  const [ypError, setYpError] = useState('');
+  const [ypSuccessMsg, setYpSuccessMsg] = useState('');
+
   const load = useCallback(async () => {
     try { setStatus(await api.albertGenauPriceListStatus()); } catch { /* sessiz */ }
+    try { setYpStatus(await api.albertGenauYedekParcaAdminStatus()); } catch { /* sessiz */ }
   }, []);
 
   useEffect(() => {
@@ -68,6 +76,31 @@ export default function AlbertGenauAdminScreen() {
       setError(e?.message || 'Yükleme başarısız');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const onPickAndUploadYp = async () => {
+    if (ypUploading) return;
+    setYpError('');
+    setYpSuccessMsg('');
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled) return;
+      const asset = res.assets?.[0];
+      if (!asset) return;
+      setYpUploading(true);
+      const b64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const dataUri = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${b64}`;
+      const result = await api.uploadAlbertGenauYedekParcaCatalog(dataUri);
+      setYpSuccessMsg(`Yedek parça kataloğu güncellendi: ${result.itemCount} kalem`);
+      await load();
+    } catch (e: any) {
+      setYpError(e?.message || 'Yükleme başarısız');
+    } finally {
+      setYpUploading(false);
     }
   };
 
@@ -203,6 +236,55 @@ export default function AlbertGenauAdminScreen() {
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
                   <Text style={s.ctaText}>Excel Dosyası Seç ve Yükle</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[s.card, { marginTop: 16 }]}>
+            <Text style={s.sectionLabel}>Yedek Parça Kataloğu</Text>
+            <View style={s.statRow}>
+              <Text style={s.statLabel}>Kaynak</Text>
+              <Text style={s.statValue}>{ypStatus?.source || '-'}</Text>
+            </View>
+            <View style={s.statRow}>
+              <Text style={s.statLabel}>Kalem Sayısı</Text>
+              <Text style={s.statValue}>{ypStatus?.itemCount ?? '-'}</Text>
+            </View>
+            {ypStatus?.updatedAt ? (
+              <View style={s.statRow}>
+                <Text style={s.statLabel}>Son Güncelleme</Text>
+                <Text style={s.statValue}>{fmtDate(ypStatus.updatedAt)}</Text>
+              </View>
+            ) : null}
+            {ypStatus?.updatedBy ? (
+              <View style={s.statRow}>
+                <Text style={s.statLabel}>Güncelleyen</Text>
+                <Text style={s.statValue}>{ypStatus.updatedBy}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.hint, { marginTop: 12 }]}>
+              Bu, yukarıdaki fiyat listesinden AYRI bir kataloğdur (BIOFLEX/AIRFLEX/VERTIFLEX/KIŞ BAHÇESİ/BC
+              zaten yukarıdaki ortak listeyi kullanır). "YEDEK PARÇA" sayfalı yeni bir Excel geldiğinde
+              buradan yükleyin, tüm bayiler otomatik olarak güncel kataloğu kullanmaya başlar.
+            </Text>
+            {!!ypError && (
+              <View style={s.errorBox}>
+                <Ionicons name="alert-circle" size={16} color={theme.colors.red} />
+                <Text style={s.errorText}>{ypError}</Text>
+              </View>
+            )}
+            {!!ypSuccessMsg && (
+              <View style={s.successBox}>
+                <Ionicons name="checkmark-circle" size={16} color="#166534" />
+                <Text style={s.successText}>{ypSuccessMsg}</Text>
+              </View>
+            )}
+            <TouchableOpacity style={[s.cta, ypUploading && { opacity: 0.6 }]} onPress={onPickAndUploadYp} disabled={ypUploading} testID="ag-admin-upload-yedek-parca">
+              {ypUploading ? <ActivityIndicator color="#fff" /> : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
+                  <Text style={s.ctaText}>Yedek Parça Excel'i Seç ve Yükle</Text>
                 </>
               )}
             </TouchableOpacity>

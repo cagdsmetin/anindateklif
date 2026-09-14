@@ -616,6 +616,31 @@ export default function CatalogScreen() {
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Albert Genau Fiyat Yönetimi — SADECE platform admini (ncagdasm@gmail.com)
+            görür. Bayilerin kullandığı hesaplama ekranından (aşağıdaki kart)
+            tamamen ayrı: burası, Albert Genau'dan yeni fiyat Excel'i geldiğinde
+            toplu güncelleme yapılan admin ekranına giriş noktasıdır (bkz.
+            app/(tabs)/albert-genau-admin.tsx). */}
+        {(me?.email || '').toLowerCase() === 'ncagdasm@gmail.com' && (
+          <TouchableOpacity
+            style={[s.agCard, { backgroundColor: theme.colors.navy }]}
+            onPress={() => router.push('/(tabs)/albert-genau-admin' as any)}
+            testID="open-albert-genau-admin"
+            activeOpacity={0.9}
+          >
+            <View style={[s.agIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+              <Ionicons name="shield-checkmark" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.agTitle, { color: '#fff' }]}>Albert Genau Fiyat Yönetimi (Admin)</Text>
+              <Text style={[s.agDesc, { color: 'rgba(255,255,255,0.75)' }]}>
+                Yeni fiyat/yedek parça Excel'i geldiğinde buradan toplu yükleyin
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
+
         {/* Albert Genau — genel katalog/yapılandırıcıdan tamamen ayrı, ölçüye
             göre otomatik fiyat hesaplayan özel bölüm. Sadece admin bu firma
             için açtıysa görünür (bkz. Company.albertGenauEnabled) -- başka

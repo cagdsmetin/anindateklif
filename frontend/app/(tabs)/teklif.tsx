@@ -487,8 +487,20 @@ export default function EditorScreen() {
   };
 
   const selectSystemType = (itemId: string, sys: SystemTypeDefT) => {
-    // Initialize sistemFields with empty values for each field
-    const initFields = (sys.fields || []).map((f) => ({ label: f.label, value: f.type === 'checkbox' ? '' : '' }));
+    // Ürün/hizmet değiştirilince (örn. "Pistonlu Bioklimatik Pergola" ->
+    // "Makaslı Bioklimatik Pergola") alanlar SIFIRDAN değil, önceki kalemin
+    // girdilerinden devam ettirilir -- yeni sistemde AYNI etiketle (örn.
+    // "CEPHE / GENİŞLİK") bir alan varsa değeri korunur, sadece yeni sistemde
+    // hiç olmayan alanlar düşer. İki sistemin alan kümesi tamamen farklıysa
+    // (örn. Zip Perde) doğal olarak hiçbir alan eşleşmez ve hepsi boş başlar
+    // -- bu da mevcut davranışla aynı, veri kaybı sadece gerçekten alakasız
+    // alanlar için olur.
+    const it = items.find((x) => x.id === itemId);
+    const prevByLabel = new Map((it?.sistemFields || []).map((f) => [f.label.trim().toLocaleLowerCase('tr'), f.value]));
+    const initFields = (sys.fields || []).map((f) => {
+      const prevValue = prevByLabel.get(f.label.trim().toLocaleLowerCase('tr'));
+      return { label: f.label, value: prevValue !== undefined ? prevValue : '' };
+    });
     updateItem(itemId, { sistemTipiId: sys.id, sistemTipi: sys.name, sistemFields: initFields });
     setShowSystemPicker(null);
   };

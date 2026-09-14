@@ -1,0 +1,1715 @@
+{
+  "items": [
+    {
+      "sku": "B0516410",
+      "name": "TANGO PARK RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 83.5,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B0516409",
+      "name": "TANGO DÜZ RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 83.5,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500237",
+      "name": "TANGO AYARLI MENTEŞE MİLİ ÜST",
+      "unit": "Adet",
+      "price": 55.3,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500238",
+      "name": "TANGO AYARLI MENTEŞE MİLİ ALT",
+      "unit": "Adet",
+      "price": 55.3,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502405",
+      "name": "TANGO ÇIKIŞ AĞZI",
+      "unit": "Adet",
+      "price": 23.8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502413",
+      "name": "TANGO MENTEŞE PLASTİĞİ AY PARÇA",
+      "unit": "Adet",
+      "price": 47.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502414",
+      "name": "TANGO YAN KAPAMA PLASTİĞİ",
+      "unit": "Adet",
+      "price": 19.6,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502415",
+      "name": "TANGO ÇIKIŞ KOLU",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502416",
+      "name": "TANGO ÇIKIŞ AĞZI KAPAĞI",
+      "unit": "Adet",
+      "price": 47.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502417",
+      "name": "TANGO KİLİT MEKANİZMASI",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502418",
+      "name": "TANGO KİLİT MEKANİZMASI KARŞILIĞI",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502419",
+      "name": "TANGO 42*40 DÜZ KAPAK SAĞ",
+      "unit": "Adet",
+      "price": 8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502420",
+      "name": "TANGO 42*40 DÜZ KAPAK SOL",
+      "unit": "Adet",
+      "price": 8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502421",
+      "name": "TANGO BİTİM KAPAĞI SAĞ",
+      "unit": "Adet",
+      "price": 8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502422",
+      "name": "TANGO BİTİM KAPAĞI SOL",
+      "unit": "Adet",
+      "price": 8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500702",
+      "name": "OPTIMA 08 AY PARÇA 7.1",
+      "unit": "Adet",
+      "price": 42.4,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8501614",
+      "name": "OPTİMA ALT ÇIKIŞ AĞZI",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8501615",
+      "name": "OPTİMA ÜST ÇIKIŞ AĞZI",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8501915",
+      "name": "OPTİMA KATLANIR ÇIKIŞ KOLU",
+      "unit": "Adet",
+      "price": 46.9,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500250",
+      "name": "OPTIMA TEKER KÜTÜGÜ I PARÇA SETSKURLU",
+      "unit": "Adet",
+      "price": 141,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500251",
+      "name": "OPTIMA TEKER KÜTÜGÜ DÜZ PARÇA SETSKURLU",
+      "unit": "Adet",
+      "price": 141,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8504710",
+      "name": "OPTİMA DÜZ KAPAK SAĞ 43*40",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8504711",
+      "name": "OPTİMA DÜZ KAPAK SOL 43*40",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8504712",
+      "name": "OPTIMA 43*40 BİTİM KAPAĞI SAĞ",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8504713",
+      "name": "OPTIMA 43*40 BİTİM KAPAĞI SOL",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500243",
+      "name": "OPTIMA MENTESE KUTUGU ALT",
+      "unit": "Adet",
+      "price": 34.3,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8500244",
+      "name": "OPTIMA MENTESE KUTUGU UST",
+      "unit": "Adet",
+      "price": 34.3,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8502441",
+      "name": "OPTIMA AYARLI YAN KAPAMA KASA BAGLANTI PLASTIGI",
+      "unit": "Adet",
+      "price": 26.1,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8501479",
+      "name": "PUSH BUTONLU ISPANYOLET KOL SIYAH STATU LOGOLU",
+      "unit": "Adet",
+      "price": 740.8,
+      "group": "TANGO - OPTİMA"
+    },
+    {
+      "sku": "B8504744",
+      "name": "TEKCAM KOLLU KILIT PROFIL KAPAGI SAG 54*30",
+      "unit": "Adet",
+      "price": 8.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504745",
+      "name": "TEKCAM KOLLU KILIT PROFIL KAPAGI SOL 54*30",
+      "unit": "Adet",
+      "price": 8.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504746",
+      "name": "TEKCAM KOLLU KILIT KARSILIK PROFIL KAPAGI SAG 24*30",
+      "unit": "Adet",
+      "price": 8.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504747",
+      "name": "TEKCAM KOLLU KILIT KARSILIK PROFIL KAPAGI SOL 24*30",
+      "unit": "Adet",
+      "price": 8.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8501104",
+      "name": "ISPANYOLET MIL SETI MASURALI",
+      "unit": "Adet",
+      "price": 152.3,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B1502320",
+      "name": "TIARA KAYAR KANAT PARK LAMELI 30*38",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B1502321",
+      "name": "TIARA KAYAR KANAT UST PARK LAMELI 30*38",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501200",
+      "name": "TIARA MENTESE DUZ LAMELI 30*95",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8500234",
+      "name": "23*51*27 MENTEŞE BAĞLANTI APARATI",
+      "unit": "Adet",
+      "price": 71.3,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8502144",
+      "name": "TIARA DÜZ RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 463,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8502143",
+      "name": "TIARA PARK RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 463,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8500810",
+      "name": "PARK RULMANI MENTEŞE SABİTLEME PARÇASI AG 810",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504307",
+      "name": "M05*15 ÖZEL IMBUS",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502617",
+      "name": "M8*13 YARIM DIS ÖZEL SETSKUR INOX",
+      "unit": "Adet",
+      "price": 14.8,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501405",
+      "name": "İSPANYOLET SİSTEMLİ KOLLU KİLİT",
+      "unit": "Adet",
+      "price": 768.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501406",
+      "name": "İSPANYOLET SİSTEMLİ KİLİT TUTUCU",
+      "unit": "Adet",
+      "price": 51.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501421",
+      "name": "31*17 TIARA İSPANYOLET SABİTLEME PARÇASI",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501444",
+      "name": "TIARA ÜST KİLİT MEKANİZMASI",
+      "unit": "Adet",
+      "price": 125.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501446",
+      "name": "TIARA ALT KİLİT MEKANİZMASI",
+      "unit": "Adet",
+      "price": 172.8,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501525",
+      "name": "TIARA SUNGERLI/MARKALI ALT CIKIS KAPAGI SIYAH",
+      "unit": "Adet",
+      "price": 125.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501526",
+      "name": "TIARA MARKALI UST CIKIS KAPAGI SIYAH",
+      "unit": "Adet",
+      "price": 125.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501494",
+      "name": "TIARA ALT CIKIS KAPAGI SIYAH",
+      "unit": "Adet",
+      "price": 125.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501496",
+      "name": "TIARA UST CIKIS KAPAGI SIYAH",
+      "unit": "Adet",
+      "price": 125.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501610",
+      "name": "TIARA ÜST ÇIKIŞ AĞZI",
+      "unit": "Adet",
+      "price": 47.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501612",
+      "name": "TIARA ALT ÇIKIŞ AĞZI",
+      "unit": "Adet",
+      "price": 39.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501903",
+      "name": "TIARA KATLANIR ÇIKIŞ KOLU",
+      "unit": "Adet",
+      "price": 47.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501911",
+      "name": "TIARA MİL YATAĞI 36-33",
+      "unit": "Adet",
+      "price": 164.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501912",
+      "name": "TIARA KİLİT DİLİ",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501918",
+      "name": "TIARA KANAT SABİTLEME PARÇASI",
+      "unit": "Adet",
+      "price": 45.3,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8502410",
+      "name": "TIARA CAM TAKOZU 28.5 mm.",
+      "unit": "Adet",
+      "price": 5.5,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8502506",
+      "name": "DELIK VİDA TAPASI GRI (TIARA)",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8502505",
+      "name": "DELIK VİDA TAPASI SİYAH (TIARA)",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504106",
+      "name": "MENTEŞE LAMELİ SABİTLEME CİVATASI M6*25",
+      "unit": "Adet",
+      "price": 4.8,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504203",
+      "name": "MENTESE PLASTIK KOVANI",
+      "unit": "Adet",
+      "price": 3.6,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504602",
+      "name": "90° KAPAK KALIN 46*28",
+      "unit": "Adet",
+      "price": 23.8,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504603",
+      "name": "90° KAPAK İNCE 46*28",
+      "unit": "Adet",
+      "price": 23.8,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504605",
+      "name": "DÜZ KAPAK SAĞ 46*28",
+      "unit": "Adet",
+      "price": 14.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504606",
+      "name": "DÜZ KAPAK SOL 46*28",
+      "unit": "Adet",
+      "price": 14.2,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504637",
+      "name": "DÜZ KAPAK SAĞ 54*32",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504638",
+      "name": "DÜZ KAPAK SOL 54*32",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504639",
+      "name": "90* KAPAK KALIN 54*32 SAĞ",
+      "unit": "Adet",
+      "price": 19,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504640",
+      "name": "90* KAPAK KALIN 54*32 SOL",
+      "unit": "Adet",
+      "price": 19,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504641",
+      "name": "90* KAPAK İNCE 54*32 SAĞ",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504642",
+      "name": "90* KAPAK İNCE 54*32 SOL",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504643",
+      "name": "135° KAPAK KALIN SAĞ 46*28",
+      "unit": "Adet",
+      "price": 25.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504644",
+      "name": "135° KAPAK KALIN SOL 46*28",
+      "unit": "Adet",
+      "price": 25.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504645",
+      "name": "135° KAPAK İNCE SAĞ 46*28",
+      "unit": "Adet",
+      "price": 25.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504646",
+      "name": "135° KAPAK İNCE SOL 46*28",
+      "unit": "Adet",
+      "price": 25.4,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501480",
+      "name": "ISPANYOLET PENCERE KILITI 800MM 2 KAVRAMALI",
+      "unit": "Adet",
+      "price": 226.3,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501481",
+      "name": "ISPANYOLET PENCERE KILITI 1400MM 3 KAVRAMALI",
+      "unit": "Adet",
+      "price": 328.5,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8504695",
+      "name": "TIARA MENTEŞE LAMELİ SABİTLEYİCİSİ",
+      "unit": "Adet",
+      "price": 58.5,
+      "group": "TIARA"
+    },
+    {
+      "sku": "B8501423",
+      "name": "SÜRME HAVUZ KİLİT ELOKSAL SİYAH",
+      "unit": "Adet",
+      "price": 438.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501424",
+      "name": "SÜRME ORTA HAVUZ TUTAMAK ELOKSAL SİYAH",
+      "unit": "Adet",
+      "price": 188.8,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501434",
+      "name": "SLIDER RAY İÇİ KİLİT KARŞILIĞI",
+      "unit": "Adet",
+      "price": 87,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501435",
+      "name": "SLIDER KİLİT ARKA YÜKSELTMESİ",
+      "unit": "Adet",
+      "price": 78.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501436",
+      "name": "RAMPA PROFİLİ KİLİT KARŞILIĞI",
+      "unit": "Adet",
+      "price": 78.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501450",
+      "name": "AG SLIDE MASTER TOZLUK",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501452",
+      "name": "52*20 PLASTİK KAPAK",
+      "unit": "Adet",
+      "price": 19,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501453",
+      "name": "57*21 FIRÇA PLASTİĞİ",
+      "unit": "Adet",
+      "price": 26.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501455",
+      "name": "6.5*174 EŞİKSİZ YÜKSELTME TAKOZU",
+      "unit": "Adet",
+      "price": 19.6,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501491",
+      "name": "SURME HAVUZ KILIT DILI",
+      "unit": "Adet",
+      "price": 50.1,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8501492",
+      "name": "SURME HAVUZ KILIT KARSILIGI",
+      "unit": "Adet",
+      "price": 30.9,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502131",
+      "name": "SLIDER NEXT METAL KAPAK SAG CONTALI SIYAH",
+      "unit": "Adet",
+      "price": 89.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502132",
+      "name": "SLIDER NEXT METAL KAPAK SOL CONTALI SIYAH",
+      "unit": "Adet",
+      "price": 89.7,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502122",
+      "name": "SÜRME ALT TEKER TAKIMI",
+      "unit": "Adet",
+      "price": 344.6,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502123",
+      "name": "SLIDER ÜST DENGE TEKER TAKIMI",
+      "unit": "Adet",
+      "price": 251.1,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504625",
+      "name": "SLIDER PROFİL KAPAĞI 10 mm. SAĞ",
+      "unit": "Adet",
+      "price": 90.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504627",
+      "name": "SLIDER KÖŞE BİRLEŞİM TAKOZU",
+      "unit": "Adet",
+      "price": 141,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504656",
+      "name": "SLIDER PROFİL KAPAĞI 8 MM",
+      "unit": "Adet",
+      "price": 16.1,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504634",
+      "name": "SLIDER PROFİL KAPAĞI 10 mm. SOL",
+      "unit": "Adet",
+      "price": 90.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504660",
+      "name": "90º BİRLEŞİM KAPAK SLIDER KALIN SAĞ",
+      "unit": "Adet",
+      "price": 313.8,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504682",
+      "name": "SPRINTER PROFİL KAPAĞI",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504683",
+      "name": "SPRINTER PROFİL KAPAK FIRÇA KAPAĞI",
+      "unit": "Adet",
+      "price": 35.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504684",
+      "name": "SPRINTER ALT KÖŞE BİRLEŞİM PARÇASI SAĞ",
+      "unit": "Adet",
+      "price": 55.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504685",
+      "name": "SPRINTER ALT KÖŞE BİRLEŞİM PARÇASI SOL",
+      "unit": "Adet",
+      "price": 55.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504687",
+      "name": "90º BİRLEŞİM KAPAK SLIDER İNCE SOL",
+      "unit": "Adet",
+      "price": 313.8,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504690",
+      "name": "90º BİRLEŞİM KAPAK SLIDER İNCE SAĞ",
+      "unit": "Adet",
+      "price": 313.8,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8504691",
+      "name": "90º BİRLEŞİM KAPAK SLIDER KALIN SOL",
+      "unit": "Adet",
+      "price": 313.8,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502164",
+      "name": "SLIDER NEXT UZUN BITIM KAPAK PLASTIGI SIYAH 21MM",
+      "unit": "Adet",
+      "price": 11.2,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502165",
+      "name": "SLIDER NEXT KISA BITIM KAPAK PLASTIGI 3MM",
+      "unit": "Adet",
+      "price": 9.6,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8502168",
+      "name": "KLIPS KILIT MEKANIZMASI 70MM SIYAH (YAN)",
+      "unit": "Adet",
+      "price": 357.3,
+      "group": "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT"
+    },
+    {
+      "sku": "B8500207",
+      "name": "ATRIUM 30*32 KISA SÜRGÜ KÜTÜGÜ 65 mm",
+      "unit": "Adet",
+      "price": 408.1,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8500209",
+      "name": "KANAT BAĞLANTI 30*32  50 mm. STOPER KARŞILIK KÜTÜĞÜ",
+      "unit": "Adet",
+      "price": 105.7,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8500215",
+      "name": "KANAT BAĞLANTI 30*32 30 mm. MENTEŞE SABİTLEME KÜTÜĞÜ",
+      "unit": "Adet",
+      "price": 78.7,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501402",
+      "name": "ATRIUM YER STOPERİ TAKIMI",
+      "unit": "Adet",
+      "price": 1255.8,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501407",
+      "name": "ATRIUM  CAMDAN CAMA  KİLİT",
+      "unit": "Adet",
+      "price": 2156.5,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501430",
+      "name": "YER SÜRGÜSÜ",
+      "unit": "Adet",
+      "price": 243.8,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501506",
+      "name": "ATRIUM YER STOPERİ SÜRGÜSÜ UZUN",
+      "unit": "Adet",
+      "price": 879.8,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501507",
+      "name": "ATRIUM YER STOPERİ SÜRGÜSÜ KISA",
+      "unit": "Adet",
+      "price": 863.8,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501508",
+      "name": "ATRIUM YER STOPERİ KARŞILIĞI",
+      "unit": "Adet",
+      "price": 524.7,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8501509",
+      "name": "MOMENTUM PLASTİK YER SÜRGÜ KARŞILIĞI",
+      "unit": "Adet",
+      "price": 43.4,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B8505102",
+      "name": "PASLANMAZ TABANLI KIL FIRÇA 20 mm.",
+      "unit": "Mt.",
+      "price": 172.8,
+      "group": "ATRIUM MOMENTUM"
+    },
+    {
+      "sku": "B3000130",
+      "name": "BALUMAX ÜST T BAGLANTI TAKIMI",
+      "unit": "Adet",
+      "price": 134.5,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000131",
+      "name": "BALUMAX ÜST L BAGLANTI TAKIMI",
+      "unit": "Adet",
+      "price": 133.1,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000106",
+      "name": "BALUMAX Ø 20 DİKME ANKRAJI (BOŞ)",
+      "unit": "Adet",
+      "price": 43,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000121",
+      "name": "BALUMAX Ø20*300MM DİKME ANKRAJI  (DOLU)",
+      "unit": "Adet",
+      "price": 228.3,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000122",
+      "name": "BALUMAX Ø20*500MM DİKME ANKRAJI  (DOLU)",
+      "unit": "Adet",
+      "price": 380.8,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000109",
+      "name": "BALUMAX 42*23 ÜST KÜPEŞTE KAPAĞI SOL PLASTİK",
+      "unit": "Adet",
+      "price": 40.6,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "B3000110",
+      "name": "BALUMAX 42*23 ÜST KÜPEŞTE KAPAĞI SAĞ PLASTİK",
+      "unit": "Adet",
+      "price": 40.6,
+      "group": "BALUMAX"
+    },
+    {
+      "sku": "P05036",
+      "name": "BIOKLIMATIK KONTROL UNITE KUTUSU",
+      "unit": "Adet",
+      "price": 1835,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500304",
+      "name": "PANEL MAKAS MIL ORTA Ø10*34MM",
+      "unit": "Adet",
+      "price": 42.5,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500305",
+      "name": "PANEL MAKAS MIL UST Ø10*19MM",
+      "unit": "Adet",
+      "price": 35,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500901",
+      "name": "BIOKLIMATIK RULMAN TK.",
+      "unit": "Adet",
+      "price": 103.2,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500402",
+      "name": "Ø15 BUYUK BURC PLASTIK",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500403",
+      "name": "Ø13 KUCUK BURC PLASTIK",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P8500404",
+      "name": "Ø15*M6*1,6MM PLASTIK PUL",
+      "unit": "Adet",
+      "price": 2.5,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "P0500502",
+      "name": "DIKME BAGLANTI KLIPS TAKIMI (40'LI)",
+      "unit": "Adet",
+      "price": 575.2,
+      "group": "BIOKLIMATIK"
+    },
+    {
+      "sku": "G8500201",
+      "name": "VERTIFLEX RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 138.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500202",
+      "name": "VERTIFLEX MONO RULMAN TAKIMI",
+      "unit": "Adet",
+      "price": 122.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500203",
+      "name": "VFC-ORTA PANEL TEKERLI ALT KÖSE TAKIMI SAĞ",
+      "unit": "Adet",
+      "price": 18.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500204",
+      "name": "VFC-ORTA PANEL TEKERLI ALT KÖSE TAKIMI SOL",
+      "unit": "Adet",
+      "price": 18.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500501",
+      "name": "VERTIFLEX KONFOR APARATI",
+      "unit": "Adet",
+      "price": 25.5,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500502",
+      "name": "VFC-VASISTAS CONTALI ÜST KÖSE TAKIMI SAG",
+      "unit": "Adet",
+      "price": 46.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500503",
+      "name": "VFC-VASISTAS CONTALI ÜST KÖSE TAKIMI SOL",
+      "unit": "Adet",
+      "price": 46.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500504",
+      "name": "VFC-VASISTAS CONTALI 2 PANELLI ÜST KÖSE TAKIMI SAG",
+      "unit": "Adet",
+      "price": 46.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500505",
+      "name": "VFC-VASISTAS CONTALI 2 PANELLI ÜST KÖSE TAKIMI SOL",
+      "unit": "Adet",
+      "price": 46.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500510",
+      "name": "VFC-VASISTAS CONTALI ALT KÖSE PLASTIGI SAG",
+      "unit": "Adet",
+      "price": 43.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500511",
+      "name": "VFC-VASISTAS CONTALI ALT KÖSE PLASTIGI SOL",
+      "unit": "Adet",
+      "price": 43.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8505506",
+      "name": "SETSKURLU ISPANYOLET KILIT KARSILIGI M5",
+      "unit": "Adet",
+      "price": 17.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500705",
+      "name": "HAREKETLI MAKAS 130MM",
+      "unit": "Adet",
+      "price": 132.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500713",
+      "name": "VFC-ALT KASA-YAN DIKME PLASTIGI SAG",
+      "unit": "Adet",
+      "price": 30.6,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500714",
+      "name": "VFC-ALT KASA-YAN DIKME PLASTIGI SOL",
+      "unit": "Adet",
+      "price": 30.6,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500512",
+      "name": "VFC-CONTALI KARSI AGIRLIK TUTUCU PLASTIK SAG",
+      "unit": "Adet",
+      "price": 17.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500513",
+      "name": "VFC-CONTALI KARSI AGIRLIK TUTUCU PLASTIK SOL",
+      "unit": "Adet",
+      "price": 17.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500717",
+      "name": "VFC-ORTA PANEL YAN DIKME KAMA PLASTIGI",
+      "unit": "Adet",
+      "price": 46,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500718",
+      "name": "VFC-ORTA PANEL DESTEK SACI 3MM",
+      "unit": "Adet",
+      "price": 49.5,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500706",
+      "name": "ISPANYOLET PENCERE KILITI 300MM",
+      "unit": "Adet",
+      "price": 151.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500919",
+      "name": "KONFORLU ZINCIR ITTIRME APARATI",
+      "unit": "Adet",
+      "price": 67.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500730",
+      "name": "08 B1 INOX ZINCIR BAGLANTI PARCA KILITI",
+      "unit": "Adet",
+      "price": 59.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G05017",
+      "name": "08 B1 ZINCIR BAGLANTI PARCA KILIDI",
+      "unit": "Adet",
+      "price": 28.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G05018",
+      "name": "VERTIFLEX ZİNCİR AYAR PARÇASI 95*20*4MM",
+      "unit": "Adet",
+      "price": 88.4,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500101",
+      "name": "VERTIFLEX RULMANLI YAN SAC TAKIMI",
+      "unit": "Adet",
+      "price": 631.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8504725",
+      "name": "167*14 BAYRAK 150mm SAG SIYAH",
+      "unit": "Adet",
+      "price": 731.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8504726",
+      "name": "167*14 BAYRAK 150mm SOL SIYAH",
+      "unit": "Adet",
+      "price": 731.9,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G8500102",
+      "name": "VERTIFLEX AG BRAKETLI YAN SAC TAKIMI",
+      "unit": "Adet",
+      "price": 615.2,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "G05026",
+      "name": "ZINCIR DISLI Q103",
+      "unit": "Adet",
+      "price": 2395.1,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502444",
+      "name": "TIRNAKLI PANEL KOSE KAPAGI SIYAH 35*35*48 SAG",
+      "unit": "Adet",
+      "price": 38.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502445",
+      "name": "TIRNAKLI PANEL KOSE KAPAGI SIYAH 35*35*48 SOL",
+      "unit": "Adet",
+      "price": 38.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502446",
+      "name": "TIRNAKSIZ KOSE BIRLESTIRME KAPAGI SIYAH 26*49*38",
+      "unit": "Adet",
+      "price": 38.3,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502449",
+      "name": "TRABZAN KAPAGI SIYAH 121*23*14 SAG",
+      "unit": "Adet",
+      "price": 27.8,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502450",
+      "name": "TRABZAN KAPAGI SIYAH 121*23*14 SOL",
+      "unit": "Adet",
+      "price": 27.8,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "B8502772",
+      "name": "KFL001 RULMAN",
+      "unit": "Adet",
+      "price": 176.6,
+      "group": "VERTIFLEX"
+    },
+    {
+      "sku": "AW1301300",
+      "name": "YHB 4.2*38 INOX VİDA",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8501301",
+      "name": "PLASTİK ZİNCİR GRİ",
+      "unit": "Metre",
+      "price": 12.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8501303",
+      "name": "PLASTİK KLİPS GRİ",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8501304",
+      "name": "METAL KLİPS",
+      "unit": "Adet",
+      "price": 4.8,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8501305",
+      "name": "ZİNCİR KULPU",
+      "unit": "Adet",
+      "price": 38.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502402",
+      "name": "CAM PİMİ 10*19 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502404",
+      "name": "CAM PİMİ 14*24 mm.",
+      "unit": "Adet",
+      "price": 35,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502406",
+      "name": "İNCE CAM TAKOZU",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502407",
+      "name": "MONTAJ AYAR TAKOZU 2 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502408",
+      "name": "MONTAJ AYAR TAKOZU 3 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502409",
+      "name": "MONTAJ AYAR TAKOZU 6 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502411",
+      "name": "GENİŞ CAM TAKOZU İNCE",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502429",
+      "name": "AYAR TAKOZU (3mm*20mm*80mm)",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502430",
+      "name": "AYAR TAKOZU (5mm*20mm*80mm)",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502501",
+      "name": "VİDA KAPAĞI GRİ",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502503",
+      "name": "ŞEFFAF VİDA PULU",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502602",
+      "name": "YSB 3,5*13 INOX VİDA",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502603",
+      "name": "YHB 3,5*13 INOX VİDA",
+      "unit": "Adet",
+      "price": 1,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502605",
+      "name": "M6*10 YSB VİDA",
+      "unit": "Adet",
+      "price": 1,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502607",
+      "name": "M5 1mm PUL INOX",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502705",
+      "name": "4,8*25 MU VİDA",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502706",
+      "name": "7.5*100 THB BULDEX VİDA",
+      "unit": "Adet",
+      "price": 6.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502707",
+      "name": "7.5*60THB  BULDEX VİDA",
+      "unit": "Adet",
+      "price": 4.8,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502710",
+      "name": "M8 KARE SOMUN 14*14 ÇİNKO KAPLAMALI",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502711",
+      "name": "M8*59 PARABAŞ IMBUS",
+      "unit": "Adet",
+      "price": 6.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502712",
+      "name": "M8*53.5 PARABAŞ AYAR CİVATASI INOX",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8502902",
+      "name": "YHB 6*80 SUNTA VİDASI",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503301",
+      "name": "YHB 4*50 SUNTA VİDASI",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503302",
+      "name": "YHB 3,9*19 MU SİYAH VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503303",
+      "name": "YHB MU 3,9*22 SİYAH VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503304",
+      "name": "YHB MU 3,9*16 SİYAH VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503305",
+      "name": "3,5*25  YSB INOX VİDA",
+      "unit": "Adet",
+      "price": 2.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503306",
+      "name": "M4*25 YHB INOX",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503307",
+      "name": "3.5*25 YSB VİDA",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503308",
+      "name": "YHB MU 3,9*25 SİYAH VİDA",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503309",
+      "name": "YHB MU 3,9*13 SİYAH VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503310",
+      "name": "YHB MU 3,9*19 MU VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503311",
+      "name": "YHB MU 3,9*13 MU VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503312",
+      "name": "YHB MU 3,9*32 SİYAH VİDA",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503715",
+      "name": "M05*16 INOX SETSKUR",
+      "unit": "Adet",
+      "price": 3.7,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503702",
+      "name": "M08*8 SETSKUR",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503703",
+      "name": "M06*6 SETSKUR (AÇILI BİRLEŞİM)",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503704",
+      "name": "M08*12 SETSKUR",
+      "unit": "Adet",
+      "price": 3.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503705",
+      "name": "M10*35 SETSKUR",
+      "unit": "Adet",
+      "price": 31.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503706",
+      "name": "M06*10 SETSKUR",
+      "unit": "Adet",
+      "price": 2.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503707",
+      "name": "M06*16 SETSKUR",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503708",
+      "name": "M08*30 SETSKUR INOX",
+      "unit": "Adet",
+      "price": 12.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503709",
+      "name": "M10*60 SETSKUR INOX",
+      "unit": "Adet",
+      "price": 58.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503710",
+      "name": "M08*10 SETSKUR",
+      "unit": "Adet",
+      "price": 3.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503711",
+      "name": "M05*10 INOX SETSKUR",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503712",
+      "name": "M05*10 INOX IMBUS",
+      "unit": "Adet",
+      "price": 3.2,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8503901",
+      "name": "M08*25 IMBUS",
+      "unit": "Adet",
+      "price": 5.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504001",
+      "name": "M08*50  IMBUS",
+      "unit": "Adet",
+      "price": 12.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504101",
+      "name": "M08 İNCE SOMUN",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504102",
+      "name": "M08 KONTRA İNCE SOMUN KAPLAMASIZ",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504103",
+      "name": "M10 FLANŞLI SOMUN",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504104",
+      "name": "M10*3 SOMUN",
+      "unit": "Adet",
+      "price": 20.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504105",
+      "name": "M6 INOX SOMUN",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504107",
+      "name": "M8 İNCE SOMUN KAPLAMASIZ 3.9 mm.",
+      "unit": "Adet",
+      "price": 1.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504108",
+      "name": "M4 KÖR SOMUN INOX",
+      "unit": "Adet",
+      "price": 4.8,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504211",
+      "name": "TIARA Ø10 PUL",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504212",
+      "name": "TANGO M8 6.8 mm. PUL",
+      "unit": "Adet",
+      "price": 5.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504213",
+      "name": "14/8.5*2 INOX PUL",
+      "unit": "Adet",
+      "price": 2.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504304",
+      "name": "M06*20 IMBUS",
+      "unit": "Adet",
+      "price": 6.4,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504305",
+      "name": "M05*20 IMBUS",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504306",
+      "name": "M05*30 IMBUS INOX",
+      "unit": "Adet",
+      "price": 5.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504308",
+      "name": "M05*14 ÖZEL PULBAŞ IMBUS",
+      "unit": "Adet",
+      "price": 3.9,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504309",
+      "name": "M04*10 YHB INOX",
+      "unit": "Adet",
+      "price": 1.3,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8505503",
+      "name": "SALPA 1 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8505504",
+      "name": "SALPA 0,4 mm.",
+      "unit": "Adet",
+      "price": 4.5,
+      "group": "GENEL"
+    },
+    {
+      "sku": "B8504128",
+      "name": "M5*30 YHB INOX CIVATA",
+      "unit": "Adet",
+      "price": 6.6,
+      "group": "GENEL"
+    },
+    {
+      "sku": "KS9501623",
+      "name": "YHB 3,9*22 MU VİDA",
+      "unit": "Adet",
+      "price": 0.7,
+      "group": "GENEL"
+    }
+  ],
+  "groups": [
+    "TANGO - OPTİMA",
+    "TIARA",
+    "SLIDER SPRINTER SLIDE MASTER SLIDER NEXT",
+    "ATRIUM MOMENTUM",
+    "BALUMAX",
+    "BIOKLIMATIK",
+    "VERTIFLEX",
+    "GENEL"
+  ]
+}

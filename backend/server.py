@@ -3517,6 +3517,81 @@ async def albert_genau_bc_calculate(payload: AlbertGenauBcCalculateRequest, user
     return _run_ag_bc_calculate(payload, price_data)
 
 
+class AlbertGenauYedekParcaCalculateRequest(BaseModel):
+    # YEDEK PARÇA -- dağıtık parça-değişim kataloğu (243 kalem). Diğer
+    # ailelerden farklı olarak bayı SABİT bir "sistem" seçmez, kataloğun
+    # HERHANGİ bir alt kümesini serbestçe seçip miktar girer (bkz.
+    # ag_calc.YEDEK_PARCA_ITEMS / calculate_yedek_parca).
+    companyId: Optional[str] = None
+    quantities: Dict[str, float] = {}
+    alisIskontoPct: float = 0.0
+    montajBedeli: float = 0.0
+    karMarjiPct: float = 0.0
+    odemeTipi: str = "nakit"
+
+    @field_validator("odemeTipi")
+    @classmethod
+    def _odeme_tipi_valid(cls, v: str) -> str:
+        if v not in ("nakit", "kredi_karti"):
+            raise ValueError("odemeTipi 'nakit' veya 'kredi_karti' olmalidir")
+        return v
+
+    @field_validator("alisIskontoPct", "karMarjiPct")
+    @classmethod
+    def _pct_range(cls, v: float) -> float:
+        if v is None:
+            return 0.0
+        if v < 0 or v > 100:
+            raise ValueError("Oran 0-100 araliginda olmalidir")
+        return v
+
+    @field_validator("quantities")
+    @classmethod
+    def _qty_valid(cls, v: Dict[str, float]) -> Dict[str, float]:
+        v = v or {}
+        if len(v) > 300:
+            raise ValueError("Cok fazla kalem")
+        out = {}
+        for sku, qty in v.items():
+            q = float(qty or 0)
+            if q < 0 or q > 100_000:
+                raise ValueError("Miktar gecersiz")
+            out[str(sku)[:40]] = q
+        return out
+
+
+@api_router.get("/albert-genau/yedek-parca/items")
+async def albert_genau_yedek_parca_items(companyId: Optional[str] = None, user=Depends(get_current_user)):
+    # Katalog sabit (firma-bazli fiyat listesi override'indan etkilenmez --
+    # bkz. albert_genau_calc.py modul-ustu notu), o yuzden companyId burada
+    # sadece albertGenauEnabled kontrolu icin kullanilir.
+    if companyId:
+        company_doc = await _own_company(user, companyId)
+        _require_albert_genau_enabled(company_doc)
+    return {"items": ag_calc.YEDEK_PARCA_ITEMS, "groups": ag_calc.YEDEK_PARCA_GROUPS}
+
+
+def _run_ag_yedek_parca_calculate(payload: "AlbertGenauYedekParcaCalculateRequest"):
+    try:
+        return ag_calc.calculate_yedek_parca(
+            quantities=payload.quantities,
+            alis_iskonto_pct=payload.alisIskontoPct,
+            montaj_bedeli=payload.montajBedeli,
+            kar_marji_pct=payload.karMarjiPct,
+            odeme_tipi=payload.odemeTipi,
+        )
+    except (ValueError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@api_router.post("/albert-genau/yedek-parca/calculate")
+async def albert_genau_yedek_parca_calculate(payload: AlbertGenauYedekParcaCalculateRequest, user=Depends(get_current_user)):
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+    return _run_ag_yedek_parca_calculate(payload)
+
+
 @api_router.get("/albert-genau/parts-list-items")
 async def albert_genau_parts_list_items(systemId: str, companyId: Optional[str] = None, user=Depends(get_current_user)):
     # AIRFLEX gibi bir "parca listesi" sisteminin kalemlerini (sku/isim/birim)

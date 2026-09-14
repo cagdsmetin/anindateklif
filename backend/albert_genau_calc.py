@@ -43,6 +43,26 @@ _BC_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'bc_systems.json
 with open(_BC_DATA_PATH, encoding='utf-8') as _f:
     _BC_SYSTEMS_RAW = json.load(_f)['systems']
 
+# YEDEK PARCA (dagitik parca-degisim katalogu, 243 kalem, ~8 alt-marka
+# grubu: TANGO-OPTIMA, TIARA, SLIDER SPRINTER/SLIDE MASTER/SLIDER NEXT,
+# ATRIUM/MOMENTUM, BALUMAX, BIOKLIMATIK, VERTIFLEX, GENEL). Diger urun
+# aileleri (BIOFLEX/AIRFLEX/VERTIFLEX/BC vs) BIR SISTEM icin SABIT bir SKU
+# listesi + geometriden turetilen miktar kullanir; bu liste ise TERSINE,
+# bayinin herhangi bir kombinasyonda serbestce parca+miktar sectigi DUZ bir
+# fiyat katalogudur -- o yuzden bilerek ayri, cok daha basit bir mekanizma
+# ile ele alinir (PARTS_LIST_SYSTEMS/calculate_parts_list'e dahil edilmedi).
+# NOT: bazi SKU'ler (orn. B8505102) ana price_list'te DE var ama FARKLI (daha
+# dusuk, toptan/imalat-ici) bir fiyatla -- yedek parca satisi PERAKENDE bir
+# fiyat oldugundan bu katalog kasitli olarak ana price_list'ten TAMAMEN
+# BAGIMSIZ tutulur, hicbir sekilde birlestirilmez veya firma bazli fiyat
+# listesiyle override edilmez.
+_YEDEK_PARCA_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'yedek_parca.json')
+with open(_YEDEK_PARCA_DATA_PATH, encoding='utf-8') as _f:
+    _YEDEK_PARCA_RAW = json.load(_f)
+YEDEK_PARCA_ITEMS = _YEDEK_PARCA_RAW['items']  # [{'sku','name','unit','price','group'}, ...]
+YEDEK_PARCA_GROUPS = _YEDEK_PARCA_RAW['groups']  # görünüm sırasına göre alt-marka grupları
+_YEDEK_PARCA_BY_SKU = {it['sku']: it for it in YEDEK_PARCA_ITEMS}
+
 SYSTEM_TYPES = [
     '4ayak_ustu',
     '2ayak_duvar',
@@ -2224,4 +2244,62 @@ def calculate_bc(
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
         'kalemler': [k.dict() for k in (profil + aksesuar + cam_kalemleri)],
+    }
+
+
+def calculate_yedek_parca(
+    quantities: Dict[str, float],
+    alis_iskonto_pct: float = 0.0,
+    montaj_bedeli: float = 0.0,
+    kar_marji_pct: float = 0.0,
+    odeme_tipi: str = 'nakit',
+) -> Dict[str, Any]:
+    """YEDEK PARÇA katalogundan bayinin serbestçe seçtiği kalem+miktar
+    kombinasyonu için fiyat hesabı. Diğer ailelerin aksine sabit bir
+    "sistem" yok -- `quantities` doğrudan {sku: miktar} sözlüğüdür.
+
+    Katalog fiyatları (bkz. YEDEK_PARCA_ITEMS) firma-bazlı fiyat listesi
+    override'ından ETKİLENMEZ (kasıtlı -- yukarıdaki modül-üstü nota bkz.);
+    ödeme tipine göre uygulanan NAKİT/KREDİ KARTI ayrımı ise diğer tüm
+    ailelerle tutarlılık için (bkz. PriceBook.NAKIT_FACTOR) aynen uygulanır.
+    """
+    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    factor = PriceBook.NAKIT_FACTOR if odeme_tipi_eff == 'nakit' else 1.0
+
+    kalemler = []
+    for sku, qty in (quantities or {}).items():
+        q = float(qty or 0)
+        if q <= 0:
+            continue
+        item = _YEDEK_PARCA_BY_SKU.get(sku)
+        if not item:
+            raise KeyError(f"Yedek parça listesinde bulunamayan SKU: {sku}")
+        price = float(item['price']) * factor
+        kalemler.append(Kalem(label=item['name'], sku=sku, price=price, qty=q))
+
+    if not kalemler:
+        raise ValueError("En az bir parça için miktar girin")
+
+    malzeme_toplam = sum(k.total for k in kalemler)
+
+    iskonto_pct_eff = alis_iskonto_pct or 0.0
+    maliyet_indirimli = malzeme_toplam * (1 - iskonto_pct_eff / 100.0)
+    kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+
+    return {
+        'kind': 'yedek_parca',
+        'tip': 'yedek_parca',
+        'tipAdi': 'Yedek Parça',
+        'odemeTipi': odeme_tipi_eff,
+        'girdi': {'kalemSayisi': len(kalemler)},
+        'malzemeGrubuToplam': round(malzeme_toplam, 2),
+        'maliyetToplam': round(malzeme_toplam, 2),
+        'alisIskontoPct': iskonto_pct_eff,
+        'maliyetIndirimli': round(maliyet_indirimli, 2),
+        'montajBedeli': round(montaj_bedeli, 2),
+        'karMarjiPct': kar_marji_pct,
+        'karTutari': round(kar_tutari, 2),
+        'satisFiyati': round(satis_fiyati, 2),
+        'kalemler': [k.dict() for k in kalemler],
     }

@@ -407,6 +407,13 @@ export const api = {
     req(`/albert-genau/bc/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauBcCalculate: (data: AlbertGenauBcCalculateInputT): Promise<AlbertGenauBcResultT> =>
     req('/albert-genau/bc/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  // YEDEK PARÇA -- dağıtık parça-değişim kataloğu (243 kalem). Sabit bir
+  // "sistem" yok; bayı kataloğun herhangi bir alt kümesini seçip miktar
+  // girer (bkz. AlbertGenauYedekParcaItemT).
+  albertGenauYedekParcaItems: (companyId?: string): Promise<AlbertGenauYedekParcaItemsResponseT> =>
+    req(`/albert-genau/yedek-parca/items${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
+  albertGenauYedekParcaCalculate: (data: AlbertGenauYedekParcaCalculateInputT): Promise<AlbertGenauYedekParcaResultT> =>
+    req('/albert-genau/yedek-parca/calculate', { method: 'POST', body: JSON.stringify(data) }),
   listAlbertGenauItems: (companyId: string): Promise<AlbertGenauItemT[]> =>
     req(`/albert-genau/items?companyId=${encodeURIComponent(companyId)}`),
   createAlbertGenauItem: (data: any): Promise<AlbertGenauItemT> =>
@@ -1126,6 +1133,41 @@ export type AlbertGenauBcResultT = {
   profilGrubuToplam: number;
   aksesuarGrubuToplam: number;
   camGrubuToplam: number;
+  maliyetToplam: number;
+  alisIskontoPct: number;
+  maliyetIndirimli: number;
+  montajBedeli: number;
+  karMarjiPct: number;
+  karTutari: number;
+  satisFiyati: number;
+  kalemler: AlbertGenauKalemT[];
+};
+
+// YEDEK PARÇA -- dağıtık parça-değişim kataloğu. Sabit bir "sistem" yok;
+// bayı kataloğun herhangi bir alt kümesini serbestçe seçip miktar girer.
+export type AlbertGenauYedekParcaItemT = { sku: string; name: string; unit: string; price: number; group: string };
+
+export type AlbertGenauYedekParcaItemsResponseT = {
+  items: AlbertGenauYedekParcaItemT[];
+  groups: string[]; // görünüm sırasına göre alt-marka grupları
+};
+
+export type AlbertGenauYedekParcaCalculateInputT = {
+  companyId?: string;
+  quantities: Record<string, number>; // sku -> miktar
+  alisIskontoPct?: number;
+  montajBedeli?: number;
+  karMarjiPct?: number;
+  odemeTipi?: 'nakit' | 'kredi_karti';
+};
+
+export type AlbertGenauYedekParcaResultT = {
+  kind: 'yedek_parca';
+  tip: 'yedek_parca';
+  tipAdi: string;
+  odemeTipi: 'nakit' | 'kredi_karti';
+  girdi: { kalemSayisi: number };
+  malzemeGrubuToplam: number;
   maliyetToplam: number;
   alisIskontoPct: number;
   maliyetIndirimli: number;

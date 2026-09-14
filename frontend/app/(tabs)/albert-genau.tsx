@@ -36,6 +36,9 @@ import {
   AlbertGenauBcResultT,
   AlbertGenauBcTypesResponseT,
   AlbertGenauBcTypeMetaT,
+  AlbertGenauYedekParcaResultT,
+  AlbertGenauYedekParcaItemsResponseT,
+  AlbertGenauYedekParcaItemT,
   RatesT,
   fetchAlbertGenauExcelBytes,
   fetchAlbertGenauDrawingBytes,
@@ -156,7 +159,7 @@ export default function AlbertGenauScreen() {
   // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
   // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
   // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
-  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi' | 'bc'>('geometric');
+  const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi' | 'bc' | 'yedek_parca'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
   const vertiflexTypes = meta.vertiflexTypes && meta.vertiflexTypes.length ? meta.vertiflexTypes : [{ id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08' }];
 
@@ -284,6 +287,37 @@ export default function AlbertGenauScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bcTip]);
 
+  // YEDEK PARÇA -- dağıtık parça-değişim kataloğu (243 kalem). Sabit bir
+  // "sistem" yok, bayı arama/grup filtresiyle kataloğu tarayıp istediği
+  // kalemlere miktar girer (bir "sepet" gibi).
+  const [ypMeta, setYpMeta] = useState<AlbertGenauYedekParcaItemsResponseT>({ items: [], groups: [] });
+  const [ypSearch, setYpSearch] = useState('');
+  const [ypGroupFilter, setYpGroupFilter] = useState<string>('ALL');
+  const [ypQuantities, setYpQuantities] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    api.albertGenauYedekParcaItems(activeCompany?.id).then(setYpMeta).catch(() => {});
+  }, [activeCompany?.id]);
+
+  const ypFilteredItems = useMemo(() => {
+    const q = ypSearch.trim().toLocaleLowerCase('tr');
+    const hasSelection = ypGroupFilter !== 'ALL' || q.length >= 2;
+    if (!hasSelection) return [];
+    return ypMeta.items.filter((it) => {
+      if (ypGroupFilter !== 'ALL' && it.group !== ypGroupFilter) return false;
+      if (q.length >= 2) {
+        const hay = `${it.name} ${it.sku}`.toLocaleLowerCase('tr');
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    }).slice(0, 100);
+  }, [ypMeta.items, ypSearch, ypGroupFilter]);
+
+  const ypSelectedCount = useMemo(
+    () => Object.values(ypQuantities).filter((v) => Number((v || '').replace(',', '.')) > 0).length,
+    [ypQuantities],
+  );
+
   const [afAdet, setAfAdet] = useState('1');
   const [afTekerlekli, setAfTekerlekli] = useState(false);
   const [afKapiVar, setAfKapiVar] = useState(false);
@@ -310,7 +344,7 @@ export default function AlbertGenauScreen() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT | null>(null);
+  const [result, setResult] = useState<AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT | AlbertGenauYedekParcaResultT | null>(null);
   const [lastPayload, setLastPayload] = useState<AlbertGenauCalculateInputT | null>(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -631,11 +665,39 @@ export default function AlbertGenauScreen() {
     }
   };
 
+  const onCalculateYedekParca = async () => {
+    setError('');
+    const quantities: Record<string, number> = {};
+    Object.entries(ypQuantities).forEach(([sku, raw]) => {
+      const v = Number((raw || '').replace(',', '.'));
+      if (v > 0) quantities[sku] = v;
+    });
+    if (!Object.keys(quantities).length) { setError('En az bir parça için miktar girin'); return; }
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await api.albertGenauYedekParcaCalculate({
+        companyId: activeCompany?.id,
+        quantities,
+        alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
+        montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
+        odemeTipi,
+      });
+      setResult(res);
+    } catch (e: any) {
+      setError(e?.message || 'Hesaplanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCalculate = async (depthOverrideMm?: number) => {
     if (family === 'airflex_modul') { await onCalculateAirflexModule(); return; }
     if (family === 'vertiflex') { await onCalculateVertiflex(); return; }
     if (family === 'kis_bahcesi') { await onCalculateKisBahcesi(); return; }
     if (family === 'bc') { await onCalculateBc(); return; }
+    if (family === 'yedek_parca') { await onCalculateYedekParca(); return; }
     setError('');
     setDepthChoice(null);
     const g = Number(genislik.replace(',', '.'));
@@ -785,7 +847,10 @@ export default function AlbertGenauScreen() {
     }
   };
 
-  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT) => {
+  const buildAciklama = (r: AlbertGenauResultT | AlbertGenauAirflexModuleResultT | AlbertGenauVertiflexResultT | AlbertGenauKisBahcesiResultT | AlbertGenauBcResultT | AlbertGenauYedekParcaResultT) => {
+    if (r.kind === 'yedek_parca') {
+      return `${r.tipAdi} — ${r.girdi.kalemSayisi} kalem`;
+    }
     if (r.kind === 'bc') {
       const parts = [
         `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
@@ -935,6 +1000,13 @@ export default function AlbertGenauScreen() {
                   testID="ag-family-bc"
                 >
                   <Text style={[s.typePillText, family === 'bc' && s.typePillTextActive]}>BC AİLESİ (TIARA / SLIDER / SLIDE MASTER / HD / TANGO / OPTIMA)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.typePill, family === 'yedek_parca' && s.typePillActive]}
+                  onPress={() => { setFamily('yedek_parca'); setResult(null); setError(''); }}
+                  testID="ag-family-yedek-parca"
+                >
+                  <Text style={[s.typePillText, family === 'yedek_parca' && s.typePillTextActive]}>YEDEK PARÇA</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1434,6 +1506,83 @@ export default function AlbertGenauScreen() {
               </>
             )}
 
+            {family === 'yedek_parca' && (
+              <>
+                {/* Arama + grup filtresi -- 243 kalemlik katalog tek seferde
+                    listelenmez, kullanıcı arayarak veya grup seçerek daraltır. */}
+                <View style={s.card}>
+                  <Text style={s.fieldLabel}>Parça Ara</Text>
+                  <View style={s.inputWrap}>
+                    <TextInput
+                      style={s.input}
+                      value={ypSearch}
+                      onChangeText={setYpSearch}
+                      placeholder="Parça adı veya stok kodu yazın (en az 2 harf)"
+                      placeholderTextColor={theme.colors.textMuted}
+                      testID="ag-yp-search"
+                    />
+                  </View>
+                  <View style={[s.typeWrap, { marginTop: 10 }]}>
+                    <TouchableOpacity
+                      style={[s.typePill, ypGroupFilter === 'ALL' && s.typePillActive]}
+                      onPress={() => setYpGroupFilter('ALL')}
+                      testID="ag-yp-group-all"
+                    >
+                      <Text style={[s.typePillText, ypGroupFilter === 'ALL' && s.typePillTextActive]}>Tümü</Text>
+                    </TouchableOpacity>
+                    {ypMeta.groups.map((g) => (
+                      <TouchableOpacity
+                        key={g}
+                        style={[s.typePill, ypGroupFilter === g && s.typePillActive]}
+                        onPress={() => setYpGroupFilter(g)}
+                        testID={`ag-yp-group-${g}`}
+                      >
+                        <Text style={[s.typePillText, ypGroupFilter === g && s.typePillTextActive]}>{g}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {ypSelectedCount > 0 && (
+                    <Text style={[s.hint, { marginTop: 8 }]}>{ypSelectedCount} kalem seçildi</Text>
+                  )}
+                </View>
+
+                {/* Filtrelenmiş liste -- hiçbir filtre uygulanmadan (grup=Tümü
+                    ve arama<2 harf) tüm katalog render edilmez. */}
+                {ypGroupFilter === 'ALL' && ypSearch.trim().length < 2 ? (
+                  <View style={s.card}>
+                    <Text style={s.hint}>Aramaya başlayın veya yukarıdan bir alt-marka grubu seçin.</Text>
+                  </View>
+                ) : ypFilteredItems.length === 0 ? (
+                  <View style={s.card}>
+                    <Text style={s.hint}>Eşleşen parça bulunamadı.</Text>
+                  </View>
+                ) : (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>{`Sonuçlar (${ypFilteredItems.length}${ypFilteredItems.length >= 100 ? '+' : ''})`}</Text>
+                    {ypFilteredItems.map((it: AlbertGenauYedekParcaItemT) => (
+                      <View key={it.sku} style={s.partsRow}>
+                        <View style={{ flex: 1, paddingRight: 10 }}>
+                          <Text style={s.partsRowLabel} numberOfLines={2}>{it.name}</Text>
+                          <Text style={s.partsRowSub}>{it.sku} • {it.unit} • ₺{money(it.price)}</Text>
+                        </View>
+                        <View style={s.partsRowInputWrap}>
+                          <TextInput
+                            style={s.input}
+                            value={ypQuantities[it.sku] || ''}
+                            onChangeText={(v) => setYpQuantities((prev) => ({ ...prev, [it.sku]: v }))}
+                            placeholder="0"
+                            placeholderTextColor={theme.colors.textMuted}
+                            keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
+                            testID={`ag-yp-qty-${it.sku}`}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
             {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
                 ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
                 liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
@@ -1597,6 +1746,8 @@ export default function AlbertGenauScreen() {
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yukseklikMm}mm{result.girdi.rayTipi ? ` • ${BC_RAY_TIPI_LABELS[result.girdi.rayTipi]}` : ''}
                   </Text>
+                ) : result.kind === 'yedek_parca' ? (
+                  <Text style={s.resultSub}>{result.girdi.kalemSayisi} kalem</Text>
                 ) : (
                   <Text style={s.resultSub}>
                     {result.girdi.genislikMm}×{result.girdi.yapilabilirDerinlikMm}mm{result.girdi.yukseklikMm ? ` • Y:${result.girdi.yukseklikMm}mm` : ''} • {result.girdi.modulSayisi} modül
@@ -1667,6 +1818,11 @@ export default function AlbertGenauScreen() {
                       </View>
                     )}
                   </>
+                ) : result.kind === 'yedek_parca' ? (
+                  <View style={s.breakdownRow}>
+                    <Text style={s.breakdownLabel}>Malzeme Grubu</Text>
+                    <Text style={s.breakdownValue}>₺{money(result.malzemeGrubuToplam)}</Text>
+                  </View>
                 ) : (
                   <>
                     <View style={s.breakdownRow}>
@@ -1741,7 +1897,7 @@ export default function AlbertGenauScreen() {
                     <Ionicons name="add-circle" size={18} color="#fff" />
                     <Text style={s.calcBtnText}>Teklife Ekle</Text>
                   </TouchableOpacity>
-                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && (
+                  {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && result.kind !== 'yedek_parca' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
                       {exporting ? <ActivityIndicator color={theme.colors.primary} /> : (
                         <>
@@ -1753,7 +1909,7 @@ export default function AlbertGenauScreen() {
                   )}
                 </View>
 
-                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && (
+                {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && result.kind !== 'yedek_parca' && (
                   <TouchableOpacity
                     style={[s.drawingBtn, addingDrawing && s.ctaDisabled]}
                     onPress={onAddDrawing}

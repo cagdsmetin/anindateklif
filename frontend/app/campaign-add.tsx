@@ -262,8 +262,8 @@ const s = StyleSheet.create({
     borderRadius: 24,
     zIndex: 9999,
     gap: 6,
-    elevation: 12,
     ...theme.shadow.md,
+    elevation: 12,
   },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

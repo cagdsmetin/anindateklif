@@ -209,7 +209,7 @@ function FieldRow({
   rowStyle,
   onChange,
   ...rest
-}: React.ComponentProps<typeof TextInput> & {
+}: Omit<React.ComponentProps<typeof TextInput>, 'onChange'> & {
   label: string;
   required?: boolean;
   icon: keyof typeof Ionicons.glyphMap;
@@ -328,8 +328,8 @@ const s = StyleSheet.create({
     borderRadius: 24,
     zIndex: 9999,
     gap: 6,
-    elevation: 12,
     ...theme.shadow.md,
+    elevation: 12,
   },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

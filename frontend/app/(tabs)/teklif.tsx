@@ -100,7 +100,7 @@ export default function EditorScreen() {
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
   const notlarSelRef = useRef({ start: 0, end: 0 });
-  const [notlarForcedSel, setNotlarForcedSel] = useState(undefined);
+  const [notlarForcedSel, setNotlarForcedSel] = useState<{ start: number; end: number } | undefined>(undefined);
   const applyNoteEmphasis = () => {
     const { start, end } = notlarSelRef.current;
     const result = toggleNoteEmphasis(notlar, start, end);

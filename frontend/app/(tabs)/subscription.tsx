@@ -460,7 +460,7 @@ function FieldRow({
   isLast,
   onChange,
   ...rest
-}: React.ComponentProps<typeof TextInput> & {
+}: Omit<React.ComponentProps<typeof TextInput>, 'onChange'> & {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   isLast?: boolean;

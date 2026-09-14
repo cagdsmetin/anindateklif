@@ -10,6 +10,7 @@ import { useApp } from '@/src/state/AppContext';
 import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
 import { useLanguage } from '@/src/lib/i18n';
+import TopHeader from '@/src/components/TopHeader';
 
 const HIDDEN_KEY = 'hiddenReminders';
 
@@ -160,19 +161,21 @@ export default function RemindersScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+      {/* Diğer ana tab ekranlarıyla (Panel/Teklif/Geçmiş vb.) tutarlı olsun diye
+          burada da TopHeader kullanılıyor -- hamburger menüsü (mobil/dar web'de
+          yan açılır-kapanır NavDrawer'ı açar) ve firma seçici/avatar bu sayede
+          Hatırlatmalar'da da görünür. Eskiden burası kendi özel geri-tuşlu
+          başlığını çiziyordu, bu yüzden hamburger hiç yoktu. */}
+      <TopHeader title={t('remindersPage.s003')} />
+      <View style={s.actionsRow}>
+        <TouchableOpacity onPress={openAdd} style={s.actionBtn} testID="reminders-add-btn">
+          <Ionicons name="add-circle-outline" size={18} color={theme.colors.primary} />
+          <Text style={s.actionBtnText}>Hatırlatıcı Ekle</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{t('remindersPage.s003')}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={openAdd} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-add-btn">
-            <Ionicons name="add-circle-outline" size={22} color={theme.colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/calendar' as any)} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="reminders-open-calendar">
-            <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => router.push('/(tabs)/calendar' as any)} style={s.actionBtn} testID="reminders-open-calendar">
+          <Ionicons name="calendar-outline" size={17} color={theme.colors.primary} />
+          <Text style={s.actionBtnText}>Takvim</Text>
+        </TouchableOpacity>
       </View>
       <View style={s.divider} />
 
@@ -416,16 +419,9 @@ const s = StyleSheet.create({
   modalCancelText: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   modalSaveBtn: { flex: 1.4, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
   modalSaveText: { fontSize: 13, fontWeight: '800', color: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-  },
-  headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  actionBtnText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   divider: { height: 1, backgroundColor: theme.colors.line },
   emptyBox: { backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 26, alignItems: 'center', gap: 8, marginBottom: 20 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },

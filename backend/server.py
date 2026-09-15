@@ -341,7 +341,19 @@ def _extract_ai_leads(reply_text: str) -> List[Dict[str, str]]:
 # Dummy hash for timing-safe login (mitigates account enumeration)
 _DUMMY_HASH = bcrypt.hashpw(b"dummy-password-not-used", bcrypt.gensalt()).decode()
 
-app = FastAPI(title="Anında Teklif API")
+# GÜVENLİK: FastAPI varsayılan olarak /docs (Swagger UI), /redoc ve
+# /openapi.json'ı KİMLİK DOĞRULAMASIZ, herkese açık bırakır -- bu da tüm
+# uç nokta listesini (admin/impersonate dahil), her modelin alan adlarını
+# vs. isteyen herkese servis eder (saldırgan için ücretsiz bir keşif
+# haritası). ENABLE_API_DOCS=true set edilmedikçe (lokal geliştirmede
+# elle açılabilir) bunlar production'da tamamen kapalı.
+_ENABLE_API_DOCS = os.environ.get("ENABLE_API_DOCS", "false").lower() == "true"
+app = FastAPI(
+    title="Anında Teklif API",
+    docs_url="/docs" if _ENABLE_API_DOCS else None,
+    redoc_url="/redoc" if _ENABLE_API_DOCS else None,
+    openapi_url="/openapi.json" if _ENABLE_API_DOCS else None,
+)
 api_router = APIRouter(prefix="/api")
 
 
@@ -5768,7 +5780,16 @@ async def subscription_callback(token: str = Form(...)):
     user_id = pending["user_id"] if pending else None
     success = response.get("status") == "success" and response.get("paymentStatus") == "SUCCESS"
 
-    if success and user_id:
+    # GÜVENLİK: Iyzico webhook'ları yeniden deneyebilir, ve token checkout
+    # sırasında istemciye (yönlendirme URL'sinde) görünür olduğu için istemci
+    # de bu uç noktayı elle tekrar tekrar çağırabilir. Bu idempotency kontrolü
+    # olmadan AYNI tek ödeme, callback her çağrıldığında abonelik süresini
+    # tekrar tekrar uzatıyordu (ücretsiz sınırsız uzatma açığı). Bir token
+    # zaten "paid" olarak işaretlenmişse süreyi bir daha UZATMADAN, sadece
+    # zaten başarılı olduğunu bildiren aynı sonucu döndürüyoruz.
+    already_processed = bool(pending) and pending.get("status") == "paid"
+
+    if success and user_id and not already_processed:
         plan_id = (pending or {}).get("plan")
         plan_cfg = SUBSCRIPTION_PLANS.get(plan_id) or SUBSCRIPTION_PLANS[DEFAULT_SUBSCRIPTION_PLAN]
         duration_days = plan_cfg["duration_days"]
@@ -5801,6 +5822,11 @@ async def subscription_callback(token: str = Form(...)):
             await db.subscription_payments.update_one(
                 {"token": token}, {"$set": {"status": "paid", "payment_id": response.get("paymentId")}}
             )
+        redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=success"
+    elif already_processed:
+        # Bu token için abonelik zaten bir kez uzatılmış -- tekrar hiçbir
+        # şey değiştirmeden, kullanıcıya yine "başarılı" sonucunu gösteriyoruz
+        # (ödeme gerçekten başarılıydı, sadece ikinci kez işlemiyoruz).
         redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=success"
     else:
         if pending:
@@ -6610,6 +6636,28 @@ async def _security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     return response
+
+
+# GÜVENLİK: en büyük meşru istek gövdemiz (katalog dosyası base64) ~21MB --
+# bundan büyük hiçbir istek gövdesi olmamalı. Bu kontrol olmadan, Content-Length
+# ile bildirilmiş dev bir gövde, herhangi bir Pydantic doğrulaması çalışmadan
+# ÖNCE tamamen belleğe okunuyor (uvicorn/Starlette body parse aşaması) --
+# kimliği doğrulanmamış bir istemci bile sunucuyu bellek tüketimiyle
+# yorabilir (DoS). Content-Length erkenden reddedilerek bu engelleniyor.
+_MAX_REQUEST_BODY_BYTES = 25 * 1024 * 1024  # ~25MB (en büyük meşru yük + pay)
+
+
+@app.middleware("http")
+async def _max_body_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > _MAX_REQUEST_BODY_BYTES:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=413, content={"detail": "İstek gövdesi çok büyük"})
+        except ValueError:
+            pass
+    return await call_next(request)
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

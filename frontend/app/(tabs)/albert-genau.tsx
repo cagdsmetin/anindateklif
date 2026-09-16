@@ -1704,8 +1704,8 @@ export default function AlbertGenauScreen() {
               <View style={s.row}>
                 <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" />
                 <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" />
+                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
               </View>
-              <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
               <Text style={s.hint}>
                 İskonto sadece malzeme maliyetini düşürür; montaj bedelini, imalat/diğer giderleri ve kar marjını etkilemez.{'\n'}
                 Satış Fiyatı = (Malzeme Maliyeti − İskonto) × (1 + Kar Marjı%) + Montaj Bedeli + İmalat ve Diğer Giderler

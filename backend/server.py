@@ -3055,6 +3055,10 @@ class AlbertGenauVertiflexCalculateRequest(BaseModel):
     inoxZincirli: bool = False
     alicisiz: bool = False
     suTahliyeliAltKasa: bool = False
+    # Sadece STATU IMPETUS CLEAN TWIN icin: IMPETUS TWIN STATU ELEKTROMEKANIK
+    # SET (G05080) adedi -- Excel'de sabit degil, genis aciklikta birden
+    # fazla set gerekebildigi icin bayi elle girer (varsayilan 1).
+    elektromekanikSetAdet: int = 1
     finish: Optional[str] = None
     camFiyatlariM2: Dict[str, float] = {}  # {'CAM-8MM-TEMPERLI': 1200} gibi
     alisIskontoPct: float = 0.0
@@ -3136,6 +3140,15 @@ class AlbertGenauVertiflexCalculateRequest(BaseModel):
                 raise ValueError("Cam fiyati gecersiz")
             out[str(sku)[:40]] = f
         return out
+
+    @field_validator("elektromekanikSetAdet")
+    @classmethod
+    def _elektromekanik_set_adet_valid(cls, v: int) -> int:
+        if v is None:
+            return 1
+        if v < 1 or v > 50:
+            raise ValueError("elektromekanikSetAdet 1-50 araliginda olmalidir")
+        return v
 
 
 class AlbertGenauKisBahcesiCalculateRequest(BaseModel):
@@ -3346,6 +3359,7 @@ def _run_ag_vertiflex_calculate(payload: "AlbertGenauVertiflexCalculateRequest",
             inox_zincirli=payload.inoxZincirli,
             alicisiz=payload.alicisiz,
             su_tahliyeli_alt_kasa=payload.suTahliyeliAltKasa,
+            elektromekanik_set_adet=payload.elektromekanikSetAdet,
             finish=payload.finish,
             cam_fiyatlari_m2=payload.camFiyatlariM2,
             alis_iskonto_pct=payload.alisIskontoPct,

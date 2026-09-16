@@ -1396,7 +1396,7 @@ def _calc_vertiflex_mono08_all_glass(pb, E2, F2, motor='ag', kumanda_kanal=5, in
     return profil, aksesuar, cam
 
 
-def _calc_impetus_clean_twin(pb, E2, F2, kumanda_kanal=1, finish_mult=1.0):
+def _calc_impetus_clean_twin(pb, E2, F2, kumanda_kanal=1, elektromekanik_set_adet=1, finish_mult=1.0):
     K = lambda sku, qty, fin=True: _vf_kalem(pb, sku, qty, finish_mult, fin)
     C8 = (((F2 - 137 - 36) / 3) * 2) / 1000
     C9 = (((F2 - 137 - 36) * 2 / 3) * 2) / 1000
@@ -1424,8 +1424,12 @@ def _calc_impetus_clean_twin(pb, E2, F2, kumanda_kanal=1, finish_mult=1.0):
         K('B8505308', (((E2 - 207) * 10) + (F2 * 4 * 2)) / 1000, fin=False),
     ]
     kumanda_map = {1: 'G05087', 5: 'G05088', 15: 'G05089'}
+    # ELEKTROMEKANIK SET adedi varsayilan 1 ama genis acikliklarda (birden
+    # fazla motor/zincir seti gerektiginde) bayi elle arttirabilsin diye
+    # serbest birakildi -- Excel'de bu satir da sabit degil, bayinin projeye
+    # gore girdigi bir adet hucresi.
     aksesuar = [
-        K('G05080', 1, fin=False),
+        K('G05080', max(1, int(elektromekanik_set_adet or 1)), fin=False),
         K(kumanda_map.get(kumanda_kanal, 'G05087'), 1, fin=False),
         K('G05084', 1, fin=False),
     ]
@@ -1459,6 +1463,7 @@ def calculate_vertiflex(
     inox_zincirli: bool = False,                # MONO 08 / TWIN panel setinde INOX zincirli alternatif
     alicisiz: bool = False,                     # sadece TWIN: alicisiz motor seti
     su_tahliyeli_alt_kasa: bool = False,        # sadece TWIN
+    elektromekanik_set_adet: int = 1,           # sadece STATU IMPETUS CLEAN TWIN
     finish: Optional[str] = None,
     cam_fiyatlari_m2: Optional[Dict[str, float]] = None,  # {'CAM-8MM-TEMPERLI': 1200} gibi -- cam() etiketlerinden sku'ya gore
     alis_iskonto_pct: float = 0.0,
@@ -1501,7 +1506,8 @@ def calculate_vertiflex(
     elif tip == 'vertiflex_mono08_all_glass':
         kwargs.update(motor=motor, kumanda_kanal=kumanda_kanal, inox=inox_zincirli)
     else:  # impetus_clean_twin
-        kwargs.update(kumanda_kanal=kumanda_kanal or 1)
+        kwargs.update(kumanda_kanal=kumanda_kanal or 1,
+                      elektromekanik_set_adet=elektromekanik_set_adet or 1)
 
     profil, aksesuar, cam_defs = func(pb, genislik_mm, yukseklik_mm, **kwargs)
 
@@ -1538,6 +1544,7 @@ def calculate_vertiflex(
             'yukseklikMm': yukseklik_mm,
             'panelSayisi': kwargs.get('panel_sayisi'),
             'motor': motor,
+            'elektromekanikSetAdet': kwargs.get('elektromekanik_set_adet'),
         },
         'profilGrubuToplam': round(profil_toplam, 2),
         'aksesuarGrubuToplam': round(aksesuar_toplam, 2),

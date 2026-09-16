@@ -1011,6 +1011,9 @@ export type AlbertGenauVertiflexCalculateInputT = {
   inoxZincirli?: boolean;
   alicisiz?: boolean;
   suTahliyeliAltKasa?: boolean;
+  // Sadece STATU IMPETUS CLEAN TWIN icin: IMPETUS TWIN STATU ELEKTROMEKANIK
+  // SET (G05080) adedi -- varsayilan 1.
+  elektromekanikSetAdet?: number;
   finish?: string | null;
   camFiyatlariM2?: Record<string, number>;
   alisIskontoPct?: number;
@@ -1025,7 +1028,7 @@ export type AlbertGenauVertiflexResultT = {
   tip: string;
   tipAdi: string;
   odemeTipi: 'nakit' | 'kredi_karti';
-  girdi: { genislikMm: number; yukseklikMm: number; panelSayisi: string | null; motor: string };
+  girdi: { genislikMm: number; yukseklikMm: number; panelSayisi: string | null; motor: string; elektromekanikSetAdet?: number | null };
   profilGrubuToplam: number;
   aksesuarGrubuToplam: number;
   camGrubuToplam: number;

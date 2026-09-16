@@ -180,6 +180,10 @@ export default function AlbertGenauScreen() {
   const [vfInoxZincirli, setVfInoxZincirli] = useState(false);
   const [vfAlicisiz, setVfAlicisiz] = useState(false);
   const [vfSuTahliyeli, setVfSuTahliyeli] = useState(false);
+  // Sadece STATU IMPETUS CLEAN TWIN icin: IMPETUS TWIN STATU ELEKTROMEKANIK
+  // SET (G05080) adedi -- genis aciklikta birden fazla set gerekebilir,
+  // varsayilan 1.
+  const [vfElektromekanikSetAdet, setVfElektromekanikSetAdet] = useState('1');
   const [vfCamFiyatlari, setVfCamFiyatlari] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -198,6 +202,7 @@ export default function AlbertGenauScreen() {
     if (!tm.inoxZincirli) setVfInoxZincirli(false);
     if (!tm.alicisiz) setVfAlicisiz(false);
     if (!tm.suTahliyeliAltKasa) setVfSuTahliyeli(false);
+    if (vfTip !== 'impetus_clean_twin') setVfElektromekanikSetAdet('1');
     setVfKumandaKanal(null);
     setResult(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -517,6 +522,7 @@ export default function AlbertGenauScreen() {
         inoxZincirli: tm?.inoxZincirli ? vfInoxZincirli : false,
         alicisiz: tm?.alicisiz ? vfAlicisiz : false,
         suTahliyeliAltKasa: tm?.suTahliyeliAltKasa ? vfSuTahliyeli : false,
+        elektromekanikSetAdet: vfTip === 'impetus_clean_twin' ? (Number(vfElektromekanikSetAdet) || 1) : 1,
         finish,
         camFiyatlariM2,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
@@ -882,6 +888,7 @@ export default function AlbertGenauScreen() {
         `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
         r.girdi.panelSayisi ? `${r.girdi.panelSayisi} panelli` : null,
         r.girdi.motor === 'somfy' ? 'Somfy motor' : 'AG motor',
+        r.girdi.elektromekanikSetAdet && r.girdi.elektromekanikSetAdet > 1 ? `${r.girdi.elektromekanikSetAdet} adet elektromekanik set` : null,
         FINISH_LABELS[finish] || finish,
       ].filter(Boolean);
       return `${r.tipAdi} — ${parts.join(', ')}`;
@@ -1320,6 +1327,20 @@ export default function AlbertGenauScreen() {
                     {vfTypeMeta.suTahliyeliAltKasa && (
                       <ToggleRow label="Su tahliyeli alt kasa" value={vfSuTahliyeli} onChange={setVfSuTahliyeli} testID="ag-vf-sutahliyeli" />
                     )}
+                  </View>
+                )}
+
+                {/* Elektromekanik set adedi -- sadece STATU IMPETUS CLEAN TWIN'de gecerli */}
+                {vfTip === 'impetus_clean_twin' && (
+                  <View style={s.card}>
+                    <Text style={s.sectionTitle}>Elektromekanik Set</Text>
+                    <NumField
+                      label="IMPETUS TWIN STATU Elektromekanik Set Adedi"
+                      value={vfElektromekanikSetAdet}
+                      onChange={setVfElektromekanikSetAdet}
+                      testID="ag-vf-elektromekanik-adet"
+                    />
+                    <Text style={s.hint}>Geniş açıklıklarda birden fazla elektromekanik set gerekebilir; ihtiyacınız olan adedi girin.</Text>
                   </View>
                 )}
 

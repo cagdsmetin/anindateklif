@@ -486,7 +486,17 @@ export default function HistoryScreen() {
                   setMaliyetFor(quote.id);
                   const init: Record<string, string> = {};
                   (quote.items || []).forEach((it) => {
-                    if (it.maliyet != null) init[it.id] = String(it.maliyet).replace('.', ',');
+                    if (it.maliyet != null) {
+                      init[it.id] = String(it.maliyet).replace('.', ',');
+                    } else {
+                      // Elle girilmiş bir maliyet henüz yoksa, Albert Genau'dan
+                      // gelen kalemlerde Ürün Maliyeti + Montaj Bedeli + İmalat
+                      // ve Diğer Giderler (kar HARİÇ) toplamını öneri olarak
+                      // otomatik dolduruyoruz -- kullanıcı istediği an bu değeri
+                      // elle değiştirip kaydedebilir, bu manuel akışı bozmaz.
+                      const agSum = (it.agMaliyet || 0) + (it.agMontajBedeli || 0) + (it.agImalatBedeli || 0);
+                      if (agSum > 0) init[it.id] = String(Math.round(agSum * 100) / 100).replace('.', ',');
+                    }
                   });
                   setMaliyetItemInputs(init);
                   setEkstraMaliyetRows((quote.ekstraMaliyetler || []).map((e) => ({

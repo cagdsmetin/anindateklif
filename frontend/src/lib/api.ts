@@ -824,6 +824,14 @@ export type QuoteItemT = {
   birim: string;
   birimFiyat: number;
   maliyet?: number | null;
+  // Albert Genau hesaplayıcısından eklenen kalemler için maliyet kırılımı
+  // (kar HARİÇ) -- Geçmiş'teki "Maliyet Ekle" alanı, kullanıcı henüz elle bir
+  // `maliyet` girmemişse bu üçünün toplamıyla otomatik doluyor (bkz.
+  // history.tsx). Elle girilmiş/kaydedilmiş bir `maliyet` her zaman önceliklidir
+  // -- bu alanlar sadece bir "öneri" kaynağıdır, mevcut manuel akışı değiştirmez.
+  agMaliyet?: number | null;
+  agMontajBedeli?: number | null;
+  agImalatBedeli?: number | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };
@@ -908,6 +916,7 @@ export type AlbertGenauPartsListCalculateInputT = {
   finish?: string | null;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -924,6 +933,7 @@ export type AlbertGenauPartsListResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -943,6 +953,7 @@ export type AlbertGenauAirflexModuleInputT = {
   finish?: string | null;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -959,6 +970,7 @@ export type AlbertGenauAirflexModuleResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1003,6 +1015,7 @@ export type AlbertGenauVertiflexCalculateInputT = {
   camFiyatlariM2?: Record<string, number>;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -1020,6 +1033,7 @@ export type AlbertGenauVertiflexResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1060,6 +1074,7 @@ export type AlbertGenauKisBahcesiCalculateInputT = {
   camFiyatlariM2?: Record<string, number>;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -1083,6 +1098,7 @@ export type AlbertGenauKisBahcesiResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1126,6 +1142,7 @@ export type AlbertGenauBcCalculateInputT = {
   camFiyatlariM2?: Record<string, number>;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -1143,6 +1160,7 @@ export type AlbertGenauBcResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1163,6 +1181,7 @@ export type AlbertGenauYedekParcaCalculateInputT = {
   quantities: Record<string, number>; // sku -> miktar
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -1178,6 +1197,7 @@ export type AlbertGenauYedekParcaResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1202,6 +1222,7 @@ export type AlbertGenauCalculateInputT = {
   kopuk?: boolean;
   alisIskontoPct?: number;
   montajBedeli?: number;
+  imalatBedeli?: number;
   karMarjiPct?: number;
   odemeTipi?: 'nakit' | 'kredi_karti';
 };
@@ -1238,6 +1259,7 @@ export type AlbertGenauResultT = {
   alisIskontoPct: number;
   maliyetIndirimli: number;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   karTutari: number;
   satisFiyati: number;
@@ -1251,6 +1273,7 @@ export type AlbertGenauItemT = {
   tip: string;
   isim: string;
   montajBedeli: number;
+  imalatBedeli?: number;
   karMarjiPct: number;
   paraBirimi: string;
   createdAt: string;

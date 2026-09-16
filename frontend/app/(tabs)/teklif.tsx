@@ -58,7 +58,7 @@ const DURUM_COLORS: Record<string, string> = {
 
 export default function EditorScreen() {
   const { t, lang } = useLanguage();
-  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests, pendingNewQuoteAttachments, clearPendingNewQuoteAttachments } = useApp();
+  const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests, pendingNewQuoteAttachments, clearPendingNewQuoteAttachments, pendingAlbertGenauItems, clearPendingAlbertGenauItems } = useApp();
   const { user } = useAuth();
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
   const saveNotesAsDefault = async () => {
@@ -75,7 +75,7 @@ export default function EditorScreen() {
   };
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string; albertGenau?: string }>();
+  const params = useLocalSearchParams<{ quoteId?: string; duplicateFrom?: string }>();
 
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   // Yalnızca ekranda küçük durum rozeti göstermek için -- kaydetme akışını
@@ -132,10 +132,6 @@ export default function EditorScreen() {
   // formu tekrar tekrar sıfırlamasını önlemek için (kullanıcı formu
   // düzenlemeye başladıktan sonra da param URL'de kalmaya devam eder).
   const duplicatedRef = useRef<string | null>(null);
-  // Albert Genau hesaplama ekranından "Teklife Kalem Olarak Ekle" ile
-  // dönüldüğünde aynı param'ın (URL'de kalabildiği için) tekrar tekrar
-  // yeni kalem eklemesini önler.
-  const albertGenauRef = useRef<string | null>(null);
   // Manuel/Genel kalemlerde daha önce girilmiş ürün adı -> fiyat
   // eşleşmeleri (cihazda, firma bazlı kalıcı). Ref kullanıyoruz çünkü
   // sadece updateItem içinde okunup yazılıyor, ekranda ayrıca gösterilmiyor.
@@ -211,23 +207,39 @@ export default function EditorScreen() {
     }
   }, [params.duplicateFrom, quotes]);
 
-  // Albert Genau hesaplama ekranından hesaplanmış fiyatla dönüldüğünde:
-  // otomatik olarak "genel" modda yeni bir kalem oluşturup ekler.
+  // Albert Genau hesaplama ekranından "Teklife Ekle" ile dönüldüğünde: kalem
+  // artık route param değil, AppContext'teki bekleme alanından okunuyor (bkz.
+  // AppContext.tsx pendingAlbertGenauItems) -- böylece albert-genau.tsx
+  // router.back() ile AYNI Teklif ekranı örneğine dönebiliyor, yeni bir kopya
+  // açıp geri tuşunu bozmuyor (bkz. o dosyadaki onAddToQuote yorum notu).
   useEffect(() => {
-    if (params.albertGenau && albertGenauRef.current !== params.albertGenau) {
-      albertGenauRef.current = params.albertGenau;
-      try {
-        const data = JSON.parse(params.albertGenau);
-        const it = { ...makeItem('general'), urunAdi: data.urunAdi || 'Albert Genau', birim: 'Adet', birimFiyat: Number(data.birimFiyat) || 0, aciklama: data.aciklama || '' };
-        setItems((prev) => [...prev, it]);
-        setExpandedItemId(it.id);
-        showToast('Albert Genau kalemi eklendi');
-      } catch {
-        // yoksay -- bozuk parametre
+    if (pendingAlbertGenauItems.length === 0) return;
+    setItems((prev) => {
+      let next = prev;
+      let lastId = '';
+      for (const data of pendingAlbertGenauItems) {
+        const it = {
+          ...makeItem('general'),
+          urunAdi: data.urunAdi || 'Albert Genau',
+          birim: 'Adet',
+          birimFiyat: Number(data.birimFiyat) || 0,
+          aciklama: data.aciklama || '',
+          // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
+          // otomatik doldurmak için (bkz. history.tsx), kalemle birlikte saklanır.
+          agMaliyet: data.agMaliyet ?? null,
+          agMontajBedeli: data.agMontajBedeli ?? null,
+          agImalatBedeli: data.agImalatBedeli ?? null,
+        };
+        next = [...next, it];
+        lastId = it.id;
       }
-    }
+      if (lastId) setExpandedItemId(lastId);
+      return next;
+    });
+    clearPendingAlbertGenauItems();
+    showToast('Albert Genau kalemi eklendi');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.albertGenau]);
+  }, [pendingAlbertGenauItems]);
 
   // Albert Genau ekranında "Teknik Çizim Ekle" ile hazırlanan otomatik çizim
   // (henüz kaydedilmemiş bu teklife eklenmek üzere AppContext'te bekliyor) --

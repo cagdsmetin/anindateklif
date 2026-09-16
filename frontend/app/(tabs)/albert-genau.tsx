@@ -140,7 +140,7 @@ function money(n: number) {
 export default function AlbertGenauScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, showToast, toast, addPendingNewQuoteAttachment } = useApp();
+  const { activeCompany, showToast, toast, addPendingNewQuoteAttachment, addPendingAlbertGenauItem } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
   // Bu ekranın kendi geri-tuşlu üst çubuğu var (TopHeader değil), bu yüzden
@@ -340,6 +340,9 @@ export default function AlbertGenauScreen() {
   const [odemeTipi, setOdemeTipi] = useState<'nakit' | 'kredi_karti'>('nakit');
   const [alisIskontoPct, setAlisIskontoPct] = useState('0');
   const [montajBedeli, setMontajBedeli] = useState('0');
+  // İmalat ve Diğer Giderler -- Montaj Bedeli ile aynı mantık: kar marjı
+  // yüzdesine sokulmadan, doğrudan satış fiyatına eklenen sabit bir tutar.
+  const [imalatBedeli, setImalatBedeli] = useState('0');
   const [karMarjiPct, setKarMarjiPct] = useState('0');
 
   const [busy, setBusy] = useState(false);
@@ -463,6 +466,7 @@ export default function AlbertGenauScreen() {
         finish,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       });
@@ -517,6 +521,7 @@ export default function AlbertGenauScreen() {
         camFiyatlariM2,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       });
@@ -576,6 +581,7 @@ export default function AlbertGenauScreen() {
         camFiyatlariM2,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       });
@@ -642,6 +648,7 @@ export default function AlbertGenauScreen() {
         camFiyatlariM2,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       });
@@ -681,6 +688,7 @@ export default function AlbertGenauScreen() {
         quantities,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       });
@@ -724,6 +732,7 @@ export default function AlbertGenauScreen() {
         kopuk,
         alisIskontoPct: Number(alisIskontoPct.replace(',', '.')) || 0,
         montajBedeli: Number(montajBedeli.replace(',', '.')) || 0,
+        imalatBedeli: Number(imalatBedeli.replace(',', '.')) || 0,
         karMarjiPct: Number(karMarjiPct.replace(',', '.')) || 0,
         odemeTipi,
       };
@@ -899,16 +908,37 @@ export default function AlbertGenauScreen() {
     return `${r.tipAdi} — ${parts.join(', ')}`;
   };
 
+  // BUG FIX: önceden router.push({pathname:'/(tabs)/teklif', params:{albertGenau:...}})
+  // kullanılıyordu -- bu, Teklif ekranının TAMAMEN YENİ (boş) bir kopyasını
+  // açıp üzerine tek kalemi ekliyordu; kullanıcının o ana kadar doldurduğu
+  // müşteri bilgisi/diğer kalemler arkada, ayrı bir ekran kopyasında kalıyordu
+  // ve geri tuşu da bu yüzden beklenmedik şekilde (yığındaki eski kopyalar
+  // üzerinden) Panel'e çıkıyordu. Ayrıca `adding` hiç false'a dönmediği için
+  // (router.push ile bu ekrandan ayrılınca finally hiç işlemiyordu) kullanıcı
+  // bu ekrana geri döndüğünde -- örn. aynı ürünü farklı ölçüyle tekrar eklemek
+  // için -- "Teklife Ekle" butonu kalıcı olarak gri/pasif kalıyordu.
+  // Artık: kalem AppContext'teki bekleme alanına konuyor (bkz. teklif.tsx'teki
+  // tüketici efekt) ve router.back() ile AYNI Teklif ekranı örneğine dönülüyor.
   const onAddToQuote = () => {
     if (!result) return;
     if (adding) return;
     setAdding(true);
-    const payload = {
-      urunAdi: result.tipAdi,
-      aciklama: buildAciklama(result),
-      birimFiyat: Math.round(result.satisFiyati * 100) / 100,
-    };
-    router.push({ pathname: '/(tabs)/teklif', params: { albertGenau: JSON.stringify(payload) } });
+    try {
+      addPendingAlbertGenauItem({
+        urunAdi: result.tipAdi,
+        aciklama: buildAciklama(result),
+        birimFiyat: Math.round(result.satisFiyati * 100) / 100,
+        // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
+        // otomatik doldurmak için taşınıyor (bkz. history.tsx).
+        agMaliyet: Math.round((result.maliyetIndirimli || 0) * 100) / 100,
+        agMontajBedeli: Math.round((result.montajBedeli || 0) * 100) / 100,
+        agImalatBedeli: Math.round((result.imalatBedeli || 0) * 100) / 100,
+      });
+      showToast('Albert Genau kalemi teklife eklendi');
+      router.back();
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -1673,11 +1703,12 @@ export default function AlbertGenauScreen() {
               <NumField label="Alış İskonto Oranı (%)" value={alisIskontoPct} onChange={setAlisIskontoPct} testID="ag-iskonto" />
               <View style={s.row}>
                 <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" />
-                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
+                <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" />
               </View>
+              <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
               <Text style={s.hint}>
-                İskonto sadece malzeme maliyetini düşürür; montaj bedelini ve kar marjını etkilemez.{'\n'}
-                Satış Fiyatı = (Malzeme Maliyeti − İskonto) × (1 + Kar Marjı%) + Montaj Bedeli
+                İskonto sadece malzeme maliyetini düşürür; montaj bedelini, imalat/diğer giderleri ve kar marjını etkilemez.{'\n'}
+                Satış Fiyatı = (Malzeme Maliyeti − İskonto) × (1 + Kar Marjı%) + Montaj Bedeli + İmalat ve Diğer Giderler
               </Text>
             </View>
 
@@ -1870,6 +1901,10 @@ export default function AlbertGenauScreen() {
                 <View style={s.breakdownRow}>
                   <Text style={s.breakdownLabel}>Montaj Bedeli</Text>
                   <Text style={s.breakdownValue}>₺{money(result.montajBedeli)}</Text>
+                </View>
+                <View style={s.breakdownRow}>
+                  <Text style={s.breakdownLabel}>İmalat ve Diğer Giderler</Text>
+                  <Text style={s.breakdownValue}>₺{money(result.imalatBedeli || 0)}</Text>
                 </View>
 
                 <View style={s.totalBox}>

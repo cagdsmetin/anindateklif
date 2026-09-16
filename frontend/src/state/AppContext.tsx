@@ -8,6 +8,19 @@ import { useAuth } from './AuthContext';
 
 const ACTIVE_COMPANY_KEY = 'active_company_id_v2';
 
+// Albert Genau hesaplayıcısından "Teklife Ekle" ile gelen, henüz Teklif
+// ekranına aktarılmamış kalem -- maliyet kırılımı alanları (kar HARİÇ)
+// Geçmiş'teki "Maliyet Ekle" alanını otomatik doldurmak için taşınır
+// (bkz. teklif.tsx tüketici efekti ve history.tsx).
+export type PendingAlbertGenauItemT = {
+  urunAdi: string;
+  aciklama: string;
+  birimFiyat: number;
+  agMaliyet?: number;
+  agMontajBedeli?: number;
+  agImalatBedeli?: number;
+};
+
 type Ctx = {
   loading: boolean;
   companies: CompanyT[];
@@ -77,6 +90,17 @@ type Ctx = {
   pendingNewQuoteAttachments: AttachmentT[];
   addPendingNewQuoteAttachment: (att: AttachmentT) => void;
   clearPendingNewQuoteAttachments: () => void;
+  // Albert Genau hesaplama ekranından "Teklife Ekle" ile dönüldüğünde eklenecek
+  // kalem(ler) için aynı bekleme-alanı deseni -- route param yerine bunun
+  // kullanılmasının sebebi: route param'la dönüş router.push() gerektiriyordu,
+  // bu da Teklif ekranının YENİ (boş) bir kopyasını açıp üzerine tek kalemi
+  // ekliyor, kullanıcının o ana kadar doldurduğu her şeyi (müşteri bilgisi,
+  // diğer kalemler) arkada, ayrı bir ekran kopyasında bırakıyordu -- geri tuşu
+  // da o yüzden beklenmedik şekilde Panel'e çıkıyordu. Bekleme alanı + router.back()
+  // ile artık aynı, tek Teklif ekranı örneğine geri dönülüyor.
+  pendingAlbertGenauItems: PendingAlbertGenauItemT[];
+  addPendingAlbertGenauItem: (item: PendingAlbertGenauItemT) => void;
+  clearPendingAlbertGenauItems: () => void;
   // Ekip Sohbeti: kaç okunmamış mesaj olduğu (WhatsApp Web tarzı yanıp sönen
   // menü göstergesi + tarayıcı bildirimi için) — bkz. aşağıdaki polling useEffect.
   teamUnreadTotal: number;
@@ -128,6 +152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<string | null>(null);
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
   const [pendingNewQuoteAttachments, setPendingNewQuoteAttachments] = useState<AttachmentT[]>([]);
+  const [pendingAlbertGenauItems, setPendingAlbertGenauItems] = useState<PendingAlbertGenauItemT[]>([]);
   const [teamUnreadTotal, setTeamUnreadTotal] = useState(0);
   const pathname = usePathname();
   const notifiedKeysRef = useRef<Set<string>>(new Set());
@@ -146,6 +171,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const clearPendingNewQuoteAttachments = useCallback(() => {
     setPendingNewQuoteAttachments([]);
+  }, []);
+  const addPendingAlbertGenauItem = useCallback((item: PendingAlbertGenauItemT) => {
+    setPendingAlbertGenauItems((prev) => [...prev, item]);
+  }, []);
+  const clearPendingAlbertGenauItems = useCallback(() => {
+    setPendingAlbertGenauItems([]);
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -546,6 +577,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         adet: Number(it.adet) || 0,
         birim: it.birim || 'Adet',
         birimFiyat: Number(it.birimFiyat) || 0,
+        // Albert Genau maliyet kırılımı (kar HARİÇ) -- Geçmiş'teki "Maliyet
+        // Ekle" alanının otomatik doldurulması için (bkz. history.tsx).
+        agMaliyet: it.agMaliyet ?? null,
+        agMontajBedeli: it.agMontajBedeli ?? null,
+        agImalatBedeli: it.agImalatBedeli ?? null,
       })),
       durum: quote.durum || 'Beklemede',
     };
@@ -839,6 +875,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pendingNewQuoteAttachments,
         addPendingNewQuoteAttachment,
         clearPendingNewQuoteAttachments,
+        pendingAlbertGenauItems,
+        addPendingAlbertGenauItem,
+        clearPendingAlbertGenauItems,
         teamUnreadTotal,
       }}
     >

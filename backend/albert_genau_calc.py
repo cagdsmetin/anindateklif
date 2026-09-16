@@ -643,6 +643,7 @@ def calculate(
     kopuk: bool = False,
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -732,7 +733,9 @@ def calculate(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'geometric',
@@ -763,6 +766,7 @@ def calculate(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -855,6 +859,7 @@ def calculate_airflex_module(
     finish: Optional[str] = None,
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -921,7 +926,9 @@ def calculate_airflex_module(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'airflex_modul',
@@ -941,6 +948,7 @@ def calculate_airflex_module(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -970,6 +978,7 @@ def calculate_parts_list(
     finish: Optional[str] = None,
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -1010,7 +1019,9 @@ def calculate_parts_list(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'parts_list',
@@ -1024,6 +1035,7 @@ def calculate_parts_list(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -1451,6 +1463,7 @@ def calculate_vertiflex(
     cam_fiyatlari_m2: Optional[Dict[str, float]] = None,  # {'CAM-8MM-TEMPERLI': 1200} gibi -- cam() etiketlerinden sku'ya gore
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -1511,7 +1524,9 @@ def calculate_vertiflex(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'vertiflex',
@@ -1531,6 +1546,7 @@ def calculate_vertiflex(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -1788,6 +1804,7 @@ def calculate_kis_bahcesi(
     cam_fiyatlari_m2: Optional[Dict[str, float]] = None,  # {'CAM-KB0810-TAVAN': 1500} gibi
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -1839,7 +1856,9 @@ def calculate_kis_bahcesi(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'kis_bahcesi',
@@ -1860,6 +1879,7 @@ def calculate_kis_bahcesi(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -2108,6 +2128,7 @@ def calculate_bc(
     cam_fiyatlari_m2: Optional[Dict[str, float]] = None,
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     price_data: Optional[Dict[str, Any]] = None,
@@ -2221,7 +2242,9 @@ def calculate_bc(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = maliyet_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'bc',
@@ -2240,6 +2263,7 @@ def calculate_bc(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),
@@ -2251,6 +2275,7 @@ def calculate_yedek_parca(
     quantities: Dict[str, float],
     alis_iskonto_pct: float = 0.0,
     montaj_bedeli: float = 0.0,
+    imalat_bedeli: float = 0.0,
     kar_marji_pct: float = 0.0,
     odeme_tipi: str = 'nakit',
     catalog_data: Optional[Dict[str, Any]] = None,
@@ -2294,7 +2319,9 @@ def calculate_yedek_parca(
     iskonto_pct_eff = alis_iskonto_pct or 0.0
     maliyet_indirimli = malzeme_toplam * (1 - iskonto_pct_eff / 100.0)
     kar_tutari = maliyet_indirimli * (kar_marji_pct or 0.0) / 100.0
-    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli
+    # imalat_bedeli (İmalat ve Diğer Giderler) montaj bedeli gibi -- kar
+    # marjı yüzdesine sokulmadan doğrudan satış fiyatına eklenir.
+    satis_fiyati = maliyet_indirimli + kar_tutari + montaj_bedeli + imalat_bedeli
 
     return {
         'kind': 'yedek_parca',
@@ -2307,6 +2334,7 @@ def calculate_yedek_parca(
         'alisIskontoPct': iskonto_pct_eff,
         'maliyetIndirimli': round(maliyet_indirimli, 2),
         'montajBedeli': round(montaj_bedeli, 2),
+        'imalatBedeli': round(imalat_bedeli, 2),
         'karMarjiPct': kar_marji_pct,
         'karTutari': round(kar_tutari, 2),
         'satisFiyati': round(satis_fiyati, 2),

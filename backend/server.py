@@ -1552,6 +1552,14 @@ class QuoteItem(BaseModel):
     # kalem bazında girilince Quote.maliyet toplamı otomatik hesaplanır
     # (bkz. update_quote_item_maliyet).
     maliyet: Optional[float] = None
+    # Albert Genau hesaplayıcısından eklenen kalemler için maliyet kırılımı
+    # (kar HARİÇ) -- Geçmiş ekranındaki "Maliyet Ekle" alanı, yukarıdaki
+    # `maliyet` henüz elle girilmemişse bu üçünün toplamıyla otomatik
+    # doldurulur (bkz. frontend history.tsx). Sadece bir öneri kaynağıdır;
+    # `maliyet` alanı her zaman öncelikli kalır.
+    agMaliyet: Optional[float] = None
+    agMontajBedeli: Optional[float] = None
+    agImalatBedeli: Optional[float] = None
 
 
 class Quote(BaseModel):
@@ -2884,6 +2892,7 @@ class AlbertGenauCalculateRequest(BaseModel):
     kopuk: bool = False
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"  # 'nakit' | 'kredi_karti' -- hangi Excel sutununa gore hesaplanacagi
 
@@ -2928,6 +2937,7 @@ class AlbertGenauPartsListCalculateRequest(BaseModel):
     finish: Optional[str] = None
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -2985,6 +2995,7 @@ class AlbertGenauAirflexModuleRequest(BaseModel):
     finish: Optional[str] = None
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -3048,6 +3059,7 @@ class AlbertGenauVertiflexCalculateRequest(BaseModel):
     camFiyatlariM2: Dict[str, float] = {}  # {'CAM-8MM-TEMPERLI': 1200} gibi
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -3145,6 +3157,7 @@ class AlbertGenauKisBahcesiCalculateRequest(BaseModel):
     camFiyatlariM2: Dict[str, float] = {}  # {'CAM-KB0810-TAVAN': 1200} gibi
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -3212,6 +3225,7 @@ class AlbertGenauItemCreate(BaseModel):
     tip: str
     isim: str
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     paraBirimi: str = "TRY"
 
@@ -3336,6 +3350,7 @@ def _run_ag_vertiflex_calculate(payload: "AlbertGenauVertiflexCalculateRequest",
             cam_fiyatlari_m2=payload.camFiyatlariM2,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3388,6 +3403,7 @@ def _run_ag_kis_bahcesi_calculate(payload: "AlbertGenauKisBahcesiCalculateReques
             cam_fiyatlari_m2=payload.camFiyatlariM2,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3424,6 +3440,7 @@ class AlbertGenauBcCalculateRequest(BaseModel):
     camFiyatlariM2: Dict[str, float] = {}    # {"CAM-bc_tiara_08-1": 1500} gibi
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -3525,6 +3542,7 @@ def _run_ag_bc_calculate(payload: "AlbertGenauBcCalculateRequest", price_data: O
             cam_fiyatlari_m2=payload.camFiyatlariM2,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3551,6 +3569,7 @@ class AlbertGenauYedekParcaCalculateRequest(BaseModel):
     quantities: Dict[str, float] = {}
     alisIskontoPct: float = 0.0
     montajBedeli: float = 0.0
+    imalatBedeli: float = 0.0
     karMarjiPct: float = 0.0
     odemeTipi: str = "nakit"
 
@@ -3607,6 +3626,7 @@ def _run_ag_yedek_parca_calculate(payload: "AlbertGenauYedekParcaCalculateReques
             quantities=payload.quantities,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             catalog_data=catalog_data,
@@ -3649,6 +3669,7 @@ def _run_ag_parts_list_calculate(payload: "AlbertGenauPartsListCalculateRequest"
             finish=payload.finish,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3685,6 +3706,7 @@ async def albert_genau_airflex_module_calculate(payload: AlbertGenauAirflexModul
             finish=payload.finish,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3709,6 +3731,7 @@ def _run_ag_calculate(payload: "AlbertGenauCalculateRequest", price_data: Option
             kopuk=payload.kopuk,
             alis_iskonto_pct=payload.alisIskontoPct,
             montaj_bedeli=payload.montajBedeli,
+            imalat_bedeli=payload.imalatBedeli,
             kar_marji_pct=payload.karMarjiPct,
             odeme_tipi=payload.odemeTipi,
             price_data=price_data,
@@ -3813,6 +3836,7 @@ async def albert_genau_export_excel(payload: AlbertGenauCalculateRequest, user=D
         ("Iskontolu Malzeme Maliyeti", result.get("maliyetIndirimli")),
         (f"Kar Tutari (%{result.get('karMarjiPct', 0)})", result.get("karTutari")),
         ("Montaj Bedeli", result["montajBedeli"]),
+        ("Imalat ve Diger Giderler", result.get("imalatBedeli", 0)),
         (f"SATIS FIYATI ({odeme_label})", result["satisFiyati"]),
     ]
     for label, val in summary_rows:

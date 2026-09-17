@@ -1723,9 +1723,9 @@ export default function AlbertGenauScreen() {
               <Text style={s.sectionTitle}>Alış İskontosu, Montaj &amp; Kar Marjı</Text>
               <NumField label="Alış İskonto Oranı (%)" value={alisIskontoPct} onChange={setAlisIskontoPct} testID="ag-iskonto" />
               <View style={s.row}>
-                <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" />
-                <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" />
-                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
+                <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" labelMinHeight={32} />
+                <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" labelMinHeight={32} />
+                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" labelMinHeight={32} />
               </View>
               <Text style={s.hint}>
                 İskonto sadece malzeme maliyetini düşürür; montaj bedelini, imalat/diğer giderleri ve kar marjını etkilemez.{'\n'}
@@ -1991,10 +1991,10 @@ export default function AlbertGenauScreen() {
   );
 }
 
-function NumField({ label, value, onChange, testID }: { label: string; value: string; onChange: (v: string) => void; testID?: string }) {
+function NumField({ label, value, onChange, testID, labelMinHeight }: { label: string; value: string; onChange: (v: string) => void; testID?: string; labelMinHeight?: number }) {
   return (
     <View style={[s.field, { flex: 1 }]}>
-      <Text style={s.fieldLabel}>{label}</Text>
+      <Text style={[s.fieldLabel, labelMinHeight ? { minHeight: labelMinHeight } : null]}>{label}</Text>
       <View style={s.inputWrap}>
         <TextInput
           testID={testID}

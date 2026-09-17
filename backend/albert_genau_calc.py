@@ -870,7 +870,12 @@ def calculate_airflex_module(
     if adet is None or adet < 1:
         raise ValueError("Adet en az 1 olmalidir")
 
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    # NOT: BIOFLEX'in (ana calculate()) aksine bu ailenin kaynak Excel'inde
+    # ayri NAKIT/KREDI KARTI fiyat sutunu YOK -- tek bir liste fiyati var.
+    # Bu yuzden odeme_tipi girdisi ne olursa olsun fiyat hep indirimsiz
+    # (kredi_karti esdegeri) hesaplanir; 'odemeTipi' sonuc alaninda sadece
+    # bilgi amacli sabit 'kredi_karti' olarak donulur.
+    odeme_tipi_eff = 'kredi_karti'
     pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     finish_mult = _finish_multiplier(finish)
 
@@ -994,7 +999,10 @@ def calculate_parts_list(
     if not system:
         raise ValueError(f"Bilinmeyen parca listesi sistemi: {system_id}")
 
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    # NOT: bu ailenin kaynak Excel'inde ayri NAKIT/KREDI KARTI fiyat sutunu
+    # YOK (bkz. calculate_airflex_module'deki ayni notu) -- fiyat hep
+    # indirimsiz (kredi_karti esdegeri) hesaplanir.
+    odeme_tipi_eff = 'kredi_karti'
     pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     finish_mult = _finish_multiplier(finish)
 
@@ -1147,7 +1155,7 @@ VERTIFLEX_TYPE_META = {
         'panelSayisiOptions': [],
         'motorOptions': ['ag'],
         'kumandaKanalOptions': {'ag': [1, 5, 15]},
-        'kumandaOptional': False,
+        'kumandaOptional': True,
         'inoxZincirli': False,
         'alicisiz': False,
         'suTahliyeliAltKasa': False,
@@ -1430,9 +1438,14 @@ def _calc_impetus_clean_twin(pb, E2, F2, kumanda_kanal=1, elektromekanik_set_ade
     # gore girdigi bir adet hucresi.
     aksesuar = [
         K('G05080', max(1, int(elektromekanik_set_adet or 1)), fin=False),
-        K(kumanda_map.get(kumanda_kanal, 'G05087'), 1, fin=False),
         K('G05084', 1, fin=False),
     ]
+    # kumanda_kanal None ise ("Kumanda Yok" secimi) hicbir kumanda kalemi
+    # eklenmez -- diger VERTIFLEX fonksiyonlarindaki (bkz. _KUMANDA_SKU
+    # kullanan tipler) "if kumanda_sku:" korumasiyla ayni kural.
+    kumanda_sku = kumanda_map.get(kumanda_kanal) if kumanda_kanal is not None else None
+    if kumanda_sku:
+        aksesuar.append(K(kumanda_sku, 1, fin=False))
     cam_lam_m2 = ((E2 - 117 - 117) * (F2 - 172 - 49) * (1 / 3)) / 1000000
     cam_temp_m2 = ((E2 - 117 - 117) * (F2 - 172 - 49) / 1000000) - cam_lam_m2
     cam = [
@@ -1483,7 +1496,12 @@ def calculate_vertiflex(
     korunarak) listelenir."""
     if tip not in _VERTIFLEX_FUNCS:
         raise ValueError(f"Bilinmeyen VERTIFLEX sistem tipi: {tip}")
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    # NOT: bu ailenin kaynak "GİYOTİN" Excel'inde ayri NAKIT/KREDI KARTI
+    # fiyat sutunu YOK (tek "BİRİM FİYATI" sutunu var, bkz. kullanicinin
+    # paylastigi bayi maliyet analizi goruntusu) -- fiyat hep indirimsiz
+    # (kredi_karti esdegeri) hesaplanir; %89 NAKIT_FACTOR sadece BIOFLEX
+    # (ana calculate()) icin gecerlidir.
+    odeme_tipi_eff = 'kredi_karti'
     pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     finish_mult = _finish_multiplier(finish)
     func = _VERTIFLEX_FUNCS[tip]
@@ -1506,7 +1524,13 @@ def calculate_vertiflex(
     elif tip == 'vertiflex_mono08_all_glass':
         kwargs.update(motor=motor, kumanda_kanal=kumanda_kanal, inox=inox_zincirli)
     else:  # impetus_clean_twin
-        kwargs.update(kumanda_kanal=kumanda_kanal or 1,
+        # DUZELTME: "kumanda_kanal or 1" kullanilirsa kullanicinin acikca
+        # sectigi "Kumanda Yok" (None) her zaman kanal 1'e (STATU TEK KANAL
+        # KUMANDA, G05087) donusturuluyordu -- "kumanda yok" secimi hicbir
+        # zaman gercekten kumandasiz hesap yapamiyordu. None artik oldugu
+        # gibi asagiya (_calc_impetus_clean_twin) gecirilir; orada kumanda
+        # kalemi SADECE kumanda_kanal doluysa eklenir (bkz. asagidaki guard).
+        kwargs.update(kumanda_kanal=kumanda_kanal,
                       elektromekanik_set_adet=elektromekanik_set_adet or 1)
 
     profil, aksesuar, cam_defs = func(pb, genislik_mm, yukseklik_mm, **kwargs)
@@ -1827,7 +1851,9 @@ def calculate_kis_bahcesi(
         raise ValueError(f"Bilinmeyen KIŞ BAHÇESİ sistem tipi: {tip}")
     if not tavan_bolum_sayisi or tavan_bolum_sayisi < 1:
         raise ValueError("Tavan bölüm sayısı en az 1 olmalıdır")
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    # NOT: bu ailenin kaynak Excel'inde ayri NAKIT/KREDI KARTI fiyat sutunu
+    # YOK -- fiyat hep indirimsiz (kredi_karti esdegeri) hesaplanir.
+    odeme_tipi_eff = 'kredi_karti'
     pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     finish_mult = _finish_multiplier(finish)
     func = _KIS_BAHCESI_FUNCS[tip]
@@ -2158,7 +2184,9 @@ def calculate_bc(
     if tip not in _BC_SYSTEMS_RAW:
         raise ValueError(f"Bilinmeyen BC sistem tipi: {tip}")
     sysd = _BC_SYSTEMS_RAW[tip]
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
+    # NOT: bu ailenin kaynak Excel'inde ayri NAKIT/KREDI KARTI fiyat sutunu
+    # YOK -- fiyat hep indirimsiz (kredi_karti esdegeri) hesaplanir.
+    odeme_tipi_eff = 'kredi_karti'
     pb = PriceBook(price_data, odeme_tipi=odeme_tipi_eff)
     finish_mult = _finish_multiplier(finish)
 
@@ -2292,17 +2320,18 @@ def calculate_yedek_parca(
     "sistem" yok -- `quantities` doğrudan {sku: miktar} sözlüğüdür.
 
     Katalog fiyatları (bkz. YEDEK_PARCA_ITEMS) firma-bazlı fiyat listesi
-    override'ından ETKİLENMEZ (kasıtlı -- yukarıdaki modül-üstü nota bkz.);
-    ödeme tipine göre uygulanan NAKİT/KREDİ KARTI ayrımı ise diğer tüm
-    ailelerle tutarlılık için (bkz. PriceBook.NAKIT_FACTOR) aynen uygulanır.
+    override'ından ETKİLENMEZ (kasıtlı -- yukarıdaki modül-üstü nota bkz.).
+    NOT: diğer Albert Genau ailelerinde olduğu gibi (BIOFLEX/ana calculate()
+    hariç) bu katalogda da kaynakta ayrı NAKIT/KREDİ KARTI fiyat sütunu
+    YOK -- fiyat hep indirimsiz (kredi_karti eşdeğeri) hesaplanır.
 
     `catalog_data`: admin'in Mongo'ya yüklediği güncel katalog (bkz.
     server.py: _get_yedek_parca_data / /albert-genau/yedek-parca/admin-upload).
     Verilmezse bu paketin içindeki varsayılan (yedek_parca.json) kullanılır --
     firma-bazlı DEĞİL, TEK merkezi bir kayıt (fiyat listesindeki gibi).
     """
-    odeme_tipi_eff = odeme_tipi if odeme_tipi in ('nakit', 'kredi_karti') else 'nakit'
-    factor = PriceBook.NAKIT_FACTOR if odeme_tipi_eff == 'nakit' else 1.0
+    odeme_tipi_eff = 'kredi_karti'
+    factor = 1.0
     by_sku = _YEDEK_PARCA_BY_SKU
     if catalog_data and catalog_data.get('items'):
         by_sku = {it['sku']: it for it in catalog_data['items']}

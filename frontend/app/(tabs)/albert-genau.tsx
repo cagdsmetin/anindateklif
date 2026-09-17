@@ -887,7 +887,7 @@ export default function AlbertGenauScreen() {
       const parts = [
         `${r.girdi.genislikMm}×${r.girdi.yukseklikMm}mm`,
         r.girdi.panelSayisi ? `${r.girdi.panelSayisi} panelli` : null,
-        r.girdi.motor === 'somfy' ? 'Somfy motor' : 'AG motor',
+        r.girdi.motor === 'somfy' ? 'Somfy motor' : (r.tip === 'impetus_clean_twin' ? 'Albert Genau Statü Motor' : 'AG motor'),
         r.girdi.elektromekanikSetAdet && r.girdi.elektromekanikSetAdet > 1 ? `${r.girdi.elektromekanikSetAdet} adet elektromekanik set` : null,
         FINISH_LABELS[finish] || finish,
       ].filter(Boolean);
@@ -1263,7 +1263,7 @@ export default function AlbertGenauScreen() {
                         onPress={() => { setVfMotor(m); setResult(null); }}
                         testID={`ag-vf-motor-${m}`}
                       >
-                        <Text style={[s.payPillText, vfMotor === m && s.payPillTextActive]}>{m === 'ag' ? 'Albert Genau' : 'Somfy'}</Text>
+                        <Text style={[s.payPillText, vfMotor === m && s.payPillTextActive]}>{m === 'ag' ? (vfTip === 'impetus_clean_twin' ? 'Albert Genau Statü Motor' : 'Albert Genau') : 'Somfy'}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1634,34 +1634,40 @@ export default function AlbertGenauScreen() {
               </>
             )}
 
-            {/* Ödeme Tipi — Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
-                ayrımının karşılığı: KREDİ KARTI liste fiyatını, NAKİT ise
-                liste fiyatının %89'unu (Excel formülü) kullanır. Seçime göre
-                tüm hesap (malzeme maliyeti, kar, satış fiyatı) değişir. */}
-            <View style={s.card}>
-              <Text style={s.sectionTitle}>Ödeme Tipi</Text>
-              <View style={s.payWrap}>
-                <TouchableOpacity
-                  style={[s.payPill, odemeTipi === 'nakit' && s.payPillActive]}
-                  onPress={() => { setOdemeTipi('nakit'); setResult(null); }}
-                  testID="ag-pay-nakit"
-                >
-                  <Ionicons name="cash-outline" size={16} color={odemeTipi === 'nakit' ? '#fff' : theme.colors.textMuted} />
-                  <Text style={[s.payPillText, odemeTipi === 'nakit' && s.payPillTextActive]}>Nakit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.payPill, odemeTipi === 'kredi_karti' && s.payPillActive]}
-                  onPress={() => { setOdemeTipi('kredi_karti'); setResult(null); }}
-                  testID="ag-pay-kredi"
-                >
-                  <Ionicons name="card-outline" size={16} color={odemeTipi === 'kredi_karti' ? '#fff' : theme.colors.textMuted} />
-                  <Text style={[s.payPillText, odemeTipi === 'kredi_karti' && s.payPillTextActive]}>Kredi Kartı</Text>
-                </TouchableOpacity>
+            {/* Ödeme Tipi — SADECE Bioklimatik Pergola (BIOFLEX) ailesinde
+                gösterilir: Excel'deki KREDİ KARTINA TAKSİTLİ / NAKİT sütun
+                ayrımı (KREDİ KARTI liste fiyatı, NAKİT ise liste fiyatının
+                %89'u) sadece bu ailenin kaynak Excel'inde gerçekten var.
+                Diğer ailelerde (Vertiflex/Giyotin, Kış Bahçesi, BC, Airflex
+                Modül, Parça Listesi, Yedek Parça) kaynak Excel'de tek bir
+                fiyat sütunu var, bu yüzden bu seçici orada gösterilmez ve
+                backend de bu ailelerde fiyatı hep indirimsiz hesaplar. */}
+            {family === 'geometric' && (
+              <View style={s.card}>
+                <Text style={s.sectionTitle}>Ödeme Tipi</Text>
+                <View style={s.payWrap}>
+                  <TouchableOpacity
+                    style={[s.payPill, odemeTipi === 'nakit' && s.payPillActive]}
+                    onPress={() => { setOdemeTipi('nakit'); setResult(null); }}
+                    testID="ag-pay-nakit"
+                  >
+                    <Ionicons name="cash-outline" size={16} color={odemeTipi === 'nakit' ? '#fff' : theme.colors.textMuted} />
+                    <Text style={[s.payPillText, odemeTipi === 'nakit' && s.payPillTextActive]}>Nakit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.payPill, odemeTipi === 'kredi_karti' && s.payPillActive]}
+                    onPress={() => { setOdemeTipi('kredi_karti'); setResult(null); }}
+                    testID="ag-pay-kredi"
+                  >
+                    <Ionicons name="card-outline" size={16} color={odemeTipi === 'kredi_karti' ? '#fff' : theme.colors.textMuted} />
+                    <Text style={[s.payPillText, odemeTipi === 'kredi_karti' && s.payPillTextActive]}>Kredi Kartı</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={s.hint}>
+                  Nakit ödemede fiyat listesinin %89'u; kredi kartı ile ödemede ise tam liste fiyatı esas alınır.
+                </Text>
               </View>
-              <Text style={s.hint}>
-                Nakit ödemede fiyat listesinin %89'u; kredi kartı ile ödemede ise tam liste fiyatı esas alınır.
-              </Text>
-            </View>
+            )}
 
             {/* Opsiyonlar (sadece ölçü bazlı AG BIOFLEX/BIO) */}
             {family === 'geometric' && (

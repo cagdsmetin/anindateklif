@@ -1255,18 +1255,33 @@ export default function AlbertGenauScreen() {
                 {/* Motor markası + kumanda kanalı */}
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>Motor Markası</Text>
-                  <View style={s.payWrap}>
-                    {vfTypeMeta.motorOptions.map((m) => (
-                      <TouchableOpacity
-                        key={m}
-                        style={[s.payPill, vfMotor === m && s.payPillActive]}
-                        onPress={() => { setVfMotor(m); setResult(null); }}
-                        testID={`ag-vf-motor-${m}`}
-                      >
-                        <Text style={[s.payPillText, vfMotor === m && s.payPillTextActive]}>{m === 'ag' ? (vfTip === 'impetus_clean_twin' ? 'Albert Genau Statü Motor' : 'Albert Genau') : 'Somfy'}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  {vfTypeMeta.motorOptions.length > 1 ? (
+                    <View style={s.payWrap}>
+                      {vfTypeMeta.motorOptions.map((m) => (
+                        <TouchableOpacity
+                          key={m}
+                          activeOpacity={0.8}
+                          style={[s.payPill, vfMotor === m && s.payPillActive]}
+                          onPress={() => { setVfMotor(m); setResult(null); }}
+                          testID={`ag-vf-motor-${m}`}
+                        >
+                          <Text style={[s.payPillText, vfMotor === m && s.payPillTextActive]}>{m === 'ag' ? 'Albert Genau' : 'Somfy'}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : (
+                    // Tek secenek varsa (secilecek gercek bir alternatif yokken)
+                    // dev boy, dokunulabilir gorunumlu bir pill yerine sakin,
+                    // bilgilendirici bir satir gosterilir -- boyle bir alanda
+                    // "secim" izlenimi vermek yaniltici ve yapay durur.
+                    <View style={s.fixedValueRow} testID="ag-vf-motor-fixed">
+                      <View style={s.fixedValueDot} />
+                      <Text style={s.fixedValueText}>
+                        {vfTip === 'impetus_clean_twin' ? 'Albert Genau Statü Motor' : 'Albert Genau'}
+                      </Text>
+                      <Text style={s.fixedValueTag}>SABİT</Text>
+                    </View>
+                  )}
                   <Text style={[s.fieldLabel, { marginTop: 12 }]}>Kumanda Kanalı{vfTypeMeta.kumandaOptional ? ' (opsiyonel)' : ''}</Text>
                   <View style={s.typeWrap}>
                     {vfTypeMeta.kumandaOptional && (
@@ -1998,17 +2013,23 @@ export default function AlbertGenauScreen() {
 }
 
 function NumField({ label, value, onChange, testID, labelMinHeight }: { label: string; value: string; onChange: (v: string) => void; testID?: string; labelMinHeight?: number }) {
+  // Girisin odaklandigi anda kenarligi/golgeyi vurgulayarak alanin "canli"
+  // hissettirmesini sagliyoruz -- oncesinde her durumda ayni duz gri kutu
+  // gorundugu icin dokunulabilir oldugu belli olmuyordu.
+  const [focused, setFocused] = useState(false);
   return (
     <View style={[s.field, { flex: 1 }]}>
       <Text style={[s.fieldLabel, labelMinHeight ? { minHeight: labelMinHeight } : null]}>{label}</Text>
-      <View style={s.inputWrap}>
+      <View style={[s.inputWrap, focused && s.inputWrapFocused]}>
         <TextInput
           testID={testID}
           value={value}
           onChangeText={onChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
           placeholder="0"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor="#A0AEC0"
           style={s.input}
         />
       </View>
@@ -2018,7 +2039,7 @@ function NumField({ label, value, onChange, testID, labelMinHeight }: { label: s
 
 function ToggleRow({ label, value, onChange, testID }: { label: string; value: boolean; onChange: (v: boolean) => void; testID?: string }) {
   return (
-    <TouchableOpacity style={s.toggleRow} onPress={() => onChange(!value)} testID={testID}>
+    <TouchableOpacity style={s.toggleRow} activeOpacity={0.7} onPress={() => onChange(!value)} testID={testID}>
       <View style={[s.checkbox, value && s.checkboxActive]}>
         {value && <Ionicons name="checkmark" size={13} color="#fff" />}
       </View>
@@ -2043,37 +2064,70 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   contentWrap: { width: '100%', maxWidth: 520, alignSelf: 'center' },
-  hero: { alignItems: 'center', marginBottom: 12 },
-  heroCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 12, ...theme.shadow.sm },
-  sectionTitle: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text, marginBottom: 10 },
+  hero: { alignItems: 'center', marginBottom: 14 },
+  heroCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 8, borderWidth: 1, borderColor: theme.colors.primaryBorder },
+  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 17 },
+  card: {
+    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.06)', marginBottom: 14,
+    shadowColor: '#1E293B', shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 2,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, marginBottom: 12, letterSpacing: 0.1 },
   row: { flexDirection: 'row', gap: 10 },
   field: { marginBottom: 10 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+  // NOT: textTransform:'uppercase' kasitli KULLANILMADI -- Turkce kucuk "i"
+  // harfi locale-siz uppercase donusumunde noktasiz "I"ya donusuyor (orn.
+  // "iskonto" -> "ISKONTO"), bu da yanlis/bozuk gorunuyor.
+  fieldLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textSoft, marginBottom: 8, letterSpacing: 0.1 },
   typeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   payWrap: { flexDirection: 'row', gap: 10 },
-  payPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
-  payPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-  payPillText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
-  payPillTextActive: { color: '#fff' },
+  payPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 13, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  payPillActive: {
+    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary, shadowOpacity: 0.32, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 4,
+  },
+  payPillText: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textSoft, letterSpacing: 0.1 },
+  payPillTextActive: { color: '#fff', fontWeight: '800' },
   payBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primary },
   payBadgeText: { fontSize: 10.5, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.3 },
-  typePill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
-  finishPill: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
-  typePillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-  typePillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted },
-  typePillTextActive: { color: '#fff' },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 12, minHeight: 42 },
-  input: { flex: 1, fontSize: 13.5, color: theme.colors.text, paddingVertical: 0, ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}) },
-  hint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, lineHeight: 15 },
+  typePill: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  finishPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  typePillActive: {
+    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary, shadowOpacity: 0.28, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  },
+  typePillText: { fontSize: 12, fontWeight: '600', color: theme.colors.textSoft, letterSpacing: 0.05 },
+  typePillTextActive: { color: '#fff', fontWeight: '800' },
+  // Tek secenekli, gercekte "secilemeyen" alanlar icin sakin bilgi satiri
+  // (bkz. Motor Markasi) -- dev, dolgun bir CTA gibi durup aslinda hicbir
+  // sey yapmayan pill yerine kullanilir.
+  fixedValueRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 14,
+    borderRadius: 13, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line, borderStyle: 'dashed',
+  },
+  fixedValueDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.primary },
+  fixedValueText: { flex: 1, fontSize: 13, fontWeight: '700', color: theme.colors.text },
+  fixedValueTag: { fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surfaceSoft,
+    borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 12, paddingHorizontal: 13, minHeight: 46,
+  },
+  inputWrapFocused: {
+    borderColor: theme.colors.primary, backgroundColor: '#fff',
+    shadowColor: theme.colors.primary, shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+  },
+  input: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.text, paddingVertical: 0, ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}) },
+  hint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
   partsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   partsRowLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text },
   partsRowSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2, fontWeight: '600' },
-  partsRowInputWrap: { width: 84, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 10, minHeight: 40 },
+  partsRowInputWrap: { width: 84, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 10, minHeight: 42 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
-  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center' },
-  checkboxActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxActive: {
+    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    shadowColor: theme.colors.primary, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+  },
   toggleLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.text },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginBottom: 12 },
   errorText: { color: theme.colors.red, fontSize: 12.5, fontWeight: '700', flex: 1 },
@@ -2081,29 +2135,42 @@ const s = StyleSheet.create({
   choiceHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   choiceTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, flex: 1 },
   choiceHint: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600', marginBottom: 10 },
-  choiceBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: theme.colors.primary, paddingVertical: 12, alignItems: 'center' },
-  choiceBtnLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary },
-  choiceBtnValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+  choiceBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 13, borderWidth: 1.5, borderColor: theme.colors.primary, paddingVertical: 12, alignItems: 'center' },
+  choiceBtnLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.primary, letterSpacing: 0.2, textTransform: 'uppercase' },
+  choiceBtnValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text, marginTop: 3 },
   choiceBtnSub: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
-  calcBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13, ...theme.shadow.lg, marginBottom: 12 },
-  calcBtnText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
-  ctaDisabled: { opacity: 0.6 },
-  resultCard: { borderColor: theme.colors.primary, borderWidth: 1.5 },
+  // Hesapla — bu ekranin tek "hero" eylemi; diger tum elemanlar sakin
+  // tutulup boldlugun tamami buraya harcaniyor (bkz. tasarim notu).
+  calcBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    backgroundColor: theme.colors.primary, borderRadius: 16, paddingVertical: 16, marginBottom: 12,
+    shadowColor: theme.colors.primary, shadowOpacity: 0.34, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6,
+  },
+  calcBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.4 },
+  ctaDisabled: { opacity: 0.5 },
+  resultCard: { borderColor: theme.colors.primaryBorder, borderWidth: 1, backgroundColor: '#FCFCFF' },
   resultSub: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 12, fontWeight: '600' },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(15,23,42,0.045)' },
   breakdownLabel: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '600' },
   breakdownValue: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
-  totalBox: { backgroundColor: theme.colors.navy, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { color: '#fff', fontSize: 12.5, fontWeight: '800', letterSpacing: 0.5 },
-  totalValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  totalBox: {
+    backgroundColor: theme.colors.navyDark, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
+    marginTop: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  totalLabel: { color: 'rgba(255,255,255,0.65)', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.6 },
+  totalValue: { color: '#fff', fontSize: 19, fontWeight: '900' },
   totalValueEquiv: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', marginTop: 1 },
   kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, marginTop: 4 },
   kalemlerToggleText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary },
-  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.navy, borderRadius: 14, paddingVertical: 13, marginTop: 12 },
-  excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1.5, borderColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16, marginTop: 12 },
-  excelBtnText: { color: theme.colors.primary, fontSize: 13.5, fontWeight: '800' },
-  drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 12, marginTop: 10 },
-  drawingBtnText: { color: theme.colors.primary, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
+  addBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: theme.colors.navyDark, borderRadius: 16, paddingVertical: 15, marginTop: 12,
+    shadowColor: theme.colors.navyDark, shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3,
+  },
+  excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginTop: 12 },
+  excelBtnText: { color: theme.colors.primaryDark, fontSize: 13.5, fontWeight: '800' },
+  drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primaryBorder, borderRadius: 16, paddingVertical: 13, paddingHorizontal: 12, marginTop: 10 },
+  drawingBtnText: { color: theme.colors.primaryDark, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
   toast: { position: 'absolute', top: 8, alignSelf: 'center', backgroundColor: theme.colors.navy, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, zIndex: 9999, gap: 6, ...theme.shadow.md },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
 });

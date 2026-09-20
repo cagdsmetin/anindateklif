@@ -15,7 +15,7 @@ import { api } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { QuoteT } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 const RETENTION_DAYS = 30;
 
@@ -158,15 +158,15 @@ export default function TrashScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -178,7 +178,7 @@ const s = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
@@ -200,4 +200,4 @@ const s = StyleSheet.create({
     marginLeft: 10,
   },
   restoreText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
-});
+}));

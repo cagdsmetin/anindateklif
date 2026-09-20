@@ -24,6 +24,7 @@ import { shareQuoteViaWhatsApp, canShareFilesWeb } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
+import { themedStyles } from '@/src/components/motion';
 
 const TEMPLATES: { id: PdfTemplateId; label: string }[] = [
   { id: 'classic', label: 'Klasik' },
@@ -321,14 +322,14 @@ export default function PreviewScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  topTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surface },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  topTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.text },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  templateBar: { flexGrow: 0, flexShrink: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  templateBar: { flexGrow: 0, flexShrink: 0, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   templateBarContent: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
-  templateChip: { minWidth: 84, alignItems: 'center', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.line, backgroundColor: '#fff' },
+  templateChip: { minWidth: 84, alignItems: 'center', paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1.5, borderColor: theme.colors.line, backgroundColor: theme.colors.surface },
   templateChipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primary + '14' },
   templateChipText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textSoft },
   templateChipTextActive: { color: theme.colors.primary },
@@ -337,14 +338,14 @@ const s = StyleSheet.create({
   previewStatus: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   previewStatusText: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '700', textAlign: 'center', paddingHorizontal: 24 },
   actionBar: {
-    backgroundColor: '#fff', padding: 10, flexDirection: 'row', gap: 8,
+    backgroundColor: theme.colors.surface, padding: 10, flexDirection: 'row', gap: 8,
     borderTopWidth: 1, borderTopColor: theme.colors.line,
     ...Platform.select({ android: { elevation: 8 }, ios: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 5, shadowOffset: { width: 0, height: -2 } } }),
   },
-  actionBtnGhost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff', flex: 1 },
+  actionBtnGhost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface, flex: 1 },
   actionBtnGhostText: { color: theme.colors.textSoft, fontWeight: '900', fontSize: 12 },
   actionBtnAcc: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: theme.colors.primary, flex: 1.2 },
   actionBtnAccText: { color: '#fff', fontWeight: '900', fontSize: 12 },
   actionBtnWa: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, backgroundColor: '#25D366', flex: 1 },
-  actionBtnExcel: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#C8E6C9' },
-});
+  actionBtnExcel: { width: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: theme.colors.greenSoft, borderWidth: 1, borderColor: '#C8E6C9' },
+}));

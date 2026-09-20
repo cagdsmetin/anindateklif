@@ -14,8 +14,8 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { ManualReminderT } from '@/src/lib/api';
 import { getHolidaysForYears } from '@/src/lib/holidays';
-import { useLanguage } from '@/src/lib/i18n';
-import { MotionScrollView, Reveal, ScreenHero, SoftIcon } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { MotionScrollView, Reveal, ScreenHero, SoftIcon, themedStyles } from '@/src/components/motion';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
@@ -301,7 +301,7 @@ export default function CalendarScreen() {
         </View>
 
         <View style={s.sectionRow}>
-          <Text style={s.sectionTitle}>{selectedDate === tIso ? t('calendar.s019') : selectedDate}</Text>
+          <Text style={s.sectionTitle}>{upper(selectedDate === tIso ? t('calendar.s019') : selectedDate)}</Text>
           <TouchableOpacity style={s.addNoteBtn} onPress={openAddReminder} testID="cal-add-reminder">
             <Ionicons name="add-circle" size={16} color={theme.colors.primary} />
             <Text style={s.addNoteText}>{t('calendar.s002')}</Text>
@@ -334,7 +334,7 @@ export default function CalendarScreen() {
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
             <Text style={s.modalTitle}>{editingReminder ? t('calendar.s021') : t('calendar.s002')}</Text>
             <Text style={s.modalDate}>{trDateLabel(editingReminder ? editingReminder.tarih : selectedDate)}</Text>
-            <Text style={s.modalLabel}>{t('calendar.s022')}</Text>
+            <Text style={s.modalLabel}>{upper(t('calendar.s022'))}</Text>
             <TextInput
               style={s.modalInput}
               value={formBaslik}
@@ -343,7 +343,7 @@ export default function CalendarScreen() {
               placeholderTextColor="#94a3b8"
               testID="reminder-baslik-input"
             />
-            <Text style={s.modalLabel}>{t('calendar.s024')}</Text>
+            <Text style={s.modalLabel}>{upper(t('calendar.s024'))}</Text>
             <TextInput
               style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]}
               value={formNotu}
@@ -380,23 +380,23 @@ function trDateLabel(iso: string): string {
 
 const CELL_SIZE = '14.28%';
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surface },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surface },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  monthNavBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  monthLabel: { fontSize: 15, fontWeight: '900', color: theme.colors.navy },
+  monthNavBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
+  monthLabel: { fontSize: 15, fontWeight: '900', color: theme.colors.text },
   weekRow: { flexDirection: 'row', marginBottom: 6 },
   weekDayLabel: { width: CELL_SIZE as any, textAlign: 'center', fontSize: 11, fontWeight: '800', color: theme.colors.textMuted },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: CELL_SIZE as any, aspectRatio: 1.15, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 },
   holidayLabel: { fontSize: 6.5, fontWeight: '700', textAlign: 'center', marginTop: 2, lineHeight: 8 },
-  dayCell: { borderRadius: 6, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: '#fff' },
+  dayCell: { borderRadius: 6, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surface },
   dayCellSelected: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   dayCellToday: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primary },
   dayNum: { fontSize: 12, fontWeight: '700', color: theme.colors.text },
@@ -407,25 +407,25 @@ const s = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendText: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '600' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4 },
   addNoteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addNoteText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.primary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
-  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginBottom: 2 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.line, padding: 20, boxShadow: '0 24px 60px rgba(2,6,23,0.4)' },
+  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.text, marginBottom: 2 },
   modalDate: { fontSize: 12, color: theme.colors.textMuted, marginBottom: 14, fontWeight: '700' },
-  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
-  modalInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
+  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, },
+  modalInput: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
   modalBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   modalDeleteBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.redSoft },
-  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft },
   modalCancelText: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   modalSaveBtn: { flex: 1.4, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
   modalSaveText: { fontSize: 13, fontWeight: '800', color: '#fff' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
   emptyTextBox: { color: theme.colors.textMuted, fontSize: 12.5, textAlign: 'center' },
-  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 8 },
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 8 },
   eventIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   eventTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   eventSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
-});
+}));

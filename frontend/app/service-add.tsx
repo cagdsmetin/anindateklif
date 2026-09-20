@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -338,15 +338,15 @@ function FieldRow({
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -365,7 +365,7 @@ const s = StyleSheet.create({
   },
   heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
@@ -377,13 +377,13 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   field: { marginBottom: 10 },
   fieldLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginBottom: 5 },
-  pickerBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, marginBottom: 8, maxHeight: 160, backgroundColor: '#FBFDFF' },
+  pickerBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, marginBottom: 8, maxHeight: 160, backgroundColor: theme.colors.surfaceSoft },
   pickerItem: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   pickerItemText: { fontSize: 13, color: theme.colors.text, fontWeight: '600' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 11,
@@ -391,7 +391,7 @@ const s = StyleSheet.create({
     minHeight: 42,
   },
   inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 64 },
-  inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
+  inputWrapError: { borderColor: theme.colors.red, backgroundColor: theme.colors.redSoft },
   input: {
     flex: 1,
     fontSize: 13.5,
@@ -410,7 +410,7 @@ const s = StyleSheet.create({
     borderColor: theme.colors.lineDark,
     borderRadius: 10,
     paddingVertical: 4,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     ...theme.shadow.sm,
     zIndex: 30,
     elevation: 6,
@@ -419,7 +419,7 @@ const s = StyleSheet.create({
   suggestName: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
   suggestSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statusPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#FBFDFF' },
+  statusPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surfaceSoft },
   statusPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   statusPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   statusPillTextActive: { color: '#fff' },
@@ -430,7 +430,7 @@ const s = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
     borderTopWidth: 1,
     borderTopColor: theme.colors.line,
   },
@@ -460,4 +460,4 @@ const s = StyleSheet.create({
     elevation: 12,
   },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
-});
+}));

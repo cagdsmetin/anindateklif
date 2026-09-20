@@ -14,7 +14,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
-import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor } from '@/src/components/motion';
+import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, themedStyles } from '@/src/components/motion';
 import { useLanguage } from '@/src/lib/i18n';
 import { QuoteT } from '@/src/lib/api';
 
@@ -254,8 +254,8 @@ export default function CustomersScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   contentWrap: { width: '100%', maxWidth: 720, alignSelf: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -275,7 +275,7 @@ const s = StyleSheet.create({
 
   emptyBox: {
     marginTop: 30,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
@@ -329,9 +329,9 @@ const s = StyleSheet.create({
   },
   statValue: { fontSize: 13, fontWeight: '900', color: theme.colors.text },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', padding: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', justifyContent: 'center', padding: 20 },
   modalBox: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
     width: '100%',
@@ -367,4 +367,4 @@ const s = StyleSheet.create({
   quoteRowNo: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   quoteRowDate: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   quoteRowAmount: { fontSize: 13, fontWeight: '900', color: theme.colors.primary },
-});
+}));

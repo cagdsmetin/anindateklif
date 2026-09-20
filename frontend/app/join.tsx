@@ -16,7 +16,7 @@ import { api, StaffInviteInfoT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { evaluatePassword, isPasswordValid, PASSWORD_RULE_LABELS, PasswordRuleKey } from '@/src/utils/password-validation';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
 
 export default function JoinScreen() {
   const { t } = useLanguage();
@@ -160,14 +160,14 @@ function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   logoWrap: { alignItems: 'center', marginBottom: 28 },
   logoBadge: { width: 48, height: 48, borderRadius: 14, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   appName: { fontSize: 16, fontWeight: '800', color: theme.colors.text },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 18,
     padding: 24,
     width: '100%',
@@ -182,7 +182,7 @@ const s = StyleSheet.create({
   emailLine: { fontSize: 12.5, color: theme.colors.textSoft, fontWeight: '700' },
   input: {
     width: '100%',
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 12,
@@ -210,4 +210,4 @@ const s = StyleSheet.create({
   pwRow: { flexDirection: 'row', alignItems: 'center', width: '47%' },
   pwText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
   pwHint: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 14 },
-});
+}));

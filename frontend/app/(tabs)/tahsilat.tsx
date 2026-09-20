@@ -18,8 +18,8 @@ import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
-import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { BubbleButton, MotionInput, MotionScrollView, ScreenHero, compactNumber } from '@/src/components/motion';
+import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, hashColor, themedStyles } from '@/src/components/motion';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -209,7 +209,7 @@ export default function TahsilatScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('tahsilat.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <MotionScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 1100, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <ScreenHero
             icon="cash"
             title={t('tahsilat.s011')}
@@ -241,14 +241,14 @@ export default function TahsilatScreen() {
           <View style={s.card}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
               <TouchableOpacity style={[s.turBtn, tur === 'tahsilat' && s.turBtnGelirActive]} onPress={() => setTur('tahsilat')} testID="tahsilat-tur-tahsilat">
-                <Text style={[s.turBtnText, tur === 'tahsilat' && { color: '#166534' }]}>{t('tahsilat.s015')}</Text>
+                <Text style={[s.turBtnText, tur === 'tahsilat' && { color: theme.colors.greenText }]}>{t('tahsilat.s015')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.turBtn, tur === 'borc' && s.turBtnGiderActive]} onPress={() => setTur('borc')} testID="tahsilat-tur-borc">
-                <Text style={[s.turBtnText, tur === 'borc' && { color: '#991b1b' }]}>{t('tahsilat.s016')}</Text>
+                <Text style={[s.turBtnText, tur === 'borc' && { color: theme.colors.redText }]}>{t('tahsilat.s016')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={s.label}>{t('tahsilat.s017')}</Text>
+            <Text style={s.label}>{upper(t('tahsilat.s017'))}</Text>
             <View style={{ zIndex: 20 }}>
               <MotionInput
                 style={s.input}
@@ -277,11 +277,11 @@ export default function TahsilatScreen() {
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <View style={{ flex: 1.4 }}>
-                <Text style={s.label}>{t('tahsilat.s019')}</Text>
+                <Text style={s.label}>{upper(t('tahsilat.s019'))}</Text>
                 <MotionInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="tahsilat-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>{t('tahsilat.s020')}</Text>
+                <Text style={s.label}>{upper(t('tahsilat.s020'))}</Text>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {CURRENCIES.map((c) => (
                     <TouchableOpacity key={c} style={[s.curChip, paraBirimi === c && s.curChipActive]} onPress={() => setParaBirimi(c)}>
@@ -294,7 +294,7 @@ export default function TahsilatScreen() {
 
             {tur === 'tahsilat' ? (
               <>
-                <Text style={[s.label, { marginTop: 10 }]}>{t('tahsilat.s021')}</Text>
+                <Text style={[s.label, { marginTop: 10 }]}>{upper(t('tahsilat.s021'))}</Text>
                 <View style={s.chipRow}>
                   {YONTEMLER.map((y) => (
                     <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
@@ -305,12 +305,12 @@ export default function TahsilatScreen() {
               </>
             ) : (
               <View style={{ marginTop: 10 }}>
-                <Text style={s.label}>{t('tahsilat.s022')}</Text>
+                <Text style={s.label}>{upper(t('tahsilat.s022'))}</Text>
                 <MotionInput style={s.input} value={vadeTarihi} onChangeText={setVadeTarihi} placeholder={t('tahsilat.s023')} placeholderTextColor="#94a3b8" testID="tahsilat-vade-input" />
               </View>
             )}
 
-            <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? t('tahsilat.s024') : 'NOT (opsiyonel)'}</Text>
+            <Text style={[s.label, { marginTop: 10 }]}>{upper(isDiger ? t('tahsilat.s024') : 'NOT (opsiyonel)')}</Text>
             <MotionInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
@@ -342,8 +342,12 @@ export default function TahsilatScreen() {
           ) : (
             <View style={s.card}>
               {balances.map((b, i) => (
-                <View key={b.key} style={[s.pendingRow, i === balances.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
-                  <View style={{ flex: 1 }}>
+                <Reveal key={b.key} variant={i % 2 === 0 ? 'left' : 'right'} distance={16}>
+                <View style={[s.pendingRow, i === balances.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
+                  <View style={[s.pendingAvatar, { backgroundColor: hashColor(b.musteriAdi || b.key) }]}>
+                    <Text style={s.pendingAvatarText}>{(b.musteriAdi || '?').trim().charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={s.pendingName} numberOfLines={1}>{b.musteriAdi}</Text>
                       {b.hasOverdue ? <View style={s.overdueTag}><Text style={s.overdueTagText}>{t('tahsilat.s029')}</Text></View> : null}
@@ -361,6 +365,7 @@ export default function TahsilatScreen() {
                     <Text style={s.callBtnText}>{t('tahsilat.s030')}</Text>
                   </TouchableOpacity>
                 </View>
+                </Reveal>
               ))}
             </View>
           )}
@@ -376,12 +381,16 @@ export default function TahsilatScreen() {
               <Text style={s.emptyTextBox}>{t('tahsilat.s033')}</Text>
             </View>
           ) : (
-            filtered.map((tx) => (
-              <View key={tx.id} style={s.txRow} testID={`tahsilat-tx-${tx.id}`}>
-                <View style={[s.txIcon, { backgroundColor: tx.tur === 'tahsilat' ? theme.colors.greenSoft : theme.colors.redSoft }]}>
-                  <Ionicons name={tx.tur === 'tahsilat' ? 'arrow-down' : 'arrow-up'} size={16} color={tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red} />
-                </View>
-                <View style={{ flex: 1 }}>
+            filtered.map((tx, i) => (
+              <Reveal key={tx.id} variant={i % 2 === 0 ? 'left' : 'right'} distance={16}>
+              <View style={s.txRow} testID={`tahsilat-tx-${tx.id}`}>
+                <SoftIcon
+                  icon={tx.tur === 'tahsilat' ? 'arrow-down' : 'arrow-up'}
+                  color={tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red}
+                  size={34}
+                  iconSize={16}
+                />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.txKat} numberOfLines={1}>{tx.musteriAdi}{tx.notlar ? ` · ${tx.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
                     {tx.tur === 'tahsilat' ? statusLabel(lang, tx.yontem) : t('tahsilat.s034')}{tx.vadeTarihi ? ` · Vade: ${tx.vadeTarihi}` : ''} · {tx.tarih}
@@ -394,6 +403,7 @@ export default function TahsilatScreen() {
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
                 </TouchableOpacity>
               </View>
+              </Reveal>
             ))
           )}
         </MotionScrollView>
@@ -402,7 +412,7 @@ export default function TahsilatScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -411,46 +421,68 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
   statValue: { fontSize: 15, fontWeight: '900', marginTop: 4 },
   statSubValue: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
-  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.tahsilat, letterSpacing: 0.5 },
-  card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
-  turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: '#fff' },
+  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.text, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.tahsilat, letterSpacing: 0.5 },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
+  turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: theme.colors.surface },
   turBtnGelirActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
   turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
-  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, letterSpacing: 0.4 },
   input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   inputRequired: { borderColor: theme.colors.red, borderWidth: 1.5 },
-  suggestBox: { position: 'absolute', top: 44, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md, maxHeight: 220, overflow: 'hidden' },
+  suggestBox: { position: 'absolute', top: 44, left: 0, right: 0, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md, maxHeight: 220, overflow: 'hidden' },
   suggestRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   suggestName: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
   suggestSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
   chipActive: { backgroundColor: theme.colors.modules.tahsilat, borderColor: theme.colors.modules.tahsilat },
   chipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted },
   chipTextActive: { color: '#fff' },
-  curChip: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff', alignItems: 'center' },
+  curChip: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface, alignItems: 'center' },
   curChipActive: { backgroundColor: theme.colors.modules.tahsilat, borderColor: theme.colors.modules.tahsilat },
   curChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   curChipTextActive: { color: '#fff' },
   saveBtn: { marginTop: 16, backgroundColor: theme.colors.modules.tahsilat, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },
-  emptyBox: { marginTop: 4, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 26, alignItems: 'center', gap: 8 },
+  emptyBox: { marginTop: 4, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 26, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 11,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.line,
+  },
+  pendingAvatar: { width: 38, height: 38, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  pendingAvatarText: { color: '#fff', fontSize: 14, fontWeight: '900' },
   pendingName: { fontSize: 13, fontWeight: '800', color: theme.colors.text, flexShrink: 1 },
   pendingPhone: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   pendingAmount: { fontSize: 13.5, fontWeight: '900', color: theme.colors.text },
   overdueTag: { backgroundColor: theme.colors.redSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  overdueTagText: { fontSize: 9, fontWeight: '800', color: '#991b1b' },
+  overdueTagText: { fontSize: 9, fontWeight: '800', color: theme.colors.redText },
   callBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
   ledgerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F2FE', marginRight: 6 },
   callBtnText: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  txRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginTop: 8 },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    ...theme.shadow.sm,
+  },
   txIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   txKat: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   txMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   txAmount: { fontSize: 13, fontWeight: '900', marginRight: 4 },
-});
+}));

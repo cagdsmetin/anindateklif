@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useScrollScene } from './scene';
+import { themedStyles } from './paint';
 
 const RAIL_X = 14;
 const BeamContext = createContext<SharedValue<number> | null>(null);
@@ -112,7 +113,7 @@ export function BeamRow({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   wrap: { position: 'relative', paddingVertical: 4 },
   rail: {
     position: 'absolute',
@@ -135,4 +136,4 @@ const s = StyleSheet.create({
   nodeCol: { width: RAIL_X * 2, alignItems: 'center', paddingTop: 16 },
   dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
   halo: { position: 'absolute', top: 11, width: 20, height: 20, borderRadius: 10 },
-});
+}));

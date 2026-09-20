@@ -19,8 +19,8 @@ import { useAuth } from '@/src/state/AuthContext';
 import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
-import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import { BubbleButton, ChoiceChip, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
 const DURUM_COLORS: Record<string, string> = {
@@ -511,9 +511,9 @@ export default function LeadsScreen() {
           </View>
         )}
         {assignedToMe && (
-          <View style={[s.assignBadge, { backgroundColor: '#FEF3C7' }]}>
+          <View style={[s.assignBadge, { backgroundColor: theme.colors.goldSoft }]}>
             <Ionicons name="notifications-outline" size={12} color="#b45309" />
-            <Text style={[s.assignBadgeText, { color: '#b45309' }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
+            <Text style={[s.assignBadgeText, { color: theme.colors.goldText }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
           </View>
         )}
         {!!lead.notlar && <Text style={s.leadNote} numberOfLines={2}>📝 {lead.notlar}</Text>}
@@ -554,13 +554,13 @@ export default function LeadsScreen() {
           icon="search"
           title={t('leads.s011')}
           color={theme.colors.modules.lead}
+          stats={[
+            { label: t('leads.s039'), value: stats.total },
+            { label: t('leads.s040'), value: stats.aranan },
+            { label: t('leads.s041'), value: stats.olumlu, tone: '#6EE7B7' },
+            { label: t('leads.s042'), value: stats.kapanan, tone: '#A5B4FC' },
+          ]}
         />
-        <View style={s.statGrid}>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.total}</Text><Text style={s.statLabel}>{t('leads.s039')}</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.aranan}</Text><Text style={s.statLabel}>{t('leads.s040')}</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.olumlu}</Text><Text style={s.statLabel}>{t('leads.s041')}</Text></View>
-          <View style={s.statCard}><Text style={s.statValue}>{stats.kapanan}</Text><Text style={s.statLabel}>{t('leads.s042')}</Text></View>
-        </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: reorderingTabs ? 4 : 0 }}>
           <View style={[s.tabRow, { marginBottom: 0, flex: 1 }]}>
@@ -573,9 +573,13 @@ export default function LeadsScreen() {
               const tabKey = tName as Tab;
               return (
                 <View key={tabKey} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                  <TouchableOpacity style={[s.tabBtn, tab === tabKey && s.tabBtnActive]} onPress={() => (reorderingTabs ? undefined : setTab(tabKey))} testID={`lead-tab-${tabKey}`}>
-                    <Text style={[s.tabText, tab === tabKey && s.tabTextActive]}>{labelMap[tabKey]}</Text>
-                  </TouchableOpacity>
+                  <ChoiceChip
+                    label={labelMap[tabKey]}
+                    selected={tab === tabKey}
+                    color={theme.colors.modules.lead}
+                    onPress={() => (reorderingTabs ? undefined : setTab(tabKey))}
+                    testID={`lead-tab-${tabKey}`}
+                  />
                   {reorderingTabs && (
                     <View style={{ flexDirection: 'row', gap: 2 }}>
                       <TouchableOpacity
@@ -695,7 +699,7 @@ export default function LeadsScreen() {
                     return (
                       <View key={d} style={s.kanbanCol}>
                         <View style={[s.kanbanColHeader, { borderColor: DURUM_COLORS[d] }]}>
-                          <Text style={[s.kanbanColTitle, { color: DURUM_COLORS[d] }]} numberOfLines={1}>{statusLabel(lang, d)}</Text>
+                          <Text style={[s.kanbanColTitle, { color: DURUM_COLORS[d] }]} numberOfLines={1}>{upper(statusLabel(lang, d))}</Text>
                           <Text style={s.kanbanColCount}>{items.length}</Text>
                         </View>
                         <Text style={s.kanbanColSummary}>
@@ -758,7 +762,7 @@ export default function LeadsScreen() {
                   <View style={{ marginBottom: 16 }}>
                     <View style={s.assignSectionHeader}>
                       <Ionicons name="notifications" size={14} color="#b45309" />
-                      <Text style={s.assignSectionTitle}>{t('leads.s049')}{myAssignedLeads.length})</Text>
+                      <Text style={s.assignSectionTitle}>{upper(t('leads.s049'))}{myAssignedLeads.length})</Text>
                     </View>
                     {myAssignedLeads.map(renderLeadRow)}
                   </View>
@@ -787,7 +791,7 @@ export default function LeadsScreen() {
 
         {!loading && tab === 'talep' && (
           <View>
-            <Text style={s.sectionTitle}>{t('leads.s006')}</Text>
+            <Text style={s.sectionTitle}>{upper(t('leads.s006'))}</Text>
             <Text style={s.helperTinyMuted}>
               {t('leads.s052')}</Text>
             <MotionInput
@@ -865,7 +869,7 @@ export default function LeadsScreen() {
                 <Text style={s.reminderPresetText}>{t('leads.s063')}</Text>
               </TouchableOpacity>
               {!!reminderDate && (
-                <TouchableOpacity style={[s.reminderPreset, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]} onPress={() => setReminderDate('')}>
+                <TouchableOpacity style={[s.reminderPreset, { backgroundColor: theme.colors.redSoft, borderColor: '#fecaca' }]} onPress={() => setReminderDate('')}>
                   <Text style={[s.reminderPresetText, { color: '#dc2626' }]}>{t('leads.s064')}</Text>
                 </TouchableOpacity>
               )}
@@ -1017,7 +1021,7 @@ export default function LeadsScreen() {
                 <Text style={[s.modalBtnText, { color: theme.colors.text }]}>{t('leads.s004')}</Text>
               </TouchableOpacity>
               {!!assignFor?.atananKullaniciId && (
-                <TouchableOpacity style={[s.modalBtn, { backgroundColor: '#fee2e2' }]} onPress={clearAssign} disabled={assignSaving}>
+                <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.redSoft }]} onPress={clearAssign} disabled={assignSaving}>
                   <Text style={[s.modalBtnText, { color: '#dc2626' }]}>{t('leads.s081')}</Text>
                 </TouchableOpacity>
               )}
@@ -1032,7 +1036,7 @@ export default function LeadsScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -1042,7 +1046,7 @@ const s = StyleSheet.create({
   divider: { height: 1, backgroundColor: theme.colors.line },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   statCard: { flexBasis: '48%', flexGrow: 1, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
-  statValue: { fontSize: 22, fontWeight: '900', color: theme.colors.navy },
+  statValue: { fontSize: 22, fontWeight: '900', color: theme.colors.text },
   statLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, marginTop: 4, letterSpacing: 0.3 },
   tabRow: { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
   tabBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
@@ -1059,7 +1063,7 @@ const s = StyleSheet.create({
   dailySaveBtn: { backgroundColor: theme.colors.primary, paddingHorizontal: 12, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   dailySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 15 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, marginBottom: 10 },
   tumuFilterChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: theme.colors.surface, borderWidth: 1 },
   tumuFilterChipText: { fontSize: 11, fontWeight: '800' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },
@@ -1073,7 +1077,7 @@ const s = StyleSheet.create({
   assignBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
   assignBadgeText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primaryDark },
   assignSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.goldDark, textTransform: 'uppercase', letterSpacing: 0.4 },
+  assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.goldDark, letterSpacing: 0.4 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
   leadNote: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, fontStyle: 'italic' },
@@ -1091,8 +1095,8 @@ const s = StyleSheet.create({
   reqDurumPending: { backgroundColor: theme.colors.goldSoft },
   reqDurumDone: { backgroundColor: theme.colors.greenSoft },
   reqDurumText: { fontSize: 10.5, fontWeight: '800' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modalBox: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 18 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalBox: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.line, padding: 20, boxShadow: '0 24px 60px rgba(2,6,23,0.4)' },
   modalTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 12 },
   modalBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   modalBtnText: { fontSize: 13, fontWeight: '800' },
@@ -1120,7 +1124,7 @@ const s = StyleSheet.create({
   // etiket) ve alt satırda atanan kişi/₺tutar ayrımı bulunur.
   kanbanCol: { width: 220, backgroundColor: theme.colors.surfaceSoft, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 10 },
   kanbanColHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 2, borderBottomWidth: 2 },
-  kanbanColTitle: { fontSize: 11.5, fontWeight: '900', flex: 1, textTransform: 'uppercase', letterSpacing: 0.4 },
+  kanbanColTitle: { fontSize: 11.5, fontWeight: '900', flex: 1, letterSpacing: 0.4 },
   kanbanColCount: { fontSize: 10.5, fontWeight: '800', color: theme.colors.text, backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, overflow: 'hidden' },
   kanbanColSummary: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '700', marginBottom: 10 },
   kanbanEmpty: { fontSize: 11, color: theme.colors.textMuted, textAlign: 'center', paddingVertical: 16, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.line, borderRadius: 10 },
@@ -1136,4 +1140,4 @@ const s = StyleSheet.create({
   kanbanCardMoveRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   kanbanMoveBtn: { width: 28, height: 24, borderRadius: 7, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
   kanbanMoveBtnDisabled: { opacity: 0.25 },
-});
+}));

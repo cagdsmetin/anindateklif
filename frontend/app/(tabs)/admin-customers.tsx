@@ -16,7 +16,7 @@ import { theme } from '@/src/lib/theme';
 import { api, AdminCustomerT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -279,15 +279,15 @@ export default function AdminCustomersScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -303,7 +303,7 @@ const s = StyleSheet.create({
   },
   infoText: { flex: 1, fontSize: 12, color: theme.colors.text, lineHeight: 17 },
   search: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 12,
@@ -317,26 +317,26 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A',
     borderRadius: 14, padding: 12, marginBottom: 14,
   },
-  pendingTitle: { fontSize: 12.5, fontWeight: '800', color: '#92400E' },
+  pendingTitle: { fontSize: 12.5, fontWeight: '800', color: theme.colors.goldText },
   pendingRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 6,
+    backgroundColor: theme.colors.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 6,
   },
   pendingRowTitle: { flex: 1, fontSize: 12.5, fontWeight: '700', color: theme.colors.text, marginRight: 8 },
   pendingEnableBtn: { backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6, minWidth: 44, alignItems: 'center' },
   pendingEnableBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
   filterChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginTop: 10,
+    backgroundColor: theme.colors.surfaceSoft, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginTop: 10,
   },
   filterChipActive: { backgroundColor: theme.colors.primary },
   filterChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   filterChipTextActive: { color: '#fff' },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: theme.colors.line,
@@ -352,14 +352,14 @@ const s = StyleSheet.create({
   agLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   claimBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FEF3C7', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: theme.colors.goldSoft, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
   },
-  claimBadgeText: { fontSize: 10, fontWeight: '800', color: '#92400E' },
+  claimBadgeText: { fontSize: 10, fontWeight: '800', color: theme.colors.goldText },
   badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   badgeActive: { backgroundColor: theme.colors.greenSoft },
-  badgeInactive: { backgroundColor: '#F1F5F9' },
+  badgeInactive: { backgroundColor: theme.colors.surfaceSoft },
   badgeText: { fontSize: 10, fontWeight: '800' },
-  badgeTextActive: { color: '#166534' },
+  badgeTextActive: { color: theme.colors.greenText },
   badgeTextInactive: { color: theme.colors.textMuted },
   enterBtn: {
     flexDirection: 'row',
@@ -371,4 +371,4 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   enterBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-});
+}));

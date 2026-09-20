@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { themedStyles } from '@/src/components/motion';
 
 // Global "Nasıl yardımcı olabiliriz?" baloncuğu — her sayfanın sağ altında
 // sabit görünsün diye kök layout'ta (app/_layout.tsx) bir kez render edilir,
@@ -68,7 +69,7 @@ export default function SupportBubble() {
                 onPress={() => { setOpen(false); Linking.openURL(`https://wa.me/${whatsappNumber.replace(/\D/g, '')}`); }}
                 testID="support-whatsapp"
               >
-                <View style={[s.icon, { backgroundColor: '#DCFCE7' }]}>
+                <View style={[s.icon, { backgroundColor: theme.colors.greenSoft }]}>
                   <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -97,7 +98,7 @@ export default function SupportBubble() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   bubble: {
     position: 'absolute',
     right: 18,
@@ -111,10 +112,10 @@ const s = StyleSheet.create({
     ...theme.shadow.lg,
   },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.35)', justifyContent: 'flex-end', alignItems: 'flex-end', paddingRight: 16 },
-  sheet: { backgroundColor: '#fff', borderRadius: 16, padding: 14, width: 280, ...theme.shadow.lg },
+  sheet: { backgroundColor: theme.colors.surface, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.line, padding: 16, width: 280, ...theme.shadow.lg },
   title: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   optionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   optionSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
-});
+}));

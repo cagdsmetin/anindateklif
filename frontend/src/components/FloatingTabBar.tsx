@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { theme } from '@/src/lib/theme';
+import { themedStyles } from '@/src/components/motion';
 
 // Her sekmenin ikonu ve aktifken alacağı renk -- (tabs)/_layout.tsx'teki
 // Tabs.Screen tanımlarıyla birebir aynı eşleşme (bkz. tabIcon() ve
@@ -173,7 +174,7 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   wrap: {
     backgroundColor: theme.colors.surfaceSoft,
     paddingTop: 10,
@@ -207,4 +208,4 @@ const s = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-});
+}));

@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme } from '@/src/lib/theme';
-import { alpha } from './paint';
+import { alpha, themedStyles } from './paint';
 
 // Seçilebilir "hap" (pill) -- seçili duruma yaylanarak geçer, rengi yumuşak
 // bir geçişle dolar, basınca hafifçe küçülür. Para birimi/nakliye/kategori
@@ -85,7 +85,7 @@ export default function ChoiceChip({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   shell: {
     paddingVertical: 9,
     paddingHorizontal: 10,
@@ -96,4 +96,4 @@ const s = StyleSheet.create({
     minHeight: 38,
   },
   label: { fontSize: 11.5, fontWeight: '800', letterSpacing: 0.2 },
-});
+}));

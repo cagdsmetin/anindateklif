@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { upper } from '@/src/lib/i18n';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -12,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api, EFaturaConfigT } from '@/src/lib/api';
-import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 // ============================================================================
 // e-Fatura -- MyDijital OS'teki "E-Fatura" modülünün karşılığı. Sağlayıcı
@@ -176,7 +177,7 @@ export default function EFaturaScreen() {
             </View>
           </View>
 
-          <Text style={s.sectionTitle}>Kimlik Bilgileri</Text>
+          <Text style={s.sectionTitle}>{upper('Kimlik Bilgileri')}</Text>
           <MotionInput
             style={s.input}
             placeholder={cfg?.hasApiKey ? `Kayıtlı anahtar: ${cfg.apiKeyMasked} (değiştirmek için yeni yazın)` : 'Nilvera API Anahtarı'}
@@ -198,7 +199,10 @@ export default function EFaturaScreen() {
               disabled={!cfg?.lastTestOk}
               testID="efatura-ortam-canli"
             >
-              <Text style={[s.ortamPillText, ortam === 'canli' && s.ortamPillTextActive]}>Canlı Ortam{!cfg?.lastTestOk ? ' 🔒' : ''}</Text>
+              {!cfg?.lastTestOk ? (
+                <Ionicons name="lock-closed" size={13} color={ortam === 'canli' ? '#fff' : theme.colors.textMuted} />
+              ) : null}
+              <Text style={[s.ortamPillText, ortam === 'canli' && s.ortamPillTextActive]}>Canlı Ortam</Text>
             </TouchableOpacity>
           </View>
 
@@ -207,7 +211,7 @@ export default function EFaturaScreen() {
             <Text style={s.testBtnText}>{testing ? 'Test ediliyor...' : 'Bağlantıyı Test Et'}</Text>
           </TouchableOpacity>
 
-          <Text style={s.sectionTitle}>Firma Künyesi</Text>
+          <Text style={s.sectionTitle}>{upper('Firma Künyesi')}</Text>
           <MotionInput style={s.input} placeholder="Vergi Kimlik No / TCKN" placeholderTextColor="#94a3b8" value={firmaVergiNo} onChangeText={setFirmaVergiNo} testID="efatura-vergino" />
           <MotionInput style={s.input} placeholder="Firma Unvanı" placeholderTextColor="#94a3b8" value={firmaUnvani} onChangeText={setFirmaUnvani} testID="efatura-unvan" />
           <MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Adres" placeholderTextColor="#94a3b8" value={firmaAdres} onChangeText={setFirmaAdres} testID="efatura-adres" />
@@ -223,7 +227,7 @@ export default function EFaturaScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -238,9 +242,9 @@ const s = StyleSheet.create({
   statusTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   statusSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 3 },
   statusMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 6, fontWeight: '700' },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, marginBottom: 10 },
   input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
-  ortamPill: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  ortamPill: { flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
   ortamPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   ortamPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   ortamPillTextActive: { color: '#fff' },
@@ -248,4 +252,4 @@ const s = StyleSheet.create({
   testBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary, borderRadius: 10, height: 46, marginTop: 4 },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-});
+}));

@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { useLanguage } from '@/src/lib/i18n';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
+import { themedStyles } from '@/src/components/motion';
 
 type Slide = {
   key: string;
@@ -140,7 +141,7 @@ export default function SplashOnboarding() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   topBar: {
     flexDirection: 'row',
@@ -255,4 +256,4 @@ const s = StyleSheet.create({
     gap: 6,
   },
   trustText: { color: authTheme.textMuted, fontSize: 11, fontWeight: '500' },
-});
+}));

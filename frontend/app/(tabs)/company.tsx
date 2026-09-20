@@ -17,11 +17,11 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
-import { useLanguage, LANGUAGES } from '@/src/lib/i18n';
+import { useLanguage, LANGUAGES, upper } from '@/src/lib/i18n';
 import { useAppTheme } from '@/src/lib/theme-context';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
-import { alpha, BubbleButton, hashColor, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, useViewportProgress } from '@/src/components/motion';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, hashColor, themedStyles, useViewportProgress } from '@/src/components/motion';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
@@ -157,7 +157,7 @@ export default function CompanyScreen() {
       <TopHeader title={t('firma.headerTitle')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <MotionScrollView
-          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }}
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 1100, alignSelf: 'center' }}
           keyboardShouldPersistTaps="handled"
           progressColors={[theme.colors.modules.firma, theme.colors.primary, '#A855F7']}
         >
@@ -202,32 +202,44 @@ export default function CompanyScreen() {
             </Reveal>
             {/* Logo */}
             <SectionHeader title={t('firma.companyLogo')} icon="image" />
-            <View style={s.logoBox}>
-              {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
-                <View style={s.logoPlaceholder}>
-                  <Ionicons name="image-outline" size={40} color={theme.colors.textMuted} />
-                  <Text style={s.logoHint}>{t('firma.logoNotUploaded')}</Text>
-                </View>
-              )}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                <BubbleButton
-                  icon="cloud-upload"
-                  label={form.logoBase64 ? t('firma.changeLogo') : t('firma.uploadLogo')}
-                  color={theme.colors.primary}
-                  onPress={pickLogo}
-                  testID="pick-logo-btn"
-                  style={{ flex: 1 }}
-                />
-                {form.logoBase64 && (
-                  <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
-                    <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
-                  </TouchableOpacity>
+            {/* Logo: dar ve yatay -- önizleme solda, işlemler sağda. Eskiden
+                sayfanın yarısını kaplayan büyük bir kutuydu. */}
+            <Reveal>
+              <View style={s.logoBox}>
+                {form.logoBase64 ? (
+                  <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" />
+                ) : (
+                  <View style={s.logoPlaceholder}>
+                    <Ionicons name="image-outline" size={22} color={theme.colors.textMuted} />
+                  </View>
                 )}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.logoTitle} numberOfLines={1}>
+                    {form.logoBase64 ? t('firma.companyLogo') : t('firma.logoNotUploaded')}
+                  </Text>
+                  <Text style={s.logoHint} numberOfLines={2}>PDF tekliflerin üst kısmında görünür.</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <BubbleButton
+                      icon="cloud-upload"
+                      label={form.logoBase64 ? t('firma.changeLogo') : t('firma.uploadLogo')}
+                      color={theme.colors.primary}
+                      onPress={pickLogo}
+                      testID="pick-logo-btn"
+                      labelStyle={{ fontSize: 12.5 }}
+                    />
+                    {form.logoBase64 && (
+                      <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               </View>
-            </View>
+            </Reveal>
 
             {/* Info */}
             <SectionHeader title={t('firma.companyInfo')} icon="business" />
+            <View style={s.formCard}>
             <Field label={t('firma.companyName')}><MotionInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
             <Field label={t('firma.address')}><MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -239,6 +251,8 @@ export default function CompanyScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <Field label={t('firma.taxOffice')} flex={1}><MotionInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
               <Field label={t('firma.taxNo')} flex={1}><MotionInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
+            </View>
+
             </View>
 
             {/* Bank Accounts */}
@@ -440,7 +454,7 @@ function SectionHeader({ title, icon = 'ellipse' }: { title: string; icon?: keyo
         <View style={s.sectionIcon}>
           <Ionicons name={icon} size={12} color={theme.colors.primary} />
         </View>
-        <Text style={s.sectionH}>{title}</Text>
+        <Text style={s.sectionH}>{upper(title)}</Text>
       </View>
       <Animated.View style={[s.sectionLine, lineStyle]}>
         <LinearGradient
@@ -534,20 +548,28 @@ function LanguageSwitcher() {
   );
 }
 function Field({ label, children, flex }: { label: string; children: React.ReactNode; flex?: number }) {
-  return <View style={[{ marginBottom: 10 }, flex ? { flex } : {}]}><Text style={s.label}>{label}</Text>{children}</View>;
+  return <View style={[{ marginBottom: 10 }, flex ? { flex } : {}]}><Text style={s.label}>{upper(label)}</Text>{children}</View>;
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
-  companyListBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 4, ...theme.shadow.sm },
+  companyListBox: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 4, ...theme.shadow.sm },
   compHdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   compItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 10 },
   compItemActive: { backgroundColor: theme.colors.primarySoft },
   compLogo: { width: 34, height: 34, borderRadius: 8 },
   compName: { fontSize: 13, color: theme.colors.text, flex: 1 },
   compNameActive: { fontWeight: '900', color: theme.colors.primary },
+  formCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    padding: 13,
+    ...theme.shadow.sm,
+  },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tileCell: { width: '48%', flexGrow: 1 },
   tile: {
@@ -568,17 +590,18 @@ const s = StyleSheet.create({
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionIcon: { width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   sectionLine: { height: 2, borderRadius: 1, marginTop: 8, overflow: 'hidden', transformOrigin: 'left' },
-  sectionH: { fontSize: 11.5, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.6, textTransform: 'uppercase' },
-  sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
-  logoBox: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 16, alignItems: 'center', ...theme.shadow.sm },
-  logoPreview: { width: 180, height: 90, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
-  logoPlaceholder: { width: 180, height: 90, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  logoHint: { fontSize: 11, color: theme.colors.textMuted },
+  sectionH: { fontSize: 11.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.6, },
+  sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.5 },
+  logoBox: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.line, padding: 13, ...theme.shadow.sm },
+  logoPreview: { width: 92, height: 62, borderRadius: 12, backgroundColor: theme.colors.surfaceSoft },
+  logoPlaceholder: { width: 92, height: 62, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
+  logoTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  logoHint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2, lineHeight: 15 },
   btnPri: { backgroundColor: theme.colors.primary, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, ...theme.shadow.sm },
   btnPriText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
-  btnDangerSmall: { width: 48, paddingVertical: 12, backgroundColor: theme.colors.redSoft, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  btnDangerSmall: { width: 42, borderRadius: 999, backgroundColor: theme.colors.redSoft, alignItems: 'center', justifyContent: 'center' },
+  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4 },
+  subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, letterSpacing: 0.4 },
   input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   hint: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8, lineHeight: 16 },
   hintMuted: { fontSize: 11.5, color: theme.colors.textMuted, fontStyle: 'italic' },
@@ -591,12 +614,12 @@ const s = StyleSheet.create({
   emChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   chipTxt: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary, maxWidth: 200 },
   addPlusBtn: { width: 48, backgroundColor: theme.colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  systemCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, overflow: 'hidden', ...theme.shadow.sm },
+  systemCard: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, overflow: 'hidden', ...theme.shadow.sm },
   systemHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
-  systemName: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
+  systemName: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
   systemMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   systemBody: { padding: 12, borderTopWidth: 1, borderTopColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 6 },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 6 },
   fieldLabel: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
   fieldType: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
   dragHandle: { width: 20, alignItems: 'center', justifyContent: 'center', opacity: 0.65 },
@@ -605,7 +628,7 @@ const s = StyleSheet.create({
   reorderBtnDisabled: { backgroundColor: theme.colors.surfaceSoft, opacity: 0.5 },
   addFieldBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft, marginTop: 4 },
   addFieldText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
-  saveBtn: { marginTop: 24, backgroundColor: theme.colors.primary, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
+  saveBtn: { marginTop: 20, backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.3 },
   deleteCompanyBtn: { marginTop: 12, borderWidth: 1, borderColor: theme.colors.red, borderStyle: 'dashed', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   deleteCompanyText: { color: theme.colors.red, fontWeight: '800', fontSize: 12 },
@@ -613,15 +636,15 @@ const s = StyleSheet.create({
   goCatalogBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },
   overlayBottom: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'flex-end' },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', padding: 30 },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '90%' },
+  modalSheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: theme.colors.line, padding: 18, maxHeight: '90%', boxShadow: '0 -18px 50px rgba(2,6,23,0.35)' },
   modalHdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.line, marginBottom: 10 },
-  modalTitle: { fontSize: 16, fontWeight: '900', color: theme.colors.navy },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff' },
+  modalTitle: { fontSize: 16, fontWeight: '900', color: theme.colors.text },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
   typeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   typeChipText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   typeChipTextActive: { color: '#fff' },
-  confirmBox: { backgroundColor: '#fff', padding: 20, borderRadius: 16, alignItems: 'center', ...theme.shadow.lg },
-  confirmTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginTop: 8 },
+  confirmBox: { backgroundColor: theme.colors.surface, padding: 20, borderRadius: 16, alignItems: 'center', ...theme.shadow.lg },
+  confirmTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.text, marginTop: 8 },
   confirmText: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 18 },
   confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   supportBox: { marginBottom: 4 },
@@ -629,10 +652,10 @@ const s = StyleSheet.create({
   whatsappBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
   assistantBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
   assistantBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
-  subscriptionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
+  subscriptionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginTop: 10 },
   subscriptionBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
-  remindersBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
+  remindersBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
   remindersBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
-  reportsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
+  reportsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.primaryBorder, paddingVertical: 14, borderRadius: 14, marginBottom: 10 },
   reportsBtnText: { color: theme.colors.primary, fontWeight: '900', fontSize: 14, letterSpacing: 0.2 },
-});
+}));

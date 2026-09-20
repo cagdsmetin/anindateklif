@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authTheme } from '@/src/lib/auth-theme';
+import { themedStyles } from '@/src/components/motion';
 
 /**
  * Brand mark — gold circular check for the "Anında Teklif" auth screens.
@@ -39,7 +40,7 @@ export function BrandLogo({ size = 88 }: { size?: number }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -64,4 +65,4 @@ const s = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
-});
+}));

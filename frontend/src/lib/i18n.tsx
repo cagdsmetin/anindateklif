@@ -359,7 +359,7 @@ const tr: Dict = {
     s023: 'Önce firma seçiniz',
     s024: 'Ürün / Hizmet Kataloğu',
     s025: 'Ürün / Kategori ara...',
-    s026: '🎯 HİZMET / ÜRÜN YAPILANDIRICI',
+    s026: 'Hizmet / ürün yapılandırıcı',
     s027: "Her hizmeti veya ürünü bir kere tanımlayın (Örn: Cam Balkon → Cam Tipi, Profil Rengi, Ölçü, Motor). Teklif oluştururken sadece seçenekleri tıklayarak ilerleyeceksiniz. Alanları sürükleme tutamağıyla yeniden sıralayabilirsiniz — bu sıra hem form hem PDF'de birebir kullanılır.",
     s028: '(Adsız Hizmet / Ürün)',
     s029: 'alan tanımlı',
@@ -370,7 +370,7 @@ const tr: Dict = {
     s035: 'Sıralama tutamağı',
     s036: '+ Alt Alan Ekle',
     s037: 'Yeni Hizmet / Ürün Adı (örn: Kış Bahçesi)',
-    s038: '📄 FİRMA KATALOĞU',
+    s038: 'Firma kataloğu',
     s039: 'Kendi hazırladığınız katalog/broşür dosyalarını (PDF, PNG, JPG — maksimum 8MB) yükleyin, müşterinize doğrudan WhatsApp veya e-posta ile gönderin.',
     s040: 'Yükleniyor...',
     s041: 'Katalog Dosyası Yükle',
@@ -1608,7 +1608,7 @@ const en: Dict = {
     s023: 'Please select a company first',
     s024: 'Product / Service Catalog',
     s025: 'Search product / category...',
-    s026: '🎯 SERVICE / PRODUCT CONFIGURATOR',
+    s026: 'Service / product configurator',
     s027: "Define each service or product once (e.g., Glass Balcony → Glass Type, Profile Color, Measurement, Motor). When creating a quote, you'll simply click through the options. You can reorder fields using the drag handle — this order is used exactly as-is in both the form and the PDF.",
     s028: '(Unnamed Service / Product)',
     s029: 'fields defined',
@@ -1619,7 +1619,7 @@ const en: Dict = {
     s035: 'Drag handle',
     s036: '+ Add Sub-field',
     s037: 'New Service / Product Name (e.g., Winter Garden)',
-    s038: '📄 COMPANY CATALOG',
+    s038: 'Company catalog',
     s039: 'Upload your own catalog/brochure files (PDF, PNG, JPG — max 8MB) and send them straight to your customer via WhatsApp or email.',
     s040: 'Uploading...',
     s041: 'Upload Catalog File',
@@ -2857,7 +2857,7 @@ const it: Dict = {
     s023: "Seleziona prima un'azienda",
     s024: 'Catalogo Prodotti / Servizi',
     s025: 'Cerca prodotto / categoria...',
-    s026: '🎯 CONFIGURATORE SERVIZI / PRODOTTI',
+    s026: 'Configuratore servizi / prodotti',
     s027: 'Definisci ogni servizio o prodotto una sola volta (es: Balcone in Vetro → Tipo di Vetro, Colore Profilo, Misura, Motore). Durante la creazione del preventivo dovrai solo toccare le opzioni per procedere. Puoi riordinare i campi tramite la maniglia di trascinamento — questo ordine viene usato esattamente sia nel modulo che nel PDF.',
     s028: '(Servizio / Prodotto Senza Nome)',
     s029: 'campi definiti',
@@ -2868,7 +2868,7 @@ const it: Dict = {
     s035: 'Maniglia di ordinamento',
     s036: '+ Aggiungi Sottocampo',
     s037: 'Nome Nuovo Servizio / Prodotto (es: Veranda)',
-    s038: '📄 CATALOGO AZIENDALE',
+    s038: 'Catalogo aziendale',
     s039: 'Carica i tuoi file di catalogo/brochure (PDF, PNG, JPG — massimo 8MB) e inviali direttamente al cliente via WhatsApp o e-mail.',
     s040: 'Caricamento...',
     s041: 'Carica File Catalogo',
@@ -3870,6 +3870,32 @@ type LanguageState = {
 
 const LanguageContext = createContext<LanguageState | null>(null);
 
+// Aktif dilin modul duzeyindeki kopyasi. LanguageProvider her render'da
+// gunceller; boylece hook cagiramayan yardimcilar (upper) da dogru locale'i
+// kullanir.
+let currentLang: Lang = 'tr';
+
+const UPPER_LOCALE: Record<Lang, string> = { tr: 'tr-TR', en: 'en-US', it: 'it-IT' };
+
+// Locale duyarli VERSAL donusumu.
+//
+// JavaScript'in toUpperCase'i (ve React Native'in textTransform:'uppercase'
+// stili) locale'siz calisir: Turkce "i" harfi noktasiz "I"ya doner --
+// "Kimlik Bilgileri" -> "KIMLIK BILGILERI", "Gonderildi" -> "GONDERILDI".
+// Etiketleri VERSAL gosteren her yer bu fonksiyondan gecmeli.
+export function localeUpper(text: string, lang: Lang = currentLang): string {
+  try {
+    return String(text ?? '').toLocaleUpperCase(UPPER_LOCALE[lang] || 'tr-TR');
+  } catch {
+    return String(text ?? '').toUpperCase();
+  }
+}
+
+/** localeUpper'in kisa hali -- aktif dili kendisi okur. */
+export function upper(text: string): string {
+  return localeUpper(text, currentLang);
+}
+
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const { user, updateUser } = useAuth();
   const [lang, setLangState] = useState<Lang>('tr');
@@ -3921,6 +3947,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return dict?.[ns]?.[k] ?? DICTS.tr?.[ns]?.[k] ?? key;
   }, [lang]);
 
+  // Aktif dili modul duzeyinde de tut: VERSAL donusumu gibi hook
+  // kullanamayacagimiz yardimcilar (upper) buradan okur.
+  currentLang = lang;
+
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
@@ -3931,3 +3961,11 @@ export function useLanguage(): LanguageState {
   if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
   return ctx;
 }
+
+// Sağlayıcı dışında da güvenle çağrılabilir (varsayılan: Türkçe). Ortak
+// bileşenler (ör. ScreenHero) bunu kullanır -- hata fırlatıp beyaz ekrana
+// düşmesinler diye.
+export function useLangSafe(): Lang {
+  return useContext(LanguageContext)?.lang ?? 'tr';
+}
+

@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionScrollView } from '@/src/components/motion';
+import { MotionScrollView, themedStyles } from '@/src/components/motion';
 
 // Public, unauthenticated page — required by Google Play (Data Safety form)
 // and the App Store (App Privacy). Kept outside the auth-gated navigator;
@@ -97,8 +97,8 @@ function Bullet({ children }: { children: React.ReactNode }) {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
+const s = themedStyles(() => StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.colors.surface },
   header: {
     height: 56,
     flexDirection: 'row',
@@ -119,4 +119,4 @@ const s = StyleSheet.create({
   bulletDot: { marginTop: 7 },
   bulletText: { flex: 1, fontSize: 14, lineHeight: 21, color: theme.colors.textSoft },
   footer: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', marginTop: 20 },
-});
+}));

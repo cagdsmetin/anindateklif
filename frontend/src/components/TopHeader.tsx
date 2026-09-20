@@ -7,6 +7,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { useRouter } from 'expo-router';
 import NavDrawer from '@/src/components/NavDrawer';
 import { useLanguage } from '@/src/lib/i18n';
+import { themedStyles } from '@/src/components/motion';
 
 export default function TopHeader({ title }: { title?: string }) {
   const { t } = useLanguage();
@@ -175,7 +176,7 @@ export default function TopHeader({ title }: { title?: string }) {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   toast: {
     position: 'absolute',
     top: 8,
@@ -193,7 +194,7 @@ const s = StyleSheet.create({
   toastText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   header: {
     minHeight: 62,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -223,7 +224,7 @@ const s = StyleSheet.create({
     shadowColor: theme.colors.primary,
     shadowOpacity: 0.3,
   },
-  appName: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.2 },
+  appName: { fontSize: 15, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.2 },
   appSubtitle: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
   rightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pickerBtn: {
@@ -249,8 +250,8 @@ const s = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18 },
   avatarLetter: { color: '#fff', fontSize: 14, fontWeight: '900' },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  pickerCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, width: '100%', maxWidth: 320, ...theme.shadow.lg },
-  pickerTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 10 },
+  pickerCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, width: '100%', maxWidth: 320, ...theme.shadow.lg },
+  pickerTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
   pickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 10, borderRadius: 10 },
   pickerItemActive: { backgroundColor: theme.colors.primarySoft },
   pickerItemText: { fontSize: 13, color: theme.colors.text, flex: 1 },
@@ -269,10 +270,10 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.primarySoft,
   },
   addNewText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
-  menuCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '100%', maxWidth: 300, ...theme.shadow.lg },
+  menuCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, width: '100%', maxWidth: 300, ...theme.shadow.lg },
   userHeader: { alignItems: 'center', paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.line, marginBottom: 12 },
   avatarLarge: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
-  userName: { fontSize: 15, fontWeight: '800', color: theme.colors.navy },
+  userName: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
   userEmail: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   signoutBtn: {
     flexDirection: 'row',
@@ -286,4 +287,4 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.redSoft,
   },
   signoutText: { color: theme.colors.red, fontWeight: '800', fontSize: 13 },
-});
+}));

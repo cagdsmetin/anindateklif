@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { theme } from '@/src/lib/theme';
+import { themedStyles } from '@/src/components/motion';
 
 // Genel amaçlı durum-dağılımı pasta grafiği. app/(tabs)/index.tsx'teki
 // "Teklif Durumları" / "Nakit Durumu" pasta grafiğiyle birebir aynı görsel
@@ -176,14 +177,14 @@ function LegendDot({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   pieCenterHole: {
     position: 'absolute', top: '20%', left: '20%', width: '60%', height: '60%',
-    borderRadius: 999, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 999, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center',
     ...theme.shadow.sm,
   },
   pieCenterLabel: { fontSize: 8, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
-  pieCenterValue: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 1, maxWidth: '90%' },
+  pieCenterValue: { fontSize: 11, fontWeight: '900', color: theme.colors.text, marginTop: 1, maxWidth: '90%' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendLabel: { flex: 1, fontSize: 12, color: theme.colors.textSoft },
@@ -193,4 +194,4 @@ const s = StyleSheet.create({
   legendPctText: { fontSize: 10.5, fontWeight: '800' },
   legendCountAmountWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   legendCount: { fontSize: 12, fontWeight: '800', color: theme.colors.text, textAlign: 'left' },
-});
+}));

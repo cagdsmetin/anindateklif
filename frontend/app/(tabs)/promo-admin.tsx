@@ -14,8 +14,8 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, PromoCodeT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
-import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -133,7 +133,7 @@ export default function PromoAdminScreen() {
               title={t('promoAdmin.s001')}
               color={theme.colors.gold}
             />
-            <Text style={s.sectionLabel}>{t('promoAdmin.s006')}</Text>
+            <Text style={s.sectionLabel}>{upper(t('promoAdmin.s006'))}</Text>
             <View style={s.card}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
@@ -189,7 +189,7 @@ export default function PromoAdminScreen() {
               ) : null}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('promoAdmin.s015')}{codes.length})</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{upper(t('promoAdmin.s015'))}{codes.length})</Text>
             {codes.length === 0 ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('promoAdmin.s017')}</Text>
             ) : (
@@ -219,22 +219,22 @@ export default function PromoAdminScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -243,7 +243,7 @@ const s = StyleSheet.create({
   },
   fieldLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginBottom: 6 },
   input: {
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 12,
@@ -264,14 +264,14 @@ const s = StyleSheet.create({
   ctaText: { color: '#fff', fontSize: 14.5, fontWeight: '800' },
   linkBox: { marginTop: 14, backgroundColor: theme.colors.primarySoft, borderRadius: 12, padding: 12 },
   linkHint: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 8 },
-  newCodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 6 },
+  newCodeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surface, borderRadius: 8, padding: 10, marginBottom: 6 },
   newCodeText: { fontSize: 15, fontWeight: '900', color: theme.colors.text, letterSpacing: 1.5 },
   copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   copyBtnText: { fontSize: 12, fontWeight: '800', color: theme.colors.primary },
   codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.line,
@@ -283,8 +283,8 @@ const s = StyleSheet.create({
   codeUsedBy: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   badge: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, marginLeft: 10 },
   badgeFree: { backgroundColor: theme.colors.greenSoft },
-  badgeUsed: { backgroundColor: '#F1F5F9' },
+  badgeUsed: { backgroundColor: theme.colors.surfaceSoft },
   badgeText: { fontSize: 10.5, fontWeight: '800' },
-  badgeTextFree: { color: '#166534' },
+  badgeTextFree: { color: theme.colors.greenText },
   badgeTextUsed: { color: theme.colors.textMuted },
-});
+}));

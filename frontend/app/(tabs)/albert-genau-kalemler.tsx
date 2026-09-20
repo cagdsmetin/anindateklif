@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { AlbertGenauKalemT } from '@/src/lib/api';
+import { themedStyles } from '@/src/components/motion';
 
 // Albert Genau malzeme listesi — ayrı bir sayfa olarak açılır (sonuç kartının
 // içine inline genişleyerek AÇILMAZ). Bunun nedeni: React Native Web'de
@@ -76,13 +77,13 @@ export default function AlbertGenauKalemlerScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surfaceSoft },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  summaryBar: { paddingHorizontal: 18, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  summaryBar: { paddingHorizontal: 18, paddingVertical: 10, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   summaryTitle: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   summarySub: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600', marginTop: 2 },
   kalemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEF1F5' },
@@ -92,4 +93,4 @@ const s = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.colors.navy, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 12 },
   totalLabel: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
   totalValue: { color: '#fff', fontSize: 16, fontWeight: '900' },
-});
+}));

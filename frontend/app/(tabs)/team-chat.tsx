@@ -21,6 +21,7 @@ import type { TeamConversationT, TeamDirectoryMemberT, TeamMessageT } from '@/sr
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { themedStyles } from '@/src/components/motion';
 
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Firma Sahibi',
@@ -389,15 +390,15 @@ export default function TeamChatScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -410,7 +411,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 14,
@@ -442,7 +443,7 @@ const s = StyleSheet.create({
   bubbleRowAssistant: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '82%', flexShrink: 1, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
   bubbleUser: { backgroundColor: theme.colors.primary, borderBottomRightRadius: 4 },
-  bubbleAssistant: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, borderBottomLeftRadius: 4 },
+  bubbleAssistant: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.line, borderBottomLeftRadius: 4 },
   bubbleSender: { fontSize: 11, fontWeight: '800', color: theme.colors.modules.mesaj, marginBottom: 2 },
   bubbleSenderUser: { color: 'rgba(255,255,255,0.85)' },
   bubbleText: { fontSize: 14.5, color: theme.colors.text, lineHeight: 20, flexShrink: 1 },
@@ -455,7 +456,7 @@ const s = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 16,
     paddingTop: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
     borderTopWidth: 1,
     borderTopColor: theme.colors.line,
   },
@@ -463,7 +464,7 @@ const s = StyleSheet.create({
     flex: 1,
     minHeight: 44,
     maxHeight: 120,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 14,
@@ -484,10 +485,10 @@ const s = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.5 },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   confirmBox: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 22, width: '100%', maxWidth: 360,
+    backgroundColor: theme.colors.surface, borderRadius: 18, padding: 22, width: '100%', maxWidth: 360,
     alignItems: 'center', borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm,
   },
   confirmTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, marginTop: 10 },
   confirmText: { fontSize: 12.5, color: theme.colors.textMuted, marginTop: 6, textAlign: 'center', lineHeight: 18 },
   confirmBtn: { flex: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-});
+}));

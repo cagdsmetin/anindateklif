@@ -15,9 +15,9 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
-import { useLanguage } from '@/src/lib/i18n';
+import { useLanguage, upper } from '@/src/lib/i18n';
 import TopHeader from '@/src/components/TopHeader';
-import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { BeamRow, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, TracingBeam, themedStyles } from '@/src/components/motion';
 
 const HIDDEN_KEY = 'hiddenReminders';
 
@@ -218,6 +218,7 @@ export default function RemindersScreen() {
           manualList.map(({ r, days }) => (
             <ReminderRow
               key={r.id}
+              icon="bookmark"
               category="Not"
               categoryColor={theme.colors.gold}
               title={r.baslik}
@@ -238,6 +239,7 @@ export default function RemindersScreen() {
           garantiList.map(({ s: svc, days }) => (
             <ReminderRow
               key={svc.id}
+              icon="shield-checkmark"
               category="Garanti"
               categoryColor={theme.colors.modules.gecmis}
               title={svc.baslik}
@@ -260,6 +262,7 @@ export default function RemindersScreen() {
           bakimList.map(({ s: svc, days }) => (
             <ReminderRow
               key={svc.id}
+              icon="build"
               category={t('remindersPage.s011')}
               categoryColor={theme.colors.modules.servis}
               title={svc.baslik}
@@ -282,6 +285,7 @@ export default function RemindersScreen() {
           teklifList.map(({ q, days }) => (
             <ReminderRow
               key={q.id}
+              icon="document-text"
               category="Teklif"
               categoryColor={theme.colors.modules.teklif}
               title={`${q.teklifNo} · ${q.musFirma}`}
@@ -304,6 +308,7 @@ export default function RemindersScreen() {
           kampanyaList.map(({ camp, sentCount, total, remaining }) => (
             <ReminderRow
               key={camp.id}
+              icon="megaphone"
               category="Kampanya"
               categoryColor={theme.colors.modules.kampanya}
               title={camp.baslik}
@@ -322,11 +327,11 @@ export default function RemindersScreen() {
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setShowAdd(false)}>
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
             <Text style={s.modalTitle}>{editingReminder ? t('remindersPage.s016') : t('remindersPage.s017')}</Text>
-            <Text style={s.modalLabel}>{t('remindersPage.s018')}</Text>
+            <Text style={s.modalLabel}>{upper(t('remindersPage.s018'))}</Text>
             <MotionInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder={t('remindersPage.s019')} placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
-            <Text style={s.modalLabel}>{t('remindersPage.s020')}</Text>
+            <Text style={s.modalLabel}>{upper(t('remindersPage.s020'))}</Text>
             <MotionInput style={s.modalInput} value={formTarih} onChangeText={setFormTarih} placeholder="2026-09-01" placeholderTextColor="#94a3b8" testID="manual-reminder-tarih" />
-            <Text style={s.modalLabel}>{t('remindersPage.s022')}</Text>
+            <Text style={s.modalLabel}>{upper(t('remindersPage.s022'))}</Text>
             <MotionInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder={t('remindersPage.s023')} placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
             <View style={s.modalBtnRow}>
               {editingReminder && (
@@ -351,8 +356,8 @@ export default function RemindersScreen() {
 function SectionHeader({ icon, title, count, color }: { icon: any; title: string; count: number; color: string }) {
   return (
     <View style={s.sectionHdr}>
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={s.sectionTitle}>{title}</Text>
+      <SoftIcon icon={icon} color={color} size={26} iconSize={14} />
+      <Text style={s.sectionTitle}>{upper(title)}</Text>
       {count > 0 ? (
         <View style={[s.countPill, { backgroundColor: color }]}><Text style={s.countPillText}>{count}</Text></View>
       ) : null}
@@ -369,6 +374,7 @@ function EmptyLine({ text }: { text: string }) {
 }
 
 function ReminderRow({
+  icon,
   category,
   categoryColor,
   title,
@@ -380,6 +386,7 @@ function ReminderRow({
   waMessage,
   onHide,
 }: {
+  icon: keyof typeof Ionicons.glyphMap;
   category: string;
   categoryColor: string;
   title: string;
@@ -395,17 +402,23 @@ function ReminderRow({
   const cleanedPhone = normalizePhoneForWhatsApp(phone || '');
   return (
     <View style={s.row}>
+      <View style={[s.rowStripe, { backgroundColor: badge.text }]} />
       <TouchableOpacity style={s.rowTop} onPress={onPress} activeOpacity={0.85}>
-        <View style={[s.categoryPill, { backgroundColor: categoryColor }]}>
-          <Text style={s.categoryPillText}>{category}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.rowTitle} numberOfLines={1}>{title}</Text>
+        <IconBadge icon={icon} color={categoryColor} size={36} motion="pop" />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={s.rowTitleRow}>
+            <Text style={s.rowTitle} numberOfLines={1}>{title}</Text>
+            <View style={[s.categoryPill, { backgroundColor: categoryColor + '22' }]}>
+              <Text style={[s.categoryPillText, { color: categoryColor }]}>{category}</Text>
+            </View>
+          </View>
           <Text style={s.rowSub} numberOfLines={1}>{sub}</Text>
         </View>
-        <View style={[s.badge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-          <Text style={[s.badgeText, { color: badge.text }]}>{label}</Text>
-        </View>
+        {label ? (
+          <View style={[s.badge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+            <Text style={[s.badgeText, { color: badge.text }]}>{label}</Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
       <View style={s.rowActions}>
         {cleanedPhone ? (
@@ -429,37 +442,49 @@ function ReminderRow({
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  modalCard: { width: '100%', maxWidth: 420, backgroundColor: '#fff', borderRadius: 16, padding: 18 },
-  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.navy, marginBottom: 14 },
-  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
-  modalInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 420, backgroundColor: theme.colors.surface, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.line, padding: 20, boxShadow: '0 24px 60px rgba(2,6,23,0.4)' },
+  modalTitle: { fontSize: 15, fontWeight: '900', color: theme.colors.text, marginBottom: 14 },
+  modalLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, },
+  modalInput: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.colors.text, marginBottom: 12 },
   modalBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   modalDeleteBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.redSoft },
-  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  modalCancelBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft },
   modalCancelText: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   modalSaveBtn: { flex: 1.4, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary },
   modalSaveText: { fontSize: 13, fontWeight: '800', color: '#fff' },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff' },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surface },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
   actionBtnText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  emptyBox: { backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 26, alignItems: 'center', gap: 8, marginBottom: 20 },
+  emptyBox: { backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 26, alignItems: 'center', gap: 8, marginBottom: 20 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
   sectionHdr: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18, marginBottom: 10 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, flex: 1 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, flex: 1 },
   countPill: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   countPillText: { fontSize: 11, fontWeight: '900', color: '#fff' },
   emptyLineBox: { paddingVertical: 10 },
   emptyLineText: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic' },
 
-  row: { backgroundColor: '#fff', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, ...theme.shadow.sm },
-  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  categoryPill: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 4 },
+  row: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    padding: 11,
+    paddingTop: 13,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    marginBottom: 10,
+    overflow: 'hidden',
+    ...theme.shadow.sm,
+  },
+  rowStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 3 },
+  rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 8 },
+  categoryPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   categoryPillText: { fontSize: 9.5, fontWeight: '900', color: '#fff' },
-  rowTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.navy },
+  rowTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   rowSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   badge: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
   badgeText: { fontSize: 10.5, fontWeight: '800' },
@@ -469,4 +494,4 @@ const s = StyleSheet.create({
   waBtnText: { fontSize: 11.5, fontWeight: '800', color: '#fff' },
   hideBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   hideBtnText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
-});
+}));

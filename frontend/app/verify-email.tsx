@@ -14,7 +14,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionScrollView } from '@/src/components/motion';
+import { MotionScrollView, themedStyles } from '@/src/components/motion';
 
 /**
  * Kayıt sırasında gönderilen e-postadaki bağlantı buraya açılır:
@@ -98,7 +98,7 @@ export default function VerifyEmailScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { paddingHorizontal: 24, paddingTop: 40, paddingBottom: 24, flexGrow: 1 },
   logoWrap: { alignItems: 'center', marginBottom: 16 },
@@ -122,4 +122,4 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-});
+}));

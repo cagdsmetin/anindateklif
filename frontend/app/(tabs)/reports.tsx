@@ -5,8 +5,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { CountUp, MotionScrollView, Reveal, ScreenHero, SoftIcon, TiltOnScroll } from '@/src/components/motion';
+import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  alpha,
+  CountUp,
+  Donut,
+  hashColor,
+  MotionScrollView,
+  Reveal,
+  ScreenHero,
+  SoftIcon,
+  themedStyles,
+  TiltOnScroll,
+  useRevealVisible,
+} from '@/src/components/motion';
 
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const SERVICE_STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
@@ -126,6 +140,9 @@ export default function ReportsScreen() {
     return { total, onay, red, bekleyen };
   }, [quotes]);
 
+  // Dönüşüm oranı = onaylanan / toplam (hero rozetinde ve huni bölümünde)
+  const conversionRate = conversion.total > 0 ? (conversion.onay / conversion.total) * 100 : 0;
+
   const serviceStats = useMemo(() => {
     const total = services.length;
     const byStatus = SERVICE_STATUSES.map((st) => ({ st, count: services.filter((s) => s.durum === st).length }));
@@ -156,13 +173,20 @@ export default function ReportsScreen() {
           icon="bar-chart"
           title={t('reports.s009')}
           color={theme.colors.modules.raporlar}
+          stats={[
+            { label: t('reports.s010'), value: conversion.total },
+            { label: t('reports.s001'), value: conversion.onay, tone: '#6EE7B7' },
+            { label: t('reports.s016'), value: conversionRate, format: (n) => `%${Math.round(n)}`, tone: '#A5B4FC' },
+            { label: t('reports.s020'), value: serviceStats.total },
+          ]}
         />
         {/* Teklif hacmi grafiği */}
         <View style={s.sectionHdr}>
           <SoftIcon icon="bar-chart-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
-          <Text style={s.sectionTitle}>{t('reports.s010')}</Text>
+          <Text style={s.sectionTitle}>{upper(t('reports.s010'))}</Text>
         </View>
         <TiltOnScroll>
+        <Reveal variant="fade">
         <View style={s.card}>
           <View style={s.segmentRow}>
             <TouchableOpacity style={[s.segBtn, period === 'ay' && s.segBtnActive]} onPress={() => setPeriod('ay')} testID="report-period-ay">
@@ -177,24 +201,25 @@ export default function ReportsScreen() {
             <Text style={s.chartVolumeSub}>{t('reports.s013')}</Text>
           </View>
           <View style={s.chartBars}>
-            {buckets.map((b) => {
-              const h = b.count > 0 ? Math.max(6, (b.count / maxCount) * 96) : 2;
-              return (
-                <View key={b.key} style={s.barCol}>
-                  <Text style={s.barValue}>{b.count > 0 ? b.count : ''}</Text>
-                  <View style={[s.bar, { height: h }]} />
-                  <Text style={s.barLabel} numberOfLines={1}>{b.label}</Text>
-                </View>
-              );
-            })}
+            {buckets.map((b, i) => (
+              <ChartBar
+                key={b.key}
+                index={i}
+                label={b.label}
+                count={b.count}
+                ratio={b.count / maxCount}
+                best={b.count > 0 && b.count === maxCount}
+              />
+            ))}
           </View>
         </View>
+        </Reveal>
         </TiltOnScroll>
 
         {/* En çok teklif verilen müşteriler */}
         <View style={s.sectionHdr}>
           <SoftIcon icon="people-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
-          <Text style={s.sectionTitle}>{t('reports.s014')}</Text>
+          <Text style={s.sectionTitle}>{upper(t('reports.s014'))}</Text>
         </View>
         <TiltOnScroll>
         <View style={s.card}>
@@ -204,12 +229,13 @@ export default function ReportsScreen() {
             topCustomers.map((c, idx) => (
               <Reveal key={c.firma} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
               <View style={[s.rankRow, idx < topCustomers.length - 1 && s.rankRowBorder]}>
-                <View style={s.rankBadge}>
+                <View style={[s.rankBadge, { backgroundColor: hashColor(c.firma) }]}>
                   <Text style={s.rankBadgeText}>{idx + 1}</Text>
                 </View>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.rankFirma} numberOfLines={1}>{c.firma}</Text>
                   <Text style={s.rankSub}>{c.count} teklif{c.volumeUSD > 0 ? ` · ${fmt(c.volumeUSD, 'USD')}` : ''}</Text>
+                  <GrowBar ratio={topCustomers[0].count > 0 ? c.count / topCustomers[0].count : 0} color={hashColor(c.firma)} delay={idx * 90} />
                 </View>
               </View>
               </Reveal>
@@ -221,35 +247,56 @@ export default function ReportsScreen() {
         {/* Dönüşüm oranı */}
         <View style={s.sectionHdr}>
           <SoftIcon icon="swap-horizontal-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
-          <Text style={s.sectionTitle}>{t('reports.s016')}</Text>
+          <Text style={s.sectionTitle}>{upper(t('reports.s016'))}</Text>
         </View>
         <TiltOnScroll>
+        <Reveal variant="fade">
         <View style={s.card}>
-          <ConversionRow label={t('reports.s001')} count={conversion.onay} total={conversion.total} color={theme.colors.green} />
-          <ConversionRow label={t('reports.s017')} count={conversion.red} total={conversion.total} color={theme.colors.red} />
-          <ConversionRow label={t('reports.s018')} count={conversion.bekleyen} total={conversion.total} color={theme.colors.gold} last />
+          <View style={s.convTop}>
+            <Donut
+              data={[
+                { value: conversion.onay, color: theme.colors.green },
+                { value: conversion.red, color: theme.colors.red },
+                { value: conversion.bekleyen, color: theme.colors.gold },
+              ]}
+              size={104}
+              thickness={14}
+              holeColor={theme.colors.surface}
+              trackColor={theme.colors.line}
+              centerLabel={t('reports.s016')}
+              centerValue={`%${Math.round(conversionRate)}`}
+              labelColor={theme.colors.textMuted}
+              valueColor={theme.colors.navy}
+            />
+            <View style={{ flex: 1, minWidth: 140 }}>
+              <ConversionRow label={t('reports.s001')} count={conversion.onay} total={conversion.total} color={theme.colors.green} />
+              <ConversionRow label={t('reports.s017')} count={conversion.red} total={conversion.total} color={theme.colors.red} />
+              <ConversionRow label={t('reports.s018')} count={conversion.bekleyen} total={conversion.total} color={theme.colors.gold} last />
+            </View>
+          </View>
         </View>
+        </Reveal>
         </TiltOnScroll>
 
         {/* Servis / garanti istatistikleri */}
         <View style={s.sectionHdr}>
           <SoftIcon icon="shield-checkmark-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
-          <Text style={s.sectionTitle}>{t('reports.s019')}</Text>
+          <Text style={s.sectionTitle}>{upper(t('reports.s019'))}</Text>
         </View>
         <TiltOnScroll>
         <View style={s.card}>
           <View style={s.statsRow}>
             <View style={s.statCard}>
-              <Text style={s.statLabel}>{t('reports.s020')}</Text>
+              <Text style={s.statLabel}>{upper(t('reports.s020'))}</Text>
               <Text style={s.statValue}>{serviceStats.total}</Text>
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-              <Text style={[s.statLabel, { color: '#166534' }]}>{t('reports.s021')}</Text>
-              <Text style={[s.statValue, { color: '#166534' }]}>{serviceStats.garantiAktif}</Text>
+              <Text style={[s.statLabel, { color: theme.colors.greenText }]}>{upper(t('reports.s021'))}</Text>
+              <Text style={[s.statValue, { color: theme.colors.greenText }]}>{serviceStats.garantiAktif}</Text>
             </View>
             <View style={[s.statCard, { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' }]}>
-              <Text style={[s.statLabel, { color: '#991b1b' }]}>{t('reports.s022')}</Text>
-              <Text style={[s.statValue, { color: '#991b1b' }]}>{serviceStats.garantiBitmis}</Text>
+              <Text style={[s.statLabel, { color: theme.colors.redText }]}>{upper(t('reports.s022'))}</Text>
+              <Text style={[s.statValue, { color: theme.colors.redText }]}>{serviceStats.garantiBitmis}</Text>
             </View>
           </View>
           <View style={{ marginTop: 12, gap: 8 }}>
@@ -285,55 +332,119 @@ function ConversionRow({ label, count, total, color, last }: { label: string; co
         <Text style={s.convLabel}>{label}</Text>
         <Text style={s.convValue}>{count} {t('reports.s002')}{pct}</Text>
       </View>
-      <View style={s.convTrack}>
-        <View style={[s.convFill, { width: `${pct}%`, backgroundColor: color }]} />
-      </View>
+      <GrowBar ratio={pct / 100} color={color} />
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+// Kart ekrana girdiğinde soldan sağa dolan ince çubuk (rapor satırları).
+function GrowBar({ ratio, color, delay = 0 }: { ratio: number; color: string; delay?: number }) {
+  const visible = useRevealVisible();
+  const reduced = useReducedMotion();
+  const p = useSharedValue(reduced ? 1 : 0);
+  React.useEffect(() => {
+    if (!visible) return;
+    p.value = reduced ? 1 : withDelay(delay + 120, withTiming(1, { duration: 720, easing: Easing.out(Easing.cubic) }));
+  }, [visible, reduced, delay, p]);
+  const style = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(1, ratio)) * 100 * p.value}%` }));
+  return (
+    <View style={s.convTrack}>
+      <Animated.View style={[s.convFill, { backgroundColor: color }, style]} />
+    </View>
+  );
+}
+
+// Dikey sütun: kart görünür olunca aşağıdan yukarı büyür, en yüksek ay
+// gradyanla vurgulanır (21st.dev'deki "stagger reveal" grafik kalıbı).
+function ChartBar({
+  index,
+  label,
+  count,
+  ratio,
+  best,
+}: {
+  index: number;
+  label: string;
+  count: number;
+  ratio: number;
+  best: boolean;
+}) {
+  const visible = useRevealVisible();
+  const reduced = useReducedMotion();
+  const grow = useSharedValue(reduced ? 1 : 0);
+  const target = count > 0 ? Math.max(8, ratio * 96) : 3;
+
+  React.useEffect(() => {
+    if (!visible) return;
+    grow.value = reduced ? 1 : withDelay(160 + index * 80, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }));
+  }, [visible, reduced, index, grow]);
+
+  const barStyle = useAnimatedStyle(() => ({ height: target * grow.value, opacity: 0.35 + 0.65 * grow.value }));
+
+  return (
+    <View style={s.barCol}>
+      <Text style={[s.barValue, best && s.barValueBest]}>{count > 0 ? count : ''}</Text>
+      <Animated.View style={[s.bar, barStyle, best && s.barBest]}>
+        {best ? (
+          <LinearGradient
+            colors={['#A855F7', theme.colors.primary] as [string, string]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+      </Animated.View>
+      <Text style={[s.barLabel, best && s.barLabelBest]} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
+
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surface },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
   sectionHdr: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18, marginBottom: 10 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4 },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4 },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
   emptyLineText: { fontSize: 12, color: theme.colors.textMuted, fontStyle: 'italic', textAlign: 'center', paddingVertical: 8 },
   segmentRow: { flexDirection: 'row', backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, padding: 3, marginBottom: 10, alignSelf: 'flex-start' },
   segBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 8 },
-  segBtnActive: { backgroundColor: '#fff', ...theme.shadow.sm },
+  segBtnActive: { backgroundColor: theme.colors.surface, ...theme.shadow.sm },
   segText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   segTextActive: { color: theme.colors.primary },
-  chartVolume: { fontSize: 16, fontWeight: '900', color: theme.colors.navy, marginBottom: 12 },
+  chartVolume: { fontSize: 16, fontWeight: '900', color: theme.colors.text, marginBottom: 12 },
   chartVolumeSub: { fontSize: 11, fontWeight: '600', color: theme.colors.textMuted },
   chartBars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 140, gap: 4 },
   barCol: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' },
-  barValue: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginBottom: 2 },
-  bar: { width: '60%', minWidth: 8, backgroundColor: theme.colors.primary, borderRadius: 4 },
-  barLabel: { fontSize: 9, color: theme.colors.textMuted, marginTop: 6, fontWeight: '700' },
+  barValue: { fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 3 },
+  barValueBest: { color: theme.colors.primary, fontSize: 11.5 },
+  bar: { width: '64%', minWidth: 8, backgroundColor: alpha(theme.colors.primary, 0.32), borderRadius: 6, overflow: 'hidden' },
+  barBest: { backgroundColor: 'transparent' },
+  barLabel: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 7, fontWeight: '700' },
+  barLabelBest: { color: theme.colors.primary },
   rankRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   rankRowBorder: { borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  rankBadge: { width: 26, height: 26, borderRadius: 13, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  rankBadgeText: { fontSize: 12, fontWeight: '900', color: theme.colors.primary },
-  rankFirma: { fontSize: 13, fontWeight: '800', color: theme.colors.navy },
+  rankBadge: { width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  rankBadgeText: { fontSize: 12, fontWeight: '900', color: '#FFFFFF' },
+  rankFirma: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   rankSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   convHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   convLabel: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   convValue: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
-  convTrack: { height: 8, borderRadius: 4, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden' },
+  convTrack: { height: 8, borderRadius: 4, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden', marginTop: 6 },
+  convTop: { flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
   convFill: { height: '100%', borderRadius: 4 },
   statsRow: { flexDirection: 'row', gap: 8 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: theme.colors.line },
-  statLabel: { fontSize: 9.5, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
-  statValue: { fontSize: 18, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
-});
+  statCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: theme.colors.line },
+  statLabel: { fontSize: 9.5, color: theme.colors.textMuted, fontWeight: '800', letterSpacing: 0.3 },
+  statValue: { fontSize: 18, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+}));

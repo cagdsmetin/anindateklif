@@ -10,6 +10,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
+import { themedStyles } from '@/src/components/motion';
 
 // Mobile counterpart to the desktop left sidebar (app/(tabs)/_layout.tsx) —
 // same destinations, same colors, opened from the hamburger button in
@@ -116,7 +117,7 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   panel: { width: 250, backgroundColor: theme.colors.navyDark, paddingHorizontal: 14, ...theme.shadow.lg },
   overlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 6, paddingBottom: 18, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
@@ -135,4 +136,4 @@ const s = StyleSheet.create({
   reorderArrows: { flexDirection: 'column', marginBottom: 4 },
   reorderArrowBtn: { width: 24, height: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 1 },
   reorderArrowBtnDisabled: { opacity: 0.3 },
-});
+}));

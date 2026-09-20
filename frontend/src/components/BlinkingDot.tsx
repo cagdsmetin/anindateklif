@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 import { theme } from '@/src/lib/theme';
+import { themedStyles } from '@/src/components/motion';
 
 // WhatsApp Web tarzı: okunmamış Ekip Sohbeti mesajı olduğu sürece sol
 // menüdeki ilgili öğenin yanında yanıp sönen küçük bir kırmızı nokta.
@@ -19,7 +20,7 @@ export default function BlinkingDot() {
   return <Animated.View style={[s.dot, { opacity: pulse }]} />;
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   dot: {
     width: 9,
     height: 9,
@@ -27,4 +28,4 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.red,
     marginLeft: 6,
   },
-});
+}));

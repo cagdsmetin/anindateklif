@@ -42,7 +42,7 @@ import {
 } from '@/src/components/motion';
 import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
 import { sumToTRY, RatesLike, computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
-import { useLanguage, orderedAmounts, statusLabel, Lang } from '@/src/lib/i18n';
+import { useLanguage, orderedAmounts, statusLabel, Lang, upper } from '@/src/lib/i18n';
 
 // ============================================================================
 // Panel -- 21st.dev'deki scroll animasyonlarından ilhamla yeniden tasarlandı:
@@ -910,7 +910,7 @@ function SectionTitle({ icon, title, actionLabel, onAction }: { icon: IconName; 
           <View style={s.secIcon}>
             <Ionicons name={icon} size={13} color={theme.colors.primary} />
           </View>
-          <Text style={s.secTitle}>{title}</Text>
+          <Text style={s.secTitle}>{upper(title)}</Text>
         </View>
         {actionLabel && onAction ? (
           <TouchableOpacity onPress={onAction} style={s.secAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1290,17 +1290,17 @@ function RatePill({
       <View style={[s.ratePillIcon, { backgroundColor: alpha(accent || theme.colors.primary, 0.14) }]}>
         <Ionicons name={icon || 'trending-up'} size={13} color={accent || theme.colors.primary} />
       </View>
-      <View>
-        <Text style={s.ratePillLabel}>{label}</Text>
+      <View style={s.ratePillTextCol}>
+        <Text style={s.ratePillLabel} numberOfLines={1}>{label}</Text>
         <View style={s.ratePillValueRow}>
           <Text style={s.ratePillValue}>{primaryText}</Text>
           {dir && <Ionicons name={dir === 'up' ? 'caret-up' : 'caret-down'} size={11} color={dirColor} />}
         </View>
-        {subValue ? (
-          <Text style={s.ratePillSub} numberOfLines={1}>
-            ≈ {subValue}
-          </Text>
-        ) : null}
+        {/* Alt satır her zaman yer kaplar -- USD/EUR/BIST baloncukları da
+            BTC/ETH ile aynı boyda kalsın (kullanıcı isteği). */}
+        <Text style={s.ratePillSub} numberOfLines={1}>
+          {subValue ? `≈ ${subValue}` : ' '}
+        </Text>
       </View>
     </RNAnimated.View>
   );
@@ -1402,11 +1402,16 @@ const styles = themedSheet(() => {
       paddingHorizontal: 12,
       paddingVertical: 8,
       gap: 8,
+      // Tüm baloncuklar aynı ölçüde: en dar (USD) ile en geniş (BTC) arasında
+      // fark olmasın diye sabit genişlik + yükseklik.
+      width: 172,
+      height: 66,
       ...shadow(4, 12, '#0F172A', 0.07, 2),
     },
     ratePillIcon: { width: 26, height: 26, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
     ratePillLabel: { fontSize: 10, fontWeight: '800', color: c.textMuted, letterSpacing: 0.3 },
     ratePillValueRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    ratePillTextCol: { flex: 1, minWidth: 0 },
     ratePillValue: { fontSize: 14, fontWeight: '900', color: c.text },
     ratePillSub: { fontSize: 9, color: c.textMuted, marginTop: 1 },
 
@@ -1477,7 +1482,7 @@ const styles = themedSheet(() => {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    secTitle: { fontSize: 12.5, fontWeight: '900', color: c.navy, textTransform: 'uppercase', letterSpacing: 0.6 },
+    secTitle: { fontSize: 12.5, fontWeight: '900', color: c.navy, letterSpacing: 0.6 },
     secAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     secActionText: { fontSize: 11.5, fontWeight: '800', color: c.primary },
     secLine: { height: 2, borderRadius: 1, marginTop: 9, overflow: 'hidden', transformOrigin: 'left' },

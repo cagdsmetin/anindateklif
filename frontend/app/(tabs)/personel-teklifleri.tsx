@@ -7,9 +7,9 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, StaffMemberT } from '@/src/lib/api';
-import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
 import { StatusPieChart } from '@/src/components/StatusPieChart';
-import { IconBadge, MotionScrollView, Reveal, ScreenHero, TiltOnScroll } from '@/src/components/motion';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, TiltOnScroll, themedStyles } from '@/src/components/motion';
 
 // Yönetici, atadığı personel/yöneticilerin tek tek verdiği teklifleri (durum
 // dağılımı + fiyat detayları) izleyebilsin diye eklendi. Teklifler backend'de
@@ -170,7 +170,7 @@ export default function PersonelTekliflerScreen() {
           </View>
           </TiltOnScroll>
 
-          <Text style={s.sectionLabel}>{t('personelTeklif.s005')} ({total})</Text>
+          <Text style={s.sectionLabel}>{upper(t('personelTeklif.s005'))} ({total})</Text>
           {personQuotes.length === 0 ? (
             <Text style={s.emptyListText}>{t('personelTeklif.s004')}</Text>
           ) : (
@@ -202,23 +202,23 @@ export default function PersonelTekliflerScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyText: { color: theme.colors.textMuted, textAlign: 'center' },
   personChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line,
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.line,
   },
   personChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   personChipText: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textSoft, maxWidth: 160 },
   personChipTextActive: { color: '#fff' },
   card: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 16, marginTop: 12,
+    backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, marginTop: 12,
     borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm,
   },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginTop: 20, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginTop: 20, marginBottom: 10, letterSpacing: 0.3, },
   emptyListText: { color: theme.colors.textMuted, fontSize: 13 },
   quoteCard: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
@@ -226,9 +226,9 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm,
   },
   qNo: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
-  qFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
+  qFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
   qDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   qAmount: { fontSize: 14, fontWeight: '900', color: theme.colors.primary },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, marginTop: 6 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
-});
+}));

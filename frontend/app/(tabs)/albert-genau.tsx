@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -45,7 +47,9 @@ import {
 import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
-import { MotionScrollView } from '@/src/components/motion';
+import { Aurora, BorderBeam, CountUp, MotionScrollView, Reveal, TiltOnScroll, alpha, themedStyles } from '@/src/components/motion';
+import { AG, AGS, Axis, DimField, Sheet, SystemRow } from '@/src/components/albert/ag-kit';
+import Elevation from '@/src/components/albert/Elevation';
 
 // Albert Genau parametrik pergola/bioklimatik hesaplayıcı — genel Katalog ve
 // Ürün/Hizmet Yapılandırıcı'dan tamamen ayrı bir bölüm. Dealer genişlik/
@@ -136,6 +140,17 @@ function hasWallBracketOption(tip: string) { return ['2ayak_duvar', 'ayaksiz', '
 function money(n: number) {
   return (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+// Albert Genau kurumsal paleti (albertgenau.com'dan ölçülen değerler)
+const AG_RED = '#B61231';
+const AG_RED_LIGHT = '#E8536C';
+// Bu ekran, uygulamanın açık temasından bağımsız olarak HER ZAMAN koyu:
+// bayi Albert Genau bölümüne girince markanın kendi premium dilini görür.
+const AG_SURFACE = '#17171D';
+const AG_SURFACE_SOFT = '#1F1F27';
+const AG_LINE = 'rgba(255,255,255,0.09)';
+const AG_TEXT = '#F4F5F7';
+const AG_TEXT_MUTED = '#9BA2AE';
 
 export default function AlbertGenauScreen() {
   const router = useRouter();
@@ -363,6 +378,15 @@ export default function AlbertGenauScreen() {
   // (Hesapla'ya hic basmadan, derinlik yazilirken hesaplanan) devreye girer.
   const [depthChoice, setDepthChoice] = useState<{ floorMm: number; ceilMm: number; rawMm: number } | null>(null);
 
+  // Secili sistem tipinin etiketi -- hem fov kunyesinde hem cizimin
+  // basliginda kullanilir. Tip listede yoksa (veri henuz gelmediyse) bos
+  // doner; "secilmedi" rozeti ve "tamamlandi" isareti tek kaynaktan gelsin
+  // diye ayri bir degisken.
+  const selectedTypeLabel = useMemo(
+    () => meta.types.find((tp) => tp.id === tip)?.label || '',
+    [meta.types, tip]
+  );
+
   // Kullanici derinligi YAZARKEN (Hesapla'ya basmadan), Excel'deki gibi anlik
   // olarak standart olcuye denk gelip gelmedigini kontrol eder. Backend'deki
   // PriceBook.depth_choice ile BIREBIR ayni mantik -- tam eslesme varsa veya
@@ -403,11 +427,6 @@ export default function AlbertGenauScreen() {
     if (usd == null && eur == null) return null;
     return { usd, eur };
   }, [result, rates]);
-
-  const selectedTypeLabel = useMemo(
-    () => meta.types.find((x) => x.id === tip)?.label || tip,
-    [meta.types, tip],
-  );
 
   // Firma-bazlı fiyat listesi: her Albert Genau bayisi (firma) kendi Excel
   // fiyat listesini kendi hesabından yükleyebilir -- yeni bir bayiye verilen
@@ -988,65 +1007,92 @@ export default function AlbertGenauScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={s.contentWrap}>
-            <View style={s.hero}>
-              <View style={s.heroCircle}>
-                <Ionicons name="calculator" size={24} color={theme.colors.primary} />
+            {/* Albert Genau kimliği: bayi bu ekrana girince "kendi markasının
+                aracı" hissini alsın diye markanın kendi dilini kullanıyoruz --
+                albertgenau.com'dan alınan siyah + bordo (#B61231) palet,
+                geniş harf aralıklı kelime işareti ve AG monogramı. */}
+            <Aurora colors={[AG_RED, '#7A0E22', '#3A3A3A']} base={['#0D0D10', '#1A1114']} style={s.agHero}>
+              <View style={s.agHeroInner}>
+                {/* Markanın kendi logosu -- koyu zeminde okunsun diye beyaz
+                    plaka üzerinde (logo siyah metinli). */}
+                <Image
+                  source={require('@/assets/images/albert-genau-logo-light.png')}
+                  style={s.agLogo}
+                  resizeMode="contain"
+                />
+                <View style={s.agRule} />
+                <Text style={s.agTagline}>GÖLGELENDİRME & CAM SİSTEMLERİ</Text>
+                <Text style={s.agCaption}>Ölçüleri girin; sistem malzeme listesini ve bayi fiyatını otomatik hesaplasın.</Text>
               </View>
-              <Text style={s.heroCaption}>Ölçüleri girin, sistem otomatik malzeme + fiyat hesabı yapsın</Text>
-            </View>
+
+              {/* Teknik çizimlerin sağ alt köşesindeki künye bloğu -- süs
+                  değil, föyün kime ve ne zaman ait olduğunu söyleyen bilgi.
+                  (Eskiden burada üç tane bordo rozet vardı; hiçbir iş
+                  yapmıyorlardı.) */}
+              <View style={s.agTitleBlock}>
+                <TitleRow label="Bayi" value={activeCompany?.sirketAdi || '—'} />
+                <TitleRow label="Föy" value="Bayi fiyat hesabı" />
+                <TitleRow label="Tarih" value={new Date().toLocaleDateString('tr-TR')} last />
+              </View>
+            </Aurora>
 
             {/* Ürün ailesi: AG BIOFLEX/BIO ölçüye göre, AIRFLEX (ve ileride
                 eklenecek diğerleri) düz parça listesi + miktara göre hesaplar. */}
-            <View style={s.card}>
-              <Text style={s.fieldLabel}>Ürün Ailesi</Text>
-              <View style={s.typeWrap}>
-                <TouchableOpacity
-                  style={[s.typePill, family === 'geometric' && s.typePillActive]}
-                  onPress={() => { setFamily('geometric'); setResult(null); setError(''); }}
-                  testID="ag-family-geometric"
-                >
-                  <Text style={[s.typePillText, family === 'geometric' && s.typePillTextActive]}>AG BIOFLEX / BIO (Ölçü Bazlı)</Text>
-                </TouchableOpacity>
-                {partsListSystems.map((sysOpt) => (
-                  <TouchableOpacity
-                    key={sysOpt.id}
-                    style={[s.typePill, family === 'airflex_modul' && s.typePillActive]}
-                    onPress={() => { setFamily('airflex_modul'); setResult(null); setError(''); }}
-                    testID={`ag-family-${sysOpt.id}`}
-                  >
-                    <Text style={[s.typePillText, family === 'airflex_modul' && s.typePillTextActive]}>{sysOpt.label}</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={[s.typePill, family === 'vertiflex' && s.typePillActive]}
-                  onPress={() => { setFamily('vertiflex'); setResult(null); setError(''); }}
-                  testID="ag-family-vertiflex"
-                >
-                  <Text style={[s.typePillText, family === 'vertiflex' && s.typePillTextActive]}>VERTIFLEX (Dikey Giyotin)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.typePill, family === 'kis_bahcesi' && s.typePillActive]}
-                  onPress={() => { setFamily('kis_bahcesi'); setResult(null); setError(''); }}
-                  testID="ag-family-kis-bahcesi"
-                >
-                  <Text style={[s.typePillText, family === 'kis_bahcesi' && s.typePillTextActive]}>KIŞ BAHÇESİ (Sabit Cam Tavan)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.typePill, family === 'bc' && s.typePillActive]}
-                  onPress={() => { setFamily('bc'); setResult(null); setError(''); }}
-                  testID="ag-family-bc"
-                >
-                  <Text style={[s.typePillText, family === 'bc' && s.typePillTextActive]}>BC AİLESİ (TIARA / SLIDER / SLIDE MASTER / HD / TANGO / OPTIMA)</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.typePill, family === 'yedek_parca' && s.typePillActive]}
-                  onPress={() => { setFamily('yedek_parca'); setResult(null); setError(''); }}
-                  testID="ag-family-yedek-parca"
-                >
-                  <Text style={[s.typePillText, family === 'yedek_parca' && s.typePillTextActive]}>YEDEK PARÇA</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Reveal variant="up" distance={18}>
+            <Sheet index="01" title="Ürün ailesi" note="Hesaplama yöntemi seçtiğiniz aileye göre değişir.">
+              <SystemRow
+                label="AG BIOFLEX / BIO"
+                caption="Bioklimatik pergola — ölçü bazlı hesap"
+                code="ÖLÇÜ"
+                selected={family === 'geometric'}
+                onPress={() => { setFamily('geometric'); setResult(null); setError(''); }}
+                testID="ag-family-geometric"
+              />
+              {partsListSystems.map((sysOpt) => (
+                <SystemRow
+                  key={sysOpt.id}
+                  label={sysOpt.label}
+                  caption="Modül adedi üzerinden parça listesi"
+                  code="MODÜL"
+                  selected={family === 'airflex_modul'}
+                  onPress={() => { setFamily('airflex_modul'); setResult(null); setError(''); }}
+                  testID={`ag-family-${sysOpt.id}`}
+                />
+              ))}
+              <SystemRow
+                label="VERTIFLEX"
+                caption="Dikey giyotin cam sistemi"
+                code="ÖLÇÜ"
+                selected={family === 'vertiflex'}
+                onPress={() => { setFamily('vertiflex'); setResult(null); setError(''); }}
+                testID="ag-family-vertiflex"
+              />
+              <SystemRow
+                label="KIŞ BAHÇESİ"
+                caption="Sabit cam tavan"
+                code="ÖLÇÜ"
+                selected={family === 'kis_bahcesi'}
+                onPress={() => { setFamily('kis_bahcesi'); setResult(null); setError(''); }}
+                testID="ag-family-kis-bahcesi"
+              />
+              <SystemRow
+                label="BC AİLESİ"
+                caption="Tiara, Slider, Slide Master, HD, Tango ve Optima"
+                code="ÖLÇÜ"
+                selected={family === 'bc'}
+                onPress={() => { setFamily('bc'); setResult(null); setError(''); }}
+                testID="ag-family-bc"
+              />
+              <SystemRow
+                label="Yedek parça"
+                caption="Tek tek parça ve miktar girişi"
+                code="PARÇA"
+                selected={family === 'yedek_parca'}
+                onPress={() => { setFamily('yedek_parca'); setResult(null); setError(''); }}
+                testID="ag-family-yedek-parca"
+              />
+            </Sheet>
+            </Reveal>
 
             {/* Firma-bazlı fiyat listesi -- sadece firma sahibi görür/yükler.
                 Yeni bir bayi bu programı aldığında verilen başlangıç Excel'ini,
@@ -1060,7 +1106,9 @@ export default function AlbertGenauScreen() {
                 >
                   <Ionicons name="pricetags-outline" size={16} color={theme.colors.primary} />
                   <Text style={s.priceListToggleText}>
-                    Fiyat Listesi {priceListStatus ? `— ${priceListStatus.skuCount} kalem` : ''}
+                    {typeof priceListStatus?.skuCount === 'number'
+                      ? `Fiyat listesi — ${priceListStatus.skuCount} kalem`
+                      : 'Fiyat listesi'}
                   </Text>
                   <Ionicons name={priceListOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textMuted} />
                 </TouchableOpacity>
@@ -1101,63 +1149,92 @@ export default function AlbertGenauScreen() {
             {family === 'geometric' && (
             <>
             {/* Sistem tipi */}
-            <View style={s.card}>
-              <Text style={s.fieldLabel}>Sistem Tipi</Text>
+            <Reveal variant="up" distance={18}>
+            <Sheet
+              index="02"
+              title="Sistem tipi"
+              note="Ayak düzeni; girilecek ölçüleri belirler."
+              status={
+                selectedTypeLabel ? { text: selectedTypeLabel, done: true } : { text: 'seçilmedi' }
+              }
+            >
               <View style={s.typeWrap}>
                 {meta.types.map((tp) => (
-                  <TouchableOpacity
+                  <SpecOption
                     key={tp.id}
-                    style={[s.typePill, tip === tp.id && s.typePillActive]}
+                    label={tp.label}
+                    selected={tip === tp.id}
                     onPress={() => { setTip(tp.id); setResult(null); }}
                     testID={`ag-type-${tp.id}`}
-                  >
-                    <Text style={[s.typePillText, tip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
-                  </TouchableOpacity>
+                  />
                 ))}
               </View>
-            </View>
+            </Sheet>
+            </Reveal>
 
-            {/* Ölçüler (sarı alanlar) */}
-            <View style={s.card}>
-              <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
-              <View style={s.row}>
+            {/* Ölçüler -- canlı cephe çizimi ekranın tek "hero" görseli.
+                Bayi rakamı yazdıkça çizim gerçek oranına oturur; böylece
+                ölçü girmek bir form doldurmaktan çıkıp sistemi görmeye
+                dönüşür. */}
+            <Reveal variant="up" distance={18}>
+            <Sheet
+              index="03"
+              title="Ölçüler"
+              note="Tüm ölçüler milimetre cinsindendir."
+              status={{
+                text: `${[genislik, derinlik, needsHeight(tip) ? yukseklik : '1'].filter((v) => Number(String(v).replace(',', '.')) > 0).length}/3 ölçü`,
+                done: !!genislik && !!derinlik && (!needsHeight(tip) || !!yukseklik),
+              }}
+            >
+              <Elevation
+                w={genislik}
+                h={needsHeight(tip) ? yukseklik : ''}
+                d={derinlik}
+                plan={!needsHeight(tip)}
+                caption={selectedTypeLabel}
+              />
+              <View style={[s.row, { marginTop: AGS.rowGap }]}>
                 <NumField label="Genişlik" value={genislik} onChange={setGenislik} testID="ag-genislik" />
                 <NumField label="Derinlik" value={derinlik} onChange={setDerinlik} testID="ag-derinlik" />
               </View>
               {liveDepthChoice && (
                 <View style={s.choiceBox}>
                   <View style={s.choiceHeader}>
-                    <Ionicons name="help-circle" size={18} color={theme.colors.primary} />
-                    <Text style={s.choiceTitle}>Derinlik standart ölçüye tam denk gelmiyor</Text>
+                    <Ionicons name="git-compare-outline" size={17} color={AG.redLift} />
+                    <Text style={s.choiceTitle}>Derinlik standart ölçüye denk gelmiyor</Text>
                   </View>
                   <Text style={s.choiceHint}>
-                    Girdiğiniz {liveDepthChoice.rawMm}mm için iki standart derinlikten birini seçin:
+                    {liveDepthChoice.rawMm}mm için iki standart derinlikten birini seçin:
                   </Text>
                   <View style={s.row}>
                     <TouchableOpacity style={s.choiceBtn} onPress={() => onPickLiveDepth(liveDepthChoice.floorMm)} testID="ag-depth-floor-live">
-                      <Text style={s.choiceBtnLabel}>Alt Ölçü</Text>
-                      <Text style={s.choiceBtnValue}>{liveDepthChoice.floorMm}mm</Text>
-                      <Text style={s.choiceBtnSub}>(dar, içeride kalır)</Text>
+                      <Text style={s.choiceBtnLabel}>Alt ölçü</Text>
+                      <Text style={s.choiceBtnValue}>{liveDepthChoice.floorMm}</Text>
+                      <Text style={s.choiceBtnSub}>dar, içeride kalır</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={s.choiceBtn} onPress={() => onPickLiveDepth(liveDepthChoice.ceilMm)} testID="ag-depth-ceil-live">
-                      <Text style={s.choiceBtnLabel}>Üst Ölçü</Text>
-                      <Text style={s.choiceBtnValue}>{liveDepthChoice.ceilMm}mm</Text>
-                      <Text style={s.choiceBtnSub}>(geniş, taşabilir)</Text>
+                      <Text style={s.choiceBtnLabel}>Üst ölçü</Text>
+                      <Text style={s.choiceBtnValue}>{liveDepthChoice.ceilMm}</Text>
+                      <Text style={s.choiceBtnSub}>geniş, taşabilir</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
               {needsHeight(tip) ? (
-                <NumField label="Yükseklik" value={yukseklik} onChange={setYukseklik} testID="ag-yukseklik" />
+                <View style={{ marginTop: AGS.rowGap }}>
+                  <NumField label="Yükseklik" value={yukseklik} onChange={setYukseklik} testID="ag-yukseklik" />
+                </View>
               ) : (
                 <Text style={s.hint}>Bu tip ayaksız (iki duvar arasına monte) olduğu için yükseklik girilmez.</Text>
               )}
-            </View>
+            </Sheet>
+            </Reveal>
             </>
             )}
 
             {family === 'airflex_modul' && (
               <>
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Sistem Adedi</Text>
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
@@ -1185,7 +1262,9 @@ export default function AlbertGenauScreen() {
                   <ToggleRow label="Kilit Takımı Var" value={afKilitVar} onChange={setAfKilitVar} testID="ag-af-kilit" />
                   <Text style={s.hint}>Kapı ve kilit takımı seçilirse adetten bağımsız olarak 1'er adet fiyatlandırılır.</Text>
                 </View>
+                </Reveal>
 
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Cam Hesabı</Text>
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
@@ -1202,29 +1281,32 @@ export default function AlbertGenauScreen() {
                     <NumField label="Fiyat (₺/m²)" value={afCamHareketliFiyat} onChange={setAfCamHareketliFiyat} testID="ag-af-cam-hareketli-fiyat" />
                   </View>
                 </View>
+                </Reveal>
               </>
             )}
 
             {family === 'vertiflex' && (
               <>
                 {/* Alt tip seçimi */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>VERTIFLEX Alt Tipi</Text>
                   <View style={s.typeWrap}>
                     {vertiflexTypes.map((tp) => (
-                      <TouchableOpacity
+                      <SpecOption
                         key={tp.id}
-                        style={[s.typePill, vfTip === tp.id && s.typePillActive]}
+                        label={tp.label}
+                        selected={vfTip === tp.id}
                         onPress={() => setVfTip(tp.id)}
                         testID={`ag-vf-type-${tp.id}`}
-                      >
-                        <Text style={[s.typePillText, vfTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
-                      </TouchableOpacity>
+                      />
                     ))}
                   </View>
                 </View>
+                </Reveal>
 
                 {/* Ölçüler */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
                   <View style={s.row}>
@@ -1232,9 +1314,11 @@ export default function AlbertGenauScreen() {
                     <NumField label="Yükseklik" value={vfYukseklik} onChange={setVfYukseklik} testID="ag-vf-yukseklik" />
                   </View>
                 </View>
+                </Reveal>
 
                 {/* Panel sayısı -- sadece bu tipte gecerliyse gosterilir */}
                 {vfTypeMeta.panelSayisiOptions.length > 0 && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.fieldLabel}>Panel Sayısı</Text>
                     <View style={s.payWrap}>
@@ -1250,9 +1334,11 @@ export default function AlbertGenauScreen() {
                       ))}
                     </View>
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Motor markası + kumanda kanalı */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>Motor Markası</Text>
                   {vfTypeMeta.motorOptions.length > 1 ? (
@@ -1305,9 +1391,11 @@ export default function AlbertGenauScreen() {
                     ))}
                   </View>
                 </View>
+                </Reveal>
 
                 {/* Secumax taraf (sadece UP TWIN) */}
                 {vfTypeMeta.secumaxTaraf && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.fieldLabel}>Secumax Motor Tarafı</Text>
                     <View style={s.payWrap}>
@@ -1327,10 +1415,12 @@ export default function AlbertGenauScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Tip-bazlı ek seçenekler (inox / alıcısız / su tahliyeli) */}
                 {(vfTypeMeta.inoxZincirli || vfTypeMeta.alicisiz || vfTypeMeta.suTahliyeliAltKasa) && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Seçenekler</Text>
                     {vfTypeMeta.inoxZincirli && (
@@ -1343,10 +1433,12 @@ export default function AlbertGenauScreen() {
                       <ToggleRow label="Su tahliyeli alt kasa" value={vfSuTahliyeli} onChange={setVfSuTahliyeli} testID="ag-vf-sutahliyeli" />
                     )}
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Elektromekanik set adedi -- sadece STATU IMPETUS CLEAN TWIN'de gecerli */}
                 {vfTip === 'impetus_clean_twin' && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Elektromekanik Set</Text>
                     <NumField
@@ -1357,9 +1449,11 @@ export default function AlbertGenauScreen() {
                     />
                     <Text style={s.hint}>Geniş açıklıklarda birden fazla elektromekanik set gerekebilir; ihtiyacınız olan adedi girin.</Text>
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi m² fiyatını girer */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Cam Fiyatları</Text>
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
@@ -1375,29 +1469,32 @@ export default function AlbertGenauScreen() {
                     />
                   ))}
                 </View>
+                </Reveal>
               </>
             )}
 
             {family === 'kis_bahcesi' && (
               <>
                 {/* Alt tip seçimi */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>KIŞ BAHÇESİ Alt Tipi</Text>
                   <View style={s.typeWrap}>
                     {kisBahcesiTypes.map((tp) => (
-                      <TouchableOpacity
+                      <SpecOption
                         key={tp.id}
-                        style={[s.typePill, kbTip === tp.id && s.typePillActive]}
+                        label={tp.label}
+                        selected={kbTip === tp.id}
                         onPress={() => setKbTip(tp.id)}
                         testID={`ag-kb-type-${tp.id}`}
-                      >
-                        <Text style={[s.typePillText, kbTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
-                      </TouchableOpacity>
+                      />
                     ))}
                   </View>
                 </View>
+                </Reveal>
 
                 {/* Ölçüler */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
                   <View style={s.row}>
@@ -1413,9 +1510,11 @@ export default function AlbertGenauScreen() {
                   </Text>
                   <NumField label="Ara Dikme Sayısı (opsiyonel)" value={kbAraDikmeSayisi} onChange={setKbAraDikmeSayisi} testID="ag-kb-ara-dikme" />
                 </View>
+                </Reveal>
 
                 {/* Tip-bazlı ek seçenekler */}
                 {(kbTypeMeta.ayarliDuvarBaglantisi || kbTypeMeta.kirisUstuVidaKapama || kbTypeMeta.ortaKayit || kbTypeMeta.ucgenMikroPencere) && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Seçenekler</Text>
                     {kbTypeMeta.ayarliDuvarBaglantisi && (
@@ -1431,9 +1530,11 @@ export default function AlbertGenauScreen() {
                       <ToggleRow label="Üçgen mikro pencere" value={kbUcgenMikroPencere} onChange={setKbUcgenMikroPencere} testID="ag-kb-ucgen-mikro" />
                     )}
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi m² fiyatını girer */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Cam Fiyatları</Text>
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
@@ -1449,6 +1550,7 @@ export default function AlbertGenauScreen() {
                     />
                   ))}
                 </View>
+                </Reveal>
               </>
             )}
 
@@ -1456,6 +1558,7 @@ export default function AlbertGenauScreen() {
               <>
                 {/* Alt tip seçimi -- 39 varyant olduğu için alt-marka bazında
                     gruplanmış (bkz. BC_GROUPS). */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>BC Alt Tipi</Text>
                   {BC_GROUPS.map((g) => {
@@ -1466,22 +1569,23 @@ export default function AlbertGenauScreen() {
                         <Text style={s.hint}>{g.title}</Text>
                         <View style={s.typeWrap}>
                           {groupTypes.map((tp) => (
-                            <TouchableOpacity
+                            <SpecOption
                               key={tp.id}
-                              style={[s.typePill, bcTip === tp.id && s.typePillActive]}
+                              label={tp.label}
+                              selected={bcTip === tp.id}
                               onPress={() => setBcTip(tp.id)}
                               testID={`ag-bc-type-${tp.id}`}
-                            >
-                              <Text style={[s.typePillText, bcTip === tp.id && s.typePillTextActive]}>{tp.label}</Text>
-                            </TouchableOpacity>
+                            />
                           ))}
                         </View>
                       </View>
                     );
                   })}
                 </View>
+                </Reveal>
 
                 {/* Ölçüler */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
                   <View style={s.row}>
@@ -1489,28 +1593,31 @@ export default function AlbertGenauScreen() {
                     <NumField label="Yükseklik" value={bcYukseklik} onChange={setBcYukseklik} testID="ag-bc-yukseklik" />
                   </View>
                 </View>
+                </Reveal>
 
                 {/* Ray tipi -- sadece SLIDER NEXT/FLAT sistemlerinde var */}
                 {bcTypeMeta.hasRayType && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Ray Tipi</Text>
                     <View style={s.typeWrap}>
                       {[1, 2, 3, 4].map((rt) => (
-                        <TouchableOpacity
+                        <SpecOption
                           key={rt}
-                          style={[s.typePill, bcRayTipi === rt && s.typePillActive]}
+                          label={BC_RAY_TIPI_LABELS[rt]}
+                          selected={bcRayTipi === rt}
                           onPress={() => setBcRayTipi(rt)}
                           testID={`ag-bc-ray-${rt}`}
-                        >
-                          <Text style={[s.typePillText, bcRayTipi === rt && s.typePillTextActive]}>{BC_RAY_TIPI_LABELS[rt]}</Text>
-                        </TouchableOpacity>
+                        />
                       ))}
                     </View>
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Kanat takımları -- tipe göre değişir (bkz. BC_TYPE_META.kanatInputs) */}
                 {Object.keys(bcTypeMeta.kanatInputs || {}).length > 0 && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Kanat Takımları (Adet)</Text>
                     {Object.entries(bcTypeMeta.kanatInputs).map(([ref, meta]) => (
@@ -1523,10 +1630,12 @@ export default function AlbertGenauScreen() {
                       />
                     ))}
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Bayrak/köşe girdileri -- tipe göre değişir (bkz. BC_TYPE_META.flagInputs) */}
                 {Object.keys(bcTypeMeta.flagInputs || {}).length > 0 && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Ek Seçenekler</Text>
                     {Object.entries(bcTypeMeta.flagInputs).map(([ref, meta]) =>
@@ -1549,10 +1658,12 @@ export default function AlbertGenauScreen() {
                       ),
                     )}
                   </View>
+                  </Reveal>
                 )}
 
                 {/* Cam fiyatları -- Albert Genau cam satmaz, bayi kendi fiyatını girer */}
                 {(bcTypeMeta.camItems || []).length > 0 && (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Cam Fiyatları</Text>
                     <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
@@ -1568,6 +1679,7 @@ export default function AlbertGenauScreen() {
                       />
                     ))}
                   </View>
+                  </Reveal>
                 )}
               </>
             )}
@@ -1576,6 +1688,7 @@ export default function AlbertGenauScreen() {
               <>
                 {/* Arama + grup filtresi -- 243 kalemlik katalog tek seferde
                     listelenmez, kullanıcı arayarak veya grup seçerek daraltır. */}
+                <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>Parça Ara</Text>
                   <View style={s.inputWrap}>
@@ -1589,40 +1702,44 @@ export default function AlbertGenauScreen() {
                     />
                   </View>
                   <View style={[s.typeWrap, { marginTop: 10 }]}>
-                    <TouchableOpacity
-                      style={[s.typePill, ypGroupFilter === 'ALL' && s.typePillActive]}
+                    <SpecOption
+                      label="Tümü"
+                      selected={ypGroupFilter === 'ALL'}
                       onPress={() => setYpGroupFilter('ALL')}
                       testID="ag-yp-group-all"
-                    >
-                      <Text style={[s.typePillText, ypGroupFilter === 'ALL' && s.typePillTextActive]}>Tümü</Text>
-                    </TouchableOpacity>
+                    />
                     {ypMeta.groups.map((g) => (
-                      <TouchableOpacity
+                      <SpecOption
                         key={g}
-                        style={[s.typePill, ypGroupFilter === g && s.typePillActive]}
+                        label={g}
+                        selected={ypGroupFilter === g}
                         onPress={() => setYpGroupFilter(g)}
                         testID={`ag-yp-group-${g}`}
-                      >
-                        <Text style={[s.typePillText, ypGroupFilter === g && s.typePillTextActive]}>{g}</Text>
-                      </TouchableOpacity>
+                      />
                     ))}
                   </View>
                   {ypSelectedCount > 0 && (
                     <Text style={[s.hint, { marginTop: 8 }]}>{ypSelectedCount} kalem seçildi</Text>
                   )}
                 </View>
+                </Reveal>
 
                 {/* Filtrelenmiş liste -- hiçbir filtre uygulanmadan (grup=Tümü
                     ve arama<2 harf) tüm katalog render edilmez. */}
                 {ypGroupFilter === 'ALL' && ypSearch.trim().length < 2 ? (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.hint}>Aramaya başlayın veya yukarıdan bir alt-marka grubu seçin.</Text>
                   </View>
+                  </Reveal>
                 ) : ypFilteredItems.length === 0 ? (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.hint}>Eşleşen parça bulunamadı.</Text>
                   </View>
+                  </Reveal>
                 ) : (
+                  <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>{`Sonuçlar (${ypFilteredItems.length}${ypFilteredItems.length >= 100 ? '+' : ''})`}</Text>
                     {ypFilteredItems.map((it: AlbertGenauYedekParcaItemT) => (
@@ -1645,6 +1762,7 @@ export default function AlbertGenauScreen() {
                       </View>
                     ))}
                   </View>
+                  </Reveal>
                 )}
               </>
             )}
@@ -1658,6 +1776,7 @@ export default function AlbertGenauScreen() {
                 fiyat sütunu var, bu yüzden bu seçici orada gösterilmez ve
                 backend de bu ailelerde fiyatı hep indirimsiz hesaplar. */}
             {family === 'geometric' && (
+              <Reveal variant="up" distance={18}>
               <View style={s.card}>
                 <Text style={s.sectionTitle}>Ödeme Tipi</Text>
                 <View style={s.payWrap}>
@@ -1682,10 +1801,12 @@ export default function AlbertGenauScreen() {
                   Nakit ödemede fiyat listesinin %89'u; kredi kartı ile ödemede ise tam liste fiyatı esas alınır.
                 </Text>
               </View>
+              </Reveal>
             )}
 
             {/* Opsiyonlar (sadece ölçü bazlı AG BIOFLEX/BIO) */}
             {family === 'geometric' && (
+              <Reveal variant="up" distance={18}>
               <View style={s.card}>
                 <Text style={s.sectionTitle}>Seçenekler</Text>
                 <ToggleRow label="Düz köşe kapağı" value={cornerFlat} onChange={setCornerFlat} testID="ag-cornerflat" />
@@ -1696,10 +1817,12 @@ export default function AlbertGenauScreen() {
                   <ToggleRow label="Duvar bağlantı aparatı kullanılmayacak" value={noWallBracket} onChange={setNoWallBracket} testID="ag-nowallbracket" />
                 )}
               </View>
+              </Reveal>
             )}
 
             {/* Kaplama / Renk -- her iki ürün ailesinde de ortak (bkz.
                 ag_calc.FINISH_OPTIONS / _finish_multiplier). */}
+            <Reveal variant="up" distance={18}>
             <View style={s.card}>
               <Text style={s.fieldLabel}>Kaplama / Renk</Text>
               <View style={s.typeWrap}>
@@ -1715,9 +1838,11 @@ export default function AlbertGenauScreen() {
                 ))}
               </View>
             </View>
+            </Reveal>
 
             {/* LED + Köpük (sadece ölçü bazlı AG BIOFLEX/BIO) */}
             {family === 'geometric' && (
+              <Reveal variant="up" distance={18}>
               <View style={s.card}>
                 <Text style={s.sectionTitle}>LED Aydınlatma &amp; Panel Dolgu</Text>
                 <View style={s.typeWrap}>
@@ -1737,22 +1862,34 @@ export default function AlbertGenauScreen() {
                 <ToggleRow label="Panel dolgu (köpük) eklensin" value={kopuk} onChange={setKopuk} testID="ag-kopuk" />
                 <Text style={s.hint}>LED ve köpük fiyatları da aynı Excel formülleriyle otomatik hesaplanır; ekstra bir şey girmenize gerek yok.</Text>
               </View>
+              </Reveal>
             )}
 
-            {/* İskonto + Montaj + Kar */}
-            <View style={s.card}>
-              <Text style={s.sectionTitle}>Alış İskontosu, Montaj &amp; Kar Marjı</Text>
-              <NumField label="Alış İskonto Oranı (%)" value={alisIskontoPct} onChange={setAlisIskontoPct} testID="ag-iskonto" />
+            {/* İskonto + Montaj + Kar -- eskiden üç alan tek satıra
+                sıkıştırılmıştı; dar ekranda etiketler kesiliyordu. Artık
+                anlamca eşleşen ikişerli iki satır: önce oranlar, sonra
+                bedeller. */}
+            <Reveal variant="up" distance={18}>
+            <Sheet index="09" title="İskonto, montaj ve kâr" note="Bu değerler yalnızca sizin fiyatınızı etkiler; listeye yansımaz.">
               <View style={s.row}>
-                <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" labelMinHeight={32} />
-                <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" labelMinHeight={32} />
-                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" labelMinHeight={32} />
+                <NumField label="Alış İskonto Oranı (%)" value={alisIskontoPct} onChange={setAlisIskontoPct} testID="ag-iskonto" />
+                <NumField label="Kar Marjı (%)" value={karMarjiPct} onChange={setKarMarjiPct} testID="ag-kar" />
               </View>
-              <Text style={s.hint}>
-                İskonto sadece malzeme maliyetini düşürür; montaj bedelini, imalat/diğer giderleri ve kar marjını etkilemez.{'\n'}
-                Satış Fiyatı = (Malzeme Maliyeti − İskonto) × (1 + Kar Marjı%) + Montaj Bedeli + İmalat ve Diğer Giderler
-              </Text>
-            </View>
+              <View style={[s.row, { marginTop: AGS.rowGap }]}>
+                <NumField label="Montaj Bedeli (₺)" value={montajBedeli} onChange={setMontajBedeli} testID="ag-montaj" />
+                <NumField label="İmalat ve Diğer Giderler (₺)" value={imalatBedeli} onChange={setImalatBedeli} testID="ag-imalat" />
+              </View>
+              <View style={s.formulaBox}>
+                <Text style={s.formulaHead}>Satış fiyatı nasıl bulunur</Text>
+                <Text style={s.formulaLine}>
+                  (Malzeme maliyeti − iskonto) × (1 + kâr marjı) + montaj + imalat ve diğer giderler
+                </Text>
+                <Text style={s.formulaNote}>
+                  İskonto sadece malzeme maliyetini düşürür; montajı, imalat/diğer giderleri ve kâr marjını etkilemez.
+                </Text>
+              </View>
+            </Sheet>
+            </Reveal>
 
             {!!error && (
               <View style={s.errorBox}>
@@ -1795,6 +1932,8 @@ export default function AlbertGenauScreen() {
             </TouchableOpacity>
 
             {result && (
+              <TiltOnScroll maxRotate={12} minScale={0.95}>
+              <BorderBeam radius={20} width={1.4} background={AG_SURFACE} baseBorder="rgba(182,18,49,0.45)" colors={['rgba(182,18,49,0)', '#B61231', '#E8536C', 'rgba(232,83,108,0)']}>
               <View style={[s.card, s.resultCard]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                   <Text style={s.sectionTitle}>{result.tipAdi}</Text>
@@ -2002,6 +2141,8 @@ export default function AlbertGenauScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+              </BorderBeam>
+              </TiltOnScroll>
             )}
           </View>
         </MotionScrollView>
@@ -2012,28 +2153,99 @@ export default function AlbertGenauScreen() {
   );
 }
 
-function NumField({ label, value, onChange, testID, labelMinHeight }: { label: string; value: string; onChange: (v: string) => void; testID?: string; labelMinHeight?: number }) {
-  // Girisin odaklandigi anda kenarligi/golgeyi vurgulayarak alanin "canli"
-  // hissettirmesini sagliyoruz -- oncesinde her durumda ayni duz gri kutu
-  // gorundugu icin dokunulabilir oldugu belli olmuyordu.
-  const [focused, setFocused] = useState(false);
+// Bir alanın hangi ekseni/büyüklüğü ölçtüğünü etiketinden çıkarır. Böylece
+// 25 çağrı noktasına tek tek eksen yazmadan her alan doğru kot işaretini ve
+// doğru birimi alır. (Önceden birim varsayılanı "mm" idi; "Kar Marjı (%)"
+// alanının sağında da "mm" yazıyordu -- kullanıcının bildirdiği hata.)
+function guessAxis(label: string): Axis {
+  const l = label.toLocaleLowerCase('tr');
+  if (l.includes('geniş')) return 'w';
+  if (l.includes('yüksek')) return 'h';
+  if (l.includes('derinlik')) return 'd';
+  if (l.includes('%') || l.includes('oran') || l.includes('marj')) return 'pct';
+  if (l.includes('₺') || l.includes('fiyat') || l.includes('bedel') || l.includes('gider')) return 'money';
+  return 'n';
+}
+
+// Birim etikette yazılı değilse ne varsayılacağı: ölçü alanları mm, sayım
+// alanları birimsiz.
+function guessUnit(label: string): string | undefined {
+  const a = guessAxis(label);
+  if (a === 'w' || a === 'h' || a === 'd') return 'mm';
+  return undefined;
+}
+
+// Albert Genau ölçü alanı -- ag-kit'teki DimField'e devreder. Çağrı imzası
+// korunuyor; labelMinHeight artık gereksiz (etiket iki satıra yayılabiliyor,
+// kesilmiyor) ama eski çağrıları bozmamak için kabul edilip yok sayılıyor.
+function NumField({
+  label,
+  value,
+  onChange,
+  testID,
+  unit,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  testID?: string;
+  labelMinHeight?: number;
+  unit?: string;
+  hint?: string;
+}) {
   return (
-    <View style={[s.field, { flex: 1 }]}>
-      <Text style={[s.fieldLabel, labelMinHeight ? { minHeight: labelMinHeight } : null]}>{label}</Text>
-      <View style={[s.inputWrap, focused && s.inputWrapFocused]}>
-        <TextInput
-          testID={testID}
-          value={value}
-          onChangeText={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          keyboardType={Platform.OS === 'web' ? 'default' : 'decimal-pad'}
-          placeholder="0"
-          placeholderTextColor="#A0AEC0"
-          style={s.input}
-        />
-      </View>
+    <DimField
+      label={label}
+      value={value}
+      onChange={onChange}
+      testID={testID}
+      unit={unit ?? guessUnit(label)}
+      axis={guessAxis(label)}
+      hint={hint}
+    />
+  );
+}
+
+// Künye satırı: solda küçük alan adı, sağda değer -- teknik çizimlerin
+// künye bloğundaki gibi hizalı, ince ayraçlı.
+function TitleRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <View style={[s.agTitleRow, last && { borderBottomWidth: 0 }]}>
+      <Text style={s.agTitleLabel}>{label}</Text>
+      <Text style={s.agTitleValue} numberOfLines={1}>
+        {value}
+      </Text>
     </View>
+  );
+}
+
+// Sistem/tip seçimi: bordo şeritli, onay işaretli "konfigüratör" kartı.
+function SpecOption({
+  label,
+  selected,
+  onPress,
+  testID,
+  compact,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  testID?: string;
+  compact?: boolean;
+}) {
+  return (
+    <Pressable onPress={onPress} testID={testID} style={[s.specOption, compact && s.specOptionCompact, selected && s.specOptionActive]}>
+      <View style={[s.specOptionBar, selected && s.specOptionBarActive]} />
+      <Text style={[s.specOptionText, selected && s.specOptionTextActive]} numberOfLines={2}>
+        {label}
+      </Text>
+      <Ionicons
+        name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+        size={16}
+        color={selected ? AG_RED_LIGHT : 'rgba(155,162,174,0.5)'}
+      />
+    </Pressable>
   );
 }
 
@@ -2048,129 +2260,225 @@ function ToggleRow({ label, value, onChange, testID }: { label: string; value: b
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: AG.ink },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: AG.ink },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerLeftGroup: { flexDirection: 'row', alignItems: 'center' },
   priceListToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  priceListToggleText: { flex: 1, fontSize: 13, fontWeight: '800', color: theme.colors.text },
-  priceListSource: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700', marginBottom: 4 },
+  priceListToggleText: { flex: 1, fontSize: 13, fontWeight: '800', color: AG_TEXT },
+  priceListSource: { fontSize: 12.5, color: AG_TEXT, fontWeight: '700', marginBottom: 4 },
   priceListSourceWarn: { color: theme.colors.red },
-  priceListMeta: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8 },
-  priceListHint: { fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16, marginBottom: 12 },
-  priceListUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, paddingVertical: 12 },
+  priceListMeta: { fontSize: 11.5, color: AG_TEXT_MUTED, marginBottom: 8 },
+  priceListHint: { fontSize: 11.5, color: AG_TEXT_MUTED, lineHeight: 16, marginBottom: 12 },
+  priceListUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: AG_RED, borderRadius: 12, paddingVertical: 12 },
   priceListUploadBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
-  divider: { height: 1, backgroundColor: theme.colors.line },
+  headerTitle: { fontSize: 15, fontWeight: '800', color: AG_TEXT, letterSpacing: 0.1 },
+  divider: { height: 1, backgroundColor: AG_LINE },
   contentWrap: { width: '100%', maxWidth: 520, alignSelf: 'center' },
-  hero: { alignItems: 'center', marginBottom: 14 },
-  heroCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 8, borderWidth: 1, borderColor: theme.colors.primaryBorder },
-  heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 17 },
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, borderWidth: 1,
-    borderColor: 'rgba(15,23,42,0.06)', marginBottom: 14,
-    shadowColor: '#1E293B', shadowOpacity: 0.05, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 2,
+  agHero: { borderRadius: 20, marginBottom: AGS.blockGap, borderWidth: 1, borderColor: 'rgba(182,18,49,0.35)', overflow: 'hidden' },
+  // --- Albert Genau'ya özgü "teknik föy" alanları ---
+  specField: {
+    backgroundColor: AG_SURFACE_SOFT,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: AG_LINE,
+    paddingHorizontal: 13,
+    paddingTop: 10,
+    paddingBottom: 0,
+    overflow: 'hidden',
   },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, marginBottom: 12, letterSpacing: 0.1 },
-  row: { flexDirection: 'row', gap: 10 },
+  specTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  specLabel: { flex: 1, color: AG_TEXT_MUTED, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.4, },
+  specUnit: { color: 'rgba(232,83,108,0.9)', fontSize: 9.5, fontWeight: '900', letterSpacing: 1 },
+  specInput: {
+    color: AG_TEXT,
+    fontSize: 21,
+    fontWeight: '800',
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    paddingHorizontal: 0,
+    fontVariant: ['tabular-nums'],
+  },
+  specLineTrack: { height: 2, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 1, overflow: 'hidden' },
+  specLine: { height: 2, backgroundColor: AG_RED, borderRadius: 1, transformOrigin: 'left' },
+  specOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: AG.well,
+    borderWidth: 1,
+    borderColor: AG.line,
+    borderRadius: AGS.radiusSm,
+    paddingVertical: 12,
+    paddingRight: 12,
+    paddingLeft: 0,
+    overflow: 'hidden',
+    marginBottom: 9,
+    minWidth: 150,
+    minHeight: 50,
+    flexGrow: 1,
+  },
+  specOptionCompact: { minWidth: 110, minHeight: 44, paddingVertical: 9 },
+  specOptionActive: { backgroundColor: 'rgba(182,18,49,0.13)', borderColor: 'rgba(182,18,49,0.55)' },
+  specOptionBar: { width: 4, alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 2 },
+  specOptionBarActive: { backgroundColor: AG_RED },
+  specOptionText: { flex: 1, color: AG.graphite, fontSize: 12.5, fontWeight: '700', lineHeight: 17 },
+  specOptionTextActive: { color: AG.chalk },
+  agHeroInner: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, alignItems: 'center' },
+  agLogoPlate: {
+    backgroundColor: AG_SURFACE,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    boxShadow: '0 14px 30px rgba(0,0,0,0.45)',
+  },
+  agLogo: { width: 196, height: 52 },
+  agRule: { width: 54, height: 2, borderRadius: 1, backgroundColor: AG_RED, marginTop: 10 },
+  agTagline: { color: 'rgba(226,232,240,0.75)', fontSize: 9.5, fontWeight: '800', letterSpacing: 2.2, marginTop: 10 },
+  agCaption: { color: 'rgba(203,213,225,0.9)', fontSize: 12.5, lineHeight: 18, textAlign: 'center', marginTop: 12, maxWidth: 320 },
+  agTitleBlock: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    marginHorizontal: 14,
+    marginBottom: 14,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  agTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+  },
+  agTitleLabel: { color: 'rgba(232,83,108,0.95)', fontSize: 9.5, fontWeight: '900', letterSpacing: 1.6, width: 46 },
+  agTitleValue: { flex: 1, color: '#E8EAEE', fontSize: 12, fontWeight: '700', textAlign: 'right' },
+  hero: { alignItems: 'center', marginBottom: 14 },
+  heroCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(182,18,49,0.16)', alignItems: 'center', justifyContent: 'center', marginBottom: 8, borderWidth: 1, borderColor: 'rgba(182,18,49,0.4)' },
+  heroCaption: { fontSize: 12, color: AG_TEXT_MUTED, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 17 },
+  card: {
+    backgroundColor: AG.paper, borderRadius: AGS.radius, padding: AGS.blockPad, borderWidth: 1,
+    borderColor: AG.lineSoft, marginBottom: AGS.blockGap,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: AG.chalk, marginBottom: 14, letterSpacing: -0.2 },
+  row: { flexDirection: 'row', gap: AGS.fieldGap, alignItems: 'stretch' },
   field: { marginBottom: 10 },
   // NOT: textTransform:'uppercase' kasitli KULLANILMADI -- Turkce kucuk "i"
   // harfi locale-siz uppercase donusumunde noktasiz "I"ya donusuyor (orn.
   // "iskonto" -> "ISKONTO"), bu da yanlis/bozuk gorunuyor.
-  fieldLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textSoft, marginBottom: 8, letterSpacing: 0.1 },
-  typeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  payWrap: { flexDirection: 'row', gap: 10 },
-  payPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 13, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  fieldLabel: { fontSize: 12.5, fontWeight: '700', color: AG.chalk, marginBottom: 10, letterSpacing: -0.1 },
+  typeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  payWrap: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  payPill: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 13, borderWidth: 1, borderColor: AG_LINE, backgroundColor: AG_SURFACE_SOFT },
   payPillActive: {
-    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    backgroundColor: AG_RED, borderColor: AG_RED,
     shadowColor: theme.colors.primary, shadowOpacity: 0.32, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 4,
   },
-  payPillText: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textSoft, letterSpacing: 0.1 },
+  payPillText: { fontSize: 12.5, fontWeight: '700', color: AG_TEXT_MUTED, letterSpacing: 0.1 },
   payPillTextActive: { color: '#fff', fontWeight: '800' },
-  payBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primary },
-  payBadgeText: { fontSize: 10.5, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.3 },
-  typePill: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
-  finishPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  payBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(182,18,49,0.16)', borderWidth: 1, borderColor: AG_RED },
+  payBadgeText: { fontSize: 10.5, fontWeight: '900', color: AG_RED_LIGHT, letterSpacing: 0.3 },
+  typePill: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, borderWidth: 1, borderColor: AG_LINE, backgroundColor: AG_SURFACE_SOFT },
+  finishPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 11, borderWidth: 1, borderColor: AG_LINE, backgroundColor: AG_SURFACE_SOFT },
   typePillActive: {
-    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    backgroundColor: AG_RED, borderColor: AG_RED,
     shadowColor: theme.colors.primary, shadowOpacity: 0.28, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3,
   },
-  typePillText: { fontSize: 12, fontWeight: '600', color: theme.colors.textSoft, letterSpacing: 0.05 },
+  typePillText: { fontSize: 12, fontWeight: '600', color: AG_TEXT_MUTED, letterSpacing: 0.05 },
   typePillTextActive: { color: '#fff', fontWeight: '800' },
   // Tek secenekli, gercekte "secilemeyen" alanlar icin sakin bilgi satiri
   // (bkz. Motor Markasi) -- dev, dolgun bir CTA gibi durup aslinda hicbir
   // sey yapmayan pill yerine kullanilir.
   fixedValueRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 13, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line, borderStyle: 'dashed',
+    borderRadius: 13, backgroundColor: AG_SURFACE_SOFT, borderWidth: 1, borderColor: AG_LINE, borderStyle: 'dashed',
   },
-  fixedValueDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.primary },
-  fixedValueText: { flex: 1, fontSize: 13, fontWeight: '700', color: theme.colors.text },
-  fixedValueTag: { fontSize: 10, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
+  fixedValueDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: AG_RED },
+  fixedValueText: { flex: 1, fontSize: 13, fontWeight: '700', color: AG_TEXT },
+  fixedValueTag: { fontSize: 10, fontWeight: '800', color: AG_TEXT_MUTED, letterSpacing: 0.3 },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surfaceSoft,
-    borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 12, paddingHorizontal: 13, minHeight: 46,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: AG_SURFACE_SOFT,
+    borderWidth: 1.5, borderColor: AG_LINE, borderRadius: 12, paddingHorizontal: 13, minHeight: 46,
   },
   inputWrapFocused: {
-    borderColor: theme.colors.primary, backgroundColor: '#fff',
+    borderColor: AG_RED, backgroundColor: AG_SURFACE,
     shadowColor: theme.colors.primary, shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
-  input: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.text, paddingVertical: 0, ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}) },
-  hint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
-  partsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  partsRowLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text },
-  partsRowSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2, fontWeight: '600' },
-  partsRowInputWrap: { width: 84, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 11, paddingHorizontal: 10, minHeight: 42 },
+  input: { flex: 1, fontSize: 14, fontWeight: '600', color: AG_TEXT, paddingVertical: 0, ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}) },
+  hint: { fontSize: 11.5, color: AG.graphite, marginTop: 10, lineHeight: 17 },
+  partsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AG_LINE },
+  partsRowLabel: { fontSize: 12.5, fontWeight: '700', color: AG_TEXT },
+  partsRowSub: { fontSize: 10.5, color: AG_TEXT_MUTED, marginTop: 2, fontWeight: '600' },
+  partsRowInputWrap: { width: 84, flexDirection: 'row', alignItems: 'center', backgroundColor: AG_SURFACE_SOFT, borderWidth: 1.5, borderColor: AG_LINE, borderRadius: 11, paddingHorizontal: 10, minHeight: 42 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
-  checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkbox: { width: 21, height: 21, borderRadius: 7, borderWidth: 1.5, borderColor: AG_LINE, alignItems: 'center', justifyContent: 'center', backgroundColor: AG_SURFACE },
   checkboxActive: {
-    backgroundColor: theme.colors.primary, borderColor: theme.colors.primary,
+    backgroundColor: AG_RED, borderColor: AG_RED,
     shadowColor: theme.colors.primary, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
-  toggleLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.text },
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginBottom: 12 },
-  errorText: { color: theme.colors.red, fontSize: 12.5, fontWeight: '700', flex: 1 },
-  choiceBox: { backgroundColor: '#EFF6FF', borderRadius: 14, borderWidth: 1, borderColor: '#BFDBFE', padding: 14, marginBottom: 12 },
+  toggleLabel: { fontSize: 13, fontWeight: '600', color: AG_TEXT },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: 'rgba(182,18,49,0.14)',
+    borderWidth: 1, borderColor: 'rgba(182,18,49,0.42)', borderRadius: 12, padding: 12, marginBottom: 12,
+  },
+  errorText: { color: '#FFC9D2', fontSize: 12.5, fontWeight: '700', flex: 1, lineHeight: 17 },
+  choiceBox: {
+    backgroundColor: AG.well, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(232,83,108,0.34)',
+    padding: 14, marginTop: AGS.rowGap,
+  },
   choiceHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  choiceTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text, flex: 1 },
-  choiceHint: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600', marginBottom: 10 },
-  choiceBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 13, borderWidth: 1.5, borderColor: theme.colors.primary, paddingVertical: 12, alignItems: 'center' },
-  choiceBtnLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.primary, letterSpacing: 0.2, textTransform: 'uppercase' },
-  choiceBtnValue: { fontSize: 16, fontWeight: '900', color: theme.colors.text, marginTop: 3 },
-  choiceBtnSub: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
+  choiceTitle: { fontSize: 13, fontWeight: '800', color: AG_TEXT, flex: 1 },
+  choiceHint: { fontSize: 11.5, color: AG.graphite, fontWeight: '600', marginBottom: 12, lineHeight: 16 },
+  choiceBtn: {
+    flex: 1, backgroundColor: AG.paperSoft, borderRadius: 13, borderWidth: 1,
+    borderColor: 'rgba(232,83,108,0.45)', paddingVertical: 13, paddingHorizontal: 8, alignItems: 'center',
+  },
+  choiceBtnLabel: { fontSize: 11, fontWeight: '800', color: AG.redLift, letterSpacing: 0.2 },
+  choiceBtnValue: { fontSize: 19, fontWeight: '900', color: AG.chalk, marginTop: 4, fontVariant: ['tabular-nums'] },
+  choiceBtnSub: { fontSize: 10, color: AG.graphiteDim, marginTop: 3, textAlign: 'center' },
+  // Hesap formulu -- duz bir ipucu satiri degil, fis gibi okunan kucuk blok.
+  formulaBox: {
+    backgroundColor: AG.well, borderRadius: 12, borderWidth: 1, borderColor: AG.lineSoft,
+    padding: 13, marginTop: AGS.rowGap,
+  },
+  formulaHead: { color: AG.redLift, fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginBottom: 6 },
+  formulaLine: { color: AG.chalk, fontSize: 12.5, fontWeight: '700', lineHeight: 19 },
+  formulaNote: { color: AG.graphiteDim, fontSize: 11, lineHeight: 16, marginTop: 7 },
   // Hesapla — bu ekranin tek "hero" eylemi; diger tum elemanlar sakin
   // tutulup boldlugun tamami buraya harcaniyor (bkz. tasarim notu).
   calcBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
-    backgroundColor: theme.colors.primary, borderRadius: 16, paddingVertical: 16, marginBottom: 12,
+    backgroundColor: AG_RED, borderRadius: 16, paddingVertical: 16, marginBottom: 12,
     shadowColor: theme.colors.primary, shadowOpacity: 0.34, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6,
   },
   calcBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.4 },
   ctaDisabled: { opacity: 0.5 },
-  resultCard: { borderColor: theme.colors.primaryBorder, borderWidth: 1, backgroundColor: '#FCFCFF' },
-  resultSub: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 12, fontWeight: '600' },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(15,23,42,0.045)' },
-  breakdownLabel: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '600' },
-  breakdownValue: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
+  resultCard: { borderColor: 'rgba(182,18,49,0.42)', borderWidth: 1, backgroundColor: '#17131A' },
+  resultSub: { fontSize: 11.5, color: AG.graphite, marginBottom: 14, fontWeight: '600', lineHeight: 16 },
+  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: AG.lineSoft },
+  breakdownLabel: { fontSize: 12.5, color: AG.graphite, fontWeight: '600', flex: 1 },
+  breakdownValue: { fontSize: 12.5, color: AG.chalk, fontWeight: '800', fontVariant: ['tabular-nums'] },
   totalBox: {
-    backgroundColor: theme.colors.navyDark, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
-    marginTop: 12, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: AG.red, borderRadius: 14, paddingVertical: 15, paddingHorizontal: 16,
+    marginTop: 14, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12,
   },
   totalLabel: { color: 'rgba(255,255,255,0.65)', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.6 },
   totalValue: { color: '#fff', fontSize: 19, fontWeight: '900' },
   totalValueEquiv: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', marginTop: 1 },
-  kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, marginTop: 4 },
-  kalemlerToggleText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary },
+  kalemlerToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderTopWidth: 1, borderTopColor: AG_LINE, marginTop: 4 },
+  kalemlerToggleText: { fontSize: 12, fontWeight: '700', color: AG_RED_LIGHT },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: theme.colors.navyDark, borderRadius: 16, paddingVertical: 15, marginTop: 12,
-    shadowColor: theme.colors.navyDark, shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3,
+    backgroundColor: AG.paperSoft, borderWidth: 1, borderColor: AG.line,
+    borderRadius: 16, paddingVertical: 15, marginTop: 12,
   },
-  excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginTop: 12 },
-  excelBtnText: { color: theme.colors.primaryDark, fontSize: 13.5, fontWeight: '800' },
-  drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primaryBorder, borderRadius: 16, paddingVertical: 13, paddingHorizontal: 12, marginTop: 10 },
-  drawingBtnText: { color: theme.colors.primaryDark, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
+  excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: 'rgba(182,18,49,0.16)', borderWidth: 1, borderColor: 'rgba(182,18,49,0.4)', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginTop: 12 },
+  excelBtnText: { color: AG_RED_LIGHT, fontSize: 13.5, fontWeight: '800' },
+  drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: AG_SURFACE_SOFT, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(182,18,49,0.4)', borderRadius: 16, paddingVertical: 13, paddingHorizontal: 12, marginTop: 10 },
+  drawingBtnText: { color: AG_RED_LIGHT, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
   toast: { position: 'absolute', top: 8, alignSelf: 'center', backgroundColor: theme.colors.navy, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, zIndex: 9999, gap: 6, ...theme.shadow.md },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
-});
+}));

@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 /**
  * Standalone "Yeni Kampanya" creation screen — mirrors service-add.tsx's layout
@@ -161,15 +161,15 @@ export default function CampaignAddScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -188,7 +188,7 @@ const s = StyleSheet.create({
   },
   heroCaption: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20, lineHeight: 17 },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
@@ -202,7 +202,7 @@ const s = StyleSheet.create({
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 11,
@@ -210,7 +210,7 @@ const s = StyleSheet.create({
     minHeight: 42,
   },
   inputWrapMultiline: { alignItems: 'flex-start', paddingTop: 10, paddingBottom: 10, minHeight: 96 },
-  inputWrapError: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
+  inputWrapError: { borderColor: theme.colors.red, backgroundColor: theme.colors.redSoft },
   input: {
     flex: 1,
     fontSize: 13.5,
@@ -228,7 +228,7 @@ const s = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
     borderTopWidth: 1,
     borderTopColor: theme.colors.line,
   },
@@ -246,7 +246,7 @@ const s = StyleSheet.create({
   ctaText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800', letterSpacing: 0.3 },
   ctaSecondary: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: 'center',
@@ -271,4 +271,4 @@ const s = StyleSheet.create({
     elevation: 12,
   },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
-});
+}));

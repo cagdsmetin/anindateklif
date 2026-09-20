@@ -23,8 +23,8 @@ import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/
 import { shareFileViaWhatsApp } from '@/src/lib/file-share';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import * as Sharing from 'expo-sharing';
-import { useLanguage } from '@/src/lib/i18n';
-import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
   { value: 'text', label: 'Metin', icon: 'text-outline' },
@@ -586,8 +586,8 @@ export default function CatalogScreen() {
           subtitle={activeCompany?.sirketAdi}
           color={theme.colors.modules.katalog}
           stats={[
-            { label: t('catalog.s024'), value: catalog.length },
-            { label: t('catalog.s038'), value: catalogFiles.length },
+            { label: 'ÜRÜN / HİZMET', value: catalog.length },
+            { label: 'KATALOG DOSYASI', value: catalogFiles.length },
           ]}
         />
         <View style={{ paddingBottom: 6 }}>
@@ -741,7 +741,7 @@ export default function CatalogScreen() {
                       editable={!isStaffUser}
                     />
                   </FieldGroup>
-                  <Text style={s.subLabel}>{t('catalog.s032')}{(sys.fields || []).length})</Text>
+                  <Text style={s.subLabel}>{upper(t('catalog.s032'))}{(sys.fields || []).length})</Text>
                   {(sys.fields || []).length === 0 && <Text style={s.hintMuted}>{t('catalog.s034')}</Text>}
                   {(sys.fields || []).map((f, fi) => {
                     const typeMeta = FIELD_TYPES.find((t) => t.value === f.type);
@@ -867,7 +867,7 @@ export default function CatalogScreen() {
           filtered.map((c) => (
             <View key={c.id} style={s.card} testID={`catalog-card-${c.id}`}>
               <View style={{ flex: 1 }}>
-                <Text style={s.catBadge}>{c.kategori}</Text>
+                <Text style={s.catBadge}>{upper(c.kategori)}</Text>
                 <Text style={s.catName} numberOfLines={2}>{c.urunAdi}</Text>
                 {c.aciklama ? <Text style={s.catDesc} numberOfLines={2}>{c.aciklama}</Text> : null}
                 <Text style={s.catPrice}>{fmt(c.birimFiyat, c.paraBirimi)} / {c.birim}</Text>
@@ -1077,19 +1077,19 @@ export default function CatalogScreen() {
 function FieldGroup({ label, children, flex }: { label: string; children: React.ReactNode; flex?: number }) {
   return (
     <View style={[{ marginBottom: 10 }, flex ? { flex } : {}]}>
-      <Text style={s.label}>{label}</Text>
+      <Text style={s.label}>{upper(label)}</Text>
       {children}
     </View>
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   agCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 14,
     marginTop: 14,
@@ -1106,7 +1106,7 @@ const s = StyleSheet.create({
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: theme.colors.line,
@@ -1136,7 +1136,7 @@ const s = StyleSheet.create({
   btnAccText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
   emptyBox: {
     marginTop: 24,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: theme.colors.lineDark,
@@ -1147,7 +1147,7 @@ const s = StyleSheet.create({
   },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 10,
     padding: 12,
     borderWidth: 1,
@@ -1161,15 +1161,14 @@ const s = StyleSheet.create({
     fontSize: 9.5,
     color: theme.colors.primary,
     fontWeight: '800',
-    textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   catName: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   catDesc: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   catPrice: { fontSize: 12.5, color: theme.colors.textSoft, fontWeight: '700', marginTop: 4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', justifyContent: 'flex-end' },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
@@ -1185,9 +1184,9 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   modalTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
-  label: { fontSize: 10, fontWeight: '700', color: theme.colors.textSoft, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.3 },
+  label: { fontSize: 10, fontWeight: '700', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.3 },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.lineDark,
     borderRadius: 8,
@@ -1199,7 +1198,7 @@ const s = StyleSheet.create({
   chip: {
     flex: 1,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.lineDark,
     borderRadius: 8,
@@ -1211,18 +1210,18 @@ const s = StyleSheet.create({
   hint: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8, lineHeight: 18 },
   hintCode: { color: theme.colors.text, fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }) },
   hintMuted: { fontSize: 11.5, color: theme.colors.textMuted, fontStyle: 'italic' },
-  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary, letterSpacing: 0.5 },
-  subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
+  sectionH: { fontSize: 15, fontWeight: '800', color: theme.colors.text, marginBottom: 10, paddingBottom: 7, borderBottomWidth: 2, borderBottomColor: theme.colors.primary, letterSpacing: -0.2 },
+  subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, letterSpacing: 0.4 },
   chipList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   emChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   chipTxt: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary, maxWidth: 200 },
   addPlusBtn: { width: 48, backgroundColor: theme.colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  systemCard: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, overflow: 'hidden', ...theme.shadow.sm },
+  systemCard: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, overflow: 'hidden', ...theme.shadow.sm },
   systemHdr: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
-  systemName: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
+  systemName: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
   systemMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   systemBody: { padding: 12, borderTopWidth: 1, borderTopColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
-  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 6 },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 6 },
   fieldLabel: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
   fieldType: { fontSize: 10, color: theme.colors.textMuted, marginTop: 2 },
   dragHandle: { width: 20, alignItems: 'center', justifyContent: 'center', opacity: 0.65 },
@@ -1231,14 +1230,14 @@ const s = StyleSheet.create({
   reorderBtnDisabled: { backgroundColor: theme.colors.surfaceSoft, opacity: 0.5 },
   addFieldBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft, marginTop: 4 },
   addFieldText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff' },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
   typeChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   typeChipText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   typeChipTextActive: { color: '#fff' },
   addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
   addDashedText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
-  fileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 6 },
+  fileCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 6 },
   fileName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
   fileMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   fileActionBtn: { paddingHorizontal: 6, paddingVertical: 4, marginLeft: 4 },
-});
+}));

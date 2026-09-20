@@ -17,7 +17,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
 
 /**
  * Opened via the link inside the password-reset email:
@@ -176,7 +176,7 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
   bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24, flexGrow: 1 },
@@ -223,4 +223,4 @@ const s = StyleSheet.create({
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   footer: { marginTop: 22, alignItems: 'center' },
   footerLink: { color: authTheme.link, fontSize: 14, fontWeight: '700' },
-});
+}));

@@ -16,7 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, themedStyles } from '@/src/components/motion';
 
 /**
  * Müşteri bazlı cari hesap (para akışı) ekranı.
@@ -301,15 +301,15 @@ export default function CustomerLedgerScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surfaceSoft },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   headerSub: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '600', marginTop: 1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
 
-  balanceCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 14, ...theme.shadow.sm },
+  balanceCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 14, ...theme.shadow.sm },
   balanceLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.5, marginBottom: 8 },
   balanceZero: { fontSize: 14, color: theme.colors.textMuted, fontWeight: '600' },
   balanceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 4 },
@@ -319,40 +319,40 @@ const s = StyleSheet.create({
   addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.colors.modules.tahsilat, borderRadius: 12, paddingVertical: 13, marginBottom: 14 },
   addBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 14, ...theme.shadow.sm },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 14, ...theme.shadow.sm },
 
   turRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  turBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  turBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
   turBtnActiveGreen: { backgroundColor: '#059669' },
   turBtnActiveRed: { backgroundColor: '#DC2626' },
   turBtnText: { fontSize: 13, fontWeight: '700', color: theme.colors.text },
   turBtnTextActive: { color: '#fff' },
 
   amountRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  amountInput: { flex: 1, backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 15, color: theme.colors.text },
+  amountInput: { flex: 1, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 15, color: theme.colors.text },
   currencyChips: { flexDirection: 'row', gap: 4 },
-  currChip: { paddingHorizontal: 10, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' },
+  currChip: { paddingHorizontal: 10, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft },
   currChipActive: { backgroundColor: theme.colors.modules.tahsilat },
   currChipText: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   currChipTextActive: { color: '#fff' },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
-  methodChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: '#F1F5F9' },
+  methodChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: theme.colors.surfaceSoft },
   methodChipActive: { backgroundColor: theme.colors.modules.tahsilat },
   methodChipText: { fontSize: 12, fontWeight: '700', color: theme.colors.text },
   methodChipTextActive: { color: '#fff' },
 
-  input: { backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, height: 44, fontSize: 14, color: theme.colors.text },
-  inputHighlight: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, height: 44, fontSize: 14, color: theme.colors.text },
+  inputHighlight: { borderColor: theme.colors.red, backgroundColor: theme.colors.redSoft },
 
   formActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  cancelBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10, backgroundColor: '#F1F5F9' },
+  cancelBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
   cancelBtnText: { fontWeight: '700', color: theme.colors.text, fontSize: 13 },
   saveBtn: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 10, backgroundColor: theme.colors.modules.tahsilat },
   saveBtnText: { fontWeight: '800', color: '#fff', fontSize: 13 },
 
   sectionH: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.5, marginBottom: 8 },
-  emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: theme.colors.line, gap: 6 },
+  emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, backgroundColor: theme.colors.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.line, gap: 6 },
   emptyText: { fontSize: 13, color: theme.colors.textMuted, fontWeight: '600' },
 
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
@@ -361,4 +361,4 @@ const s = StyleSheet.create({
   entryMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   entryAmount: { fontSize: 13.5, fontWeight: '900' },
   deleteBtn: { padding: 4 },
-});
+}));

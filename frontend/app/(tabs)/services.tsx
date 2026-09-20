@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 import { ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
@@ -200,7 +200,7 @@ export default function ServicesScreen() {
                   <Ionicons name="pencil-outline" size={14} color={theme.colors.primary} />
                   <Text style={s.actText}>{t('services.s019')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.actBtn, { backgroundColor: '#dcfce7' }]} onPress={() => remind(svc)} testID={`svc-remind-${svc.id}`}>
+                <TouchableOpacity style={[s.actBtn, { backgroundColor: theme.colors.greenSoft }]} onPress={() => remind(svc)} testID={`svc-remind-${svc.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
                   <Text style={[s.actText, { color: '#16a34a' }]}>{t('services.s020')}</Text>
                 </TouchableOpacity>
@@ -249,7 +249,7 @@ export default function ServicesScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   headBlock: { paddingHorizontal: 14, paddingTop: 12 },
   stickyBar: { backgroundColor: theme.colors.surfaceSoft, paddingHorizontal: 14, paddingTop: 4, zIndex: 10 },
@@ -257,18 +257,18 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
-  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
-  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
+  statCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', letterSpacing: 0.4 },
+  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: 8, fontSize: 13, color: theme.colors.text },
   filterRowOuter: { flexGrow: 0, height: 56 },
   filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10, alignItems: 'center' },
-  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },
-  emptyBox: { marginTop: 24, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
+  emptyBox: { marginTop: 24, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
   card: {
     backgroundColor: theme.colors.surface,
@@ -283,13 +283,13 @@ const s = StyleSheet.create({
   },
   cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
   cardTop: { flexDirection: 'row', gap: 11, alignItems: 'flex-start' },
-  hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
+  hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
   hFirma: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, height: 26 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
   datesRow: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
-  dateChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  dateChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.surfaceSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   dateChipWarn: { backgroundColor: theme.colors.goldSoft },
   dateChipText: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
   dateChipTextWarn: { color: theme.colors.goldDark },
@@ -300,8 +300,8 @@ const s = StyleSheet.create({
   actText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary, letterSpacing: 0.2 },
   fab: { position: 'absolute', right: 18, width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center', ...theme.shadow.lg },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 30 },
-  menu: { backgroundColor: '#fff', padding: 16, borderRadius: 16, gap: 8, ...theme.shadow.lg },
-  menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, textAlign: 'center' },
+  menu: { backgroundColor: theme.colors.surface, padding: 16, borderRadius: 16, gap: 8, ...theme.shadow.lg },
+  menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 6, textAlign: 'center' },
   menuItem: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   menuItemText: { fontSize: 13, fontWeight: '800' },
-});
+}));

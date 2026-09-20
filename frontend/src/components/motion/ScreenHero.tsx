@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Aurora from './Aurora';
 import CountUp from './CountUp';
 import { useScrollScene } from './scene';
-import { alpha, mix } from './paint';
+import { alpha, mix, themedStyles } from './paint';
+import { localeUpper, useLangSafe } from '@/src/lib/i18n';
 
 export type HeroStat = {
   label: string;
@@ -41,6 +42,10 @@ export default function ScreenHero({
   style?: StyleProp<ViewStyle>;
 }) {
   const scene = useScrollScene();
+  // Etiketler VERSAL gosterilir; donusum locale duyarli olmali (Turkce "i"
+  // harfi locale'siz toUpperCase'te noktasiz "I"ya donuyordu: "Personel
+  // Teklifleri" -> "PERSONEL TEKLIFLERI").
+  const lang = useLangSafe();
 
   const drift = useAnimatedStyle(() => {
     if (!scene) return {};
@@ -64,7 +69,7 @@ export default function ScreenHero({
           <View style={{ flex: 1 }}>
             {subtitle ? (
               <Text style={s.subtitle} numberOfLines={1}>
-                {subtitle}
+                {localeUpper(subtitle, lang)}
               </Text>
             ) : null}
             <Text style={s.title} numberOfLines={1}>
@@ -85,7 +90,7 @@ export default function ScreenHero({
                   adjustsFontSizeToFit
                 />
                 <Text style={s.statLabel} numberOfLines={2}>
-                  {st.label}
+                  {localeUpper(st.label, lang)}
                 </Text>
                 {st.sub ? (
                   <Text style={s.statSub} numberOfLines={1}>
@@ -102,7 +107,7 @@ export default function ScreenHero({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   hero: { borderRadius: 22, marginBottom: 14 },
   inner: { padding: 16 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -114,7 +119,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  subtitle: { color: 'rgba(203,213,225,0.85)', fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  subtitle: { color: 'rgba(203,213,225,0.85)', fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
   title: { color: '#fff', fontSize: 21, fontWeight: '900', letterSpacing: -0.3, marginTop: 1 },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   stat: {
@@ -136,6 +141,5 @@ const s = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
     marginTop: 3,
-    textTransform: 'uppercase',
   },
-});
+}));

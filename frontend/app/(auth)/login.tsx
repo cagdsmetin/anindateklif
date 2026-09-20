@@ -20,7 +20,7 @@ import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
 
 export default function LoginScreen() {
   const { t } = useLanguage();
@@ -182,7 +182,7 @@ function InputRow({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
   bgWrap: {
     position: 'absolute',
@@ -279,4 +279,4 @@ const s = StyleSheet.create({
   },
   footerText: { color: authTheme.textMuted, fontSize: 13 },
   footerLink: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
-});
+}));

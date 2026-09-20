@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LANGUAGES, useLanguage } from '@/src/lib/i18n';
+import { themedStyles } from '@/src/components/motion';
 
 // Giriş yapmadan önceki ekranlarda (splash/login/register) gösterilen küçük
 // bayraklı dil seçici. Seçim anında ekrana yansır ve cihazda hatırlanır
@@ -28,7 +29,7 @@ export function LanguageFlagSwitcher() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   row: { flexDirection: 'row', gap: 6 },
   pill: {
     width: 34,
@@ -45,4 +46,4 @@ const s = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   flag: { fontSize: 16 },
-});
+}));

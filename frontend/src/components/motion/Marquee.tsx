@@ -3,7 +3,7 @@ import { ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native
 import Animated, { useAnimatedStyle, useFrameCallback, useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useScrollScene } from './scene';
-import { alpha } from './paint';
+import { alpha, themedStyles } from './paint';
 
 // "Scroll Based Velocity" / "Marquee" (21st.dev / Magic UI) -- içerik sonsuz
 // bir bant halinde sola akar; sayfa kaydırıldıkça kaydırma hızı kadar
@@ -101,8 +101,8 @@ export default function Marquee({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   clip: { overflow: 'hidden' },
   track: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', flexShrink: 0 },
   fade: { position: 'absolute', top: 0, bottom: 0, width: 28 },
-});
+}));

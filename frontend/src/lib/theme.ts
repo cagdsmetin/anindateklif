@@ -41,6 +41,14 @@ const lightColors = {
   yellow: '#B45309',
   yellowSoft: '#FEF3C7',
 
+  // "Soft" zeminler üzerindeki METİN renkleri. Koyu temada bu zeminler
+  // koyulaştığı için metin de açık tona döner -- her iki temada da okunur
+  // kalsın diye ayrı token tutuluyor (kullanıcı: "bütün yazılar okunur olsun").
+  greenText: '#166534',
+  redText: '#991B1B',
+  goldText: '#92400E',
+  blueText: '#1D4ED8',
+
   text: '#0F172A',
   textMuted: '#64748B',
   textOnDark: '#94A3B8',     // muted text/icons on navyDark surfaces
@@ -101,6 +109,11 @@ const darkColors = {
   greenSoft: '#052E16',
   yellow: '#FCD34D',
   yellowSoft: '#78350F',
+
+  greenText: '#86EFAC',
+  redText: '#FCA5A5',
+  goldText: '#FCD34D',
+  blueText: '#A5B4FC',
 
   text: '#F3F6FB',
   textMuted: '#91A0B5',

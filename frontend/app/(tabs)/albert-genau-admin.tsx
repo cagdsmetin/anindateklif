@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { upper } from '@/src/lib/i18n';
 import {
   ActivityIndicator,
   Platform,
@@ -17,7 +18,7 @@ import { theme } from '@/src/lib/theme';
 import { api, fetchAlbertGenauPriceCsv, AlbertGenauPriceListStatusT, AlbertGenauYedekParcaAdminStatusT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { downloadFileWeb } from '@/src/lib/web-download';
-import { MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 // Albert Genau'nun resmi fiyat listesi tek bir yerden (bu ekrandan) güncellenir
 // -- fiyatlar Mongo'daki `albert_genau_config` kaydına yazılır, hesaplama
@@ -202,7 +203,7 @@ export default function AlbertGenauAdminScreen() {
             color={theme.colors.gold}
           />
           <View style={s.card}>
-            <Text style={s.sectionLabel}>Şu Anki Fiyat Listesi</Text>
+            <Text style={s.sectionLabel}>{upper('Şu Anki Fiyat Listesi')}</Text>
             <View style={s.statRow}>
               <Text style={s.statLabel}>Kaynak</Text>
               <Text style={s.statValue}>{status?.source || '-'}</Text>
@@ -226,7 +227,7 @@ export default function AlbertGenauAdminScreen() {
           </View>
 
           <View style={[s.card, { marginTop: 16 }]}>
-            <Text style={s.sectionLabel}>Yeni Fiyat Listesi Yükle</Text>
+            <Text style={s.sectionLabel}>{upper('Yeni Fiyat Listesi Yükle')}</Text>
             <Text style={s.hint}>
               Albert Genau'dan yeni bir fiyat Excel'i geldiğinde buradan tekrar yükleyin. Sadece "SİPARİŞ FORMU"
               sayfasındaki SKU/fiyat listesi güncellenir — hesaplama formülleri (modül/panel sayısı, LED, köpük vb.)
@@ -255,7 +256,7 @@ export default function AlbertGenauAdminScreen() {
           </View>
 
           <View style={[s.card, { marginTop: 16 }]}>
-            <Text style={s.sectionLabel}>Yedek Parça Kataloğu</Text>
+            <Text style={s.sectionLabel}>{upper('Yedek Parça Kataloğu')}</Text>
             <View style={s.statRow}>
               <Text style={s.statLabel}>Kaynak</Text>
               <Text style={s.statValue}>{ypStatus?.source || '-'}</Text>
@@ -304,7 +305,7 @@ export default function AlbertGenauAdminScreen() {
           </View>
 
           <View style={[s.card, { marginTop: 16 }]}>
-            <Text style={s.sectionLabel}>Bayi Paketi (Dealer Export)</Text>
+            <Text style={s.sectionLabel}>{upper('Bayi Paketi (Dealer Export)')}</Text>
             <Text style={s.hint}>
               Bu uygulamayı satın alan yeni bir Albert Genau bayisine kendi kurulumuna yükleyebileceği bir paket
               verin. JSON paketi tüm fiyat + tablo verisini (formüller hariç, onlar zaten kodda) taşır; CSV ise
@@ -335,24 +336,24 @@ export default function AlbertGenauAdminScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surfaceSoft },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 12, letterSpacing: 0.3, textTransform: 'uppercase' },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 12, letterSpacing: 0.3, },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   statLabel: { fontSize: 12.5, color: theme.colors.textMuted, fontWeight: '600' },
   statValue: { fontSize: 12.5, color: theme.colors.text, fontWeight: '800' },
   hint: { fontSize: 12, color: theme.colors.textMuted, lineHeight: 17, marginBottom: 14 },
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 10, marginBottom: 12 },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, padding: 10, marginBottom: 12 },
   errorText: { color: theme.colors.red, fontSize: 12.5, fontWeight: '700', flex: 1 },
   successBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F0FDF4', borderRadius: 10, padding: 10, marginBottom: 12 },
-  successText: { color: '#166534', fontSize: 12.5, fontWeight: '700', flex: 1 },
+  successText: { color: theme.colors.greenText, fontSize: 12.5, fontWeight: '700', flex: 1 },
   cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 13 },
   ctaText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   ctaSecondary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 12, paddingVertical: 11, borderWidth: 1, borderColor: theme.colors.primaryBorder },
   ctaSecondaryText: { color: theme.colors.primary, fontSize: 12.5, fontWeight: '800' },
-});
+}));

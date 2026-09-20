@@ -9,6 +9,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useRevealVisible } from './Reveal';
+import { themedStyles } from './paint';
 
 export type DonutSlice = { value: number; color: string };
 
@@ -153,9 +154,9 @@ export default function Donut({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   abs: { position: 'absolute', left: 0, top: 0 },
   hole: { position: 'absolute', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   centerLabel: { fontSize: 8.5, fontWeight: '800', letterSpacing: 0.6 },
   centerValue: { fontSize: 13, fontWeight: '900', marginTop: 1, maxWidth: '92%' },
-});
+}));

@@ -15,8 +15,8 @@ import { theme } from '@/src/lib/theme';
 import { api, StaffMemberT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
-import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 const ROLE_IDS = ['staff', 'admin'] as const;
 
@@ -147,9 +147,15 @@ export default function PersonelScreen() {
             <ScreenHero
               icon="person-add"
               title={t('personel.s001')}
+              subtitle={activeCompany?.sirketAdi}
               color={theme.colors.gold}
+              stats={[
+                { label: 'EKİPTE', value: members.filter((m) => m.type !== 'pending').length },
+                { label: 'DAVET BEKLİYOR', value: members.filter((m) => m.type === 'pending').length, tone: '#FCD34D' },
+                { label: 'YÖNETİCİ', value: members.filter((m) => m.role === 'admin').length },
+              ]}
             />
-            <Text style={s.sectionLabel}>{t('personel.s010')}</Text>
+            <Text style={s.sectionLabel}>{upper(t('personel.s010'))}</Text>
             <View style={s.card}>
               <MotionInput
                 style={s.input}
@@ -161,19 +167,27 @@ export default function PersonelScreen() {
                 keyboardType="email-address"
                 testID="staff-invite-email"
               />
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <View style={{ gap: 9, marginTop: 14 }}>
                 {ROLES.map((r) => (
                   <TouchableOpacity
                     key={r.id}
-                    style={[s.roleChip, role === r.id && s.roleChipActive]}
+                    style={[s.roleRow, role === r.id && s.roleRowActive]}
                     onPress={() => setRole(r.id)}
                     testID={`staff-role-${r.id}`}
+                    activeOpacity={0.85}
                   >
-                    <Text style={[s.roleChipText, role === r.id && s.roleChipTextActive]}>{r.label}</Text>
+                    <Ionicons
+                      name={role === r.id ? 'radio-button-on' : 'radio-button-off'}
+                      size={19}
+                      color={role === r.id ? theme.colors.primary : theme.colors.lineDark}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.roleRowLabel, role === r.id && s.roleRowLabelActive]}>{r.label}</Text>
+                      <Text style={s.roleRowDesc}>{r.desc}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
-              <Text style={s.roleDesc}>{ROLES.find((r) => r.id === role)?.desc}</Text>
 
               {error ? <Text style={s.errorText}>{error}</Text> : null}
 
@@ -200,9 +214,16 @@ export default function PersonelScreen() {
               ) : null}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('personel.s016')}{members.length})</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{upper(t('personel.s016'))}{members.length})</Text>
             {members.length === 0 ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('personel.s018')}</Text>
+              <View style={s.emptyBox}>
+                <IconBadge icon="people-outline" color={theme.colors.gold} size={40} motion="float" />
+                <Text style={s.emptyTitle}>{t('personel.s018')}</Text>
+                <Text style={s.emptyText}>
+                  Yukarıya bir e-posta yazıp davet linki oluşturun; ekip arkadaşınız linke tıkladığında
+                  kendi hesabıyla firmanıza katılır.
+                </Text>
+              </View>
             ) : (
               members.map((m, idx) => (
                 <Reveal key={`${m.type}-${m.id}`} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
@@ -237,22 +258,22 @@ export default function PersonelScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -260,7 +281,7 @@ const s = StyleSheet.create({
     ...theme.shadow.sm,
   },
   input: {
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 12,
@@ -269,11 +290,22 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.text,
   },
-  roleChip: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  roleChipActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
-  roleChipText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSoft },
-  roleChipTextActive: { color: theme.colors.primary },
-  roleDesc: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 8, lineHeight: 16 },
+  roleRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 11,
+    borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 13, backgroundColor: theme.colors.surfaceSoft,
+  },
+  roleRowActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
+  roleRowLabel: { fontSize: 13.5, fontWeight: '800', color: theme.colors.textSoft },
+  roleRowLabelActive: { color: theme.colors.primary },
+  roleRowDesc: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 3, lineHeight: 16 },
+  emptyBox: {
+    alignItems: 'center', gap: 10, paddingVertical: 26, paddingHorizontal: 18,
+    borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 18,
+    backgroundColor: theme.colors.surfaceSoft,
+  },
+  emptyTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, textAlign: 'center' },
+  emptyText: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 18 },
   errorText: { color: theme.colors.red, fontSize: 13, fontWeight: '700', marginTop: 12, textAlign: 'center' },
   cta: {
     backgroundColor: theme.colors.primary,
@@ -285,14 +317,14 @@ const s = StyleSheet.create({
   },
   ctaText: { color: '#fff', fontSize: 14.5, fontWeight: '800' },
   linkBox: { marginTop: 14, backgroundColor: theme.colors.primarySoft, borderRadius: 12, padding: 12 },
-  linkInput: { fontSize: 12, color: theme.colors.text, marginBottom: 8, backgroundColor: '#fff', borderRadius: 8, padding: 8 },
-  copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  linkInput: { fontSize: 12, color: theme.colors.text, marginBottom: 8, backgroundColor: theme.colors.surface, borderRadius: 8, padding: 8 },
+  copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   copyBtnText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   linkHint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 8 },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.line,
@@ -302,7 +334,7 @@ const s = StyleSheet.create({
   memberEmail: { fontSize: 13.5, fontWeight: '700', color: theme.colors.text },
   badge: { backgroundColor: theme.colors.greenSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, alignSelf: 'flex-start' },
   badgePending: { backgroundColor: theme.colors.goldSoft },
-  badgeText: { fontSize: 10.5, fontWeight: '800', color: '#166534' },
+  badgeText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.greenText },
   badgeTextPending: { color: theme.colors.goldDark },
   removeBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.redSoft, marginLeft: 10 },
-});
+}));

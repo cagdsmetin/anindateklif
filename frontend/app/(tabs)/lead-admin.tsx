@@ -14,8 +14,8 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, LeadSearchRequestT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
-import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, Reveal } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, themedStyles } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -155,7 +155,7 @@ export default function LeadAdminScreen() {
               )}
             </View>
 
-            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('leadAdmin.s011')}</Text>
+            <Text style={[s.sectionLabel, { marginTop: 22 }]}>{upper(t('leadAdmin.s011'))}</Text>
             <Text style={s.hint}>{t('leadAdmin.s012')}</Text>
             <MotionInput
               style={s.textarea}
@@ -183,7 +183,7 @@ export default function LeadAdminScreen() {
             </View>
           )}
 
-          <Text style={s.sectionLabel}>{t('leadAdmin.s017')}{pending.length})</Text>
+          <Text style={s.sectionLabel}>{upper(t('leadAdmin.s017'))}{pending.length})</Text>
           {pending.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginBottom: 20 }}>{t('leadAdmin.s018')}</Text>
           ) : (
@@ -200,7 +200,7 @@ export default function LeadAdminScreen() {
             ))
           )}
 
-          <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('leadAdmin.s019')}{done.length})</Text>
+          <Text style={[s.sectionLabel, { marginTop: 22 }]}>{upper(t('leadAdmin.s019'))}{done.length})</Text>
           {done.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('leadAdmin.s020')}</Text>
           ) : (
@@ -220,30 +220,30 @@ export default function LeadAdminScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surfaceSoft },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
   fieldLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, marginTop: 10, marginBottom: 4, letterSpacing: 0.3 },
   reqTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text },
   reqDesc: { fontSize: 12.5, color: theme.colors.textMuted, lineHeight: 18 },
   hint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, marginBottom: 4 },
   textarea: {
-    backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12,
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, color: theme.colors.text, minHeight: 160, textAlignVertical: 'top', marginTop: 10,
   },
   errorText: { color: theme.colors.red, fontSize: 13, fontWeight: '700', marginTop: 12, textAlign: 'center' },
   cta: { backgroundColor: theme.colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
   ctaText: { color: '#fff', fontSize: 14.5, fontWeight: '800' },
   successBox: { backgroundColor: theme.colors.greenSoft, borderRadius: 10, padding: 12, marginBottom: 16 },
-  successText: { color: '#166534', fontWeight: '800', fontSize: 13 },
-  reqRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 8 },
+  successText: { color: theme.colors.greenText, fontWeight: '800', fontSize: 13 },
+  reqRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 8 },
   reqRowTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   reqRowMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 3 },
-  badgeDone: { backgroundColor: '#F1F5F9', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  badgeDone: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   badgeDoneText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted },
-});
+}));

@@ -13,7 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { alpha, mix } from './paint';
+import { alpha, mix, themedStyles } from './paint';
 
 // "Balon" aksiyon butonu (21st.dev'deki parlayan/yaylanan buton kalıplarından
 // uyarlandı): gradyan dolgu, içinde cam görünümlü ikon baloncuğu, üstünden
@@ -119,7 +119,10 @@ export default function BubbleButton({
             <View style={[s.iconBubble, { backgroundColor: solid ? 'rgba(255,255,255,0.22)' : alpha(color, 0.16) }]}>
               <Ionicons name={icon} size={16} color={solid ? '#fff' : color} />
             </View>
-            <Text style={[s.label, { color: solid ? '#fff' : color }, labelStyle]} numberOfLines={1}>
+            {/* Dar satırlarda ("Toplu İçe Aktar" gibi uzun etiketler yan
+                yana iki butonda) tek satıra zorlamak metni kesiyordu; iki
+                satıra sarılmasına izin veriyoruz. */}
+            <Text style={[s.label, { color: solid ? '#fff' : color }, labelStyle]} numberOfLines={2}>
               {label}
             </Text>
           </>
@@ -129,9 +132,9 @@ export default function BubbleButton({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   shell: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
   shine: { position: 'absolute', top: -40, bottom: -40, width: 60, backgroundColor: 'rgba(255,255,255,0.55)' },
   iconBubble: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 14, fontWeight: '900', letterSpacing: 0.2, flexShrink: 1 },
-});
+  label: { fontSize: 14, fontWeight: '900', letterSpacing: 0.2, flexShrink: 1, lineHeight: 18 },
+}));

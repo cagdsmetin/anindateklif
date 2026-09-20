@@ -16,7 +16,8 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useLanguage } from '@/src/lib/i18n';
-import { BorderBeam, MotionScrollView, Reveal, TiltOnScroll } from '@/src/components/motion';
+import { BorderBeam, MotionScrollView, Reveal, TiltOnScroll, themedStyles } from '@/src/components/motion';
+import { theme } from '@/src/lib/theme';
 
 // Anında Teklif'in web'deki gerçek tanıtım (landing) sayfası -- daha önce
 // giriş yapmamış her ziyaretçi doğrudan register/splash'e düşüyordu, "bu
@@ -298,7 +299,7 @@ export default function LandingScreen() {
 
 // Belge kartı (hero mockup) stilleri -- ana s stilinden ayrı tutuldu, kendi
 // içinde kapalı bir bileşen.
-const m = StyleSheet.create({
+const m = themedStyles(() => StyleSheet.create({
   wrap: { alignItems: 'center', ...Platform.select({ web: { transform: [{ rotate: '-3deg' }] } as any }) },
   badgeTop: {
     position: 'absolute', top: -14, right: 6, zIndex: 2,
@@ -342,9 +343,9 @@ const m = StyleSheet.create({
     ...Platform.select({ web: { boxShadow: '0 14px 30px rgba(0,0,0,0.45)' } as any }),
   },
   badgeBottomText: { color: authTheme.textSoft, fontSize: 11, fontWeight: '700' },
-});
+}));
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   scroll: { flexGrow: 1 },
   page: { paddingHorizontal: 20, paddingTop: authSpacing.md, paddingBottom: 40 },
@@ -573,7 +574,7 @@ const s = StyleSheet.create({
   finalTitle: { color: '#fff', fontSize: 21, fontWeight: '900', textAlign: 'center' },
   finalSubtitle: { color: authTheme.textMuted, fontSize: 13.5, textAlign: 'center', marginTop: 8, marginBottom: 20 },
   finalBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     borderRadius: authRadius.xl,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -592,4 +593,4 @@ const s = StyleSheet.create({
   footerText: { color: authTheme.textMuted, fontSize: 12 },
   footerLinks: { flexDirection: 'row', gap: 18 },
   footerLink: { color: authTheme.textSoft, fontSize: 12, fontWeight: '700' },
-});
+}));

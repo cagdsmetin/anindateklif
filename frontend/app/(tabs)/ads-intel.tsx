@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { upper } from '@/src/lib/i18n';
 import {
   ActivityIndicator,
   Linking,
@@ -16,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api, AdRecordT, AdWatchItemT } from '@/src/lib/api';
-import { MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 // ============================================================================
 // Reklam İstihbaratı -- MyDijital OS'teki "Reklam İstihbaratı" modülünün
@@ -293,7 +294,7 @@ export default function AdsIntelScreen() {
           <View style={s.statCard}><Text style={s.statValue}>{stats.favoriSayisi}</Text><Text style={s.statLabel}>FAVORİLER</Text></View>
         </View>
 
-        <Text style={s.sectionTitle}>Kazanma Sinyali Dağılımı</Text>
+        <Text style={s.sectionTitle}>{upper('Kazanma Sinyali Dağılımı')}</Text>
         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
           {SKOR_FILTERS.slice(1).map((k) => (
             <View key={k} style={[s.distChip, { borderColor: SKOR_COLORS[k] }]}>
@@ -303,7 +304,7 @@ export default function AdsIntelScreen() {
           ))}
         </View>
 
-        <Text style={s.sectionTitle}>İzleme Listesi — günlük takip edilecek terimler</Text>
+        <Text style={s.sectionTitle}>{upper('İzleme Listesi — günlük takip edilecek terimler')}</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
           <TextInput
             style={[s.input, { flex: 1, marginBottom: 0 }]}
@@ -488,7 +489,7 @@ export default function AdsIntelScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -499,9 +500,9 @@ const s = StyleSheet.create({
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 15 },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   statCard: { flexBasis: '48%', flexGrow: 1, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
-  statValue: { fontSize: 22, fontWeight: '900', color: theme.colors.navy },
+  statValue: { fontSize: 22, fontWeight: '900', color: theme.colors.text },
   statLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, marginTop: 4, letterSpacing: 0.3 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, marginBottom: 10 },
   distChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: theme.colors.surface },
   distDot: { width: 8, height: 8, borderRadius: 4 },
   distChipText: { fontSize: 11, fontWeight: '800', color: theme.colors.text },
@@ -527,8 +528,8 @@ const s = StyleSheet.create({
   metaText: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '700' },
   smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.surfaceSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
   smallBtnText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  modalBox: { width: '100%', maxWidth: 460, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 18 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  modalBox: { width: '100%', maxWidth: 460, backgroundColor: theme.colors.surface, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.line, padding: 20, boxShadow: '0 24px 60px rgba(2,6,23,0.4)' },
   modalTitle: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginBottom: 12 },
   modalSubLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2, marginBottom: 6 },
   modalBtn: { flex: 1, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
@@ -537,4 +538,4 @@ const s = StyleSheet.create({
   durumPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   durumPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   durumPillTextActive: { color: '#fff' },
-});
+}));

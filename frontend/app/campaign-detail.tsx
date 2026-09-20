@@ -13,8 +13,8 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { CustomerT } from '@/src/lib/api';
-import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 
 
@@ -172,7 +172,7 @@ export default function CampaignDetailScreen() {
           </View>
         </View>
 
-        <Text style={s.sectionTitle}>{t('campaignDetail.s011')}</Text>
+        <Text style={s.sectionTitle}>{upper(t('campaignDetail.s011'))}</Text>
         <View style={s.bubbleWrap}>
           <View style={s.bubble}>
             <Text style={s.bubbleText}>{previewText}</Text>
@@ -185,7 +185,7 @@ export default function CampaignDetailScreen() {
           )}
         </View>
 
-        <Text style={s.sectionTitle}>{t('campaignDetail.s014')}</Text>
+        <Text style={s.sectionTitle}>{upper(t('campaignDetail.s014'))}</Text>
         <View style={s.filterRow}>
           {AUDIENCE_FILTERS.map((f) => (
             <TouchableOpacity
@@ -214,7 +214,7 @@ export default function CampaignDetailScreen() {
           />
         </View>
 
-        <Text style={s.sectionTitle}>{t('campaignDetail.s017')}{audienceCustomers.length})</Text>
+        <Text style={s.sectionTitle}>{upper(t('campaignDetail.s017'))}{audienceCustomers.length})</Text>
         {audienceCustomers.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={26} color={theme.colors.textMuted} />
@@ -262,8 +262,8 @@ export default function CampaignDetailScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surface },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   header: {
@@ -272,17 +272,17 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
-  progressCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 20, ...theme.shadow.sm },
-  progressLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
+  progressCard: { backgroundColor: theme.colors.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 20, ...theme.shadow.sm },
+  progressLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
   progressCount: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
-  progressTrack: { height: 8, borderRadius: 4, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  progressTrack: { height: 8, borderRadius: 4, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden' },
   progressFill: { height: 8, borderRadius: 4, backgroundColor: theme.colors.primary },
-  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10, marginTop: 4 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, marginBottom: 10, marginTop: 4 },
   bubbleWrap: { marginBottom: 20 },
   bubble: {
     backgroundColor: '#DCF8C6',
@@ -296,20 +296,20 @@ const s = StyleSheet.create({
   bubbleCaption: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 6, fontWeight: '700' },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 10, lineHeight: 15 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, height: 40, marginBottom: 20 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.surfaceSoft, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, height: 40, marginBottom: 20 },
   searchInput: { flex: 1, fontSize: 13, color: theme.colors.text },
-  filterChip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center' },
+  filterChip: { height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center' },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },
-  emptyBox: { backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 26, alignItems: 'center', gap: 8 },
+  emptyBox: { backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 26, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  custRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, gap: 10 },
+  custRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, gap: 10 },
   custRowActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
-  custName: { fontSize: 13, fontWeight: '800', color: theme.colors.navy },
+  custName: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   custSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   custActions: { flexDirection: 'row', gap: 6 },
-  waBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7, paddingHorizontal: 8, backgroundColor: '#dcfce7', borderRadius: 8 },
+  waBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7, paddingHorizontal: 8, backgroundColor: theme.colors.greenSoft, borderRadius: 8 },
   waBtnText: { fontSize: 10.5, fontWeight: '800', color: '#16a34a' },
   sentBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7, paddingHorizontal: 8, backgroundColor: theme.colors.primarySoft, borderRadius: 8 },
   sentBtnDone: { backgroundColor: theme.colors.primary },
@@ -331,6 +331,6 @@ const s = StyleSheet.create({
     elevation: 12,
   },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },
-});
+}));
 
 // redeploy-trigger

@@ -1,5 +1,6 @@
 import { Platform, ViewStyle } from 'react-native';
 import { getThemeMode, ThemeMode } from '@/src/lib/theme';
+import { applyBrandFontMap } from '@/src/lib/brand-font';
 
 // Scroll kitinin ortak renk/gradyan yardımcıları.
 //
@@ -48,17 +49,45 @@ export function mix(a: string, b: string, t: number): string {
 // yeniden mount ediyor ama modül seviyesindeki stiller yeniden hesaplanmıyor.
 // Yeni bileşenler stillerini bununla üretir: `const s = styles()` her render'da
 // aktif temanın (açık/koyu) önbellekteki stil tablosunu döner.
-export function themedSheet<T>(factory: () => T): () => T {
+export function themedSheet<T extends Record<string, any>>(factory: () => T): () => T {
   const cache: Partial<Record<ThemeMode, T>> = {};
   return () => {
     const mode = getThemeMode();
     let sheet = cache[mode];
     if (!sheet) {
-      sheet = factory();
+      sheet = applyBrandFontMap(factory());
       cache[mode] = sheet;
     }
     return sheet;
   };
+}
+
+// Modül seviyesindeki `const s = StyleSheet.create({...})` kalıbını hiç
+// değiştirmeden tema + marka fontu desteği kazandıran sarmalayıcı: dönen
+// nesne bir Proxy'dir, `s.card` ilk okunduğunda stil tablosu O ANKİ temaya
+// göre üretilir ve önbelleğe alınır. Böylece açık/koyu tema geçişinde
+// (ThemeProvider tüm ağacı yeniden mount ediyor) renkler güncel olur ve
+// her metin stiline doğru Plus Jakarta Sans kesimi eklenir.
+export function themedStyles<T extends Record<string, any>>(factory: () => T): T {
+  const cache: Partial<Record<ThemeMode, T>> = {};
+  const resolve = (): T => {
+    const mode = getThemeMode();
+    let sheet = cache[mode];
+    if (!sheet) {
+      sheet = applyBrandFontMap(factory());
+      cache[mode] = sheet;
+    }
+    return sheet;
+  };
+  return new Proxy({} as T, {
+    get: (_target, prop: string | symbol) => (resolve() as Record<string | symbol, unknown>)[prop],
+    has: (_target, prop) => prop in (resolve() as object),
+    ownKeys: () => Reflect.ownKeys(resolve() as object),
+    getOwnPropertyDescriptor: (_target, prop) => {
+      const d = Object.getOwnPropertyDescriptor(resolve() as object, prop);
+      return d ? { ...d, configurable: true } : undefined;
+    },
+  });
 }
 
 // Aynı isim her zaman aynı rengi alsın diye basit bir dağıtım -- liste

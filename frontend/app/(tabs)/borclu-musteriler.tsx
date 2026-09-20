@@ -7,7 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, Reveal } from '@/src/components/motion';
+import { IconBadge, Reveal, themedStyles } from '@/src/components/motion';
 
 /**
  * Tahsilat ekranındaki "BORÇLU MÜŞTERİ" kartına tıklanınca açılan liste.
@@ -100,9 +100,9 @@ export default function BorcluMusterilerScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#F5F7FA' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.colors.surfaceSoft },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
   divider: { height: 1, backgroundColor: theme.colors.line },
@@ -112,7 +112,7 @@ const s = StyleSheet.create({
   emptyTextBox: { fontSize: 13, color: theme.colors.textMuted },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line,
+    backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line,
     padding: 14, marginBottom: 10, ...theme.shadow.sm,
   },
   rowIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0F2FE', alignItems: 'center', justifyContent: 'center' },
@@ -121,4 +121,4 @@ const s = StyleSheet.create({
   curRow: { flexDirection: 'row', gap: 14, marginTop: 6, flexWrap: 'wrap' },
   curLabel: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600' },
   curValue: { fontWeight: '900', color: theme.colors.text },
-});
+}));

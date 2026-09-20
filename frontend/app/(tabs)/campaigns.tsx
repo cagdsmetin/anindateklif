@@ -8,7 +8,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { CampaignT } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 
 function trDateTime(iso: string): string {
   if (!iso) return '-';
@@ -121,15 +121,15 @@ export default function CampaignsScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+const s = themedStyles(() => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.surface },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
-  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
-  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
-  emptyBox: { marginTop: 24, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
+  statCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', letterSpacing: 0.4 },
+  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+  emptyBox: { marginTop: 24, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
   card: {
     backgroundColor: theme.colors.surface,
@@ -144,13 +144,13 @@ const s = StyleSheet.create({
   },
   cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
   cardTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
+  hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   deleteBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: theme.colors.redSoft, alignItems: 'center', justifyContent: 'center' },
   preview: { fontSize: 12, color: theme.colors.textSoft, marginTop: 8, lineHeight: 17 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
-  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden' },
   progressFill: { height: 6, borderRadius: 3, backgroundColor: theme.colors.primary },
   progressText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted },
   fab: { position: 'absolute', right: 18, width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center', ...theme.shadow.lg },
-});
+}));

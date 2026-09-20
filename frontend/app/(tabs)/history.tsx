@@ -27,8 +27,8 @@ import { shareQuoteViaWhatsApp, WHATSAPP_TEMPLATES, renderWhatsAppTemplate, canS
 import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
-import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
-import { IconBadge, MotionScrollView, Reveal, ScreenHero, compactNumber } from '@/src/components/motion';
+import { useLanguage, orderedAmounts, statusLabel, upper } from '@/src/lib/i18n';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, compactNumber, themedStyles } from '@/src/components/motion';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -371,14 +371,14 @@ export default function HistoryScreen() {
           />
           {incomingEditRequests.length > 0 && (
             <View style={{ paddingTop: 2, paddingBottom: 12, gap: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>{t('history.s046')}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.goldText }}>{t('history.s046')}</Text>
               {incomingEditRequests.map((r) => (
                 <View key={r.id} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 10,
-                  backgroundColor: '#fef3c7', borderRadius: 12, padding: 12,
+                  backgroundColor: theme.colors.goldSoft, borderRadius: 12, padding: 12,
                 }}>
                   <Ionicons name="alert-circle" size={18} color="#b45309" />
-                  <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                  <Text style={{ flex: 1, fontSize: 13, color: theme.colors.goldText }}>
                     {t('history.s047').replace('{who}', r.requestedByEmail || r.requestedByName || '').replace('{teklifNo}', r.teklifNo || '')}
                   </Text>
                   <TouchableOpacity
@@ -515,7 +515,7 @@ export default function HistoryScreen() {
                   <Text style={s.actText}>{t('history.s022')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.actBtnIcon, { backgroundColor: '#E8F5E9' }]}
+                  style={[s.actBtnIcon, { backgroundColor: theme.colors.greenSoft }]}
                   onPress={() => doExcelDownload(quote)}
                   testID={`excel-${quote.id}`}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -523,7 +523,7 @@ export default function HistoryScreen() {
                   <Ionicons name="grid-outline" size={16} color="#107C41" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[s.actBtn, { backgroundColor: '#dcfce7' }, waSharingId === quote.id && { opacity: 0.6 }]}
+                  style={[s.actBtn, { backgroundColor: theme.colors.greenSoft }, waSharingId === quote.id && { opacity: 0.6 }]}
                   onPress={() => setWaMenuFor(quote.id)}
                   disabled={waSharingId === quote.id}
                   testID={`whatsapp-${quote.id}`}
@@ -613,7 +613,7 @@ export default function HistoryScreen() {
                 return (
                   <TouchableOpacity
                     key={st}
-                    style={[s.menuItem, { backgroundColor: '#F1F5F9', borderColor: theme.colors.line }]}
+                    style={[s.menuItem, { backgroundColor: theme.colors.surfaceSoft, borderColor: theme.colors.line }]}
                     onPress={() => showToast(t('history.s028'))}
                   >
                     <Ionicons name="lock-closed" size={13} color={theme.colors.textMuted} style={{ marginRight: 6 }} />
@@ -678,7 +678,7 @@ export default function HistoryScreen() {
                     {/* Kalem kalem girmek istemeyenler için: serbest açıklama + toplam
                         tutar satırları en üstte, hemen görünsün -- kalem listesini
                         kaydırmaya gerek kalmasın. */}
-                    <Text style={s.ekstraMaliyetSectionLabel}>{t('history.s054')}</Text>
+                    <Text style={s.ekstraMaliyetSectionLabel}>{upper(t('history.s054'))}</Text>
                     {ekstraMaliyetRows.map((row) => (
                       <View key={row.id} style={s.ekstraMaliyetRow}>
                         <TextInput
@@ -716,7 +716,7 @@ export default function HistoryScreen() {
                       <Text style={s.ekstraMaliyetAddText}>{t('history.s050')}</Text>
                     </TouchableOpacity>
                     {items.length > 0 && (
-                      <Text style={[s.ekstraMaliyetSectionLabel, { marginTop: 14 }]}>{t('history.s055')}</Text>
+                      <Text style={[s.ekstraMaliyetSectionLabel, { marginTop: 14 }]}>{upper(t('history.s055'))}</Text>
                     )}
                     {items.length === 0 ? null : (
                       items.map((it) => {
@@ -922,7 +922,7 @@ export default function HistoryScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   headBlock: { paddingHorizontal: 14, paddingTop: 12 },
   stickyBar: { backgroundColor: theme.colors.surfaceSoft, paddingHorizontal: 14, paddingTop: 4, zIndex: 10 },
@@ -930,12 +930,12 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  statCard: { flexGrow: 1, flexBasis: '47%', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
-  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
-  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
+  statCard: { flexGrow: 1, flexBasis: '47%', backgroundColor: theme.colors.surface, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.sm },
+  statLabel: { fontSize: 10.5, color: theme.colors.textMuted, fontWeight: '800', letterSpacing: 0.4 },
+  statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
   statSubLabel: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 2 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
-  trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, ...theme.shadow.sm },
+  trashEntryBtn: { width: 42, height: 42, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.line, alignItems: 'center', justifyContent: 'center', ...theme.shadow.sm },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
   // Yatay ScrollView'un DIŞ style'ı web'de kesin bir yükseklik almazsa
   // (sadece flexGrow:0 yeterli değil) içerik üstten/alttan kırpılıyor --
@@ -944,7 +944,7 @@ const s = StyleSheet.create({
   // hem kırpılmayı önlüyoruz hem de chip boyu değişse bile taşmıyor.
   filterRowOuter: { flexGrow: 0, minHeight: 62 },
   filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingVertical: 12, alignItems: 'center' },
-  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
+  filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },
@@ -968,7 +968,7 @@ const s = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   amountCol: { alignItems: 'flex-end', maxWidth: 168 },
   hNo: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
-  hFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
+  hFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
   hProje: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   hAmount: { fontSize: 15, fontWeight: '900', color: theme.colors.primary, letterSpacing: -0.3 },
@@ -976,44 +976,44 @@ const s = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1, marginTop: 8 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
   maliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
-  maliyetText: { fontSize: 11, color: theme.colors.navy, fontWeight: '700', flexShrink: 1 },
+  maliyetText: { fontSize: 11, color: theme.colors.text, fontWeight: '700', flexShrink: 1 },
   maliyetTextMuted: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '700' },
-  maliyetTextInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: theme.colors.navy, minWidth: 200, textAlign: 'center' },
+  maliyetTextInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: theme.colors.text, minWidth: 200, textAlign: 'center' },
   itemMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy },
+  itemMaliyetName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
   itemMaliyetSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
-  itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.navy, width: 90, textAlign: 'center' },
-  ekstraMaliyetSectionLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 },
+  itemMaliyetInput: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: theme.colors.text, width: 90, textAlign: 'center' },
+  ekstraMaliyetSectionLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3, marginBottom: 6 },
   realPaymentWarnBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: theme.colors.redSoft, borderRadius: 10, padding: 10, marginTop: 8, width: '100%' },
   realPaymentWarnText: { flex: 1, fontSize: 11.5, fontWeight: '700', color: theme.colors.red, lineHeight: 16 },
   ekstraMaliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
-  ekstraMaliyetAciklamaInput: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12.5, color: theme.colors.navy },
+  ekstraMaliyetAciklamaInput: { flex: 1, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12.5, color: theme.colors.text },
   ekstraMaliyetAddBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, marginTop: 8 },
   ekstraMaliyetAddText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.primary },
   maliyetSummaryBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, gap: 4, width: '100%' },
-  maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy, textAlign: 'right' },
+  maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, textAlign: 'right' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
   actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 9, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 12, flex: 1, justifyContent: 'center' },
   actBtnIcon: { width: 40, paddingVertical: 9, backgroundColor: theme.colors.redSoft, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary, letterSpacing: 0.2 },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 30 },
-  confirmBox: { backgroundColor: '#fff', padding: 20, borderRadius: 18, alignItems: 'center', ...theme.shadow.lg },
+  confirmBox: { backgroundColor: theme.colors.surface, padding: 20, borderRadius: 18, alignItems: 'center', ...theme.shadow.lg },
   confirmIconWrap: { width: 46, height: 46, borderRadius: 23, backgroundColor: theme.colors.redSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   confirmBody: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 19, marginBottom: 4 },
   confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   confirmBtnGhost: { backgroundColor: theme.colors.surfaceSoft },
-  confirmBtnGhostText: { color: theme.colors.navy, fontWeight: '800', fontSize: 13 },
+  confirmBtnGhostText: { color: theme.colors.text, fontWeight: '800', fontSize: 13 },
   confirmBtnDanger: { backgroundColor: theme.colors.red },
   confirmBtnDangerText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  menu: { backgroundColor: '#fff', padding: 16, borderRadius: 16, gap: 8, ...theme.shadow.lg },
-  menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginBottom: 6, textAlign: 'center' },
+  menu: { backgroundColor: theme.colors.surface, padding: 16, borderRadius: 16, gap: 8, ...theme.shadow.lg },
+  menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 6, textAlign: 'center' },
   menuItem: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   menuItemText: { fontSize: 13, fontWeight: '800' },
-  waMenu: { backgroundColor: '#fff', padding: 16, borderRadius: 16, ...theme.shadow.lg, maxHeight: '80%' },
-  waTemplateCard: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: '#f8fafc' },
+  waMenu: { backgroundColor: theme.colors.surface, padding: 16, borderRadius: 16, ...theme.shadow.lg, maxHeight: '80%' },
+  waTemplateCard: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: theme.colors.surfaceSoft },
   waTemplateHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  waTemplateLabel: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy },
+  waTemplateLabel: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text },
   waTemplatePreview: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15 },
   waCancelBtn: { marginTop: 4, paddingVertical: 10, alignItems: 'center' },
   waCancelText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textMuted },
-});
+}));

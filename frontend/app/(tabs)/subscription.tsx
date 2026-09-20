@@ -17,8 +17,8 @@ import { theme } from '@/src/lib/theme';
 import { api, RatesT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
-import { useLanguage } from '@/src/lib/i18n';
-import { Aurora, BorderBeam, CountUp, MotionInput, MotionScrollView, Reveal } from '@/src/components/motion';
+import { useLanguage, upper } from '@/src/lib/i18n';
+import { Aurora, BorderBeam, CountUp, MotionInput, MotionScrollView, Reveal, themedStyles } from '@/src/components/motion';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type PlanT = {
@@ -372,7 +372,7 @@ export default function SubscriptionScreen() {
             {showPlanSection && (
               <>
                 {/* Plan picker */}
-                <Text style={s.formLabel}>Plan Seç</Text>
+                <Text style={s.formLabel}>{upper('Plan Seç')}</Text>
                 {status && (status.seat_count ?? 1) > 1 && (
                   <View style={s.seatNote} testID="sub-seat-note">
                     <Ionicons name="people-outline" size={14} color={theme.colors.primary} />
@@ -454,7 +454,7 @@ export default function SubscriptionScreen() {
                 </View>
 
                 {/* Billing form */}
-                <Text style={s.formLabel}>Fatura Bilgileri</Text>
+                <Text style={s.formLabel}>{upper('Fatura Bilgileri')}</Text>
                 <View style={s.card}>
                   <FieldRow label="TC Kimlik / Vergi No" icon="card-outline" placeholder="11111111111" value={kimlikNo} onChange={setKimlikNo} keyboardType="number-pad" testID="sub-identity" />
                   <FieldRow label="Adres" icon="location-outline" placeholder="Fatura adresi" value={adres} onChange={setAdres} multiline testID="sub-address" />
@@ -538,7 +538,7 @@ function FieldRow({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
@@ -546,7 +546,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.surfaceSoft,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, letterSpacing: 0.1 },
@@ -658,9 +658,9 @@ const s = StyleSheet.create({
   },
   radioOuterSelected: { borderColor: theme.colors.primary },
   radioInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.colors.primary },
-  formLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
+  formLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginBottom: 10, letterSpacing: 0.3, },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -672,7 +672,7 @@ const s = StyleSheet.create({
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBFDFF',
+    backgroundColor: theme.colors.surfaceSoft,
     borderWidth: 1,
     borderColor: theme.colors.line,
     borderRadius: 11,
@@ -721,13 +721,13 @@ const s = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 999,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   promoToggleText: { flex: 1, fontSize: 13.5, fontWeight: '800', color: theme.colors.goldDark },
   promoBox: { marginTop: -10, marginBottom: 18, backgroundColor: theme.colors.goldSoft, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: theme.colors.goldBorder },
   promoBtn: { backgroundColor: theme.colors.gold, borderRadius: 12, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
-  promoBtnText: { color: '#0F172A', fontSize: 13.5, fontWeight: '900' },
-  promoSuccess: { color: '#166534', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-});
+  promoBtnText: { color: theme.colors.text, fontSize: 13.5, fontWeight: '900' },
+  promoSuccess: { color: theme.colors.greenText, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+}));

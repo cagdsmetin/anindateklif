@@ -11,6 +11,7 @@ import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
 import FloatingTabBar from '@/src/components/FloatingTabBar';
+import { themedStyles } from '@/src/components/motion';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -161,7 +162,7 @@ function ImpersonationBanner() {
   );
 }
 
-const ib = StyleSheet.create({
+const ib = themedStyles(() => StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,7 +174,7 @@ const ib = StyleSheet.create({
   text: { flex: 1, color: '#fff', fontSize: 12.5, fontWeight: '700' },
   btn: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   btnText: { color: '#fff', fontSize: 11.5, fontWeight: '800' },
-});
+}));
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -261,7 +262,7 @@ export default function TabsLayout() {
   );
 }
 
-const sb = StyleSheet.create({
+const sb = themedStyles(() => StyleSheet.create({
   desktopRow: { flex: 1, flexDirection: 'row' },
   container: { width: 232, backgroundColor: theme.colors.navyDark, paddingHorizontal: 12, paddingVertical: 16 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingBottom: 18, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
@@ -281,6 +282,6 @@ const sb = StyleSheet.create({
   reorderArrowBtnDisabled: { opacity: 0.3 },
   signoutItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 12, borderRadius: 10, marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   signoutText: { fontSize: 13, fontWeight: '800', color: theme.colors.red },
-  contentOuter: { flex: 1, backgroundColor: '#F5F7FA' },
+  contentOuter: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   contentInner: { flex: 1, width: '100%' },
-});
+}));

@@ -18,7 +18,7 @@ import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { useAuth } from '@/src/state/AuthContext';
 import { api } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView } from '@/src/components/motion';
+import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
 
 const TOTAL_STEPS = 6;
 
@@ -435,7 +435,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg },
   header: {
     flexDirection: 'row',
@@ -538,4 +538,4 @@ const s = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.55 },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-});
+}));

@@ -14,8 +14,8 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, RatesT } from '@/src/lib/api';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
-import { useLanguage, statusLabel } from '@/src/lib/i18n';
-import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, compactNumber } from '@/src/components/motion';
+import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, themedStyles } from '@/src/components/motion';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
@@ -165,7 +165,7 @@ export default function KasaScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('kasa.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100, width: '100%', maxWidth: 1100, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <ScreenHero
             icon="wallet"
             title={t('kasa.s011')}
@@ -200,14 +200,14 @@ export default function KasaScreen() {
           <View style={s.card}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
               <TouchableOpacity style={[s.turBtn, tur === 'gelir' && s.turBtnGelirActive]} onPress={() => setTurAndKategori('gelir')} testID="kasa-tur-gelir">
-                <Text style={[s.turBtnText, tur === 'gelir' && { color: '#166534' }]}>{t('kasa.s017')}</Text>
+                <Text style={[s.turBtnText, tur === 'gelir' && { color: theme.colors.greenText }]}>{t('kasa.s017')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.turBtn, tur === 'gider' && s.turBtnGiderActive]} onPress={() => setTurAndKategori('gider')} testID="kasa-tur-gider">
-                <Text style={[s.turBtnText, tur === 'gider' && { color: '#991b1b' }]}>{t('kasa.s018')}</Text>
+                <Text style={[s.turBtnText, tur === 'gider' && { color: theme.colors.redText }]}>{t('kasa.s018')}</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={s.label}>{t('kasa.s019')}</Text>
+            <Text style={s.label}>{upper(t('kasa.s019'))}</Text>
             <View style={s.chipRow}>
               {kategoriler.map((k) => (
                 <TouchableOpacity key={k} style={[s.chip, kategori === k && s.chipActive]} onPress={() => setKategori(k)} testID={`kasa-kategori-${k}`}>
@@ -218,11 +218,11 @@ export default function KasaScreen() {
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1.4 }}>
-                <Text style={s.label}>{t('kasa.s020')}</Text>
+                <Text style={s.label}>{upper(t('kasa.s020'))}</Text>
                 <MotionInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="kasa-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.label}>{t('kasa.s021')}</Text>
+                <Text style={s.label}>{upper(t('kasa.s021'))}</Text>
                 <View style={{ flexDirection: 'row', gap: 4 }}>
                   {CURRENCIES.map((c) => (
                     <TouchableOpacity key={c} style={[s.curChip, paraBirimi === c && s.curChipActive]} onPress={() => setParaBirimi(c)}>
@@ -233,7 +233,7 @@ export default function KasaScreen() {
               </View>
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>{t('kasa.s022')}</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{upper(t('kasa.s022'))}</Text>
             <View style={s.chipRow}>
               {YONTEMLER.map((y) => (
                 <TouchableOpacity key={y} style={[s.chip, yontem === y && s.chipActive]} onPress={() => setYontem(y)}>
@@ -242,7 +242,7 @@ export default function KasaScreen() {
               ))}
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? t('kasa.s023') : t('common.notOptional')}</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{upper(isDiger ? t('kasa.s023') : t('common.notOptional'))}</Text>
             <MotionInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
@@ -270,7 +270,7 @@ export default function KasaScreen() {
                 {kategoriDagilimi.map((k) => (
                   <View key={k.kategori} style={{ marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <Text style={s.katLabel}>{statusLabel(lang, k.kategori)} <Text style={s.katSub}>{k.tur}</Text></Text>
+                      <Text style={s.katLabel}>{statusLabel(lang, k.kategori)} <Text style={s.katSub}>{upper(k.tur)}</Text></Text>
                       <Text style={[s.katAmount, { color: k.tur === 'gelir' ? '#166534' : '#991b1b' }]}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.toplam, 'TRY')}</Text>
                     </View>
                     <View style={s.barBg}><View style={[s.barFill, { width: `${k.pct}%`, backgroundColor: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} /></View>
@@ -292,12 +292,15 @@ export default function KasaScreen() {
             </View>
           ) : (
             filtered.map((k) => (
-              <Reveal key={k.id}>
+              <Reveal key={k.id} variant={parseInt(k.id.replace(/\D/g, '') || '0', 10) % 2 === 0 ? 'left' : 'right'} distance={16}>
               <View style={s.txRow} testID={`kasa-tx-${k.id}`}>
-                <View style={[s.txIcon, { backgroundColor: k.tur === 'gelir' ? theme.colors.greenSoft : theme.colors.redSoft }]}>
-                  <Ionicons name={k.tur === 'gelir' ? 'arrow-down' : 'arrow-up'} size={16} color={k.tur === 'gelir' ? theme.colors.green : theme.colors.red} />
-                </View>
-                <View style={{ flex: 1 }}>
+                <SoftIcon
+                  icon={k.tur === 'gelir' ? 'arrow-down' : 'arrow-up'}
+                  color={k.tur === 'gelir' ? theme.colors.green : theme.colors.red}
+                  size={34}
+                  iconSize={16}
+                />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>{statusLabel(lang, k.yontem)} · {k.tarih}</Text>
                 </View>
@@ -315,7 +318,7 @@ export default function KasaScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
@@ -324,19 +327,19 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
   statValue: { fontSize: 15, fontWeight: '900', marginTop: 4 },
   statSubValue: { fontSize: 9.5, fontWeight: '700', marginTop: 2, opacity: 0.75 },
-  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.kasa, letterSpacing: 0.5 },
-  card: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
-  turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: '#fff' },
+  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.text, marginTop: 20, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.modules.kasa, letterSpacing: 0.5 },
+  card: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
+  turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: theme.colors.surface },
   turBtnGelirActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
   turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
-  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, letterSpacing: 0.4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff' },
+  chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
   chipActive: { backgroundColor: theme.colors.modules.kasa, borderColor: theme.colors.modules.kasa },
   chipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted },
   chipTextActive: { color: '#fff' },
-  curChip: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: '#fff', alignItems: 'center' },
+  curChip: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface, alignItems: 'center' },
   curChipActive: { backgroundColor: theme.colors.modules.kasa, borderColor: theme.colors.modules.kasa },
   curChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   curChipTextActive: { color: '#fff' },
@@ -345,17 +348,29 @@ const s = StyleSheet.create({
   saveBtn: { marginTop: 16, backgroundColor: theme.colors.modules.kasa, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },
   katLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
-  katSub: { fontSize: 10, fontWeight: '600', color: theme.colors.textMuted, textTransform: 'uppercase' },
+  katSub: { fontSize: 10, fontWeight: '600', color: theme.colors.textMuted, },
   katAmount: { fontSize: 12.5, fontWeight: '900' },
-  barBg: { height: 6, borderRadius: 3, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden' },
-  barFill: { height: 6, borderRadius: 3 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
+  barBg: { height: 10, borderRadius: 5, backgroundColor: theme.colors.surfaceSoft, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 5 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
-  emptyBox: { marginTop: 12, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 26, alignItems: 'center', gap: 8 },
+  emptyBox: { marginTop: 12, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 26, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  txRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginTop: 8 },
+  txRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    ...theme.shadow.sm,
+  },
   txIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   txKat: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   txMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   txAmount: { fontSize: 13, fontWeight: '900', marginRight: 4 },
-});
+}));

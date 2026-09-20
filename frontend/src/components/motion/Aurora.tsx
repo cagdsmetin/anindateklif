@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useScrollScene } from './scene';
-import { alpha, cssGradient, glowBlob } from './paint';
+import { alpha, cssGradient, glowBlob, themedStyles } from './paint';
 
 const GRID = 24;
 
@@ -103,10 +103,10 @@ export default function Aurora({
   );
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   wrap: { overflow: 'hidden', position: 'relative' },
   blob: { position: 'absolute', borderRadius: 999 },
   gridV: { position: 'absolute', top: 0, bottom: 0, width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.07)' },
   gridH: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.07)' },
   content: { position: 'relative' },
-});
+}));

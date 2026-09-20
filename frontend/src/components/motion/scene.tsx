@@ -11,6 +11,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { themedStyles } from './paint';
 
 // ============================================================================
 // Scroll sahnesi -- 21st.dev'deki scroll animasyonlarının (Scroll Progress,
@@ -172,7 +173,7 @@ export function useViewportProgress(
   return progress;
 }
 
-const s = StyleSheet.create({
+const s = themedStyles(() => StyleSheet.create({
   wrap: { flex: 1 },
   fill: { flex: 1 },
   progressTrack: {
@@ -184,4 +185,4 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 20,
   },
-});
+}));

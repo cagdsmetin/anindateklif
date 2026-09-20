@@ -5,12 +5,14 @@ import { ActivityIndicator, LogBox, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
+import { useBrandFonts } from '@/src/hooks/use-brand-fonts';
 import { AuthProvider, useAuth } from '@/src/state/AuthContext';
 import { AppProvider } from '@/src/state/AppContext';
 import { LanguageProvider } from '@/src/lib/i18n';
 import { ThemeProvider } from '@/src/lib/theme-context';
 import { authTheme } from '@/src/lib/auth-theme';
 import SupportBubble from '@/src/components/SupportBubble';
+import { theme } from '@/src/lib/theme';
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -76,6 +78,10 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
+  // Marka yazı tipi (Plus Jakarta Sans). Yüklenmesi beklenmez: hazır
+  // olduğunda kendiliğinden yeniden çizilir, o ana kadar sistem fontu
+  // kullanılır -- açılış hiç gecikmez, font gelmezse uygulama yine çalışır.
+  useBrandFonts();
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();
@@ -90,7 +96,7 @@ export default function RootLayout() {
           <LanguageProvider>
             <AppProvider>
               <RouteGuard>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fff' } }} />
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.surface } }} />
               </RouteGuard>
             </AppProvider>
           </LanguageProvider>

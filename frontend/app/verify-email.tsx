@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -8,6 +14,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import { api } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionScrollView } from '@/src/components/motion';
 
 /**
  * Kayıt sırasında gönderilen e-postadaki bağlantı buraya açılır:
@@ -50,7 +57,7 @@ export default function VerifyEmailScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={s.scroll}>
+      <MotionScrollView contentContainerStyle={s.scroll}>
         <View style={s.logoWrap}>
           <BrandLogo size={72} />
         </View>
@@ -86,7 +93,7 @@ export default function VerifyEmailScreen() {
             <Text style={s.ctaText}>{user ? t('verifyEmail.s006') : t('verifyEmail.s007')}</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </MotionScrollView>
     </SafeAreaView>
   );
 }

@@ -3,10 +3,8 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon } from '@/src/components/motion';
 
 /**
  * Müşteri bazlı cari hesap (para akışı) ekranı.
@@ -170,7 +169,12 @@ export default function CustomerLedgerScreen() {
       <View style={s.divider} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="book"
+            title={'Müşteri Ekstresi'}
+            color={theme.colors.modules.tahsilat}
+          />
 
           <View style={s.balanceCard}>
             <Text style={s.balanceLabel}>{t('customerLedger.s010')}</Text>
@@ -205,7 +209,7 @@ export default function CustomerLedgerScreen() {
               </View>
 
               <View style={s.amountRow}>
-                <TextInput
+                <MotionInput
                   style={s.amountInput}
                   placeholder={t('customerLedger.s017')}
                   keyboardType="decimal-pad"
@@ -231,7 +235,7 @@ export default function CustomerLedgerScreen() {
                   ))}
                 </View>
               ) : (
-                <TextInput
+                <MotionInput
                   style={s.input}
                   placeholder={t('customerLedger.s018')}
                   value={vadeTarihi}
@@ -240,7 +244,7 @@ export default function CustomerLedgerScreen() {
                 />
               )}
 
-              <TextInput
+              <MotionInput
                 style={[s.input, { marginTop: 10 }, isDiger && s.inputHighlight]}
                 placeholder={isDiger ? t('customerLedger.s019') : 'Not (opsiyonel)'}
                 value={notlar}
@@ -268,10 +272,14 @@ export default function CustomerLedgerScreen() {
           ) : (
             <View style={s.card}>
               {entries.map((tx, i) => (
-                <View key={tx.id} style={[s.entryRow, i === entries.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
-                  <View style={[s.entryIcon, { backgroundColor: tx.tur === 'borc' ? '#FEF2F2' : '#ECFDF5' }]}>
-                    <Ionicons name={tx.tur === 'borc' ? 'arrow-up' : 'arrow-down'} size={15} color={tx.tur === 'borc' ? '#DC2626' : '#059669'} />
-                  </View>
+                <Reveal key={tx.id} variant={i % 2 === 0 ? 'left' : 'right'} distance={16}>
+                <View style={[s.entryRow, i === entries.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
+                  <SoftIcon
+                    icon={tx.tur === 'borc' ? 'arrow-up' : 'arrow-down'}
+                    color={tx.tur === 'borc' ? '#DC2626' : '#059669'}
+                    size={32}
+                    iconSize={15}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={s.entryTitle}>{tx.tur === 'borc' ? t('customerLedger.s023') : t('nav.tahsilat')} · {statusLabel(lang, tx.yontem)}</Text>
                     <Text style={s.entryMeta}>{trDate(tx.tarih)}{tx.notlar ? ' · ' + tx.notlar : ''}</Text>
@@ -283,10 +291,11 @@ export default function CustomerLedgerScreen() {
                     <Ionicons name="trash-outline" size={15} color={theme.colors.textMuted} />
                   </TouchableOpacity>
                 </View>
+                </Reveal>
               ))}
             </View>
           )}
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -333,7 +342,7 @@ const s = StyleSheet.create({
   methodChipText: { fontSize: 12, fontWeight: '700', color: theme.colors.text },
   methodChipTextActive: { color: '#fff' },
 
-  input: { backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 14, color: theme.colors.text },
+  input: { backgroundColor: '#FBFDFF', borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, height: 44, fontSize: 14, color: theme.colors.text },
   inputHighlight: { borderColor: theme.colors.red, backgroundColor: '#FEF2F2' },
 
   formActions: { flexDirection: 'row', gap: 8, marginTop: 12 },

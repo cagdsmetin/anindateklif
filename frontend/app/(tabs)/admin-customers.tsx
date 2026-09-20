@@ -3,11 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +16,7 @@ import { theme } from '@/src/lib/theme';
 import { api, AdminCustomerT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -161,7 +160,12 @@ export default function AdminCustomersScreen() {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="key"
+            title={'Müşteri Olarak Gir'}
+            color={theme.colors.gold}
+          />
           <View style={s.infoBox}>
             <Ionicons name="shield-checkmark-outline" size={16} color={theme.colors.primary} />
             <Text style={s.infoText}>
@@ -194,7 +198,7 @@ export default function AdminCustomersScreen() {
             </View>
           ) : null}
 
-          <TextInput
+          <MotionInput
             style={s.search}
             placeholder="Firma, isim veya e-posta ara..."
             placeholderTextColor="#94a3b8"
@@ -218,8 +222,9 @@ export default function AdminCustomersScreen() {
           {filtered.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Kayıt bulunamadı.</Text>
           ) : (
-            filtered.map((c) => (
-              <View key={c.user_id} style={s.row}>
+            filtered.map((c, idx) => (
+              <Reveal key={c.user_id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
+              <View style={s.row}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.rowTitle} numberOfLines={1}>{c.company_name || c.name || c.email}</Text>
                   <Text style={s.rowMeta} numberOfLines={1}>{c.email}{c.phone ? ` · ${c.phone}` : ''}</Text>
@@ -265,9 +270,10 @@ export default function AdminCustomersScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+              </Reveal>
             ))
           )}
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );

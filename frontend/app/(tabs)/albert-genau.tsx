@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -46,6 +45,7 @@ import {
 import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
+import { MotionScrollView } from '@/src/components/motion';
 
 // Albert Genau parametrik pergola/bioklimatik hesaplayıcı — genel Katalog ve
 // Ürün/Hizmet Yapılandırıcı'dan tamamen ayrı bir bölüm. Dealer genişlik/
@@ -982,7 +982,7 @@ export default function AlbertGenauScreen() {
       <View style={s.divider} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 140 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -2004,7 +2004,7 @@ export default function AlbertGenauScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
 
       <NavDrawer visible={drawerVisible} onClose={() => setDrawerVisible(false)} />

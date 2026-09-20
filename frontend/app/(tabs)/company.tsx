@@ -5,10 +5,8 @@ import {
   Linking,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -23,6 +21,10 @@ import { useLanguage, LANGUAGES } from '@/src/lib/i18n';
 import { useAppTheme } from '@/src/lib/theme-context';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
+import { alpha, BubbleButton, hashColor, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, useViewportProgress } from '@/src/components/motion';
+import AnimatedPressable from '@/src/components/AnimatedPressable';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
 
 const uid = () => 'x-' + Date.now() + Math.random().toString(36).slice(2, 8);
 
@@ -154,10 +156,29 @@ export default function CompanyScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('firma.headerTitle')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled">
+        <MotionScrollView
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }}
+          keyboardShouldPersistTaps="handled"
+          progressColors={[theme.colors.modules.firma, theme.colors.primary, '#A855F7']}
+        >
+          <ScreenHero
+            icon="business"
+            title={t('firma.headerTitle')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.primary}
+            stats={
+              user?.is_staff
+                ? undefined
+                : [
+                    { label: t('firma.myCompanies'), value: companies.length },
+                    { label: t('firma.bankAccounts'), value: (form.banklar || []).length },
+                  ]
+            }
+          />
           {!user?.is_staff && (
             <>
             {/* Companies list */}
+            <Reveal>
             <View style={s.companyListBox}>
               <View style={s.compHdr}>
                 <Text style={s.sectionH2}>{t('firma.myCompanies')} ({companies.length})</Text>
@@ -168,8 +189,8 @@ export default function CompanyScreen() {
                 return (
                   <TouchableOpacity key={c.id} testID={`switch-company-${c.id}`} style={[s.compItem, active && s.compItemActive]} onPress={() => setActiveCompanyId(c.id)}>
                     {c.logoBase64 ? <Image source={{ uri: c.logoBase64 }} style={s.compLogo} /> : (
-                      <View style={[s.compLogo, { backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }]}>
-                        <Ionicons name="business-outline" size={16} color={theme.colors.primary} />
+                      <View style={[s.compLogo, { backgroundColor: hashColor(c.sirketAdi || c.id), alignItems: 'center', justifyContent: 'center' }]}>
+                        <Text style={s.compLogoLetter}>{(c.sirketAdi || '?').trim().charAt(0).toUpperCase()}</Text>
                       </View>
                     )}
                     <Text style={[s.compName, active && s.compNameActive]} numberOfLines={1}>{c.sirketAdi}</Text>
@@ -178,8 +199,9 @@ export default function CompanyScreen() {
                 );
               })}
             </View>
+            </Reveal>
             {/* Logo */}
-            <SectionHeader title={t('firma.companyLogo')} />
+            <SectionHeader title={t('firma.companyLogo')} icon="image" />
             <View style={s.logoBox}>
               {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
                 <View style={s.logoPlaceholder}>
@@ -188,10 +210,14 @@ export default function CompanyScreen() {
                 </View>
               )}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                <TouchableOpacity style={[s.btnPri, { flex: 1 }]} onPress={pickLogo} testID="pick-logo-btn">
-                  <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                  <Text style={s.btnPriText}>{form.logoBase64 ? t('firma.changeLogo') : t('firma.uploadLogo')}</Text>
-                </TouchableOpacity>
+                <BubbleButton
+                  icon="cloud-upload"
+                  label={form.logoBase64 ? t('firma.changeLogo') : t('firma.uploadLogo')}
+                  color={theme.colors.primary}
+                  onPress={pickLogo}
+                  testID="pick-logo-btn"
+                  style={{ flex: 1 }}
+                />
                 {form.logoBase64 && (
                   <TouchableOpacity style={s.btnDangerSmall} onPress={removeLogo}>
                     <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
@@ -201,22 +227,22 @@ export default function CompanyScreen() {
             </View>
 
             {/* Info */}
-            <SectionHeader title={t('firma.companyInfo')} />
-            <Field label={t('firma.companyName')}><TextInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
-            <Field label={t('firma.address')}><TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
+            <SectionHeader title={t('firma.companyInfo')} icon="business" />
+            <Field label={t('firma.companyName')}><MotionInput style={s.input} value={form.sirketAdi} onChangeText={(v) => setForm({ ...form, sirketAdi: v })} testID="company-name-input" /></Field>
+            <Field label={t('firma.address')}><MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={form.adres} onChangeText={(v) => setForm({ ...form, adres: v })} testID="company-address-input" /></Field>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Field label={t('firma.phone')} flex={1}><TextInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
-              <Field label={t('firma.phone2')} flex={1}><TextInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
+              <Field label={t('firma.phone')} flex={1}><MotionInput style={s.input} value={form.telefon} onChangeText={(v) => setForm({ ...form, telefon: v })} testID="company-phone-input" /></Field>
+              <Field label={t('firma.phone2')} flex={1}><MotionInput style={s.input} value={form.telefon2} onChangeText={(v) => setForm({ ...form, telefon2: v })} /></Field>
             </View>
-            <Field label={t('firma.email')}><TextInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
-            <Field label={t('firma.website')}><TextInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
+            <Field label={t('firma.email')}><MotionInput style={s.input} autoCapitalize="none" keyboardType="email-address" value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} testID="company-email-input" /></Field>
+            <Field label={t('firma.website')}><MotionInput style={s.input} autoCapitalize="none" value={form.website} onChangeText={(v) => setForm({ ...form, website: v })} /></Field>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Field label={t('firma.taxOffice')} flex={1}><TextInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
-              <Field label={t('firma.taxNo')} flex={1}><TextInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
+              <Field label={t('firma.taxOffice')} flex={1}><MotionInput style={s.input} value={form.vergiDairesi} onChangeText={(v) => setForm({ ...form, vergiDairesi: v })} /></Field>
+              <Field label={t('firma.taxNo')} flex={1}><MotionInput style={s.input} value={form.vergiNo} onChangeText={(v) => setForm({ ...form, vergiNo: v })} /></Field>
             </View>
 
             {/* Bank Accounts */}
-            <SectionHeader title={t('firma.bankAccounts')} />
+            <SectionHeader title={t('firma.bankAccounts')} icon="card" />
             <Text style={s.hint}>{t('firma.bankAccountsHint')}</Text>
             {(form.banklar || []).map((b) => (
               <View key={b.id} style={s.bankCard}>
@@ -224,9 +250,9 @@ export default function CompanyScreen() {
                   <Text style={s.bankNo}>{t('firma.bank')}</Text>
                   <TouchableOpacity onPress={() => removeBank(b.id)}><Ionicons name="close-circle" size={20} color={theme.colors.red} /></TouchableOpacity>
                 </View>
-                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.bankTypePlaceholder')} placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
-                <TextInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.accountHolder')} placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
-                <TextInput style={s.input} placeholder={t('firma.ibanPlaceholder')} placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
+                <MotionInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.bankTypePlaceholder')} placeholderTextColor="#94a3b8" value={b.turu} onChangeText={(v) => updateBank(b.id, { turu: v })} />
+                <MotionInput style={[s.input, { marginBottom: 6 }]} placeholder={t('firma.accountHolder')} placeholderTextColor="#94a3b8" value={b.hesapSahibi} onChangeText={(v) => updateBank(b.id, { hesapSahibi: v })} />
+                <MotionInput style={s.input} placeholder={t('firma.ibanPlaceholder')} placeholderTextColor="#94a3b8" value={b.iban} onChangeText={(v) => updateBank(b.id, { iban: v })} autoCapitalize="characters" />
               </View>
             ))}
             <TouchableOpacity style={s.addDashed} onPress={addBank} testID="add-bank-btn">
@@ -234,10 +260,18 @@ export default function CompanyScreen() {
               <Text style={s.addDashedText}>{t('firma.addBankAccount')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn">
-              <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>{t('firma.saveCompanyInfo')}</Text>
-            </TouchableOpacity>
+            <Reveal variant="scale">
+              <TouchableOpacity style={s.saveBtn} onPress={save} testID="save-company-btn" activeOpacity={0.9}>
+                <LinearGradient
+                  colors={['#6366F1', '#4F46E5', '#7C3AED']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Ionicons name="checkmark-done" size={18} color="#fff" />
+                <Text style={s.saveBtnText}>{t('firma.saveCompanyInfo')}</Text>
+              </TouchableOpacity>
+            </Reveal>
 
             {companies.length > 1 && (
               <TouchableOpacity style={s.deleteCompanyBtn} onPress={() => setShowConfirmDelete(true)} testID="delete-company-btn">
@@ -250,7 +284,7 @@ export default function CompanyScreen() {
 
           {user?.is_staff && (
             <>
-              <SectionHeader title={t('firma.companyLogo')} />
+              <SectionHeader title={t('firma.companyLogo')} icon="image" />
               <View style={s.logoBox}>
                 {form.logoBase64 ? <Image source={{ uri: form.logoBase64 }} style={s.logoPreview} resizeMode="contain" /> : (
                   <View style={s.logoPlaceholder}>
@@ -266,16 +300,16 @@ export default function CompanyScreen() {
               seçim backend'e (User.language) kaydedilir, tüm cihazlarda aynı
               dilde açılır. Sıra bilerek TR -> EN -> IT: en tanıdıktan en
               yeni pazara doğru. */}
-          <SectionHeader title={t('firma.appLanguage')} />
+          <SectionHeader title={t('firma.appLanguage')} icon="language" />
           <LanguageSwitcher />
 
           {/* Görünüm — açık/koyu tema. Dil ile aynı desen: seçim backend'e
               (User.theme) kaydedilir, tüm cihazlarda aynı temada açılır. */}
-          <SectionHeader title="Görünüm" />
+          <SectionHeader title="Görünüm" icon="color-palette" />
           <ThemeSwitcher />
 
           {/* Hesabım — e-posta + telefon doğrulama */}
-          <SectionHeader title={t('firma.myAccount')} />
+          <SectionHeader title={t('firma.myAccount')} icon="person-circle" />
           {user?.email_verified === false && (
             <View style={[s.supportBox, { marginBottom: 10 }]}>
               <View style={{ paddingHorizontal: 4, paddingTop: 2, paddingBottom: 10 }}>
@@ -309,33 +343,33 @@ export default function CompanyScreen() {
 
           {/* Support */}
           <SectionHeader title={t('firma.support')} />
-          <View style={s.supportBox}>
-            <TouchableOpacity style={s.remindersBtn} onPress={() => router.push('/reminders')} testID="reminders-btn">
-              <Ionicons name="notifications-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.remindersBtnText}>{t('firma.reminders')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.reportsBtn} onPress={() => router.push('/reports')} testID="reports-btn">
-              <Ionicons name="bar-chart-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.reportsBtnText}>{t('firma.reports')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.whatsappBtn} onPress={() => Linking.openURL('https://wa.me/905415858988')} testID="whatsapp-support-btn">
-            <Text style={s.whatsappBtnText}>{t('firma.writeWhatsapp')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.assistantBtn} onPress={() => router.push('/(tabs)/assistant')} testID="ai-assistant-btn">
-              <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={s.assistantBtnText}>{t('firma.talkToAssistant')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/subscription')} testID="subscription-btn">
-              <Ionicons name="star" size={18} color={theme.colors.primary} />
-              <Text style={s.subscriptionBtnText}>{t('firma.subscriptionManagement')}</Text>
-            </TouchableOpacity>
-            {/* Google Play / App Store zorunlulugu: kullanici gizlilik politikasina
-                sadece acilis (landing) sayfasindan degil, giris yaptiktan sonra da
-                uygulama icinden ulasabilmeli -- hukuki risk olusturmasin diye. */}
-            <TouchableOpacity style={s.subscriptionBtn} onPress={() => router.push('/privacy')} testID="privacy-policy-btn">
-              <Ionicons name="shield-checkmark-outline" size={18} color={theme.colors.primary} />
-              <Text style={s.subscriptionBtnText}>{t('firma.privacyPolicy')}</Text>
-            </TouchableOpacity>
+          {/* Kısayollar -- Panel'deki modül karolarıyla aynı dil: renkli
+              gradyan ikon rozeti, kaydırdıkça sırayla beliren kartlar.
+              (Google Play / App Store zorunluluğu: gizlilik politikası
+              uygulama içinden de erişilebilir kalmalı.) */}
+          <View style={s.tileGrid}>
+            {[
+              { key: 'reminders', icon: 'notifications' as const, label: t('firma.reminders'), color: theme.colors.modules.hatirlatma, onPress: () => router.push('/reminders'), testID: 'reminders-btn' },
+              { key: 'reports', icon: 'bar-chart' as const, label: t('firma.reports'), color: theme.colors.modules.raporlar, onPress: () => router.push('/reports'), testID: 'reports-btn' },
+              { key: 'whatsapp', icon: 'logo-whatsapp' as const, label: t('firma.writeWhatsapp'), color: '#16A34A', onPress: () => Linking.openURL('https://wa.me/905415858988'), testID: 'whatsapp-support-btn' },
+              { key: 'assistant', icon: 'sparkles' as const, label: t('firma.talkToAssistant'), color: theme.colors.modules.mesaj, onPress: () => router.push('/(tabs)/assistant'), testID: 'ai-assistant-btn' },
+              { key: 'subscription', icon: 'star' as const, label: t('firma.subscriptionManagement'), color: theme.colors.gold, onPress: () => router.push('/subscription'), testID: 'subscription-btn' },
+              { key: 'privacy', icon: 'shield-checkmark' as const, label: t('firma.privacyPolicy'), color: theme.colors.modules.firma, onPress: () => router.push('/privacy'), testID: 'privacy-policy-btn' },
+            ].map((item, i) => (
+              <Reveal key={item.key} variant="tilt" style={s.tileCell}>
+                <AnimatedPressable style={s.tile} onPress={item.onPress} testID={item.testID} scaleTo={0.95}>
+                  <LinearGradient
+                    colors={[alpha(item.color, 0.14), alpha(item.color, 0)] as [string, string]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <IconBadge icon={item.icon} color={item.color} size={40} motion="pop" />
+                  <Text style={s.tileLabel} numberOfLines={2}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={theme.colors.textMuted} style={s.tileChevron} />
+                </AnimatedPressable>
+              </Reveal>
+            ))}
           </View>
 
           {/* Hesap silme (Google Play / App Store zorunlu) — sayfanın en altında,
@@ -348,13 +382,17 @@ export default function CompanyScreen() {
                   ? t('firma.deleteAccountTextStaff')
                   : t('firma.deleteAccountTextOwner')}
               </Text>
-              <TouchableOpacity style={[s.subscriptionBtn, { borderColor: theme.colors.red }]} onPress={() => setShowConfirmDeleteAccount(true)} testID="delete-account-btn">
-                <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                <Text style={[s.subscriptionBtnText, { color: theme.colors.red }]}>{t('firma.deletePermanently')}</Text>
-              </TouchableOpacity>
+              <BubbleButton
+                icon="trash"
+                label={t('firma.deletePermanently')}
+                color={theme.colors.red}
+                variant="soft"
+                onPress={() => setShowConfirmDeleteAccount(true)}
+                testID="delete-account-btn"
+              />
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
 
       {/* Delete Confirm */}
@@ -390,7 +428,31 @@ export default function CompanyScreen() {
   );
 }
 
-function SectionHeader({ title }: { title: string }) { return <Text style={s.sectionH}>{title}</Text>; }
+// Bölüm başlığı -- altındaki ince çizgi, bölüm ekrana girerken soldan sağa
+// dolar (Panel'deki SectionTitle ile aynı dil).
+function SectionHeader({ title, icon = 'ellipse' }: { title: string; icon?: keyof typeof Ionicons.glyphMap }) {
+  const ref = useAnimatedRef<Animated.View>();
+  const p = useViewportProgress(ref, { from: 0.96, to: 0.62 });
+  const lineStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: Math.max(0.02, p.value) }] }));
+  return (
+    <Animated.View ref={ref} collapsable={false} style={s.sectionWrap}>
+      <View style={s.sectionRow}>
+        <View style={s.sectionIcon}>
+          <Ionicons name={icon} size={12} color={theme.colors.primary} />
+        </View>
+        <Text style={s.sectionH}>{title}</Text>
+      </View>
+      <Animated.View style={[s.sectionLine, lineStyle]}>
+        <LinearGradient
+          colors={[theme.colors.primary, alpha(theme.colors.primary, 0)] as [string, string]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </Animated.View>
+  );
+}
 
 function ThemeSwitcher() {
   const { mode, setMode } = useAppTheme();
@@ -476,7 +538,7 @@ function Field({ label, children, flex }: { label: string; children: React.React
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   companyListBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 4, ...theme.shadow.sm },
@@ -486,7 +548,27 @@ const s = StyleSheet.create({
   compLogo: { width: 34, height: 34, borderRadius: 8 },
   compName: { fontSize: 13, color: theme.colors.text, flex: 1 },
   compNameActive: { fontWeight: '900', color: theme.colors.primary },
-  sectionH: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, marginTop: 18, marginBottom: 8, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary, letterSpacing: 0.5 },
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tileCell: { width: '48%', flexGrow: 1 },
+  tile: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    padding: 14,
+    gap: 10,
+    minHeight: 112,
+    overflow: 'hidden',
+    ...theme.shadow.sm,
+  },
+  tileLabel: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, lineHeight: 17 },
+  tileChevron: { position: 'absolute', top: 14, right: 12, opacity: 0.6 },
+  compLogoLetter: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  sectionWrap: { marginTop: 20, marginBottom: 10 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionIcon: { width: 22, height: 22, borderRadius: 7, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  sectionLine: { height: 2, borderRadius: 1, marginTop: 8, overflow: 'hidden', transformOrigin: 'left' },
+  sectionH: { fontSize: 11.5, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.6, textTransform: 'uppercase' },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   logoBox: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 16, alignItems: 'center', ...theme.shadow.sm },
   logoPreview: { width: 180, height: 90, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft },
@@ -497,7 +579,7 @@ const s = StyleSheet.create({
   btnDangerSmall: { width: 48, paddingVertical: 12, backgroundColor: theme.colors.redSoft, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
   subLabel: { fontSize: 10, fontWeight: '800', color: theme.colors.primary, marginTop: 6, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   hint: { fontSize: 11.5, color: theme.colors.textMuted, marginBottom: 8, lineHeight: 16 },
   hintMuted: { fontSize: 11.5, color: theme.colors.textMuted, fontStyle: 'italic' },
   bankCard: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8 },
@@ -523,7 +605,7 @@ const s = StyleSheet.create({
   reorderBtnDisabled: { backgroundColor: theme.colors.surfaceSoft, opacity: 0.5 },
   addFieldBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft, marginTop: 4 },
   addFieldText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12 },
-  saveBtn: { marginTop: 24, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
+  saveBtn: { marginTop: 24, backgroundColor: theme.colors.primary, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.3 },
   deleteCompanyBtn: { marginTop: 12, borderWidth: 1, borderColor: theme.colors.red, borderStyle: 'dashed', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   deleteCompanyText: { color: theme.colors.red, fontWeight: '800', fontSize: 12 },

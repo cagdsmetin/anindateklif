@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,6 +15,7 @@ import { api } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { QuoteT } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 const RETENTION_DAYS = 30;
 
@@ -97,10 +97,15 @@ export default function TrashScreen() {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
+          <ScreenHero
+            icon="trash"
+            title={t('trash.s004')}
+            color={theme.colors.red}
+          />
           <Text style={s.infoNote}>
             {t('trash.s005')}{RETENTION_DAYS} {t('trash.s006')}</Text>
 
@@ -112,11 +117,13 @@ export default function TrashScreen() {
               <Text style={s.emptyText}>{t('trash.s007')}</Text>
             </View>
           ) : (
-            items.map((q) => {
+            items.map((q, idx) => {
               const left = daysLeft(q.deletedAt);
               return (
-                <View key={q.id} style={s.card} testID={`trash-item-${q.id}`}>
-                  <View style={{ flex: 1 }}>
+                <Reveal key={q.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
+                <View style={s.card} testID={`trash-item-${q.id}`}>
+                  <IconBadge icon="document-text" color={left > 3 ? theme.colors.textMuted : theme.colors.red} size={34} motion="pop" />
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.cardTitle} numberOfLines={1}>{q.musFirma || q.musYetkili || t('trash.s008')}</Text>
                     <Text style={s.cardSub} numberOfLines={1}>
                       {t('trash.s009')}{q.teklifNo} · {fmt(q.genelToplam, q.paraBirimi)}
@@ -141,10 +148,11 @@ export default function TrashScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+                </Reveal>
               );
             })
           )}
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );

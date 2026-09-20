@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -21,6 +20,7 @@ import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 export default function LoginScreen() {
   const { t } = useLanguage();
@@ -72,7 +72,7 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -155,7 +155,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -172,7 +172,7 @@ function InputRow({
   return (
     <View style={s.inputRow}>
       <Ionicons name={icon} size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-      <TextInput
+      <MotionInput
         {...rest}
         placeholderTextColor={authTheme.textMuted}
         style={s.input}

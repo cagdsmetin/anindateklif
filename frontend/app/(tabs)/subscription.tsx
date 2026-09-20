@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +18,8 @@ import { api, RatesT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
 import { useLanguage } from '@/src/lib/i18n';
+import { Aurora, BorderBeam, CountUp, MotionInput, MotionScrollView, Reveal } from '@/src/components/motion';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type PlanT = {
   id: string;
@@ -264,43 +265,65 @@ export default function SubscriptionScreen() {
         </View>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-            {/* Status card */}
-            <View style={[s.statusCard, status?.subscription_active ? (dueSoon ? s.statusCardWarn : s.statusCardActive) : usedUp ? s.statusCardDanger : s.statusCardInfo]}>
-              <Ionicons
-                name={status?.subscription_active ? (dueSoon ? 'time-outline' : 'checkmark-circle') : usedUp ? 'alert-circle' : 'information-circle'}
-                size={26}
-                color={status?.subscription_active ? (dueSoon ? theme.colors.goldDark : theme.colors.green) : usedUp ? theme.colors.red : theme.colors.primary}
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                {status?.subscription_active ? (
-                  dueSoon ? (
-                    <>
-                      <Text style={s.statusTitle}>
-                        Aboneliğiniz {Math.max(status.days_left ?? 0, 0)} gün sonra sona eriyor
-                      </Text>
-                      <Text style={s.statusText}>Otomatik çekim yapılmaz — kesintisiz devam etmek için aşağıdan yenileyin.</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={s.statusTitle}>Aboneliğiniz aktif</Text>
-                      <Text style={s.statusText}>Sınırsız teklif oluşturabilirsiniz.</Text>
-                    </>
-                  )
-                ) : (
-                  <>
-                    <Text style={s.statusTitle}>
-                      Bu ay {status?.quotes_used_this_month ?? 0} / {status?.free_limit ?? 5} ücretsiz teklif kullanıldı
+          <MotionScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            {/* Durum kartı -- koyu "aurora" blok: abonelik durumu ve kalan
+                ücretsiz hak tek bakışta görünür (21st.dev'deki koyu gradyanlı
+                fiyatlandırma bölümlerinden esinlenildi). */}
+            <Aurora
+              colors={status?.subscription_active ? ['#10B981', '#6366F1', '#22D3EE'] : ['#6366F1', '#A855F7', '#22D3EE']}
+              style={s.subHero}
+            >
+              <View style={s.subHeroInner}>
+                <View style={s.subHeroTop}>
+                  <View style={s.subHeroIcon}>
+                    <Ionicons
+                      name={status?.subscription_active ? (dueSoon ? 'time-outline' : 'checkmark-circle') : usedUp ? 'alert-circle' : 'sparkles'}
+                      size={20}
+                      color="#fff"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.subHeroEyebrow}>ABONELİK</Text>
+                    <Text style={s.subHeroTitle} numberOfLines={2}>
+                      {status?.subscription_active
+                        ? dueSoon
+                          ? `Aboneliğiniz ${Math.max(status.days_left ?? 0, 0)} gün sonra sona eriyor`
+                          : 'Aboneliğiniz aktif'
+                        : usedUp
+                          ? 'Ücretsiz hakkınız doldu'
+                          : 'Ücretsiz kullanımdasınız'}
                     </Text>
-                    <Text style={s.statusText}>
-                      {usedUp
-                        ? 'Ücretsiz hakkınız bitti. Devam etmek için abone olun.'
-                        : `Kalan ücretsiz hak: ${remaining}`}
+                  </View>
+                </View>
+                <Text style={s.subHeroText}>
+                  {status?.subscription_active
+                    ? dueSoon
+                      ? 'Otomatik çekim yapılmaz — kesintisiz devam etmek için aşağıdan yenileyin.'
+                      : 'Sınırsız teklif oluşturabilirsiniz.'
+                    : usedUp
+                      ? 'Devam etmek için bir plan seçin; teklifleriniz ve müşterileriniz olduğu gibi kalır.'
+                      : `Bu ay ${status?.quotes_used_this_month ?? 0} / ${status?.free_limit ?? 5} ücretsiz teklif kullandınız.`}
+                </Text>
+                {!status?.subscription_active && (
+                  <View style={s.quotaWrap}>
+                    <View style={s.quotaBar}>
+                      <View
+                        style={[
+                          s.quotaFill,
+                          {
+                            width: `${Math.min(100, Math.round(((status?.quotes_used_this_month ?? 0) / Math.max(1, status?.free_limit ?? 5)) * 100))}%`,
+                            backgroundColor: usedUp ? '#F87171' : '#A5B4FC',
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={s.quotaLabel}>
+                      {usedUp ? 'Kalan hak yok' : `Kalan ücretsiz hak: ${remaining}`}
                     </Text>
-                  </>
+                  </View>
                 )}
               </View>
-            </View>
+            </Aurora>
 
             {/* Hediye/promosyon kodu — kullanıcı raporu: "çok altta kalmış, göz
                 önüne getir" -- eskiden CTA'nın altında, sayfanın en sonunda,
@@ -323,7 +346,7 @@ export default function SubscriptionScreen() {
             {promoOpen && (
               <View style={s.promoBox}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput
+                  <MotionInput
                     style={[s.input, { flex: 1, textTransform: 'uppercase' }]}
                     placeholder="Örn. AB12CD34"
                     placeholderTextColor="#94a3b8"
@@ -358,52 +381,74 @@ export default function SubscriptionScreen() {
                     </Text>
                   </View>
                 )}
-                <View style={{ gap: 12, marginBottom: 22 }}>
+                <View style={{ gap: 14, marginBottom: 24 }}>
                   {plans.map((plan) => {
                     const selected = plan.id === selectedPlan;
                     const isYearly = plan.duration_days >= 365;
-                    return (
-                      <TouchableOpacity
-                        key={plan.id}
-                        activeOpacity={0.9}
-                        onPress={() => setSelectedPlan(plan.id)}
-                        style={[s.planCard, selected && s.planCardSelected]}
-                        testID={`sub-plan-${plan.id}`}
-                      >
+                    const pp = planPrimaryPrice(plan, lang);
+                    const approx = approxTryLabel(plan, lang, rates);
+                    const save = pp.listAmount && pp.listAmount > pp.amount ? Math.round((1 - pp.amount / pp.listAmount) * 100) : 0;
+                    const content = (
+                      <View style={s.planInner}>
                         <View style={s.planHeaderRow}>
-                          <Text style={s.planName}>{plan.label}</Text>
+                          <Text style={[s.planName, selected && s.planNameSel]} numberOfLines={1}>{plan.label}</Text>
                           {isYearly && (
-                            <View style={s.planBadge}>
-                              <Text style={s.planBadgeText}>Önerilen</Text>
+                            <View style={[s.planBadge, selected && s.planBadgeSel]}>
+                              <Text style={[s.planBadgeText, selected && s.planBadgeTextSel]}>Önerilen</Text>
                             </View>
                           )}
                         </View>
-                        {(() => {
-                          const pp = planPrimaryPrice(plan, lang);
-                          const approx = approxTryLabel(plan, lang, rates);
-                          return (
-                            <>
-                              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                                {pp.listAmount ? (
-                                  <Text style={s.planListPrice}>{pp.sym}{pp.listAmount.toFixed(0)}</Text>
-                                ) : null}
-                                <Text style={s.planPrice}>
-                                  {pp.sym}{pp.amount.toFixed(pp.sym === '₺' ? 0 : 2)} <Text style={s.planPriceUnit}>{planUnitLabel(plan.duration_days)}</Text>
-                                </Text>
-                              </View>
-                              {approx ? <Text style={s.planApprox}>{approx}</Text> : null}
-                            </>
-                          );
-                        })()}
-                        <View style={{ marginTop: 12, gap: 8 }}>
-                          <PlanBullet text="Sınırsız teklif oluşturma" />
-                          <PlanBullet text={isYearly ? 'Yıllık otomatik yenileme' : 'Haftalık otomatik yenileme'} />
-                          <PlanBullet text="Dilediğiniz zaman iptal" />
+                        <View style={s.priceRow}>
+                          {pp.listAmount ? (
+                            <Text style={[s.planListPrice, selected && s.planListPriceSel]}>
+                              {pp.sym}{pp.listAmount.toFixed(0)}
+                            </Text>
+                          ) : null}
+                          <CountUp
+                            value={pp.amount}
+                            duration={900}
+                            format={(n) => `${pp.sym}${n.toFixed(pp.sym === '₺' ? 0 : 2)}`}
+                            style={[s.planPrice, selected && s.planPriceSel]}
+                          />
+                          <Text style={[s.planPriceUnit, selected && s.planPriceUnitSel]}>{planUnitLabel(plan.duration_days)}</Text>
+                        </View>
+                        <View style={s.priceMetaRow}>
+                          {save > 0 ? (
+                            <View style={s.saveBadge}>
+                              <Ionicons name="pricetag" size={10} color="#065F46" />
+                              <Text style={s.saveBadgeText}>%{save} indirim</Text>
+                            </View>
+                          ) : null}
+                          {approx ? <Text style={[s.planApprox, selected && s.planApproxSel]}>{approx}</Text> : null}
+                        </View>
+                        <View style={{ marginTop: 14, gap: 9 }}>
+                          <PlanBullet text="Sınırsız teklif oluşturma" dark={selected} />
+                          <PlanBullet text={isYearly ? 'Yıllık otomatik yenileme' : 'Haftalık otomatik yenileme'} dark={selected} />
+                          <PlanBullet text="Dilediğiniz zaman iptal" dark={selected} />
                         </View>
                         <View style={[s.radioOuter, selected && s.radioOuterSelected]}>
                           {selected && <View style={s.radioInner} />}
                         </View>
-                      </TouchableOpacity>
+                      </View>
+                    );
+                    return (
+                      <Reveal key={plan.id} variant="up">
+                        <TouchableOpacity activeOpacity={0.92} onPress={() => setSelectedPlan(plan.id)} testID={`sub-plan-${plan.id}`}>
+                          {selected ? (
+                            <BorderBeam
+                              radius={22}
+                              width={1.6}
+                              background="#0F172A"
+                              baseBorder="rgba(148,163,184,0.25)"
+                              colors={['rgba(129,140,248,0)', '#818CF8', '#22D3EE', 'rgba(34,211,238,0)']}
+                            >
+                              {content}
+                            </BorderBeam>
+                          ) : (
+                            <View style={s.planShell}>{content}</View>
+                          )}
+                        </TouchableOpacity>
+                      </Reveal>
                     );
                   })}
                 </View>
@@ -420,16 +465,25 @@ export default function SubscriptionScreen() {
                 {error ? <Text style={s.errorText}>{error}</Text> : null}
 
                 <TouchableOpacity style={[s.cta, busy && s.ctaDisabled]} onPress={onSubscribe} disabled={busy} activeOpacity={0.9} testID="sub-subscribe">
+                  <LinearGradient
+                    colors={['#6366F1', '#4F46E5', '#7C3AED']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
                   {busy ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={s.ctaText}>
-                      {(() => {
-                        if (!activePlan) return dueSoon ? 'Yenile' : 'Abone Ol';
-                        const pp = planPrimaryPrice(activePlan, lang);
-                        return `${dueSoon ? 'Yenile' : 'Abone Ol'} — ${pp.sym}${pp.amount.toFixed(pp.sym === '₺' ? 0 : 2)}${planUnitLabel(activePlan.duration_days)}`;
-                      })()}
-                    </Text>
+                    <>
+                      <Ionicons name="lock-closed" size={15} color="rgba(255,255,255,0.9)" />
+                      <Text style={s.ctaText}>
+                        {(() => {
+                          if (!activePlan) return dueSoon ? 'Yenile' : 'Abone Ol';
+                          const pp = planPrimaryPrice(activePlan, lang);
+                          return `${dueSoon ? 'Yenile' : 'Abone Ol'} — ${pp.sym}${pp.amount.toFixed(pp.sym === '₺' ? 0 : 2)}${planUnitLabel(activePlan.duration_days)}`;
+                        })()}
+                      </Text>
+                    </>
                   )}
                 </TouchableOpacity>
                 {activePlan && approxTryLabel(activePlan, lang, rates) ? (
@@ -438,18 +492,20 @@ export default function SubscriptionScreen() {
                 <Text style={s.footNote}>Ödeme iyzico güvenli ödeme sayfasına yönlendirilerek tamamlanır.</Text>
               </>
             )}
-          </ScrollView>
+          </MotionScrollView>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );
 }
 
-function PlanBullet({ text }: { text: string }) {
+function PlanBullet({ text, dark }: { text: string; dark?: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <Ionicons name="checkmark" size={16} color={theme.colors.green} />
-      <Text style={{ fontSize: 13.5, color: theme.colors.textSoft }}>{text}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+      <View style={[s.bulletCheck, dark && s.bulletCheckDark]}>
+        <Ionicons name="checkmark" size={11} color={dark ? '#6EE7B7' : theme.colors.green} />
+      </View>
+      <Text style={{ fontSize: 13.5, color: dark ? 'rgba(226,232,240,0.95)' : theme.colors.textSoft }}>{text}</Text>
     </View>
   );
 }
@@ -471,7 +527,7 @@ function FieldRow({
       <Text style={s.fieldLabel}>{label}</Text>
       <View style={[s.inputWrap, rest.multiline && s.inputWrapMultiline]}>
         <Ionicons name={icon} size={17} color={theme.colors.primary} style={{ marginRight: 8, marginTop: rest.multiline ? 2 : 0 }} />
-        <TextInput
+        <MotionInput
           {...rest}
           onChangeText={onChange}
           placeholderTextColor="#94a3b8"
@@ -483,7 +539,7 @@ function FieldRow({
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -521,19 +577,65 @@ const s = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '600',
   },
-  planCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+  // Abonelik "hero" -- koyu aurora blok
+  subHero: { borderRadius: 22, marginBottom: 18 },
+  subHeroInner: { padding: 16 },
+  subHeroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  subHeroIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: 'rgba(99,102,241,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subHeroEyebrow: { color: 'rgba(203,213,225,0.85)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  subHeroTitle: { color: '#fff', fontSize: 17, fontWeight: '900', marginTop: 2, letterSpacing: -0.2 },
+  subHeroText: { color: 'rgba(203,213,225,0.9)', fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  quotaWrap: { marginTop: 14 },
+  quotaBar: { height: 7, borderRadius: 4, backgroundColor: 'rgba(148,163,184,0.25)', overflow: 'hidden' },
+  quotaFill: { height: '100%', borderRadius: 4 },
+  quotaLabel: { color: 'rgba(203,213,225,0.9)', fontSize: 11, fontWeight: '800', marginTop: 7 },
+
+  // Plan kartları
+  planShell: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: theme.colors.line,
-    padding: 18,
-    position: 'relative',
     ...theme.shadow.sm,
   },
-  planCardSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+  planInner: { padding: 18, position: 'relative' },
+  planNameSel: { color: '#fff' },
+  planBadgeSel: { backgroundColor: 'rgba(129,140,248,0.25)', borderWidth: 1, borderColor: 'rgba(129,140,248,0.6)' },
+  planBadgeTextSel: { color: '#C7D2FE' },
+  planListPriceSel: { color: 'rgba(148,163,184,0.9)' },
+  planPriceSel: { color: '#fff' },
+  planPriceUnitSel: { color: 'rgba(203,213,225,0.85)' },
+  planApproxSel: { color: 'rgba(203,213,225,0.85)' },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' },
+  priceMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  saveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.greenSoft,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
+  saveBadgeText: { color: '#065F46', fontSize: 10.5, fontWeight: '900' },
+  bulletCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bulletCheckDark: { backgroundColor: 'rgba(16,185,129,0.18)' },
   planHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, paddingRight: 28 },
   planName: { fontSize: 15, fontWeight: '800', color: theme.colors.text },
   planBadge: { backgroundColor: theme.colors.primary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
@@ -591,10 +693,12 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     borderRadius: 16,
     paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     marginTop: 20,
-    ...theme.shadow.lg,
+    overflow: 'hidden',
   },
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
@@ -624,6 +728,6 @@ const s = StyleSheet.create({
   promoToggleText: { flex: 1, fontSize: 13.5, fontWeight: '800', color: theme.colors.goldDark },
   promoBox: { marginTop: -10, marginBottom: 18, backgroundColor: theme.colors.goldSoft, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: theme.colors.goldBorder },
   promoBtn: { backgroundColor: theme.colors.gold, borderRadius: 12, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
-  promoBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '800' },
+  promoBtnText: { color: '#0F172A', fontSize: 13.5, fontWeight: '900' },
   promoSuccess: { color: '#166534', fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

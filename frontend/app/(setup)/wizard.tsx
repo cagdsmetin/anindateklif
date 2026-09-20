@@ -4,10 +4,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Alert,
@@ -20,6 +18,7 @@ import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { useAuth } from '@/src/state/AuthContext';
 import { api } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 const TOTAL_STEPS = 6;
 
@@ -195,7 +194,7 @@ export default function SetupWizard() {
           ))}
         </View>
 
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {step === 1 && (
             <StepShell icon="globe-outline" title={t('wizard.s016')} subtitle={t('wizard.s017')}>
               {COUNTRIES.map((c) => {
@@ -224,7 +223,7 @@ export default function SetupWizard() {
           {step === 2 && (
             <StepShell icon="business-outline" title={t('wizard.s018')} subtitle={t('wizard.s019')}>
               <Field label={t('wizard.s020')} required>
-                <TextInput
+                <MotionInput
                   value={sirketAdi}
                   onChangeText={setSirketAdi}
                   placeholder={t('wizard.s021')}
@@ -234,7 +233,7 @@ export default function SetupWizard() {
                 />
               </Field>
               <Field label={t('wizard.s022')}>
-                <TextInput
+                <MotionInput
                   value={imzaMetni}
                   onChangeText={setImzaMetni}
                   placeholder={t('wizard.s023')}
@@ -284,20 +283,20 @@ export default function SetupWizard() {
           {step === 4 && (
             <StepShell icon="call-outline" title={t('wizard.s029')} subtitle={t('wizard.s030')}>
               <Field label={t('wizard.s031')}>
-                <TextInput value={adres} onChangeText={setAdres} placeholder={t('wizard.s032')} placeholderTextColor={authTheme.textMuted} style={[s.input, s.textarea]} multiline testID="setup-address" />
+                <MotionInput value={adres} onChangeText={setAdres} placeholder={t('wizard.s032')} placeholderTextColor={authTheme.textMuted} style={[s.input, s.textarea]} multiline testID="setup-address" />
               </Field>
               <Field label={t('wizard.s033')}>
-                <TextInput value={telefon} onChangeText={setTelefon} placeholder="+90 ..." placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="phone-pad" testID="setup-phone" />
+                <MotionInput value={telefon} onChangeText={setTelefon} placeholder="+90 ..." placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="phone-pad" testID="setup-phone" />
               </Field>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Field label={t('wizard.s035')}>
-                    <TextInput value={vergiDairesi} onChangeText={setVergiDairesi} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} />
+                    <MotionInput value={vergiDairesi} onChangeText={setVergiDairesi} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} />
                   </Field>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Field label={t('wizard.s036')}>
-                    <TextInput value={vergiNo} onChangeText={setVergiNo} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="number-pad" />
+                    <MotionInput value={vergiNo} onChangeText={setVergiNo} placeholder="—" placeholderTextColor={authTheme.textMuted} style={s.input} keyboardType="number-pad" />
                   </Field>
                 </View>
               </View>
@@ -317,11 +316,11 @@ export default function SetupWizard() {
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                  <TextInput value={b.banka} onChangeText={(t) => updateBank(banks, setBanks, idx, { banka: t })} placeholder={t('wizard.s039')} placeholderTextColor={authTheme.textMuted} style={s.input} />
+                  <MotionInput value={b.banka} onChangeText={(t) => updateBank(banks, setBanks, idx, { banka: t })} placeholder={t('wizard.s039')} placeholderTextColor={authTheme.textMuted} style={s.input} />
                   <View style={{ height: 8 }} />
-                  <TextInput value={b.hesapSahibi} onChangeText={(t) => updateBank(banks, setBanks, idx, { hesapSahibi: t })} placeholder={t('wizard.s040')} placeholderTextColor={authTheme.textMuted} style={s.input} />
+                  <MotionInput value={b.hesapSahibi} onChangeText={(t) => updateBank(banks, setBanks, idx, { hesapSahibi: t })} placeholder={t('wizard.s040')} placeholderTextColor={authTheme.textMuted} style={s.input} />
                   <View style={{ height: 8 }} />
-                  <TextInput value={b.iban} onChangeText={(t) => updateBank(banks, setBanks, idx, { iban: t })} placeholder={t('wizard.s041')} placeholderTextColor={authTheme.textMuted} style={s.input} autoCapitalize="characters" />
+                  <MotionInput value={b.iban} onChangeText={(t) => updateBank(banks, setBanks, idx, { iban: t })} placeholder={t('wizard.s041')} placeholderTextColor={authTheme.textMuted} style={s.input} autoCapitalize="characters" />
                 </View>
               ))}
               <TouchableOpacity
@@ -338,7 +337,7 @@ export default function SetupWizard() {
           {step === 6 && (
             <StepShell icon="cube-outline" title={t('wizard.s043')} subtitle={t('wizard.s044')}>
               <Field label={t('wizard.s045')}>
-                <TextInput
+                <MotionInput
                   value={systemName}
                   onChangeText={setSystemName}
                   placeholder={t('wizard.s046')}
@@ -348,7 +347,7 @@ export default function SetupWizard() {
                 />
               </Field>
               <Field label={t('wizard.s047')}>
-                <TextInput
+                <MotionInput
                   value={systemFieldsRaw}
                   onChangeText={setSystemFieldsRaw}
                   placeholder={t('wizard.s048')}
@@ -364,7 +363,7 @@ export default function SetupWizard() {
               </View>
             </StepShell>
           )}
-        </ScrollView>
+        </MotionScrollView>
 
         {/* Bottom CTA */}
         <View style={s.bottom}>

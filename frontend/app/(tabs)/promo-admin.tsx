@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +15,7 @@ import { theme } from '@/src/lib/theme';
 import { api, PromoCodeT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -128,13 +127,18 @@ export default function PromoAdminScreen() {
         </View>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            <ScreenHero
+              icon="gift"
+              title={t('promoAdmin.s001')}
+              color={theme.colors.gold}
+            />
             <Text style={s.sectionLabel}>{t('promoAdmin.s006')}</Text>
             <View style={s.card}>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.fieldLabel}>{t('promoAdmin.s007')}</Text>
-                  <TextInput
+                  <MotionInput
                     style={s.input}
                     value={durationDays}
                     onChangeText={setDurationDays}
@@ -144,7 +148,7 @@ export default function PromoAdminScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.fieldLabel}>{t('promoAdmin.s008')}</Text>
-                  <TextInput
+                  <MotionInput
                     style={s.input}
                     value={count}
                     onChangeText={setCount}
@@ -154,7 +158,7 @@ export default function PromoAdminScreen() {
                 </View>
               </View>
               <Text style={[s.fieldLabel, { marginTop: 12 }]}>{t('promoAdmin.s009')}</Text>
-              <TextInput
+              <MotionInput
                 style={s.input}
                 placeholder={t('promoAdmin.s010')}
                 placeholderTextColor="#94a3b8"
@@ -189,8 +193,9 @@ export default function PromoAdminScreen() {
             {codes.length === 0 ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('promoAdmin.s017')}</Text>
             ) : (
-              codes.map((c) => (
-                <View key={c.code} style={s.codeRow} testID={`promo-row-${c.code}`}>
+              codes.map((c, idx) => (
+                <Reveal key={c.code} variant={idx % 2 === 0 ? 'left' : 'right'} distance={16}>
+                <View style={s.codeRow} testID={`promo-row-${c.code}`}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.codeText} numberOfLines={1}>{c.code}</Text>
                     <Text style={s.codeMeta} numberOfLines={1}>
@@ -204,9 +209,10 @@ export default function PromoAdminScreen() {
                     <Text style={[s.badgeText, c.used ? s.badgeTextUsed : s.badgeTextFree]}>{c.used ? t('promoAdmin.s020') : 'Aktif'}</Text>
                   </View>
                 </View>
+                </Reveal>
               ))
             )}
-          </ScrollView>
+          </MotionScrollView>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -27,6 +26,7 @@ import {
   PasswordRuleKey,
 } from '@/src/utils/password-validation';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 export default function RegisterScreen() {
   const { t } = useLanguage();
@@ -118,7 +118,7 @@ export default function RegisterScreen() {
         <BlackHoleBackground centerX={0.5} spread={1.4} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -213,7 +213,7 @@ export default function RegisterScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -256,7 +256,7 @@ function InputRow({
   return (
     <View style={s.inputRow}>
       <Ionicons name={icon} size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-      <TextInput {...rest} placeholderTextColor={authTheme.textMuted} style={s.input} />
+      <MotionInput {...rest} placeholderTextColor={authTheme.textMuted} style={s.input} />
       {trailing ? <View style={{ marginLeft: 8 }}>{trailing}</View> : null}
     </View>
   );

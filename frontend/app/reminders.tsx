@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 // redeploy trigger
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -11,6 +17,7 @@ import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
 import { useLanguage } from '@/src/lib/i18n';
 import TopHeader from '@/src/components/TopHeader';
+import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 const HIDDEN_KEY = 'hiddenReminders';
 
@@ -179,7 +186,23 @@ export default function RemindersScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
+        showsVerticalScrollIndicator={false}
+        progressColors={[theme.colors.modules.hatirlatma, theme.colors.gold, '#EC4899']}
+      >
+        <ScreenHero
+          icon="notifications"
+          title={t('remindersPage.s003')}
+          subtitle={sirketAdi}
+          color={theme.colors.modules.hatirlatma}
+          stats={[
+            { label: t('remindersPage.s005'), value: manualList.length },
+            { label: t('remindersPage.s007'), value: garantiList.length },
+            { label: t('remindersPage.s009'), value: bakimList.length },
+            { label: t('remindersPage.s012'), value: teklifList.length },
+          ]}
+        />
         {loaded && totalCount === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={28} color={theme.colors.textMuted} />
@@ -292,7 +315,7 @@ export default function RemindersScreen() {
             />
           ))
         )}
-      </ScrollView>
+      </MotionScrollView>
 
       {/* Manuel not/hatırlatıcı ekleme-düzenleme modalı */}
       <Modal visible={showAdd} transparent animationType="fade" onRequestClose={() => setShowAdd(false)}>
@@ -300,11 +323,11 @@ export default function RemindersScreen() {
           <TouchableOpacity activeOpacity={1} style={s.modalCard} onPress={() => {}}>
             <Text style={s.modalTitle}>{editingReminder ? t('remindersPage.s016') : t('remindersPage.s017')}</Text>
             <Text style={s.modalLabel}>{t('remindersPage.s018')}</Text>
-            <TextInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder={t('remindersPage.s019')} placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
+            <MotionInput style={s.modalInput} value={formBaslik} onChangeText={setFormBaslik} placeholder={t('remindersPage.s019')} placeholderTextColor="#94a3b8" testID="manual-reminder-baslik" />
             <Text style={s.modalLabel}>{t('remindersPage.s020')}</Text>
-            <TextInput style={s.modalInput} value={formTarih} onChangeText={setFormTarih} placeholder="2026-09-01" placeholderTextColor="#94a3b8" testID="manual-reminder-tarih" />
+            <MotionInput style={s.modalInput} value={formTarih} onChangeText={setFormTarih} placeholder="2026-09-01" placeholderTextColor="#94a3b8" testID="manual-reminder-tarih" />
             <Text style={s.modalLabel}>{t('remindersPage.s022')}</Text>
-            <TextInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder={t('remindersPage.s023')} placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
+            <MotionInput style={[s.modalInput, { minHeight: 70, textAlignVertical: 'top' }]} value={formNotu} onChangeText={setFormNotu} placeholder={t('remindersPage.s023')} placeholderTextColor="#94a3b8" multiline testID="manual-reminder-notu" />
             <View style={s.modalBtnRow}>
               {editingReminder && (
                 <TouchableOpacity style={s.modalDeleteBtn} onPress={() => removeManualReminder(editingReminder.id)} testID="manual-reminder-delete">

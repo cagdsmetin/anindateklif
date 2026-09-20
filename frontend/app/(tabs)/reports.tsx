@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { CountUp, MotionScrollView, Reveal, ScreenHero, SoftIcon, TiltOnScroll } from '@/src/components/motion';
 
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const SERVICE_STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
@@ -150,12 +151,18 @@ export default function ReportsScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="bar-chart"
+          title={t('reports.s009')}
+          color={theme.colors.modules.raporlar}
+        />
         {/* Teklif hacmi grafiği */}
         <View style={s.sectionHdr}>
-          <Ionicons name="bar-chart-outline" size={14} color={theme.colors.navy} />
+          <SoftIcon icon="bar-chart-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
           <Text style={s.sectionTitle}>{t('reports.s010')}</Text>
         </View>
+        <TiltOnScroll>
         <View style={s.card}>
           <View style={s.segmentRow}>
             <TouchableOpacity style={[s.segBtn, period === 'ay' && s.segBtnActive]} onPress={() => setPeriod('ay')} testID="report-period-ay">
@@ -165,7 +172,10 @@ export default function ReportsScreen() {
               <Text style={[s.segText, period === 'hafta' && s.segTextActive]}>{t('reports.s012')}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.chartVolume}>{fmt(periodVolumeUSD, 'USD')} <Text style={s.chartVolumeSub}>{t('reports.s013')}</Text></Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <CountUp value={periodVolumeUSD} format={(n) => fmt(n, 'USD')} style={s.chartVolume} />
+            <Text style={s.chartVolumeSub}>{t('reports.s013')}</Text>
+          </View>
           <View style={s.chartBars}>
             {buckets.map((b) => {
               const h = b.count > 0 ? Math.max(6, (b.count / maxCount) * 96) : 2;
@@ -179,18 +189,21 @@ export default function ReportsScreen() {
             })}
           </View>
         </View>
+        </TiltOnScroll>
 
         {/* En çok teklif verilen müşteriler */}
         <View style={s.sectionHdr}>
-          <Ionicons name="people-outline" size={14} color={theme.colors.navy} />
+          <SoftIcon icon="people-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
           <Text style={s.sectionTitle}>{t('reports.s014')}</Text>
         </View>
+        <TiltOnScroll>
         <View style={s.card}>
           {topCustomers.length === 0 ? (
             <Text style={s.emptyLineText}>{t('reports.s015')}</Text>
           ) : (
             topCustomers.map((c, idx) => (
-              <View key={c.firma} style={[s.rankRow, idx < topCustomers.length - 1 && s.rankRowBorder]}>
+              <Reveal key={c.firma} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
+              <View style={[s.rankRow, idx < topCustomers.length - 1 && s.rankRowBorder]}>
                 <View style={s.rankBadge}>
                   <Text style={s.rankBadgeText}>{idx + 1}</Text>
                 </View>
@@ -199,26 +212,31 @@ export default function ReportsScreen() {
                   <Text style={s.rankSub}>{c.count} teklif{c.volumeUSD > 0 ? ` · ${fmt(c.volumeUSD, 'USD')}` : ''}</Text>
                 </View>
               </View>
+              </Reveal>
             ))
           )}
         </View>
+        </TiltOnScroll>
 
         {/* Dönüşüm oranı */}
         <View style={s.sectionHdr}>
-          <Ionicons name="swap-horizontal-outline" size={14} color={theme.colors.navy} />
+          <SoftIcon icon="swap-horizontal-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
           <Text style={s.sectionTitle}>{t('reports.s016')}</Text>
         </View>
+        <TiltOnScroll>
         <View style={s.card}>
           <ConversionRow label={t('reports.s001')} count={conversion.onay} total={conversion.total} color={theme.colors.green} />
           <ConversionRow label={t('reports.s017')} count={conversion.red} total={conversion.total} color={theme.colors.red} />
           <ConversionRow label={t('reports.s018')} count={conversion.bekleyen} total={conversion.total} color={theme.colors.gold} last />
         </View>
+        </TiltOnScroll>
 
         {/* Servis / garanti istatistikleri */}
         <View style={s.sectionHdr}>
-          <Ionicons name="shield-checkmark-outline" size={14} color={theme.colors.navy} />
+          <SoftIcon icon="shield-checkmark-outline" color={theme.colors.modules.raporlar} size={24} iconSize={13} />
           <Text style={s.sectionTitle}>{t('reports.s019')}</Text>
         </View>
+        <TiltOnScroll>
         <View style={s.card}>
           <View style={s.statsRow}>
             <View style={s.statCard}>
@@ -252,7 +270,8 @@ export default function ReportsScreen() {
             })}
           </View>
         </View>
-      </ScrollView>
+        </TiltOnScroll>
+      </MotionScrollView>
     </SafeAreaView>
   );
 }

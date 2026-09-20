@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +16,7 @@ import { api, StaffInviteInfoT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { evaluatePassword, isPasswordValid, PASSWORD_RULE_LABELS, PasswordRuleKey } from '@/src/utils/password-validation';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 export default function JoinScreen() {
   const { t } = useLanguage();
@@ -73,7 +72,7 @@ export default function JoinScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.logoWrap}>
             <View style={s.logoBadge}>
               <Ionicons name="flash" size={22} color="#fff" />
@@ -96,7 +95,7 @@ export default function JoinScreen() {
               <Text style={s.emailLine}>{info.email} · {info.role === 'admin' ? t('join.s010') : 'Personel'}</Text>
 
               <View style={{ marginTop: 20, gap: 12 }}>
-                <TextInput
+                <MotionInput
                   style={s.input}
                   placeholder={t('join.s011')}
                   placeholderTextColor="#94a3b8"
@@ -104,7 +103,7 @@ export default function JoinScreen() {
                   onChangeText={setName}
                   testID="join-name"
                 />
-                <TextInput
+                <MotionInput
                   style={s.input}
                   placeholder={t('join.s012')}
                   placeholderTextColor="#94a3b8"
@@ -129,7 +128,7 @@ export default function JoinScreen() {
               </TouchableOpacity>
             </View>
           )}
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

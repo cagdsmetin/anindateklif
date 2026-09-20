@@ -14,6 +14,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
+import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor } from '@/src/components/motion';
 import { useLanguage } from '@/src/lib/i18n';
 import { QuoteT } from '@/src/lib/api';
 
@@ -91,20 +92,34 @@ export default function CustomersScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('customers.s001')} />
 
-      <ScrollView
+      <MotionScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
+        progressColors={[theme.colors.modules.musteri, theme.colors.primary, '#A855F7']}
       >
         <View style={s.contentWrap}>
+        <ScreenHero
+          icon="people"
+          title={t('customers.s001')}
+          subtitle={activeCompany?.sirketAdi}
+          color={theme.colors.modules.musteri}
+          stats={[
+            { label: t('customers.s001'), value: enriched.length },
+            { label: t('customers.s007'), value: enriched.reduce((a, x) => a + x.count, 0) },
+          ]}
+        />
         {/* Primary CTA — matches the reference screenshot */}
-        <AnimatedPressable
-          style={s.addBtn}
-          onPress={() => router.push('/customer-add')}
-          testID="customer-add-btn"
-        >
-          <Ionicons name="person-add" size={17} color="#fff" />
-          <Text style={s.addBtnText}>{t('customers.s003')}</Text>
-        </AnimatedPressable>
+        <Reveal variant="scale">
+          <BubbleButton
+            icon="person-add"
+            label={t('customers.s003')}
+            color={theme.colors.modules.musteri}
+            size="lg"
+            onPress={() => router.push('/customer-add')}
+            testID="customer-add-btn"
+            style={{ marginBottom: 16 }}
+          />
+        </Reveal>
 
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>
@@ -112,13 +127,17 @@ export default function CustomersScreen() {
             <Text style={s.emptyTextBox}>{t('customers.s004')}</Text>
           </View>
         ) : (
-          enriched.map((c) => {
+          enriched.map((c, idx) => {
             const letter = ((c.firma || '?').trim().charAt(0) || '?').toUpperCase();
+            // Her müşteri kendi sabit rengini alır -- liste tek renge boğulmasın
+            const tone = hashColor(c.firma || c.id);
             return (
-              <View key={c.id} style={s.card} testID={`customer-card-${c.id}`}>
+              <Reveal key={c.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={20}>
+              <View style={s.card} testID={`customer-card-${c.id}`}>
+                <View style={[s.cardStripe, { backgroundColor: tone }]} />
                 {/* Top row: avatar + name/phone + actions */}
                 <View style={s.topRow}>
-                  <View style={s.avatar}>
+                  <View style={[s.avatar, { backgroundColor: tone, boxShadow: `0 6px 14px ${alpha(tone, 0.35)}` }]}>
                     <Text style={s.avatarLetter}>{letter}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -135,7 +154,7 @@ export default function CustomersScreen() {
                     testID={`delete-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
+                    <SoftIcon icon="trash-outline" color={theme.colors.red} size={30} iconSize={15} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => router.push({ pathname: '/customer-add', params: { id: c.id } })}
@@ -143,7 +162,7 @@ export default function CustomersScreen() {
                     testID={`open-cust-${c.id}`}
                     style={s.iconBtn}
                   >
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+                    <SoftIcon icon="chevron-forward" color={theme.colors.primary} size={30} iconSize={16} />
                   </TouchableOpacity>
                 </View>
 
@@ -175,11 +194,12 @@ export default function CustomersScreen() {
                   </View>
                 </View>
               </View>
+              </Reveal>
             );
           })
         )}
         </View>
-      </ScrollView>
+      </MotionScrollView>
 
       <Modal visible={!!quotesFor} transparent animationType="fade" onRequestClose={() => setQuotesFor(null)}>
         <View style={s.modalOverlay}>
@@ -267,30 +287,29 @@ const s = StyleSheet.create({
   emptyTextBox: { fontSize: 13, color: theme.colors.textMuted, textAlign: 'center', lineHeight: 18 },
 
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    marginBottom: 7,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: theme.colors.line,
+    padding: 13,
+    paddingTop: 15,
+    marginBottom: 12,
+    overflow: 'hidden',
     ...theme.shadow.sm,
-    shadowColor: theme.colors.primary,
-    shadowOpacity: 0.05,
   },
+  cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#DBEAFE',
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
-    fontSize: 13.5,
+    fontSize: 14.5,
     fontWeight: '900',
-    color: theme.colors.primary,
+    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   name: { fontSize: 13, fontWeight: '800', color: theme.colors.text },

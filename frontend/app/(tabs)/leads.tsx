@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,6 +20,7 @@ import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
 const DURUM_COLORS: Record<string, string> = {
@@ -549,7 +549,12 @@ export default function LeadsScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="search"
+          title={t('leads.s011')}
+          color={theme.colors.modules.lead}
+        />
         <View style={s.statGrid}>
           <View style={s.statCard}><Text style={s.statValue}>{stats.total}</Text><Text style={s.statLabel}>{t('leads.s039')}</Text></View>
           <View style={s.statCard}><Text style={s.statValue}>{stats.aranan}</Text><Text style={s.statLabel}>{t('leads.s040')}</Text></View>
@@ -614,7 +619,7 @@ export default function LeadsScreen() {
           <>
             <View style={s.dailyBox}>
               <Text style={s.dailyLabel}>{t('leads.s044')}</Text>
-              <TextInput
+              <MotionInput
                 style={s.dailyInput}
                 value={dailyCount}
                 onChangeText={setDailyCount}
@@ -699,10 +704,11 @@ export default function LeadsScreen() {
                         {items.length === 0 ? (
                           <Text style={s.kanbanEmpty}>—</Text>
                         ) : (
-                          items.map((lead) => {
+                          items.map((lead, li) => {
                             const idx = DURUM_OPTIONS.indexOf(lead.durum);
                             return (
-                              <View key={lead.id} style={s.kanbanCard} testID={`kanban-card-${lead.id}`}>
+                              <Reveal key={lead.id} index={li} variant="up" distance={16}>
+                              <View style={s.kanbanCard} testID={`kanban-card-${lead.id}`}>
                                 <TouchableOpacity onPress={() => openNotes(lead)}>
                                   <View style={s.kanbanCardTopRow}>
                                     <Text style={s.kanbanCardTitle} numberOfLines={1}>{lead.firma}</Text>
@@ -737,6 +743,7 @@ export default function LeadsScreen() {
                                   </TouchableOpacity>
                                 </View>
                               </View>
+                              </Reveal>
                             );
                           })
                         )}
@@ -783,7 +790,7 @@ export default function LeadsScreen() {
             <Text style={s.sectionTitle}>{t('leads.s006')}</Text>
             <Text style={s.helperTinyMuted}>
               {t('leads.s052')}</Text>
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s053')}
               placeholderTextColor="#94a3b8"
@@ -791,7 +798,7 @@ export default function LeadsScreen() {
               onChangeText={setReqSektor}
               testID="lead-req-sektor"
             />
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s054')}
               placeholderTextColor="#94a3b8"
@@ -799,7 +806,7 @@ export default function LeadsScreen() {
               onChangeText={setReqBolge}
               testID="lead-req-bolge"
             />
-            <TextInput
+            <MotionInput
               style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]}
               placeholder={t('leads.s055')}
               placeholderTextColor="#94a3b8"
@@ -818,13 +825,13 @@ export default function LeadsScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+      </MotionScrollView>
 
       <Modal visible={!!notesFor} transparent animationType="fade" onRequestClose={() => setNotesFor(null)}>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>{notesFor?.firma} {t('leads.s057')}</Text>
-            <TextInput
+            <MotionInput
               style={[s.input, { minHeight: 90, textAlignVertical: 'top' }]}
               multiline
               value={noteText}
@@ -834,7 +841,7 @@ export default function LeadsScreen() {
               autoFocus
             />
             <Text style={s.modalSubLabel}>Fırsat Tutarı (₺)</Text>
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder="0"
               placeholderTextColor="#94a3b8"
@@ -895,7 +902,7 @@ export default function LeadsScreen() {
               ))}
             </View>
             <Text style={s.modalSubLabel}>{t('leads.s069')}</Text>
-            <TextInput
+            <MotionInput
               style={[s.input, { minHeight: 110, textAlignVertical: 'top' }]}
               multiline
               value={waText}
@@ -920,7 +927,7 @@ export default function LeadsScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>{t('leads.s072')}</Text>
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s073')}
               placeholderTextColor="#94a3b8"
@@ -929,7 +936,7 @@ export default function LeadsScreen() {
               autoFocus
               testID="lead-add-firma"
             />
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s074')}
               placeholderTextColor="#94a3b8"
@@ -937,7 +944,7 @@ export default function LeadsScreen() {
               onChangeText={setAddBolge}
               testID="lead-add-bolge"
             />
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s075')}
               placeholderTextColor="#94a3b8"
@@ -945,7 +952,7 @@ export default function LeadsScreen() {
               onChangeText={setAddKategori}
               testID="lead-add-kategori"
             />
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('leads.s076')}
               placeholderTextColor="#94a3b8"
@@ -954,7 +961,7 @@ export default function LeadsScreen() {
               keyboardType="phone-pad"
               testID="lead-add-telefon"
             />
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder="Fırsat Tutarı (₺, opsiyonel)"
               placeholderTextColor="#94a3b8"
@@ -995,7 +1002,7 @@ export default function LeadsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput
+                <MotionInput
                   style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]}
                   multiline
                   value={assignNote}
@@ -1074,7 +1081,7 @@ const s = StyleSheet.create({
   durumChipText: { fontSize: 10, fontWeight: '800' },
   iconBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
   waBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' },
-  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
+  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.colors.primary, borderRadius: 12, height: 46, marginTop: 4 },
   submitBtnText: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
   reqCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8, gap: 8 },

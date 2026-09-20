@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -35,6 +34,8 @@ import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { alpha, BorderBeam, BubbleButton, ChoiceChip, CountUp, IconBadge, MotionInput, MotionScrollView, Reveal, useViewportProgress } from '@/src/components/motion';
+import Reanimated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -668,27 +669,38 @@ export default function EditorScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={editingId ? t('teklifPage.s020') : 'Yeni Teklif'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Grand total sticky */}
-          <LinearGradient
-            colors={[theme.colors.primary, theme.colors.navy]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.totalBanner}
+          {/* Genel toplam -- kenarı ışıklı koyu kart, tutar değiştikçe sayarak akar */}
+          <BorderBeam
+            radius={20}
+            width={1.4}
+            background={theme.colors.navyDark}
+            baseBorder="rgba(148,163,184,0.22)"
+            colors={['rgba(129,140,248,0)', '#818CF8', '#22D3EE', 'rgba(34,211,238,0)']}
+            style={s.totalShell}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={s.totalLabel}>{t('teklifPage.s021')}{cur})</Text>
-              <Text style={s.totalValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
-            </View>
-            <View style={s.miniStats}>
-              <View style={[s.durumBadge, { backgroundColor: (DURUM_COLORS[durum] || theme.colors.textMuted) + '30' }]}>
-                <View style={[s.durumDot, { backgroundColor: DURUM_COLORS[durum] || theme.colors.textMuted }]} />
-                <Text style={s.durumBadgeText}>{statusLabel(lang, durum)}</Text>
+            <LinearGradient
+              colors={[alpha(theme.colors.primary, 0.55), 'rgba(15,23,42,0)'] as [string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={s.totalBanner}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.totalLabel}>{t('teklifPage.s021')}{cur})</Text>
+                <CountUp value={genelToplam} duration={700} format={(n) => fmt(n, cur)} style={s.totalValue} numberOfLines={1} />
               </View>
-              <Text style={s.miniStat}>{items.length} kalem</Text>
-              <Text style={s.miniStatSub}>{t('teklifPage.s023')}{kdvOr}</Text>
+              <View style={s.miniStats}>
+                <View style={[s.durumBadge, { backgroundColor: (DURUM_COLORS[durum] || theme.colors.textMuted) + '30' }]}>
+                  <View style={[s.durumDot, { backgroundColor: DURUM_COLORS[durum] || theme.colors.textMuted }]} />
+                  <Text style={s.durumBadgeText}>{statusLabel(lang, durum)}</Text>
+                </View>
+                <Text style={s.miniStat}>{items.length} kalem</Text>
+                <Text style={s.miniStatSub}>{t('teklifPage.s023')}{kdvOr}</Text>
+              </View>
             </View>
-          </LinearGradient>
+          </BorderBeam>
 
           {!!draftBanner && (
             <View style={{
@@ -747,15 +759,15 @@ export default function EditorScreen() {
 
           <SectionHeader title={t('teklifPage.s024')} icon="document-text" />
           <View style={s.fieldGrid}>
-            <FGroup label={t('teklifPage.s025')} grid><TextInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
-            <FGroup label={t('teklifPage.s026')} grid><TextInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
-            <FGroup label={t('teklifPage.s027')} grid><TextInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s025')} grid><MotionInput style={s.input} value={teklifNo} onChangeText={(v) => { setTeklifNo(v); teklifNoManualRef.current = true; }} testID="teklif-no-input" /></FGroup>
+            <FGroup label={t('teklifPage.s026')} grid><MotionInput style={s.input} value={tarih} onChangeText={setTarih} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s027')} grid><MotionInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
           </View>
 
           <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
             <Text style={s.label}>{t('teklifPage.s029')}</Text>
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('teklifPage.s030')}
               placeholderTextColor="#94a3b8"
@@ -785,52 +797,70 @@ export default function EditorScreen() {
             ) : null}
           </View>
           <View style={s.fieldGrid}>
-            <FGroup label={t('teklifPage.s031')} grid><TextInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
-            <FGroup label={t('teklifPage.s002')} grid><TextInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
-            <FGroup label={t('teklifPage.s033')} grid><TextInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
+            <FGroup label={t('teklifPage.s031')} grid><MotionInput style={s.input} value={musYetkili} onChangeText={setMusYetkili} placeholder={t('teklifPage.s032')} placeholderTextColor="#94a3b8" /></FGroup>
+            <FGroup label={t('teklifPage.s002')} grid><MotionInput style={s.input} value={musTelefon} onChangeText={setMusTelefon} placeholder={t('teklifPage.s002')} placeholderTextColor="#94a3b8" keyboardType="phone-pad" /></FGroup>
+            <FGroup label={t('teklifPage.s033')} grid><MotionInput style={s.input} value={musEmail} onChangeText={setMusEmail} placeholder={t('teklifPage.s034')} placeholderTextColor="#94a3b8" keyboardType="email-address" autoCapitalize="none" /></FGroup>
           </View>
-          <FGroup label={t('teklifPage.s035')}><TextInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder={t('teklifPage.s036')} placeholderTextColor="#94a3b8" /></FGroup>
+          <FGroup label={t('teklifPage.s035')}><MotionInput style={[s.input, s.multiline]} multiline value={musAdres} onChangeText={setMusAdres} placeholder={t('teklifPage.s036')} placeholderTextColor="#94a3b8" /></FGroup>
 
           <SectionHeader title={t('teklifPage.s037')} icon="cart" />
-          <FGroup label={t('teklifPage.s038')}><TextInput style={s.input} value={projeAdi} onChangeText={setProjeAdi} placeholder={t('teklifPage.s039')} placeholderTextColor="#94a3b8" /></FGroup>
+          <FGroup label={t('teklifPage.s038')}><MotionInput style={s.input} value={projeAdi} onChangeText={setProjeAdi} placeholder={t('teklifPage.s039')} placeholderTextColor="#94a3b8" /></FGroup>
           <Row>
             <FGroup label={t('teklifPage.s040')} flex={1}>
               <View style={s.chipRow}>{['USD', 'EUR', 'TRY'].map((c) => (
-                <TouchableOpacity key={c} testID={`cur-${c}`} style={[s.chip, paraBirimi === c && s.chipActive]} onPress={() => setParaBirimi(c)}>
-                  <Text style={[s.chipText, paraBirimi === c && s.chipTextActive]}>{c}</Text>
-                </TouchableOpacity>
+                <ChoiceChip key={c} testID={`cur-${c}`} label={c} selected={paraBirimi === c} onPress={() => setParaBirimi(c)} style={{ flex: 1 }} />
               ))}</View>
             </FGroup>
             <FGroup label={t('teklifPage.s041')} flex={1}>
               <View style={s.chipRow}>{['EXW', 'FOB', 'CIF', 'DAP'].map((c) => (
-                <TouchableOpacity key={c} style={[s.chip, nakliye === c && s.chipActive]} onPress={() => setNakliye(c)}>
-                  <Text style={[s.chipText, nakliye === c && s.chipTextActive]}>{c}</Text>
-                </TouchableOpacity>
+                <ChoiceChip key={c} label={c} selected={nakliye === c} onPress={() => setNakliye(c)} />
               ))}</View>
             </FGroup>
           </Row>
           <View style={s.fieldGrid}>
-            <FGroup label={t('teklifPage.s042')} grid><TextInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
-            <FGroup label={t('teklifPage.s043')} grid><TextInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
-            <FGroup label={t('teklifPage.s044')} grid><TextInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
-            <FGroup label={t('teklifPage.s045')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
-            <FGroup label={t('teklifPage.s046')} grid narrow><TextInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s042')} grid><MotionInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
+            <FGroup label={t('teklifPage.s043')} grid><MotionInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
+            <FGroup label={t('teklifPage.s044')} grid><MotionInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
+            <FGroup label={t('teklifPage.s045')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('teklifPage.s046')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
           </View>
 
           <SectionHeader title={`KALEMLER (${items.length})`} icon="layers" />
           {items.length === 0 && (
-            <TouchableOpacity style={s.emptyBox} activeOpacity={0.8} onPress={() => setShowModeSheet(true)} testID="empty-add-item">
-              <View style={s.emptyIconCircle}>
-                <Ionicons name="add" size={26} color={theme.colors.primary} />
+            <>
+              <Reveal variant="scale">
+                <TouchableOpacity style={s.emptyBox} activeOpacity={0.85} onPress={() => setShowModeSheet(true)} testID="empty-add-item">
+                  <IconBadge icon="add" color={theme.colors.primary} size={54} radius={19} motion="float" />
+                  <Text style={s.emptyTitle}>{t('teklifPage.s047')}</Text>
+                  <Text style={s.emptyText}>{t('teklifPage.s048')}</Text>
+                </TouchableOpacity>
+              </Reveal>
+
+              {/* Teklif henüz boşken: kaydırdıkça sırayla beliren kısa ipuçları --
+                  ekran "bomboş" görünmesin, yeni kullanıcı akışı öğrensin. */}
+              <View style={s.tipsWrap}>
+                {[
+                  { icon: 'library' as const, color: theme.colors.modules.katalog, title: t('teklifPage.tipCatalogTitle'), text: t('teklifPage.tipCatalogText') },
+                  { icon: 'people' as const, color: theme.colors.modules.musteri, title: t('teklifPage.tipCustomerTitle'), text: t('teklifPage.tipCustomerText') },
+                  { icon: 'logo-whatsapp' as const, color: '#16A34A', title: t('teklifPage.tipShareTitle'), text: t('teklifPage.tipShareText') },
+                ].map((tip, i) => (
+                  <Reveal key={tip.title} variant={i % 2 === 0 ? 'left' : 'right'} distance={22}>
+                    <View style={s.tipRow}>
+                      <IconBadge icon={tip.icon} color={tip.color} size={36} motion="pop" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.tipTitle}>{tip.title}</Text>
+                        <Text style={s.tipText}>{tip.text}</Text>
+                      </View>
+                    </View>
+                  </Reveal>
+                ))}
               </View>
-              <Text style={s.emptyTitle}>{t('teklifPage.s047')}</Text>
-              <Text style={s.emptyText}>{t('teklifPage.s048')}</Text>
-            </TouchableOpacity>
+            </>
           )}
 
           {items.map((it, idx) => (
+            <Reveal key={it.id}>
             <ItemCard
-              key={it.id}
               item={it}
               idx={idx}
               currency={cur}
@@ -849,17 +879,27 @@ export default function EditorScreen() {
               onMoveUp={() => moveItem(it.id, 'up')}
               onMoveDown={() => moveItem(it.id, 'down')}
             />
+            </Reveal>
           ))}
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-            <TouchableOpacity style={[s.addBtn, { flex: 1.2 }]} onPress={() => setShowModeSheet(true)} testID="add-item-btn">
-              <Ionicons name="add-circle" size={18} color={theme.colors.primary} />
-              <Text style={s.addBtnText}>{t('teklifPage.s049')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.addBtnAlt, { flex: 1 }]} onPress={() => setShowCatalogPicker(true)} testID="add-from-catalog-btn">
-              <Ionicons name="library-outline" size={16} color={theme.colors.navy} />
-              <Text style={s.addBtnAltText}>{t('teklifPage.s050')}</Text>
-            </TouchableOpacity>
+            <BubbleButton
+              icon="add"
+              label={t('teklifPage.s049')}
+              color={theme.colors.primary}
+              onPress={() => setShowModeSheet(true)}
+              testID="add-item-btn"
+              style={{ flex: 1.25 }}
+            />
+            <BubbleButton
+              icon="library"
+              label={t('teklifPage.s050')}
+              color={theme.colors.modules.katalog}
+              variant="soft"
+              onPress={() => setShowCatalogPicker(true)}
+              testID="add-from-catalog-btn"
+              style={{ flex: 1 }}
+            />
           </View>
 
           {noSystemTypes && (
@@ -883,7 +923,7 @@ export default function EditorScreen() {
               </TouchableOpacity>
               <Text style={{ fontSize: 10, color: '#94a3b8', flex: 1 }}>Metni seçip butona basın</Text>
             </View>
-            <TextInput
+            <MotionInput
               style={[s.input, s.multiline, { minHeight: 90 }]}
               multiline
               value={notlar}
@@ -955,10 +995,14 @@ export default function EditorScreen() {
               </View>
             );
           })}
-          <TouchableOpacity style={s.addBtn} onPress={pickAttachments} testID="pick-attachment-btn">
-            <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.addBtnText}>{t('teklifPage.s060')}</Text>
-          </TouchableOpacity>
+          <BubbleButton
+            icon="cloud-upload"
+            label={t('teklifPage.s060')}
+            color={theme.colors.primary}
+            variant="dashed"
+            onPress={pickAttachments}
+            testID="pick-attachment-btn"
+          />
 
           {/* LIVE PDF PREVIEW */}
           <View style={s.livePreviewSection}>
@@ -1027,7 +1071,7 @@ export default function EditorScreen() {
               {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text></>)}
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
 
       {/* Mode select */}
@@ -1331,7 +1375,7 @@ function ItemCard({
             }
             return (
               <FieldGroup key={f.id} label={f.label} grid narrow>
-                <TextInput
+                <MotionInput
                   style={itemStyles.input}
                   keyboardType={f.type === 'number' ? 'numeric' : 'default'}
                   value={currentVal}
@@ -1351,14 +1395,14 @@ function ItemCard({
       {item.mode === 'manual' && (
         <>
           <FieldGroup label={t('teklifPage.s092')}>
-            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s093')} placeholderTextColor="#94a3b8" />
+            <MotionInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s093')} placeholderTextColor="#94a3b8" />
           </FieldGroup>
           {(item.customFields || []).map((cf, ci) => (
             <View key={ci} style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-              <TextInput style={[itemStyles.input, { flex: 1 }]} placeholder={t('teklifPage.s094')} placeholderTextColor="#94a3b8" value={cf.key} onChangeText={(v) => {
+              <MotionInput style={[itemStyles.input, { flex: 1 }]} placeholder={t('teklifPage.s094')} placeholderTextColor="#94a3b8" value={cf.key} onChangeText={(v) => {
                 const next = [...item.customFields]; next[ci] = { ...cf, key: v }; onChange({ customFields: next });
               }} />
-              <TextInput style={[itemStyles.input, { flex: 1.5 }]} placeholder={t('teklifPage.s095')} placeholderTextColor="#94a3b8" value={cf.value} onChangeText={(v) => {
+              <MotionInput style={[itemStyles.input, { flex: 1.5 }]} placeholder={t('teklifPage.s095')} placeholderTextColor="#94a3b8" value={cf.value} onChangeText={(v) => {
                 const next = [...item.customFields]; next[ci] = { ...cf, value: v }; onChange({ customFields: next });
               }} />
               <TouchableOpacity style={itemStyles.removeKv} onPress={() => onChange({ customFields: item.customFields.filter((_, i) => i !== ci) })}>
@@ -1377,10 +1421,10 @@ function ItemCard({
       {item.mode === 'general' && (
         <>
           <FieldGroup label={t('teklifPage.s097')}>
-            <TextInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s098')} placeholderTextColor="#94a3b8" testID={`item-name-${idx}`} />
+            <MotionInput style={itemStyles.input} value={item.urunAdi} onChangeText={(v) => onChange({ urunAdi: v })} placeholder={t('teklifPage.s098')} placeholderTextColor="#94a3b8" testID={`item-name-${idx}`} />
           </FieldGroup>
           <FieldGroup label={t('teklifPage.s099')}>
-            <TextInput style={[itemStyles.input, { minHeight: 40, textAlignVertical: 'top' }]} multiline value={item.aciklama} onChangeText={(v) => onChange({ aciklama: v })} />
+            <MotionInput style={[itemStyles.input, { minHeight: 40, textAlignVertical: 'top' }]} multiline value={item.aciklama} onChangeText={(v) => onChange({ aciklama: v })} />
           </FieldGroup>
         </>
       )}
@@ -1390,9 +1434,9 @@ function ItemCard({
           karakterlik bir rakamı rahat gösterecek, ama geniş ekranda
           gereğinden fazla büyümeyecek kadar bir üst sınır. */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-        <FieldGroup label={t('teklifPage.s100')} flex={0.7}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s101')} flex={0.9}><TextInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
-        <FieldGroup label={t('teklifPage.s102')} flex={1.4} maxWidth={180}><TextInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s100')} flex={0.7}><MotionInput style={itemStyles.input} keyboardType="decimal-pad" value={adetText} onChangeText={onAdetTextChange} testID={`item-qty-${idx}`} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s101')} flex={0.9}><MotionInput style={itemStyles.input} value={item.birim} onChangeText={(v) => onChange({ birim: v })} /></FieldGroup>
+        <FieldGroup label={t('teklifPage.s102')} flex={1.4} maxWidth={180}><MotionInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
       </View>
 
       {/* Per-item PDF cell preview */}
@@ -1421,20 +1465,43 @@ function ModeChoice({ icon, title, desc, onPress, tid }: { icon: any; title: str
   );
 }
 
+// Bölüm başlığı -- alt çizgisi, bölüm ekrana girdikçe soldan sağa dolar.
+function SectionLine() {
+  const ref = useAnimatedRef<Reanimated.View>();
+  const p = useViewportProgress(ref, { from: 0.96, to: 0.62 });
+  const lineStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: Math.max(0.02, p.value) }] }));
+  return (
+    <Reanimated.View ref={ref} collapsable={false} style={s.sectionLineWrap}>
+      <Reanimated.View style={[s.sectionLine, lineStyle]}>
+        <LinearGradient
+          colors={[theme.colors.primary, alpha(theme.colors.primary, 0)] as [string, string]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Reanimated.View>
+    </Reanimated.View>
+  );
+}
+
 function SectionHeader({ title, icon }: { title: string; icon?: keyof typeof Ionicons.glyphMap }) {
   return (
-    <View style={s.sectionH}>
-      {icon && (
-        <View style={s.sectionIconWrap}>
-          <Ionicons name={icon} size={12} color={theme.colors.primary} />
-        </View>
-      )}
-      <Text style={s.sectionHText}>{title}</Text>
+    <View>
+      <View style={s.sectionH}>
+        {icon && (
+          <View style={s.sectionIconWrap}>
+            <Ionicons name={icon} size={12} color={theme.colors.primary} />
+          </View>
+        )}
+        <Text style={s.sectionHText}>{title}</Text>
+      </View>
+      <SectionLine />
     </View>
   );
 }
 function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title: string; actionLabel?: string; onAction?: () => void; icon?: keyof typeof Ionicons.glyphMap }) {
   return (
+    <View>
     <View style={s.sectionRow}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {icon && (
@@ -1445,6 +1512,8 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
         <Text style={s.sectionH2}>{title}</Text>
       </View>
       {actionLabel && onAction ? <TouchableOpacity onPress={onAction}><Text style={s.sectionAction}>{actionLabel}</Text></TouchableOpacity> : null}
+    </View>
+    <SectionLine />
     </View>
   );
 }
@@ -1485,17 +1554,20 @@ const s = StyleSheet.create({
   durumBadgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800' },
   miniStat: { color: '#fff', fontSize: 12, fontWeight: '700' },
   miniStatSub: { color: theme.colors.primary, fontSize: 10, marginTop: 2, fontWeight: '800' },
-  sectionH: { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
+  sectionH: { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 2 },
+  sectionLineWrap: { marginBottom: 10 },
+  sectionLine: { height: 2, borderRadius: 1, marginTop: 6, overflow: 'hidden', transformOrigin: 'left' },
+  totalShell: { marginBottom: 14 },
   sectionHText: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   sectionIconWrap: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10, paddingBottom: 5, borderBottomWidth: 2, borderBottomColor: theme.colors.primary },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 2 },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.navy, letterSpacing: 0.5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
   // minHeight: 2 satırlık sabit yükseklik -- etiket 1 satıra mı 2 satıra mı
   // sardığı kutunun genişliğine göre değişse de, aynı satırdaki tüm
   // kutucukların altındaki input'lar hep aynı hizada başlasın diye.
   label: { fontSize: 10, lineHeight: 13, minHeight: 26, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 14, color: theme.colors.text },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: Platform.OS === 'ios' ? 13 : 10, fontSize: 14, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
   // Teklif/Müşteri/Sipariş Bilgileri'ndeki kısa değerli alanlar (Teklif No,
   // Tarih, Telefon, Menşei, Teslim vb.) için ItemCard'daki kalem alanlarıyla
@@ -1528,12 +1600,26 @@ const s = StyleSheet.create({
   suggestSub: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
   selectBox: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectText: { fontSize: 13, color: theme.colors.text, flex: 1 },
-  chipRow: { flexDirection: 'row', gap: 4 },
+  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   chip: { flex: 1, paddingVertical: 9, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 8, alignItems: 'center' },
   chipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   chipText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
   chipTextActive: { color: '#fff' },
-  emptyBox: { backgroundColor: theme.colors.primary + '08', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary + '55', borderRadius: 14, padding: 24, alignItems: 'center', marginBottom: 10, gap: 4 },
+  emptyBox: { backgroundColor: theme.colors.primary + '08', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.primary + '55', borderRadius: 18, padding: 26, alignItems: 'center', marginBottom: 10, gap: 6 },
+  tipsWrap: { gap: 10, marginTop: 6, marginBottom: 6 },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+  },
+  tipTitle: { fontSize: 13, fontWeight: '900', color: theme.colors.navy },
+  tipText: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2, lineHeight: 16 },
   emptyIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontSize: 13, fontWeight: '800', color: theme.colors.navy },
   emptyText: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', maxWidth: 260 },
@@ -1613,8 +1699,8 @@ const itemStyles = StyleSheet.create({
   // biri (ör. "CEPHE / GENİŞLİK") 2 satıra sarsa bile, altındaki input hep
   // "YÜKSEKLİK" gibi tek satırlık etiketli komşusuyla aynı hizada başlasın.
   label: { fontSize: 9.5, lineHeight: 12, minHeight: 24, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, textTransform: 'uppercase' },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: Platform.OS === 'ios' ? 10 : 8, fontSize: 13.5, color: theme.colors.text },
-  select: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 13, paddingHorizontal: 11, paddingVertical: Platform.OS === 'ios' ? 11 : 9, fontSize: 13.5, color: theme.colors.text },
+  select: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 13, paddingHorizontal: 11, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectHighlight: { borderColor: theme.colors.primary, borderWidth: 2, backgroundColor: theme.colors.primarySoft },
   selectText: { fontSize: 13, color: theme.colors.text, flex: 1 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 10 },

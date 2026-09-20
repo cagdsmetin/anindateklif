@@ -4,7 +4,6 @@ import {
   Linking,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api, AdRecordT, AdWatchItemT } from '@/src/lib/api';
+import { MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 // ============================================================================
 // Reklam İstihbaratı -- MyDijital OS'teki "Reklam İstihbaratı" modülünün
@@ -276,7 +276,12 @@ export default function AdsIntelScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="megaphone"
+          title={'Reklam İstihbaratı'}
+          color={theme.colors.modules.reklam}
+        />
         <Text style={s.helperTinyMuted}>
           Rakiplerinizin reklamlarını (Meta/Instagram vb.) kaydedin. Bir reklam ne kadar uzun süre yayında kalırsa "kazanma sinyali" o kadar güçlü sayılır — reklamverenin dönüşüm getirdiği için bütçesini kesmediği varsayılır.
         </Text>
@@ -401,7 +406,7 @@ export default function AdsIntelScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </MotionScrollView>
 
       <Modal visible={addOpen} transparent animationType="fade" onRequestClose={() => setAddOpen(false)}>
         <View style={s.modalOverlay}>

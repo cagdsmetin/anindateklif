@@ -28,6 +28,7 @@ import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import { useLanguage, orderedAmounts, statusLabel } from '@/src/lib/i18n';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, compactNumber } from '@/src/components/motion';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -329,6 +330,14 @@ export default function HistoryScreen() {
 
   const waMenuQuote = waMenuFor ? quotes.find((x) => x.id === waMenuFor) : null;
 
+  // Hero'daki "onaylanan tutar" kutusu: kullanıcının diline göre öncelikli
+  // para birimi (TRY/USD/EUR); kur yoksa eski davranış -- sadece USD toplamı.
+  const [heroApprovedAmt] = orderedAmounts(lang, approvedTRY, approvedEquiv.usd, approvedEquiv.eur);
+  const heroApproved = {
+    val: heroApprovedAmt.val != null ? heroApprovedAmt.val : totalValueUSDOnly,
+    cur: heroApprovedAmt.val != null ? heroApprovedAmt.cur : 'USD',
+  };
+
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -341,129 +350,110 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('history.s012')} />
-      {incomingEditRequests.length > 0 && (
-        <View style={{ paddingHorizontal: 14, paddingTop: 12, gap: 8 }}>
-          <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>{t('history.s046')}</Text>
-          {incomingEditRequests.map((r) => (
-            <View key={r.id} style={{
-              flexDirection: 'row', alignItems: 'center', gap: 10,
-              backgroundColor: '#fef3c7', borderRadius: 12, padding: 12,
-            }}>
-              <Ionicons name="alert-circle" size={18} color="#b45309" />
-              <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
-                {t('history.s047').replace('{who}', r.requestedByEmail || r.requestedByName || '').replace('{teklifNo}', r.teklifNo || '')}
-              </Text>
-              <TouchableOpacity
-                disabled={respondingId === r.id}
-                onPress={() => handleRespondEditRequest(r.id, true)}
-                style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
-              >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s048')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={respondingId === r.id}
-                onPress={() => handleRespondEditRequest(r.id, false)}
-                style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
-              >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s049')}</Text>
-              </TouchableOpacity>
+      <MotionScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
+        progressColors={[theme.colors.modules.gecmis, theme.colors.primary, '#A855F7']}
+      >
+        <View style={s.headBlock}>
+          <ScreenHero
+            icon="time"
+            title={t('history.s012')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.gecmis}
+            stats={[
+              { label: t('history.s013'), value: quotes.length },
+              { label: t('history.s014'), value: pendingCount },
+              { label: t('history.s016'), value: thisMonthCount },
+              { label: t('history.s015'), value: heroApproved.val, format: (n) => `${heroApproved.cur === 'USD' ? '$' : heroApproved.cur === 'EUR' ? '€' : '₺'}${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`, tone: '#6EE7B7' },
+            ]}
+          />
+          {incomingEditRequests.length > 0 && (
+            <View style={{ paddingTop: 2, paddingBottom: 12, gap: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#92400e' }}>{t('history.s046')}</Text>
+              {incomingEditRequests.map((r) => (
+                <View key={r.id} style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 10,
+                  backgroundColor: '#fef3c7', borderRadius: 12, padding: 12,
+                }}>
+                  <Ionicons name="alert-circle" size={18} color="#b45309" />
+                  <Text style={{ flex: 1, fontSize: 13, color: '#78350f' }}>
+                    {t('history.s047').replace('{who}', r.requestedByEmail || r.requestedByName || '').replace('{teklifNo}', r.teklifNo || '')}
+                  </Text>
+                  <TouchableOpacity
+                    disabled={respondingId === r.id}
+                    onPress={() => handleRespondEditRequest(r.id, true)}
+                    style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s048')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={respondingId === r.id}
+                    onPress={() => handleRespondEditRequest(r.id, false)}
+                    style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{t('history.s049')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-          ))}
+          )}
         </View>
-      )}
-      <View style={{ padding: 14, paddingBottom: 6 }}>
-        <View style={s.statsRow}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('history.s013')}</Text>
-            <Text style={s.statValue}>{quotes.length}</Text>
+
+        {/* Arama + durum filtreleri: liste kayarken üstte yapışık kalır */}
+        <View style={s.stickyBar}>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <View style={[s.searchWrap, { flex: 1 }]}>
+              <Ionicons name="search" size={16} color={theme.colors.textMuted} />
+              <TextInput testID="history-search" style={s.searchInput} placeholder={t('history.s018')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
+            </View>
+            <TouchableOpacity
+              style={s.trashEntryBtn}
+              onPress={() => router.push('/trash' as any)}
+              testID="trash-entry-btn"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
+            </TouchableOpacity>
           </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('history.s014')}</Text>
-            <Text style={s.statValue}>{pendingCount}</Text>
-          </View>
-          <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' }]}>
-            {(() => {
-              const [primaryAmt, ...secondaryAmt] = orderedAmounts(lang, approvedTRY, approvedEquiv.usd, approvedEquiv.eur);
-              const secondaryShown = secondaryAmt.filter((x) => x.val != null);
-              return (
-                <>
-                  <Text style={[s.statLabel, { color: '#166534' }]}>{t('history.s015')}{primaryAmt.val == null ? ` (${primaryAmt.cur})` : ''}</Text>
-                  <Text style={[s.statValue, { color: '#166534', fontSize: 14 }]} numberOfLines={1}>
-                    {primaryAmt.val != null ? fmt(primaryAmt.val, primaryAmt.cur) : fmt(totalValueUSDOnly, 'USD')}
-                  </Text>
-                  {primaryAmt.val != null && secondaryShown.length > 0 ? (
-                    <Text style={[s.statSubLabel, { color: '#166534' }]} numberOfLines={1}>
-                      ≈ {secondaryShown.map((x) => fmt(x.val as number, x.cur)).join(' · ')}
-                    </Text>
-                  ) : null}
-                </>
-              );
-            })()}
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('history.s016')}</Text>
-            <Text style={s.statValue}>{thisMonthCount}</Text>
-          </View>
-          <View style={s.statCard}>
-            {(() => {
-              const [primaryAmt, ...secondaryAmt] = orderedAmounts(lang, monthVolumeTRY, monthVolumeEquiv.usd, monthVolumeEquiv.eur);
-              const secondaryShown = secondaryAmt.filter((x) => x.val != null);
-              return (
-                <>
-                  <Text style={s.statLabel}>{t('history.s017')}{primaryAmt.val == null ? ` (${primaryAmt.cur})` : ''}</Text>
-                  <Text style={s.statValue} numberOfLines={1}>
-                    {primaryAmt.val != null ? fmt(primaryAmt.val, primaryAmt.cur) : fmt(monthVolumeUSD, 'USD')}
-                  </Text>
-                  {primaryAmt.val != null && secondaryShown.length > 0 ? (
-                    <Text style={s.statSubLabel} numberOfLines={1}>
-                      ≈ {secondaryShown.map((x) => fmt(x.val as number, x.cur)).join(' · ')}
-                    </Text>
-                  ) : null}
-                </>
-              );
-            })()}
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
+            {[t('history.s003'), ...STATUSES].map((st) => (
+              <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
+                <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false} numberOfLines={1}>{st}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <View style={[s.searchWrap, { flex: 1 }]}>
-            <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput testID="history-search" style={s.searchInput} placeholder={t('history.s018')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
-          </View>
-          <TouchableOpacity
-            style={s.trashEntryBtn}
-            onPress={() => router.push('/trash' as any)}
-            testID="trash-entry-btn"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
-        {[t('history.s003'), ...STATUSES].map((st) => (
-          <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false} numberOfLines={1}>{st}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+
+        <View style={s.listWrap}>
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="document-outline" size={30} color={theme.colors.textMuted} />
             <Text style={s.emptyTextBox}>{t('history.s019')}</Text>
           </View>
-        ) : filtered.map((quote) => {
+        ) : filtered.map((quote, idx) => {
           const c = statusColor(quote.durum);
           return (
-            <View key={quote.id} style={s.card} testID={`history-card-${quote.id}`}>
+            /* Kartlar kaydırıldıkça sırayla ve dönüşümlü olarak (soldan/sağdan) gelir */
+            <Reveal key={quote.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={20}>
+              <View style={s.card} testID={`history-card-${quote.id}`}>
+              <View style={[s.cardStripe, { backgroundColor: c.text }]} />
               <View style={s.cardTop}>
-                <View style={{ flex: 1 }}>
+                <IconBadge icon="document-text" color={c.text} size={38} motion="pop" />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.hNo}>{quote.teklifNo}</Text>
                   <Text style={s.hFirma} numberOfLines={1}>{quote.musFirma}</Text>
                   {quote.projeAdi ? <Text style={s.hProje} numberOfLines={1}>{quote.projeAdi}</Text> : null}
-                  <Text style={s.hDate}>{quote.tarih} • {quote.items.length} kalem</Text>
+                  <View style={s.metaRow}>
+                    <Ionicons name="calendar-outline" size={11} color={theme.colors.textMuted} />
+                    <Text style={s.hDate} numberOfLines={1}>{quote.tarih}</Text>
+                    <View style={s.metaDot} />
+                    <Ionicons name="layers-outline" size={11} color={theme.colors.textMuted} />
+                    <Text style={s.hDate} numberOfLines={1}>{quote.items.length} kalem</Text>
+                  </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
+                <View style={s.amountCol}>
                   <Text style={s.hAmount} numberOfLines={1}>{fmt(quote.genelToplam, quote.paraBirimi)}</Text>
                   {(() => {
                     const eq = cardEquiv(quote);
@@ -475,6 +465,7 @@ export default function HistoryScreen() {
                     );
                   })()}
                   <TouchableOpacity testID={`status-${quote.id}`} onPress={() => setStatusMenuFor(quote.id)} style={[s.statusBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
+                    <View style={[s.statusDot, { backgroundColor: c.text }]} />
                     <Text style={[s.statusText, { color: c.text }]}>{statusLabel(lang, quote.durum)}</Text>
                     <Ionicons name="chevron-down" size={11} color={c.text} />
                   </TouchableOpacity>
@@ -552,10 +543,12 @@ export default function HistoryScreen() {
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
                 </TouchableOpacity>
               </View>
-            </View>
+              </View>
+            </Reveal>
           );
         })}
-      </ScrollView>
+        </View>
+      </MotionScrollView>
 
       <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => setDeleteTarget(null)}>
         <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setDeleteTarget(null)}>
@@ -930,7 +923,10 @@ export default function HistoryScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  headBlock: { paddingHorizontal: 14, paddingTop: 12 },
+  stickyBar: { backgroundColor: theme.colors.surfaceSoft, paddingHorizontal: 14, paddingTop: 4, zIndex: 10 },
+  listWrap: { paddingHorizontal: 14, paddingTop: 4 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
@@ -947,22 +943,37 @@ const s = StyleSheet.create({
   // kaybolmasına (görünmez şekilde kırpılmasına) yol açtı. minHeight ile
   // hem kırpılmayı önlüyoruz hem de chip boyu değişse bile taşmıyor.
   filterRowOuter: { flexGrow: 0, minHeight: 62 },
-  filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 14, paddingVertical: 12, alignItems: 'center' },
+  filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingVertical: 12, alignItems: 'center' },
   filterChip: { minHeight: 36, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: 10 },
   filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   filterText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   filterTextActive: { color: '#fff' },
-  emptyBox: { marginTop: 24, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
+  emptyBox: { marginTop: 24, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm },
-  cardTop: { flexDirection: 'row', gap: 10 },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    padding: 13,
+    paddingTop: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    marginBottom: 12,
+    overflow: 'hidden',
+    ...theme.shadow.sm,
+  },
+  cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
+  cardTop: { flexDirection: 'row', gap: 11, alignItems: 'flex-start' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5, flexWrap: 'nowrap' },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: theme.colors.lineDark, marginHorizontal: 3 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  amountCol: { alignItems: 'flex-end', maxWidth: 168 },
   hNo: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
   hFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
   hProje: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
-  hAmount: { fontSize: 14, fontWeight: '900', color: theme.colors.primary },
+  hAmount: { fontSize: 15, fontWeight: '900', color: theme.colors.primary, letterSpacing: -0.3 },
   hAmountEquiv: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 1 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, borderWidth: 1, marginTop: 6 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, borderWidth: 1, marginTop: 8 },
   statusText: { fontSize: 10.5, fontWeight: '800' },
   maliyetRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
   maliyetText: { fontSize: 11, color: theme.colors.navy, fontWeight: '700', flexShrink: 1 },
@@ -982,8 +993,8 @@ const s = StyleSheet.create({
   maliyetSummaryBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line, gap: 4, width: '100%' },
   maliyetSummaryText: { fontSize: 12.5, fontWeight: '800', color: theme.colors.navy, textAlign: 'right' },
   actionBar: { flexDirection: 'row', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.line },
-  actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 10, flex: 1, justifyContent: 'center' },
-  actBtnIcon: { width: 40, paddingVertical: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  actBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 9, paddingHorizontal: 6, backgroundColor: theme.colors.primarySoft, borderRadius: 12, flex: 1, justifyContent: 'center' },
+  actBtnIcon: { width: 40, paddingVertical: 9, backgroundColor: theme.colors.redSoft, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   actText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary, letterSpacing: 0.2 },
   menuOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', padding: 30 },
   confirmBox: { backgroundColor: '#fff', padding: 20, borderRadius: 18, alignItems: 'center', ...theme.shadow.lg },

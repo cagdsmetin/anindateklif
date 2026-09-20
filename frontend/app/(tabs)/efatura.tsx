@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api, EFaturaConfigT } from '@/src/lib/api';
+import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 // ============================================================================
 // e-Fatura -- MyDijital OS'teki "E-Fatura" modülünün karşılığı. Sağlayıcı
@@ -150,7 +149,12 @@ export default function EFaturaScreen() {
       {loading ? (
         <ActivityIndicator style={{ marginTop: 30 }} color={theme.colors.primary} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="receipt"
+            title={'e-Fatura'}
+            color={theme.colors.modules.efatura}
+          />
           <Text style={s.helperTinyMuted}>
             Nilvera hesabınızın API anahtarıyla bağlantı kurun. Bu sürümde bağlantı testi ve kimlik bilgisi kaydı desteklenir; fatura kesme özelliği yakında eklenecek — Nilvera hesabınızdan mevcut yöntemle fatura kesmeye devam edebilirsiniz.
           </Text>
@@ -173,7 +177,7 @@ export default function EFaturaScreen() {
           </View>
 
           <Text style={s.sectionTitle}>Kimlik Bilgileri</Text>
-          <TextInput
+          <MotionInput
             style={s.input}
             placeholder={cfg?.hasApiKey ? `Kayıtlı anahtar: ${cfg.apiKeyMasked} (değiştirmek için yeni yazın)` : 'Nilvera API Anahtarı'}
             placeholderTextColor="#94a3b8"
@@ -204,16 +208,16 @@ export default function EFaturaScreen() {
           </TouchableOpacity>
 
           <Text style={s.sectionTitle}>Firma Künyesi</Text>
-          <TextInput style={s.input} placeholder="Vergi Kimlik No / TCKN" placeholderTextColor="#94a3b8" value={firmaVergiNo} onChangeText={setFirmaVergiNo} testID="efatura-vergino" />
-          <TextInput style={s.input} placeholder="Firma Unvanı" placeholderTextColor="#94a3b8" value={firmaUnvani} onChangeText={setFirmaUnvani} testID="efatura-unvan" />
-          <TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Adres" placeholderTextColor="#94a3b8" value={firmaAdres} onChangeText={setFirmaAdres} testID="efatura-adres" />
-          <TextInput style={s.input} placeholder="Fatura Serisi (opsiyonel)" placeholderTextColor="#94a3b8" value={faturaSerisi} onChangeText={setFaturaSerisi} testID="efatura-seri" />
-          <TextInput style={s.input} placeholder="Şablon ID (opsiyonel)" placeholderTextColor="#94a3b8" value={sablonId} onChangeText={setSablonId} testID="efatura-sablon" />
+          <MotionInput style={s.input} placeholder="Vergi Kimlik No / TCKN" placeholderTextColor="#94a3b8" value={firmaVergiNo} onChangeText={setFirmaVergiNo} testID="efatura-vergino" />
+          <MotionInput style={s.input} placeholder="Firma Unvanı" placeholderTextColor="#94a3b8" value={firmaUnvani} onChangeText={setFirmaUnvani} testID="efatura-unvan" />
+          <MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Adres" placeholderTextColor="#94a3b8" value={firmaAdres} onChangeText={setFirmaAdres} testID="efatura-adres" />
+          <MotionInput style={s.input} placeholder="Fatura Serisi (opsiyonel)" placeholderTextColor="#94a3b8" value={faturaSerisi} onChangeText={setFaturaSerisi} testID="efatura-seri" />
+          <MotionInput style={s.input} placeholder="Şablon ID (opsiyonel)" placeholderTextColor="#94a3b8" value={sablonId} onChangeText={setSablonId} testID="efatura-sablon" />
 
           <TouchableOpacity style={s.saveBtn} onPress={() => save()} disabled={saving} testID="efatura-save-btn">
             <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );
@@ -235,7 +239,7 @@ const s = StyleSheet.create({
   statusSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 3 },
   statusMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 6, fontWeight: '700' },
   sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.navy, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
+  input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },
   ortamPill: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
   ortamPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   ortamPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.text },

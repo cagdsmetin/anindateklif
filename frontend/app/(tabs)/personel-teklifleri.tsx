@@ -9,6 +9,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { api, StaffMemberT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
 import { StatusPieChart } from '@/src/components/StatusPieChart';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero, TiltOnScroll } from '@/src/components/motion';
 
 // Yönetici, atadığı personel/yöneticilerin tek tek verdiği teklifleri (durum
 // dağılımı + fiyat detayları) izleyebilsin diye eklendi. Teklifler backend'de
@@ -123,7 +124,17 @@ export default function PersonelTekliflerScreen() {
       ) : people.length === 0 ? (
         <View style={s.empty}><Text style={s.emptyText}>{t('personelTeklif.s003')}</Text></View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="pie-chart"
+            title={t('personelTeklif.s001')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.raporlar}
+            stats={[
+              { label: t('personelTeklif.s005'), value: total },
+              { label: t('personelTeklif.s001'), value: people.length },
+            ]}
+          />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
             {people.map((p) => {
               const active = selectedEmail === p.email;
@@ -141,6 +152,7 @@ export default function PersonelTekliflerScreen() {
             })}
           </ScrollView>
 
+          <TiltOnScroll>
           <View style={s.card}>
             <StatusPieChart
               data={QUOTE_STATUSES.filter((st) => (statusCounts[st] || 0) > 0).map((st) => ({
@@ -156,16 +168,19 @@ export default function PersonelTekliflerScreen() {
               emptyText={t('personelTeklif.s004')}
             />
           </View>
+          </TiltOnScroll>
 
           <Text style={s.sectionLabel}>{t('personelTeklif.s005')} ({total})</Text>
           {personQuotes.length === 0 ? (
             <Text style={s.emptyListText}>{t('personelTeklif.s004')}</Text>
           ) : (
-            personQuotes.map((q) => {
+            personQuotes.map((q, idx) => {
               const c = statusColor(q.durum);
               return (
-                <View key={q.id} style={s.quoteCard} testID={`staff-quote-${q.id}`}>
-                  <View style={{ flex: 1 }}>
+                <Reveal key={q.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
+                <View style={s.quoteCard} testID={`staff-quote-${q.id}`}>
+                  <IconBadge icon="document-text" color={c.text} size={34} motion="pop" />
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.qNo}>{q.teklifNo}</Text>
                     <Text style={s.qFirma} numberOfLines={1}>{q.musFirma}</Text>
                     <Text style={s.qDate}>{q.tarih}</Text>
@@ -177,17 +192,18 @@ export default function PersonelTekliflerScreen() {
                     </View>
                   </View>
                 </View>
+                </Reveal>
               );
             })
           )}
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   emptyText: { color: theme.colors.textMuted, textAlign: 'center' },
   personChip: {
@@ -205,8 +221,9 @@ const s = StyleSheet.create({
   sectionLabel: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted, marginTop: 20, marginBottom: 10, letterSpacing: 0.3, textTransform: 'uppercase' },
   emptyListText: { color: theme.colors.textMuted, fontSize: 13 },
   quoteCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14, padding: 12,
-    borderWidth: 1, borderColor: theme.colors.line, marginBottom: 8, ...theme.shadow.sm,
+    flexDirection: 'row', alignItems: 'center', gap: 11,
+    backgroundColor: theme.colors.surface, borderRadius: 18, padding: 13,
+    borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm,
   },
   qNo: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
   qFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },

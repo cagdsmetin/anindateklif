@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Linking,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,6 +16,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useLanguage } from '@/src/lib/i18n';
+import { BorderBeam, MotionScrollView, Reveal, TiltOnScroll } from '@/src/components/motion';
 
 // Anında Teklif'in web'deki gerçek tanıtım (landing) sayfası -- daha önce
 // giriş yapmamış her ziyaretçi doğrudan register/splash'e düşüyordu, "bu
@@ -118,7 +118,7 @@ export default function LandingScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'bottom']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <MotionScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={[s.page, isDesktop && s.pageDesktop]}>
           {/* NAV */}
           <View style={s.nav}>
@@ -147,16 +147,22 @@ export default function LandingScreen() {
             </View>
             <View style={s.heroGlow} pointerEvents="none" />
             <View style={[s.heroCol, isDesktop && s.heroColDesktop]}>
-              <View style={s.badge}>
-                <Ionicons name="sparkles" size={13} color={authTheme.gold} />
-                <Text style={s.badgeText}>{t('landing.s005')}</Text>
-              </View>
-              <Text style={[s.heroTitle, isDesktop && s.heroTitleDesktop, !isDesktop && { textAlign: 'center' }]}>
-                {t('landing.s006')}
-              </Text>
-              <Text style={[s.heroSubtitle, isDesktop && s.heroSubtitleDesktop, !isDesktop && { textAlign: 'center' }]}>
-                {t('landing.s007')}
-              </Text>
+              <Reveal variant="scale" delay={60}>
+                <View style={s.badge}>
+                  <Ionicons name="sparkles" size={13} color={authTheme.gold} />
+                  <Text style={s.badgeText}>{t('landing.s005')}</Text>
+                </View>
+              </Reveal>
+              <Reveal variant="up" delay={140} distance={26}>
+                <Text style={[s.heroTitle, isDesktop && s.heroTitleDesktop, !isDesktop && { textAlign: 'center' }]}>
+                  {t('landing.s006')}
+                </Text>
+              </Reveal>
+              <Reveal variant="up" delay={240} distance={22}>
+                <Text style={[s.heroSubtitle, isDesktop && s.heroSubtitleDesktop, !isDesktop && { textAlign: 'center' }]}>
+                  {t('landing.s007')}
+                </Text>
+              </Reveal>
               <View style={[s.heroActions, !isDesktop && { justifyContent: 'center' }]}>
                 <TouchableOpacity style={s.primaryCta} onPress={goRegister} activeOpacity={0.9} testID="landing-hero-cta">
                   <Text style={s.primaryCtaText}>{t('landing.s008')}</Text>
@@ -173,18 +179,23 @@ export default function LandingScreen() {
             </View>
             {isDesktop && (
               <View style={s.heroColMockup}>
-                <QuoteMockup />
+                <TiltOnScroll maxRotate={18} minScale={0.9}>
+                  <QuoteMockup />
+                </TiltOnScroll>
               </View>
             )}
           </View>
 
           {/* HOW IT WORKS */}
           <View style={s.section}>
-            <Text style={s.eyebrow}>{t('landing.s041')}</Text>
-            <Text style={s.sectionTitle}>{t('landing.s042')}</Text>
+            <Reveal variant="up" distance={18}>
+              <Text style={s.eyebrow}>{t('landing.s041')}</Text>
+              <Text style={s.sectionTitle}>{t('landing.s042')}</Text>
+            </Reveal>
             <View style={[s.stepsRow, isDesktop && s.stepsRowDesktop]}>
               {steps.map((st, i) => (
                 <React.Fragment key={i}>
+                  <Reveal variant="tilt" index={i} style={isDesktop ? { flex: 1 } : undefined}>
                   <View style={[s.stepCard, isDesktop && s.stepCardDesktop]}>
                     <View style={s.stepNumWrap}>
                       <Text style={s.stepNum}>{i + 1}</Text>
@@ -195,6 +206,7 @@ export default function LandingScreen() {
                     <Text style={s.cardTitle}>{st.title}</Text>
                     <Text style={s.cardDesc}>{st.desc}</Text>
                   </View>
+                  </Reveal>
                   {isDesktop && i < steps.length - 1 && (
                     <View style={s.stepConnector}>
                       <Ionicons name="arrow-forward" size={16} color={authTheme.cardBorder} />
@@ -207,28 +219,35 @@ export default function LandingScreen() {
 
           {/* FEATURES */}
           <View style={s.section}>
-            <Text style={s.eyebrow}>{t('landing.s011')}</Text>
-            <Text style={s.sectionTitle}>{t('landing.s012')}</Text>
+            <Reveal variant="up" distance={18}>
+              <Text style={s.eyebrow}>{t('landing.s011')}</Text>
+              <Text style={s.sectionTitle}>{t('landing.s012')}</Text>
+            </Reveal>
             <View style={[s.grid, isDesktop && s.gridDesktop]}>
               {features.map((f, i) => (
-                <View key={i} style={[s.card, isDesktop && s.cardDesktop]}>
+                <Reveal key={i} index={i} variant="tilt" style={isDesktop ? { width: '31.5%' } : undefined}>
+                <View style={[s.card, isDesktop && { width: '100%' }]}>
                   <View style={s.cardIconWrap}>
                     <Ionicons name={f.icon} size={22} color={authTheme.primary} />
                   </View>
                   <Text style={s.cardTitle}>{f.title}</Text>
                   <Text style={s.cardDesc}>{f.desc}</Text>
                 </View>
+                </Reveal>
               ))}
             </View>
           </View>
 
           {/* ADVANTAGES */}
           <View style={s.section}>
-            <Text style={s.eyebrow}>{t('landing.s025')}</Text>
-            <Text style={s.sectionTitle}>{t('landing.s026')}</Text>
+            <Reveal variant="up" distance={18}>
+              <Text style={s.eyebrow}>{t('landing.s025')}</Text>
+              <Text style={s.sectionTitle}>{t('landing.s026')}</Text>
+            </Reveal>
             <View style={[s.grid, isDesktop && s.gridDesktop2]}>
               {advantages.map((a, i) => (
-                <View key={i} style={[s.advRow, isDesktop && s.advRowDesktop]}>
+                <Reveal key={i} variant={i % 2 === 0 ? 'left' : 'right'} distance={26} style={isDesktop ? { width: '48.5%' } : undefined}>
+                <View style={[s.advRow, isDesktop && { width: '100%' }]}>
                   <View style={s.advIconWrap}>
                     <Ionicons name={a.icon} size={20} color={authTheme.gold} />
                   </View>
@@ -237,12 +256,15 @@ export default function LandingScreen() {
                     <Text style={s.advDesc}>{a.desc}</Text>
                   </View>
                 </View>
+                </Reveal>
               ))}
             </View>
           </View>
 
           {/* FINAL CTA */}
-          <View style={[s.finalCta, isDesktop && s.finalCtaDesktop]}>
+          <Reveal variant="scale">
+          <BorderBeam radius={22} width={1.5} background={authTheme.card} baseBorder={authTheme.cardBorder} style={{ marginTop: 40 }}>
+          <View style={[s.finalCta, isDesktop && s.finalCtaDesktop, { marginTop: 0 }]}>
             <Text style={s.finalTitle}>{t('landing.s035')}</Text>
             <Text style={s.finalSubtitle}>{t('landing.s036')}</Text>
             <TouchableOpacity style={s.finalBtn} onPress={goRegister} activeOpacity={0.9} testID="landing-final-cta">
@@ -250,6 +272,8 @@ export default function LandingScreen() {
               <Ionicons name="arrow-forward" size={18} color={authTheme.primary} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
           </View>
+          </BorderBeam>
+          </Reveal>
 
           {/* FOOTER */}
           <View style={[s.footer, isDesktop && s.footerDesktop]}>
@@ -267,7 +291,7 @@ export default function LandingScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </MotionScrollView>
     </SafeAreaView>
   );
 }

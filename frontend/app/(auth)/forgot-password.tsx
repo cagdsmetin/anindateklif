@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -19,6 +17,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 export default function ForgotPasswordScreen() {
   const { t } = useLanguage();
@@ -56,7 +55,7 @@ export default function ForgotPasswordScreen() {
         <BlackHoleBackground centerX={0.5} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
+        <MotionScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
           <View style={isDesktopWeb ? s.desktopCard : undefined}>
             <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Ionicons name="arrow-back" size={22} color={authTheme.text} />
@@ -86,7 +85,7 @@ export default function ForgotPasswordScreen() {
 
             <View style={s.inputRow}>
               <Ionicons name="mail-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-              <TextInput
+              <MotionInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder={t('forgotPassword.s006')}
@@ -114,7 +113,7 @@ export default function ForgotPasswordScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

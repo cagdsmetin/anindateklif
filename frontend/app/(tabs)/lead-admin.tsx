@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +15,7 @@ import { theme } from '@/src/lib/theme';
 import { api, LeadSearchRequestT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, Reveal } from '@/src/components/motion';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -142,7 +141,7 @@ export default function LeadAdminScreen() {
         </View>
       ) : selected ? (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
             <View style={s.card}>
               <Text style={s.fieldLabel}>{t('leadAdmin.s008')}</Text>
               <Text style={s.reqTitle}>{selected.companyName}</Text>
@@ -158,7 +157,7 @@ export default function LeadAdminScreen() {
 
             <Text style={[s.sectionLabel, { marginTop: 22 }]}>{t('leadAdmin.s011')}</Text>
             <Text style={s.hint}>{t('leadAdmin.s012')}</Text>
-            <TextInput
+            <MotionInput
               style={s.textarea}
               multiline
               value={bulkText}
@@ -174,10 +173,10 @@ export default function LeadAdminScreen() {
             <TouchableOpacity style={[s.cta, busy && { opacity: 0.6 }]} onPress={onSubmitBulk} disabled={busy} testID="lead-admin-submit">
               {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('leadAdmin.s015')}</Text>}
             </TouchableOpacity>
-          </ScrollView>
+          </MotionScrollView>
         </KeyboardAvoidingView>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {lastAddedCount > 0 && (
             <View style={s.successBox}>
               <Text style={s.successText}>{lastAddedCount} {t('leadAdmin.s016')}</Text>
@@ -188,14 +187,16 @@ export default function LeadAdminScreen() {
           {pending.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginBottom: 20 }}>{t('leadAdmin.s018')}</Text>
           ) : (
-            pending.map((r) => (
-              <TouchableOpacity key={r.id} style={s.reqRow} onPress={() => setSelected(r)} testID={`lead-admin-req-${r.id}`}>
+            pending.map((r, idx) => (
+              <Reveal key={r.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={16}>
+              <TouchableOpacity style={s.reqRow} onPress={() => setSelected(r)} testID={`lead-admin-req-${r.id}`}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.reqRowTitle} numberOfLines={1}>{r.companyName} — {r.sektor}{r.bolge ? ` · ${r.bolge}` : ''}</Text>
                   <Text style={s.reqRowMeta} numberOfLines={1}>{fmtDate(r.createdAt)}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
               </TouchableOpacity>
+              </Reveal>
             ))
           )}
 
@@ -213,7 +214,7 @@ export default function LeadAdminScreen() {
               </View>
             ))
           )}
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );

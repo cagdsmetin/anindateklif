@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import {
   Linking,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,6 +14,7 @@ import { useApp } from '@/src/state/AppContext';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { CustomerT } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 
 
@@ -157,7 +156,12 @@ export default function CampaignDetailScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="megaphone"
+          title={t('campaignDetail.s006')}
+          color={theme.colors.modules.kampanya}
+        />
         <View style={s.progressCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={s.progressLabel}>{t('campaignDetail.s008')}</Text>
@@ -200,7 +204,7 @@ export default function CampaignDetailScreen() {
         )}
         <View style={s.searchBox}>
           <Ionicons name="search-outline" size={16} color={theme.colors.textMuted} />
-          <TextInput
+          <MotionInput
             style={s.searchInput}
             value={search}
             onChangeText={setSearch}
@@ -253,7 +257,7 @@ export default function CampaignDetailScreen() {
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </MotionScrollView>
     </SafeAreaView>
   );
 }

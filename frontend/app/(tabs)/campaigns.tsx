@@ -1,11 +1,5 @@
 import React, { useMemo } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,6 +8,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { CampaignT } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 function trDateTime(iso: string): string {
   if (!iso) return '-';
@@ -55,37 +50,39 @@ export default function CampaignsScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('campaigns.s001')} />
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
-        <View style={s.statsRow}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('campaigns.s003')}</Text>
-            <Text style={s.statValue}>{campaigns.length}</Text>
-          </View>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('campaigns.s004')}</Text>
-            <Text style={s.statValue}>{audienceCount}</Text>
-          </View>
-        </View>
+      <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="megaphone"
+          title={t('campaigns.s001')}
+          subtitle={activeCompany?.sirketAdi}
+          color={theme.colors.modules.kampanya}
+          stats={[
+            { label: t('campaigns.s003'), value: campaigns.length },
+            { label: t('campaigns.s004'), value: audienceCount },
+          ]}
+        />
 
         {campaigns.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="megaphone-outline" size={30} color={theme.colors.textMuted} />
             <Text style={s.emptyTextBox}>{t('campaigns.s005')}</Text>
           </View>
-        ) : campaigns.map((camp) => {
+        ) : campaigns.map((camp, idx) => {
           const sent = sentCount(camp);
           const total = audienceCount;
           const pct = total > 0 ? Math.min(1, sent / total) : 0;
           return (
+            <Reveal key={camp.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={20}>
             <TouchableOpacity
-              key={camp.id}
               style={s.card}
               activeOpacity={0.75}
               onPress={() => openDetail(camp.id)}
               testID={`campaign-card-${camp.id}`}
             >
+              <View style={[s.cardStripe, { backgroundColor: theme.colors.modules.kampanya }]} />
               <View style={s.cardTop}>
-                <View style={{ flex: 1 }}>
+                <IconBadge icon="megaphone" color={theme.colors.modules.kampanya} size={36} motion="pop" />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.hTitle} numberOfLines={1}>{camp.baslik || t('campaigns.s006')}</Text>
                   <Text style={s.hDate}>{trDateTime(camp.createdAt)}</Text>
                 </View>
@@ -109,9 +106,10 @@ export default function CampaignsScreen() {
                 <Text style={s.progressText}>{sent}/{total} {t('campaigns.s008')}</Text>
               </View>
             </TouchableOpacity>
+            </Reveal>
           );
         })}
-      </ScrollView>
+      </MotionScrollView>
 
       <TouchableOpacity // Bottom offset is pushed up (+66) so this FAB doesn't sit directly under
       // the global support chat bubble (SupportBubble, bottom-right, same corner) --
@@ -133,7 +131,18 @@ const s = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '900', color: theme.colors.navy, marginTop: 2 },
   emptyBox: { marginTop: 24, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    padding: 13,
+    paddingTop: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    marginBottom: 12,
+    overflow: 'hidden',
+    ...theme.shadow.sm,
+  },
+  cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
   cardTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },

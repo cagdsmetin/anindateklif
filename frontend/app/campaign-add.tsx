@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 /**
  * Standalone "Yeni Kampanya" creation screen — mirrors service-add.tsx's layout
@@ -78,11 +77,17 @@ export default function CampaignAddScreen() {
       <View style={s.divider} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <ScreenHero
+            icon="megaphone"
+            title={t('campaignAdd.s006')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.kampanya}
+          />
           <View style={s.contentWrap}>
           <View style={s.hero}>
             <View style={s.heroCircle}>
@@ -96,7 +101,7 @@ export default function CampaignAddScreen() {
               <Text style={s.fieldLabel}>{t('campaignAdd.s008')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
               <View style={[s.inputWrap, errBaslik && s.inputWrapError]}>
                 <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10 }} />
-                <TextInput
+                <MotionInput
                   testID="campadd-baslik"
                   value={baslik}
                   onChangeText={(v) => { setBaslik(v); if (errBaslik) setErrBaslik(false); }}
@@ -111,7 +116,7 @@ export default function CampaignAddScreen() {
               <Text style={s.fieldLabel}>{t('campaignAdd.s010')}<Text style={{ color: theme.colors.red }}>*</Text></Text>
               <View style={[s.inputWrap, s.inputWrapMultiline, errMesaj && s.inputWrapError]}>
                 <Ionicons name="chatbubble-ellipses-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: 2 }} />
-                <TextInput
+                <MotionInput
                   testID="campadd-mesaj"
                   value={mesaj}
                   onChangeText={(v) => { setMesaj(v); if (errMesaj) setErrMesaj(false); }}
@@ -127,7 +132,7 @@ export default function CampaignAddScreen() {
             </View>
           </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
 
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
           <View style={[s.footerRow, s.footerInner]}>

@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
+import { IconBadge, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 import { ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
@@ -105,52 +106,66 @@ export default function ServicesScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('services.s011')} />
-      <View style={{ padding: 14, paddingBottom: 6 }}>
-        <View style={s.statsRow}>
-          <View style={s.statCard}>
-            <Text style={s.statLabel}>{t('services.s012')}</Text>
-            <Text style={s.statValue}>{services.length}</Text>
-          </View>
-          <View style={[s.statCard, garantiYaklasan > 0 && { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.goldBorder }]}>
-            <Text style={[s.statLabel, garantiYaklasan > 0 && { color: theme.colors.goldDark }]}>{t('services.s013')}</Text>
-            <Text style={[s.statValue, garantiYaklasan > 0 && { color: theme.colors.goldDark }]}>{garantiYaklasan}</Text>
-          </View>
-        </View>
-        <View style={s.searchWrap}>
-          <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-          <TextInput
-            testID="services-search"
-            style={s.searchInput}
-            placeholder={t('services.s014')}
-            placeholderTextColor="#94a3b8"
-            value={q}
-            onChangeText={setQ}
+      <MotionScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
+        progressColors={[theme.colors.modules.servis, theme.colors.gold, '#EC4899']}
+      >
+        <View style={s.headBlock}>
+          <ScreenHero
+            icon="construct"
+            title={t('services.s011')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.servis}
+            stats={[
+              { label: t('services.s012'), value: services.length },
+              { label: t('services.s013'), value: garantiYaklasan, tone: garantiYaklasan > 0 ? '#FCD34D' : undefined },
+            ]}
           />
         </View>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
-        {[t('services.s001'), ...STATUSES].map((st) => (
-          <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-            <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st === t('services.s001') ? st : statusLabel(lang, st)}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 90 }} showsVerticalScrollIndicator={false}>
+
+        {/* Arama + durum filtreleri: liste kayarken üstte yapışık kalır */}
+        <View style={s.stickyBar}>
+          <View style={s.searchWrap}>
+            <Ionicons name="search" size={16} color={theme.colors.textMuted} />
+            <TextInput
+              testID="services-search"
+              style={s.searchInput}
+              placeholder={t('services.s014')}
+              placeholderTextColor="#94a3b8"
+              value={q}
+              onChangeText={setQ}
+            />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
+            {[t('services.s001'), ...STATUSES].map((st) => (
+              <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
+                <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st === t('services.s001') ? st : statusLabel(lang, st)}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={s.listWrap}>
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="construct-outline" size={30} color={theme.colors.textMuted} />
             <Text style={s.emptyTextBox}>{t('services.s015')}</Text>
           </View>
-        ) : filtered.map((svc) => {
+        ) : filtered.map((svc, idx) => {
           const c = statusColor(svc.durum);
           const gDays = daysUntil(svc.garantiBitis);
           const bDays = daysUntil(svc.bakimTarihi);
           const gWarn = gDays !== null && gDays <= 30;
           const bWarn = bDays !== null && bDays <= 7;
           return (
-            <View key={svc.id} style={s.card} testID={`service-card-${svc.id}`}>
+            <Reveal key={svc.id} variant={idx % 2 === 0 ? 'left' : 'right'} distance={20}>
+            <View style={s.card} testID={`service-card-${svc.id}`}>
+              <View style={[s.cardStripe, { backgroundColor: c.text }]} />
               <View style={s.cardTop}>
-                <View style={{ flex: 1 }}>
+                <IconBadge icon="construct" color={c.text} size={38} motion="pop" />
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.hTitle} numberOfLines={1}>{svc.baslik}</Text>
                   <Text style={s.hFirma} numberOfLines={1}>{svc.musFirma || svc.musYetkili || '-'}</Text>
                   <Text style={s.hDate}>{t('services.s016')}{trDate(svc.servisTarihi)}</Text>
@@ -194,9 +209,11 @@ export default function ServicesScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            </Reveal>
           );
         })}
-      </ScrollView>
+        </View>
+      </MotionScrollView>
 
       <TouchableOpacity // Bottom offset is pushed up (+66) so this FAB doesn't sit directly under
       // the global support chat bubble (SupportBubble, bottom-right, same corner) --
@@ -233,7 +250,10 @@ export default function ServicesScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
+  headBlock: { paddingHorizontal: 14, paddingTop: 12 },
+  stickyBar: { backgroundColor: theme.colors.surfaceSoft, paddingHorizontal: 14, paddingTop: 4, zIndex: 10 },
+  listWrap: { paddingHorizontal: 14, paddingTop: 4 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
@@ -250,8 +270,19 @@ const s = StyleSheet.create({
   filterTextActive: { color: '#fff' },
   emptyBox: { marginTop: 24, backgroundColor: '#fff', borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 14, padding: 30, alignItems: 'center', gap: 8 },
   emptyTextBox: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, marginBottom: 10, ...theme.shadow.sm },
-  cardTop: { flexDirection: 'row', gap: 10 },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    padding: 13,
+    paddingTop: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    marginBottom: 12,
+    overflow: 'hidden',
+    ...theme.shadow.sm,
+  },
+  cardStripe: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
+  cardTop: { flexDirection: 'row', gap: 11, alignItems: 'flex-start' },
   hTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.navy },
   hFirma: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },

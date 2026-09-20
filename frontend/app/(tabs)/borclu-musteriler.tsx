@@ -7,6 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage } from '@/src/lib/i18n';
+import { IconBadge, Reveal } from '@/src/components/motion';
 
 /**
  * Tahsilat ekranındaki "BORÇLU MÜŞTERİ" kartına tıklanınca açılan liste.
@@ -76,11 +77,10 @@ export default function BorcluMusterilerScreen() {
             <Text style={s.emptyTextBox}>{t('borcluMusteriler.s003')}</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <Reveal variant={index % 2 === 0 ? 'left' : 'right'} distance={18}>
           <TouchableOpacity style={s.row} onPress={() => openLedger(item)} testID={`borclu-row-${item.key}`}>
-            <View style={s.rowIcon}>
-              <Ionicons name="person" size={17} color={theme.colors.modules.tahsilat} />
-            </View>
+            <IconBadge icon="person" color={theme.colors.modules.tahsilat} size={36} motion="pop" />
             <View style={{ flex: 1 }}>
               <Text style={s.rowName} numberOfLines={1}>{item.musteriAdi}</Text>
               {item.musteriTelefon ? <Text style={s.rowPhone}>{item.musteriTelefon}</Text> : null}
@@ -93,6 +93,7 @@ export default function BorcluMusterilerScreen() {
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
           </TouchableOpacity>
+          </Reveal>
         )}
       />
     </SafeAreaView>

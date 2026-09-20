@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
 
@@ -128,11 +129,17 @@ export default function ServiceAddScreen() {
       <View style={s.divider} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <ScreenHero
+            icon="build"
+            title={editingId ? t('serviceAdd.s010') : t('serviceAdd.s028')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.servis}
+          />
           <View style={s.contentWrap}>
           <View style={s.hero}>
             <View style={s.heroCircle}>
@@ -162,7 +169,7 @@ export default function ServiceAddScreen() {
               ) : null}
               <View style={[s.inputWrap, errFirma && s.inputWrapError]}>
                 <Ionicons name="business-outline" size={20} color={theme.colors.primary} style={{ marginRight: 10 }} />
-                <TextInput
+                <MotionInput
                   testID="svcadd-firma"
                   value={musFirma}
                   onChangeText={(v) => { setMusFirma(v); if (errFirma) setErrFirma(false); setShowFirmaSuggestions(true); }}
@@ -275,7 +282,7 @@ export default function ServiceAddScreen() {
             </View>
           </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
 
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
           <View style={s.footerInner}>
@@ -320,7 +327,7 @@ function FieldRow({
       </Text>
       <View style={[s.inputWrap, error && s.inputWrapError, rest.multiline && s.inputWrapMultiline]}>
         <Ionicons name={icon} size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: rest.multiline ? 2 : 0 }} />
-        <TextInput
+        <MotionInput
           {...rest}
           onChangeText={onChange}
           placeholderTextColor="#94a3b8"

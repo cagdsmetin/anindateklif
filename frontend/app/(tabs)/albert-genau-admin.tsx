@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,6 +17,7 @@ import { theme } from '@/src/lib/theme';
 import { api, fetchAlbertGenauPriceCsv, AlbertGenauPriceListStatusT, AlbertGenauYedekParcaAdminStatusT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { downloadFileWeb } from '@/src/lib/web-download';
+import { MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 // Albert Genau'nun resmi fiyat listesi tek bir yerden (bu ekrandan) güncellenir
 // -- fiyatlar Mongo'daki `albert_genau_config` kaydına yazılır, hesaplama
@@ -187,7 +195,12 @@ export default function AlbertGenauAdminScreen() {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+          <ScreenHero
+            icon="calculator"
+            title={'Albert Genau Fiyat Listesi'}
+            color={theme.colors.gold}
+          />
           <View style={s.card}>
             <Text style={s.sectionLabel}>Şu Anki Fiyat Listesi</Text>
             <View style={s.statRow}>
@@ -316,7 +329,7 @@ export default function AlbertGenauAdminScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       )}
     </SafeAreaView>
   );

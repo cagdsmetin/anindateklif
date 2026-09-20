@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -20,6 +19,7 @@ import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { BubbleButton, MotionInput, MotionScrollView, ScreenHero, compactNumber } from '@/src/components/motion';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -209,24 +209,33 @@ export default function TahsilatScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('tahsilat.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={s.statsRow}>
-            <View style={[s.statCard, { backgroundColor: theme.colors.primarySoft }]}>
-              <Text style={[s.statLabel, { color: theme.colors.primaryDark }]}>{t('tahsilat.s012')}</Text>
-              <Text style={[s.statValue, { color: theme.colors.primaryDark }]} numberOfLines={1}>
-                {toplamAlacakTRY != null ? fmt(toplamAlacakTRY, 'TRY') : fmt(0, 'TRY')}
-              </Text>
-              {toplamAlacakByCurrency.length > 0 && (
-                <Text style={s.statSubValue} numberOfLines={1}>
-                  {toplamAlacakByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
-                </Text>
-              )}
-            </View>
-            <TouchableOpacity style={[s.statCard, { backgroundColor: '#F1F5F9' }]} onPress={() => router.push('/borclu-musteriler' as any)} testID="tahsilat-borclu-card">
-              <Text style={[s.statLabel, { color: theme.colors.textSoft }]}>{t('tahsilat.s013')}</Text>
-              <Text style={[s.statValue, { color: theme.colors.text }]} numberOfLines={1}>{borcluMusteri}</Text>
-            </TouchableOpacity>
-          </View>
+        <MotionScrollView ref={scrollRef} contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="cash"
+            title={t('tahsilat.s011')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.tahsilat}
+            stats={[
+              {
+                label: t('tahsilat.s012'),
+                value: toplamAlacakTRY != null ? toplamAlacakTRY : 0,
+                format: (n) => `₺${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`,
+                tone: '#A5B4FC',
+                sub: toplamAlacakByCurrency.length > 0 ? toplamAlacakByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ') : null,
+              },
+              { label: t('tahsilat.s013'), value: borcluMusteri },
+            ]}
+            right={
+              <TouchableOpacity
+                onPress={() => router.push('/borclu-musteriler' as any)}
+                testID="tahsilat-borclu-card"
+                style={{ padding: 6 }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="chevron-forward" size={20} color="rgba(226,232,240,0.9)" />
+              </TouchableOpacity>
+            }
+          />
 
           <Text style={s.sectionH}>{t('tahsilat.s014')}</Text>
           <View style={s.card}>
@@ -241,7 +250,7 @@ export default function TahsilatScreen() {
 
             <Text style={s.label}>{t('tahsilat.s017')}</Text>
             <View style={{ zIndex: 20 }}>
-              <TextInput
+              <MotionInput
                 style={s.input}
                 placeholder={t('tahsilat.s018')}
                 placeholderTextColor="#94a3b8"
@@ -269,7 +278,7 @@ export default function TahsilatScreen() {
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <View style={{ flex: 1.4 }}>
                 <Text style={s.label}>{t('tahsilat.s019')}</Text>
-                <TextInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="tahsilat-tutar-input" />
+                <MotionInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="tahsilat-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.label}>{t('tahsilat.s020')}</Text>
@@ -297,12 +306,12 @@ export default function TahsilatScreen() {
             ) : (
               <View style={{ marginTop: 10 }}>
                 <Text style={s.label}>{t('tahsilat.s022')}</Text>
-                <TextInput style={s.input} value={vadeTarihi} onChangeText={setVadeTarihi} placeholder={t('tahsilat.s023')} placeholderTextColor="#94a3b8" testID="tahsilat-vade-input" />
+                <MotionInput style={s.input} value={vadeTarihi} onChangeText={setVadeTarihi} placeholder={t('tahsilat.s023')} placeholderTextColor="#94a3b8" testID="tahsilat-vade-input" />
               </View>
             )}
 
             <Text style={[s.label, { marginTop: 10 }]}>{isDiger ? t('tahsilat.s024') : 'NOT (opsiyonel)'}</Text>
-            <TextInput
+            <MotionInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
               onChangeText={setNotlar}
@@ -311,10 +320,15 @@ export default function TahsilatScreen() {
               testID="tahsilat-not-input"
             />
 
-            <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="tahsilat-save-btn">
-              <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
-            </TouchableOpacity>
+            <BubbleButton
+              icon="checkmark-done"
+              label={saving ? 'Kaydediliyor...' : 'Kaydet'}
+              color={theme.colors.modules.tahsilat}
+              size="lg"
+              loading={saving}
+              onPress={save}
+              testID="tahsilat-save-btn"
+            />
           </View>
 
           <View onLayout={(e) => { pendingSectionY.current = e.nativeEvent.layout.y; }}>
@@ -354,7 +368,7 @@ export default function TahsilatScreen() {
           <Text style={s.sectionH}>{t('tahsilat.s031')}</Text>
           <View style={s.searchWrap}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput style={s.searchInput} placeholder={t('tahsilat.s032')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="tahsilat-search-input" />
+            <MotionInput style={s.searchInput} placeholder={t('tahsilat.s032')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="tahsilat-search-input" />
           </View>
           {filtered.length === 0 ? (
             <View style={s.emptyBox}>
@@ -382,7 +396,7 @@ export default function TahsilatScreen() {
               </View>
             ))
           )}
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -404,7 +418,7 @@ const s = StyleSheet.create({
   turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   inputRequired: { borderColor: theme.colors.red, borderWidth: 1.5 },
   suggestBox: { position: 'absolute', top: 44, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, ...theme.shadow.md, maxHeight: 220, overflow: 'hidden' },
   suggestRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },

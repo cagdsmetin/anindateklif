@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +15,7 @@ import { useApp } from '@/src/state/AppContext';
 import { ManualReminderT } from '@/src/lib/api';
 import { getHolidaysForYears } from '@/src/lib/holidays';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionScrollView, Reveal, ScreenHero, SoftIcon } from '@/src/components/motion';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
@@ -233,7 +233,12 @@ export default function CalendarScreen() {
       </View>
       <View style={s.divider} />
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+      <MotionScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScreenHero
+          icon="calendar"
+          title={t('calendar.s001')}
+          color={theme.colors.modules.hatirlatma}
+        />
         <View style={s.monthNav}>
           <TouchableOpacity onPress={goPrevMonth} style={s.monthNavBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
@@ -308,20 +313,20 @@ export default function CalendarScreen() {
             <Text style={s.emptyTextBox}>{t('calendar.s020')}</Text>
           </View>
         ) : (
-          selectedEvents.map((ev) => (
-            <TouchableOpacity key={ev.id} style={s.eventRow} onPress={ev.onPress} testID={`cal-event-${ev.id}`}>
-              <View style={[s.eventIcon, { backgroundColor: KIND_COLOR[ev.kind] + '22' }]}>
-                <Ionicons name={KIND_ICON[ev.kind]} size={16} color={KIND_COLOR[ev.kind]} />
-              </View>
+          selectedEvents.map((ev, ei) => (
+            <Reveal key={ev.id} variant={ei % 2 === 0 ? 'left' : 'right'} distance={18}>
+            <TouchableOpacity style={s.eventRow} onPress={ev.onPress} testID={`cal-event-${ev.id}`}>
+              <SoftIcon icon={KIND_ICON[ev.kind]} color={KIND_COLOR[ev.kind]} size={34} iconSize={16} />
               <View style={{ flex: 1 }}>
                 <Text style={s.eventTitle} numberOfLines={1}>{ev.title}</Text>
                 <Text style={s.eventSub} numberOfLines={1}>{KIND_LABEL[ev.kind]}{ev.sub ? ` · ${ev.sub}` : ''}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
             </TouchableOpacity>
+            </Reveal>
           ))
         )}
-      </ScrollView>
+      </MotionScrollView>
 
       {/* Manuel not/hatırlatıcı ekleme-düzenleme modalı */}
       <Modal visible={showReminderModal} transparent animationType="fade" onRequestClose={() => setShowReminderModal(false)}>

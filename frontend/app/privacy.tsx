@@ -1,10 +1,11 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/src/lib/theme';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionScrollView } from '@/src/components/motion';
 
 // Public, unauthenticated page — required by Google Play (Data Safety form)
 // and the App Store (App Privacy). Kept outside the auth-gated navigator;
@@ -19,7 +20,7 @@ export default function PrivacyPolicy() {
         <Text style={s.headerTitle} onPress={() => router.push('/')}>
           {t('privacy.s001')}</Text>
       </View>
-      <ScrollView style={s.scroll} contentContainerStyle={s.content}>
+      <MotionScrollView style={s.scroll} contentContainerStyle={s.content}>
         <Text style={s.h1}>{t('privacy.s002')}</Text>
         <Text style={s.updated}>{t('privacy.s003')}</Text>
 
@@ -73,7 +74,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <Text style={s.footer}>© {new Date().getFullYear()} {t('privacy.s030')}</Text>
-      </ScrollView>
+      </MotionScrollView>
     </SafeAreaView>
   );
 }

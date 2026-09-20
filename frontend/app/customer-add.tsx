@@ -1,9 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +15,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
+import { BubbleButton, MotionInput, MotionScrollView, ScreenHero } from '@/src/components/motion';
 
 /**
  * Standalone "Müşteri Ekle" screen (mirrors the reference design).
@@ -107,11 +106,17 @@ export default function CustomerAddScreen() {
       <View style={s.divider} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <MotionScrollView
           contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 110 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <ScreenHero
+            icon="person-add"
+            title={editingId ? t('customerAdd.s004') : t('customerAdd.s005')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.musteri}
+          />
           <View style={s.contentWrap}>
           {/* Hero avatar */}
           <View style={s.hero}>
@@ -179,20 +184,20 @@ export default function CustomerAddScreen() {
             />
           </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
 
         {/* Sticky primary CTA */}
         <View style={[s.footer, { paddingBottom: (insets.bottom || 12) + 12 }]}>
           <View style={s.footerInner}>
-            <TouchableOpacity
-              style={[s.cta, busy && s.ctaDisabled]}
+            <BubbleButton
+              icon="checkmark-done"
+              label={t('customerAdd.s017')}
+              color={theme.colors.modules.musteri}
+              size="lg"
+              loading={busy}
               onPress={onSave}
-              disabled={busy}
-              activeOpacity={0.9}
               testID="cadd-save"
-            >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('customerAdd.s017')}</Text>}
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -225,7 +230,7 @@ function FieldRow({
       </Text>
       <View style={[s.inputWrap, error && s.inputWrapError, rest.multiline && s.inputWrapMultiline]}>
         <Ionicons name={icon} size={20} color={theme.colors.primary} style={{ marginRight: 10, marginTop: rest.multiline ? 2 : 0 }} />
-        <TextInput
+        <MotionInput
           {...rest}
           onChangeText={onChange}
           placeholderTextColor="#94a3b8"

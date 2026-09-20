@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +16,7 @@ import { api, StaffMemberT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 const ROLE_IDS = ['staff', 'admin'] as const;
 
@@ -144,10 +143,15 @@ export default function PersonelScreen() {
         </View>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <MotionScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            <ScreenHero
+              icon="person-add"
+              title={t('personel.s001')}
+              color={theme.colors.gold}
+            />
             <Text style={s.sectionLabel}>{t('personel.s010')}</Text>
             <View style={s.card}>
-              <TextInput
+              <MotionInput
                 style={s.input}
                 placeholder={t('personel.s011')}
                 placeholderTextColor="#94a3b8"
@@ -179,7 +183,7 @@ export default function PersonelScreen() {
 
               {lastInviteLink ? (
                 <View style={s.linkBox}>
-                  <TextInput
+                  <MotionInput
                     style={s.linkInput}
                     value={lastInviteLink}
                     editable={false}
@@ -200,9 +204,16 @@ export default function PersonelScreen() {
             {members.length === 0 ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{t('personel.s018')}</Text>
             ) : (
-              members.map((m) => (
-                <View key={`${m.type}-${m.id}`} style={s.memberRow} testID={`staff-row-${m.id}`}>
-                  <View style={{ flex: 1 }}>
+              members.map((m, idx) => (
+                <Reveal key={`${m.type}-${m.id}`} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
+                <View style={s.memberRow} testID={`staff-row-${m.id}`}>
+                  <IconBadge
+                    icon={m.type === 'pending' ? 'mail-unread' : m.role === 'admin' ? 'shield-checkmark' : 'person'}
+                    color={m.type === 'pending' ? theme.colors.gold : theme.colors.primary}
+                    size={34}
+                    motion="pop"
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.memberEmail} numberOfLines={1}>{m.email}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
                       <View style={[s.badge, m.type === 'pending' && s.badgePending]}>
@@ -216,9 +227,10 @@ export default function PersonelScreen() {
                     <Ionicons name="close" size={16} color={theme.colors.red} />
                   </TouchableOpacity>
                 </View>
+                </Reveal>
               ))
             )}
-          </ScrollView>
+          </MotionScrollView>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>

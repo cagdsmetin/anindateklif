@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -19,6 +17,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { MotionInput, MotionScrollView } from '@/src/components/motion';
 
 /**
  * Opened via the link inside the password-reset email:
@@ -75,7 +74,7 @@ export default function ResetPasswordScreen() {
         <BlackHoleBackground centerX={0.5} />
       </View>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
+        <MotionScrollView contentContainerStyle={[s.scroll, isDesktopWeb && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
           <View style={isDesktopWeb ? s.desktopCard : undefined}>
             <TouchableOpacity onPress={() => router.replace('/login')} style={s.back} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Ionicons name="arrow-back" size={22} color={authTheme.text} />
@@ -108,7 +107,7 @@ export default function ResetPasswordScreen() {
                 {!initialToken ? (
                   <View style={s.inputRow}>
                     <Ionicons name="key-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-                    <TextInput
+                    <MotionInput
                       value={token}
                       onChangeText={setToken}
                       placeholder={t('resetPassword.s010')}
@@ -122,7 +121,7 @@ export default function ResetPasswordScreen() {
 
                 <View style={s.inputRow}>
                   <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-                  <TextInput
+                  <MotionInput
                     value={password}
                     onChangeText={setPassword}
                     placeholder={t('resetPassword.s011')}
@@ -139,7 +138,7 @@ export default function ResetPasswordScreen() {
 
                 <View style={s.inputRow}>
                   <Ionicons name="lock-closed-outline" size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-                  <TextInput
+                  <MotionInput
                     value={confirm}
                     onChangeText={setConfirm}
                     placeholder={t('resetPassword.s012')}
@@ -171,7 +170,7 @@ export default function ResetPasswordScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

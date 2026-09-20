@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,6 +15,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { api, RatesT } from '@/src/lib/api';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
+import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, compactNumber } from '@/src/components/motion';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
@@ -166,38 +165,36 @@ export default function KasaScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('kasa.s011')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={s.statsRow}>
-            <View style={[s.statCard, { backgroundColor: theme.colors.greenSoft }]}>
-              <Text style={[s.statLabel, { color: '#166534' }]}>{t('kasa.s012')}</Text>
-              <Text style={[s.statValue, { color: '#166534' }]} numberOfLines={1}>{fmt(gelirToplam, 'TRY')}</Text>
-              {gelirByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
-                <Text style={[s.statSubValue, { color: '#166534' }]} numberOfLines={1}>
-                  {gelirByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
-                </Text>
-              )}
-            </View>
-            <View style={[s.statCard, { backgroundColor: theme.colors.redSoft }]}>
-              <Text style={[s.statLabel, { color: '#991b1b' }]}>{t('kasa.s013')}</Text>
-              <Text style={[s.statValue, { color: '#991b1b' }]} numberOfLines={1}>{fmt(giderToplam, 'TRY')}</Text>
-              {giderByCurrency.some((x) => x.paraBirimi !== 'TRY') && (
-                <Text style={[s.statSubValue, { color: '#991b1b' }]} numberOfLines={1}>
-                  {giderByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
-                </Text>
-              )}
-            </View>
-            <View style={[s.statCard, { backgroundColor: net >= 0 ? theme.colors.primarySoft : theme.colors.redSoft }]}>
-              <Text style={[s.statLabel, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>{t('kasa.s014')}</Text>
-              <Text style={[s.statValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>{fmt(net, 'TRY')}</Text>
-              {netByCurrency.length > 0 ? (
-                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]} numberOfLines={1}>
-                  {netByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ')}
-                </Text>
-              ) : dovizliVar ? (
-                <Text style={[s.statSubValue, { color: net >= 0 ? theme.colors.primaryDark : '#991b1b' }]}>{t('kasa.s015')}</Text>
-              ) : null}
-            </View>
-          </View>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 100 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScreenHero
+            icon="wallet"
+            title={t('kasa.s011')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.kasa}
+            stats={[
+              {
+                label: t('kasa.s012'),
+                value: gelirToplam,
+                format: (n) => `₺${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`,
+                tone: '#6EE7B7',
+                sub: gelirByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ') || null,
+              },
+              {
+                label: t('kasa.s013'),
+                value: giderToplam,
+                format: (n) => `₺${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`,
+                tone: '#FCA5A5',
+                sub: giderByCurrency.filter((x) => x.paraBirimi !== 'TRY').map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ') || null,
+              },
+              {
+                label: t('kasa.s014'),
+                value: net,
+                format: (n) => `₺${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`,
+                tone: net >= 0 ? '#A5B4FC' : '#FCA5A5',
+                sub: netByCurrency.length > 0 ? netByCurrency.map((x) => fmt(x.tutar, x.paraBirimi)).join(' · ') : dovizliVar ? t('kasa.s015') : null,
+              },
+            ]}
+          />
 
           <Text style={s.sectionH}>{t('kasa.s016')}</Text>
           <View style={s.card}>
@@ -222,7 +219,7 @@ export default function KasaScreen() {
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1.4 }}>
                 <Text style={s.label}>{t('kasa.s020')}</Text>
-                <TextInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="kasa-tutar-input" />
+                <MotionInput style={s.input} keyboardType="numeric" value={tutar} onChangeText={(v) => setTutar(v.replace(',', '.'))} placeholder="0" placeholderTextColor="#94a3b8" testID="kasa-tutar-input" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.label}>{t('kasa.s021')}</Text>
@@ -246,7 +243,7 @@ export default function KasaScreen() {
             </View>
 
             <Text style={[s.label, { marginTop: 12 }]}>{isDiger ? t('kasa.s023') : t('common.notOptional')}</Text>
-            <TextInput
+            <MotionInput
               style={[s.input, isDiger && !notlar.trim() && s.inputRequired]}
               value={notlar}
               onChangeText={setNotlar}
@@ -255,10 +252,15 @@ export default function KasaScreen() {
               testID="kasa-not-input"
             />
 
-            <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} disabled={saving} onPress={save} testID="kasa-save-btn">
-              <Ionicons name="checkmark-done" size={18} color="#fff" />
-              <Text style={s.saveBtnText}>{saving ? t('common.saving') : t('common.save')}</Text>
-            </TouchableOpacity>
+            <BubbleButton
+              icon="checkmark-done"
+              label={saving ? t('common.saving') : t('common.save')}
+              color={theme.colors.modules.kasa}
+              size="lg"
+              loading={saving}
+              onPress={save}
+              testID="kasa-save-btn"
+            />
           </View>
 
           {kategoriDagilimi.length > 0 && (
@@ -281,7 +283,7 @@ export default function KasaScreen() {
           <Text style={s.sectionH}>{t('kasa.s027')}</Text>
           <View style={s.searchWrap}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput style={s.searchInput} placeholder={t('kasa.s028')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="kasa-search-input" />
+            <MotionInput style={s.searchInput} placeholder={t('kasa.s028')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="kasa-search-input" />
           </View>
           {filtered.length === 0 ? (
             <View style={s.emptyBox}>
@@ -290,7 +292,8 @@ export default function KasaScreen() {
             </View>
           ) : (
             filtered.map((k) => (
-              <View key={k.id} style={s.txRow} testID={`kasa-tx-${k.id}`}>
+              <Reveal key={k.id}>
+              <View style={s.txRow} testID={`kasa-tx-${k.id}`}>
                 <View style={[s.txIcon, { backgroundColor: k.tur === 'gelir' ? theme.colors.greenSoft : theme.colors.redSoft }]}>
                   <Ionicons name={k.tur === 'gelir' ? 'arrow-down' : 'arrow-up'} size={16} color={k.tur === 'gelir' ? theme.colors.green : theme.colors.red} />
                 </View>
@@ -303,9 +306,10 @@ export default function KasaScreen() {
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
                 </TouchableOpacity>
               </View>
+              </Reveal>
             ))
           )}
-        </ScrollView>
+        </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -336,7 +340,7 @@ const s = StyleSheet.create({
   curChipActive: { backgroundColor: theme.colors.modules.kasa, borderColor: theme.colors.modules.kasa },
   curChipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   curChipTextActive: { color: '#fff' },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.colors.lineDark, borderRadius: 10, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   inputRequired: { borderColor: theme.colors.red, borderWidth: 1.5 },
   saveBtn: { marginTop: 16, backgroundColor: theme.colors.modules.kasa, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 13.5, letterSpacing: 0.2 },

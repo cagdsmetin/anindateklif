@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -25,6 +24,7 @@ import { shareFileViaWhatsApp } from '@/src/lib/file-share';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import * as Sharing from 'expo-sharing';
 import { useLanguage } from '@/src/lib/i18n';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero } from '@/src/components/motion';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
   { value: 'text', label: 'Metin', icon: 'text-outline' },
@@ -576,10 +576,24 @@ export default function CatalogScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('catalog.s024')} />
-      <View style={{ padding: 14 }}>
+      <MotionScrollView
+        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHero
+          icon="library"
+          title={t('catalog.s024')}
+          subtitle={activeCompany?.sirketAdi}
+          color={theme.colors.modules.katalog}
+          stats={[
+            { label: t('catalog.s024'), value: catalog.length },
+            { label: t('catalog.s038'), value: catalogFiles.length },
+          ]}
+        />
+        <View style={{ paddingBottom: 6 }}>
         <View style={s.searchWrap}>
           <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-          <TextInput
+          <MotionInput
             testID="catalog-search-input"
             style={s.searchInput}
             placeholder={t('catalog.s025')}
@@ -590,32 +604,38 @@ export default function CatalogScreen() {
         </View>
         {!isStaffUser && (
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-            <TouchableOpacity style={[s.btnAcc, { flex: 1 }]} onPress={openNew} testID="new-catalog-btn">
-              <Ionicons name="add-circle" size={16} color="#fff" />
-              <Text style={s.btnAccText}>{t('catalog.s001')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.btnAcc, { flex: 1, backgroundColor: theme.colors.navy }]} onPress={() => setShowBulk(true)} testID="bulk-import-btn">
-              <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-              <Text style={s.btnAccText}>{t('catalog.s002')}</Text>
-            </TouchableOpacity>
+            <BubbleButton
+              icon="add"
+              label={t('catalog.s001')}
+              color={theme.colors.modules.katalog}
+              onPress={openNew}
+              testID="new-catalog-btn"
+              style={{ flex: 1 }}
+            />
+            <BubbleButton
+              icon="cloud-upload"
+              label={t('catalog.s002')}
+              color={theme.colors.navy}
+              variant="soft"
+              onPress={() => setShowBulk(true)}
+              testID="bulk-import-btn"
+              style={{ flex: 1 }}
+            />
           </View>
         )}
 {!isStaffUser && (
-  <TouchableOpacity
-    style={[s.addDashed, { marginTop: 8 }]}
+  <BubbleButton
+    icon="download"
+    label="Kataloğu Bilgisayara İndir (Yedek)"
+    color={theme.colors.primary}
+    variant="dashed"
+    loading={exportingCatalog}
     onPress={exportCatalogJson}
-    disabled={exportingCatalog}
     testID="export-catalog-btn"
-  >
-    <Ionicons name="download-outline" size={16} color={theme.colors.primary} />
-    <Text style={s.addDashedText}>{exportingCatalog ? 'İndiriliyor...' : 'Kataloğu Bilgisayara İndir (Yedek)'}</Text>
-  </TouchableOpacity>
+    style={{ marginTop: 8 }}
+  />
 )}
-      </View>
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: insets.bottom + 32 }}
-        showsVerticalScrollIndicator={false}
-      >
+        </View>
         {/* Albert Genau Fiyat Yönetimi — SADECE platform admini (ncagdasm@gmail.com)
             görür. Bayilerin kullandığı hesaplama ekranından (aşağıdaki kart)
             tamamen ayrı: burası, Albert Genau'dan yeni fiyat Excel'i geldiğinde
@@ -667,7 +687,8 @@ export default function CatalogScreen() {
           const isFirstSys = si === 0;
           const isLastSys = si === sistemTipleri.length - 1;
           return (
-            <View key={sys.id} style={s.systemCard} testID={`system-${sys.id}`}>
+            <Reveal key={sys.id} variant={si % 2 === 0 ? 'left' : 'right'} distance={18}>
+            <View style={s.systemCard} testID={`system-${sys.id}`}>
               <TouchableOpacity style={s.systemHdr} onPress={() => setExpandedSystem(isExpanded ? null : sys.id)}>
                 <Ionicons name={isExpanded ? 'chevron-down' : 'chevron-forward'} size={16} color={theme.colors.primary} />
                 <View style={{ flex: 1 }}>
@@ -709,7 +730,7 @@ export default function CatalogScreen() {
               {isExpanded && (
                 <View style={s.systemBody}>
                   <FieldGroup label={t('catalog.s030')}>
-                    <TextInput
+                    <MotionInput
                       style={s.input}
                       value={sys.name}
                       onChangeText={(v) => updateSystemName(sys.id, v)}
@@ -782,11 +803,12 @@ export default function CatalogScreen() {
                 </View>
               )}
             </View>
+            </Reveal>
           );
         })}
         {!isStaffUser && (
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 6 }}>
-            <TextInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s037')} placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
+            <MotionInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s037')} placeholderTextColor="#94a3b8" value={newSystemName} onChangeText={setNewSystemName} testID="new-system-input" />
             <TouchableOpacity style={s.addPlusBtn} onPress={addSystemType} testID="add-system-btn"><Ionicons name="add" size={20} color="#fff" /></TouchableOpacity>
           </View>
         )}
@@ -795,10 +817,16 @@ export default function CatalogScreen() {
         {/* Firma Kataloğu — hazır PDF/görsel dosyalar, doğrudan paylaşım için */}
         <Text style={[s.sectionH, { marginTop: 20 }]}>{t('catalog.s038')}</Text>
         <Text style={s.hint}>{t('catalog.s039')}</Text>
-        {catalogFiles.map((f) => (
-          <View key={f.id} style={s.fileCard} testID={`catalog-file-${f.id}`}>
-            <Ionicons name={f.mime === 'application/pdf' ? 'document-text-outline' : 'image-outline'} size={22} color={theme.colors.primary} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
+        {catalogFiles.map((f, fi) => (
+          <Reveal key={f.id} variant={fi % 2 === 0 ? 'left' : 'right'} distance={18}>
+          <View style={s.fileCard} testID={`catalog-file-${f.id}`}>
+            <IconBadge
+              icon={f.mime === 'application/pdf' ? 'document-text' : 'image'}
+              color={f.mime === 'application/pdf' ? theme.colors.red : theme.colors.modules.katalog}
+              size={34}
+              motion="pop"
+            />
+            <View style={{ flex: 1, marginLeft: 10, minWidth: 0 }}>
               <Text style={s.fileName} numberOfLines={1}>{f.name}</Text>
               <Text style={s.fileMeta}>{fmtFileSize(f.size)}</Text>
             </View>
@@ -812,8 +840,19 @@ export default function CatalogScreen() {
               <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
             </TouchableOpacity>
           </View>
+          </Reveal>
         ))}
-        <TouchableOpacity style={[s.addDashed, { marginTop: catalogFiles.length ? 8 : 0 }]} onPress={pickCatalogFile} disabled={uploadingFile} testID="upload-catalog-file-btn">
+        <BubbleButton
+          icon="cloud-upload"
+          label={t('catalog.s041')}
+          color={theme.colors.modules.katalog}
+          variant="dashed"
+          loading={uploadingFile}
+          onPress={pickCatalogFile}
+          testID="upload-catalog-file-btn"
+          style={{ marginTop: catalogFiles.length ? 8 : 0 }}
+        />
+        <TouchableOpacity style={{ display: 'none' }} onPress={pickCatalogFile}>
           <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primary} />
           <Text style={s.addDashedText}>{uploadingFile ? t('catalog.s040') : t('catalog.s041')}</Text>
         </TouchableOpacity>
@@ -851,7 +890,7 @@ export default function CatalogScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+      </MotionScrollView>
 
       {/* Form modal */}
       <Modal visible={showForm} transparent animationType="slide">
@@ -865,20 +904,20 @@ export default function CatalogScreen() {
             </View>
             <ScrollView>
               <FieldGroup label={t('catalog.s046')}>
-                <TextInput style={s.input} value={f.kategori} onChangeText={(v) => setF({ ...f, kategori: v })} testID="cat-kategori" />
+                <MotionInput style={s.input} value={f.kategori} onChangeText={(v) => setF({ ...f, kategori: v })} testID="cat-kategori" />
               </FieldGroup>
               <FieldGroup label={t('catalog.s047')}>
-                <TextInput style={s.input} value={f.urunAdi} onChangeText={(v) => setF({ ...f, urunAdi: v })} testID="cat-urunadi" />
+                <MotionInput style={s.input} value={f.urunAdi} onChangeText={(v) => setF({ ...f, urunAdi: v })} testID="cat-urunadi" />
               </FieldGroup>
               <FieldGroup label={t('catalog.s048')}>
-                <TextInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={f.aciklama} onChangeText={(v) => setF({ ...f, aciklama: v })} />
+                <MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline value={f.aciklama} onChangeText={(v) => setF({ ...f, aciklama: v })} />
               </FieldGroup>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <FieldGroup label={t('catalog.s049')} flex={1}>
-                  <TextInput style={s.input} value={f.birim} onChangeText={(v) => setF({ ...f, birim: v })} testID="cat-birim" />
+                  <MotionInput style={s.input} value={f.birim} onChangeText={(v) => setF({ ...f, birim: v })} testID="cat-birim" />
                 </FieldGroup>
                 <FieldGroup label={t('catalog.s050')} flex={1.2}>
-                  <TextInput style={s.input} keyboardType="numeric" value={f.birimFiyat} onChangeText={(v) => setF({ ...f, birimFiyat: v.replace(',', '.') })} testID="cat-fiyat" />
+                  <MotionInput style={s.input} keyboardType="numeric" value={f.birimFiyat} onChangeText={(v) => setF({ ...f, birimFiyat: v.replace(',', '.') })} testID="cat-fiyat" />
                 </FieldGroup>
               </View>
               <FieldGroup label={t('catalog.s051')}>
@@ -927,7 +966,7 @@ export default function CatalogScreen() {
               <Text style={s.hintCode}>{t('catalog.s057')}</Text>
               {"\n"}{t('catalog.s058')}<Text style={s.hintCode}>{t('catalog.s059')}</Text>
             </Text>
-            <TextInput
+            <MotionInput
               testID="bulk-csv-input"
               style={[s.input, { minHeight: 160, textAlignVertical: 'top', fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }), fontSize: 12 }]}
               multiline
@@ -954,7 +993,7 @@ export default function CatalogScreen() {
             </View>
             <ScrollView keyboardShouldPersistTaps="handled">
               <FieldGroup label={t('catalog.s063')}>
-                <TextInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder={t('catalog.s064')} placeholderTextColor="#94a3b8" testID="field-label-input" />
+                <MotionInput style={s.input} value={newField.label} onChangeText={(v) => setNewField({ ...newField, label: v })} placeholder={t('catalog.s064')} placeholderTextColor="#94a3b8" testID="field-label-input" />
               </FieldGroup>
               <FieldGroup label={t('catalog.s065')}>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
@@ -984,7 +1023,7 @@ export default function CatalogScreen() {
                       {newField.options.length === 0 && <Text style={s.hintMuted}>{t('catalog.s067')}</Text>}
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                      <TextInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s068')} placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
+                      <MotionInput style={[s.input, { flex: 1 }]} placeholder={t('catalog.s068')} placeholderTextColor="#94a3b8" value={newField.optionInput} onChangeText={(v) => setNewField({ ...newField, optionInput: v })} testID="field-option-input" />
                       <TouchableOpacity style={s.addPlusBtn} testID="add-option-btn" onPress={() => {
                         const v = newField.optionInput.trim();
                         if (!v || newField.options.includes(v)) return;
@@ -1014,7 +1053,7 @@ export default function CatalogScreen() {
               </TouchableOpacity>
             </View>
             <Text style={s.hint} numberOfLines={1}>{emailShareFor?.name}</Text>
-            <TextInput
+            <MotionInput
               style={s.input}
               placeholder={t('catalog.s072')}
               placeholderTextColor="#94a3b8"

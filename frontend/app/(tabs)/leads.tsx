@@ -790,7 +790,8 @@ export default function LeadsScreen() {
         )}
 
         {!loading && tab === 'talep' && (
-          <View>
+          <Reveal variant="up" distance={18}>
+          <View style={s.requestCard}>
             <Text style={s.sectionTitle}>{upper(t('leads.s006'))}</Text>
             <Text style={s.helperTinyMuted}>
               {t('leads.s052')}</Text>
@@ -828,6 +829,7 @@ export default function LeadsScreen() {
               <Text style={s.submitBtnText}>{sendingReq ? t('leads.s056') : t('leads.findBtn')}</Text>
             </TouchableOpacity>
           </View>
+          </Reveal>
         )}
       </MotionScrollView>
 
@@ -1064,6 +1066,10 @@ const s = themedStyles(() => StyleSheet.create({
   dailySaveBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 15 },
   sectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.4, marginBottom: 10 },
+  requestCard: {
+    backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.line,
+    padding: 16, marginTop: 14, ...theme.shadow.sm,
+  },
   tumuFilterChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: theme.colors.surface, borderWidth: 1 },
   tumuFilterChipText: { fontSize: 11, fontWeight: '800' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 30, gap: 8 },

@@ -7,7 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, Reveal, themedStyles } from '@/src/components/motion';
+import { IconBadge, Reveal, ScreenHero, compactNumber, themedStyles } from '@/src/components/motion';
 
 /**
  * Tahsilat ekranındaki "BORÇLU MÜŞTERİ" kartına tıklanınca açılan liste.
@@ -33,6 +33,21 @@ export default function BorcluMusterilerScreen() {
   const { tahsilat, activeCompany } = useApp();
 
   const debtors = useMemo(() => computeCustomerDebtSummaries(tahsilat), [tahsilat]);
+
+  // Hero kunyesi: kac borclu var ve TL karsiligi ne kadar acik kaldi.
+  // (Doviz kalemleri ayrica gosterilir; burada sadece TL toplanir ki
+  // rakam yanlis birlestirilmis olmasin.)
+  const heroStats = useMemo(() => {
+    let tlKalan = 0;
+    let doviz = 0;
+    debtors.forEach((d) => {
+      d.perCurrency.forEach((x) => {
+        if (x.paraBirimi === 'TRY') tlKalan += x.kalanBorc || 0;
+        else if ((x.kalanBorc || 0) > 0) doviz += 1;
+      });
+    });
+    return { count: debtors.length, tlKalan, doviz };
+  }, [debtors]);
 
   const openLedger = (d: { customerId: string; musteriAdi: string; musteriTelefon: string }) => {
     router.push({
@@ -71,6 +86,24 @@ export default function BorcluMusterilerScreen() {
         data={debtors}
         keyExtractor={(d) => d.key}
         contentContainerStyle={{ padding: 14, paddingBottom: 32 }}
+        ListHeaderComponent={
+          <ScreenHero
+            icon="wallet"
+            title={t('borcluMusteriler.s001')}
+            subtitle={activeCompany?.sirketAdi}
+            color={theme.colors.modules.tahsilat}
+            stats={[
+              { label: 'BORÇLU MÜŞTERİ', value: heroStats.count },
+              {
+                label: 'TL KALAN BORÇ',
+                value: heroStats.tlKalan,
+                format: (n) => `₺${compactNumber(n, [t('panel.unitK'), t('panel.unitM'), t('panel.unitB')])}`,
+                tone: heroStats.tlKalan > 0 ? '#FCA5A5' : undefined,
+              },
+              { label: 'DÖVİZLİ KALEM', value: heroStats.doviz },
+            ]}
+          />
+        }
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={30} color={theme.colors.textMuted} />

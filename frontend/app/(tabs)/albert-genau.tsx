@@ -183,7 +183,7 @@ export default function AlbertGenauScreen() {
   const [vfMeta, setVfMeta] = useState<AlbertGenauVertiflexTypesResponseT>({ types: FALLBACK_VERTIFLEX_TYPES, finishes: FALLBACK_FINISHES });
   const [vfTip, setVfTip] = useState('vertiflex_mono08');
   const vfTypeMeta: AlbertGenauVertiflexTypeMetaT = useMemo(
-    () => vfMeta.types.find((t) => t.id === vfTip) || vfMeta.types[0] || FALLBACK_VERTIFLEX_TYPES[0],
+    () => (vfMeta.types || []).find((t) => t.id === vfTip) || (vfMeta.types || [])[0] || FALLBACK_VERTIFLEX_TYPES[0],
     [vfMeta.types, vfTip],
   );
   const [vfGenislik, setVfGenislik] = useState('');
@@ -238,7 +238,7 @@ export default function AlbertGenauScreen() {
   const [kbMeta, setKbMeta] = useState<AlbertGenauKisBahcesiTypesResponseT>({ types: FALLBACK_KIS_BAHCESI_TYPES, finishes: FALLBACK_FINISHES });
   const [kbTip, setKbTip] = useState('kis_bahcesi_premium_08_10');
   const kbTypeMeta: AlbertGenauKisBahcesiTypeMetaT = useMemo(
-    () => kbMeta.types.find((t) => t.id === kbTip) || kbMeta.types[0] || FALLBACK_KIS_BAHCESI_TYPES[0],
+    () => (kbMeta.types || []).find((t) => t.id === kbTip) || (kbMeta.types || [])[0] || FALLBACK_KIS_BAHCESI_TYPES[0],
     [kbMeta.types, kbTip],
   );
   const [kbGenislik, setKbGenislik] = useState('');
@@ -277,7 +277,7 @@ export default function AlbertGenauScreen() {
   const [bcMeta, setBcMeta] = useState<AlbertGenauBcTypesResponseT>({ types: FALLBACK_BC_TYPES, finishes: FALLBACK_FINISHES });
   const [bcTip, setBcTip] = useState('bc_tiara_08');
   const bcTypeMeta: AlbertGenauBcTypeMetaT = useMemo(
-    () => bcMeta.types.find((t) => t.id === bcTip) || bcMeta.types[0] || FALLBACK_BC_TYPES[0],
+    () => (bcMeta.types || []).find((t) => t.id === bcTip) || (bcMeta.types || [])[0] || FALLBACK_BC_TYPES[0],
     [bcMeta.types, bcTip],
   );
   const [bcGenislik, setBcGenislik] = useState('');
@@ -383,7 +383,7 @@ export default function AlbertGenauScreen() {
   // doner; "secilmedi" rozeti ve "tamamlandi" isareti tek kaynaktan gelsin
   // diye ayri bir degisken.
   const selectedTypeLabel = useMemo(
-    () => meta.types.find((tp) => tp.id === tip)?.label || '',
+    () => (meta.types || []).find((tp) => tp.id === tip)?.label || '',
     [meta.types, tip]
   );
 
@@ -1159,7 +1159,7 @@ export default function AlbertGenauScreen() {
               }
             >
               <View style={s.typeWrap}>
-                {meta.types.map((tp) => (
+                {(meta.types || []).map((tp) => (
                   <SpecOption
                     key={tp.id}
                     label={tp.label}
@@ -1307,22 +1307,22 @@ export default function AlbertGenauScreen() {
 
                 {/* Ölçüler */}
                 <Reveal variant="up" distance={18}>
-                <View style={s.card}>
-                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
-                  <View style={s.row}>
+                <Sheet title="Ölçüler" note="Tüm ölçüler milimetre cinsindendir.">
+                  <Elevation w={vfGenislik} h={vfYukseklik} caption={vfTypeMeta?.label} />
+                  <View style={[s.row, { marginTop: AGS.rowGap }]}>
                     <NumField label="Genişlik" value={vfGenislik} onChange={setVfGenislik} testID="ag-vf-genislik" />
                     <NumField label="Yükseklik" value={vfYukseklik} onChange={setVfYukseklik} testID="ag-vf-yukseklik" />
                   </View>
-                </View>
+                </Sheet>
                 </Reveal>
 
                 {/* Panel sayısı -- sadece bu tipte gecerliyse gosterilir */}
-                {vfTypeMeta.panelSayisiOptions.length > 0 && (
+                {(vfTypeMeta.panelSayisiOptions || []).length > 0 && (
                   <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.fieldLabel}>Panel Sayısı</Text>
                     <View style={s.payWrap}>
-                      {vfTypeMeta.panelSayisiOptions.map((p) => (
+                      {(vfTypeMeta.panelSayisiOptions || []).map((p) => (
                         <TouchableOpacity
                           key={p}
                           style={[s.payPill, vfPanelSayisi === p && s.payPillActive]}
@@ -1341,9 +1341,9 @@ export default function AlbertGenauScreen() {
                 <Reveal variant="up" distance={18}>
                 <View style={s.card}>
                   <Text style={s.fieldLabel}>Motor Markası</Text>
-                  {vfTypeMeta.motorOptions.length > 1 ? (
+                  {(vfTypeMeta.motorOptions || []).length > 1 ? (
                     <View style={s.payWrap}>
-                      {vfTypeMeta.motorOptions.map((m) => (
+                      {(vfTypeMeta.motorOptions || []).map((m) => (
                         <TouchableOpacity
                           key={m}
                           activeOpacity={0.8}
@@ -1379,7 +1379,7 @@ export default function AlbertGenauScreen() {
                         <Text style={[s.typePillText, vfKumandaKanal === null && s.typePillTextActive]}>Kumanda Yok</Text>
                       </TouchableOpacity>
                     )}
-                    {(vfTypeMeta.kumandaKanalOptions[vfMotor] || []).map((k) => (
+                    {(vfTypeMeta.kumandaKanalOptions?.[vfMotor] || []).map((k) => (
                       <TouchableOpacity
                         key={k}
                         style={[s.finishPill, vfKumandaKanal === k && s.typePillActive]}
@@ -1459,7 +1459,7 @@ export default function AlbertGenauScreen() {
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
                     Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
                   </Text>
-                  {vfTypeMeta.camSkus.map((c) => (
+                  {(vfTypeMeta.camSkus || []).map((c) => (
                     <NumField
                       key={c.sku}
                       label={`${c.label} (₺/m²)`}
@@ -1495,21 +1495,24 @@ export default function AlbertGenauScreen() {
 
                 {/* Ölçüler */}
                 <Reveal variant="up" distance={18}>
-                <View style={s.card}>
-                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
-                  <View style={s.row}>
+                <Sheet title="Ölçüler" note="Tüm ölçüler milimetre cinsindendir.">
+                  {/* Sabit cam tavan yukarıdan okunur: plan görünümü. */}
+                  <Elevation w={kbGenislik} d={kbDerinlik} plan caption={kbTypeMeta?.label} />
+                  <View style={[s.row, { marginTop: AGS.rowGap }]}>
                     <NumField label="Genişlik" value={kbGenislik} onChange={setKbGenislik} testID="ag-kb-genislik" />
                     <NumField label="Derinlik" value={kbDerinlik} onChange={setKbDerinlik} testID="ag-kb-derinlik" />
                   </View>
-                  <View style={s.row}>
+                  <View style={[s.row, { marginTop: AGS.rowGap }]}>
                     <NumField label="Tavan Bölüm Sayısı" value={kbTavanBolumSayisi} onChange={setKbTavanBolumSayisi} testID="ag-kb-tavan-bolum" />
                     <NumField label="Arka Duvar Alt Yüksekliği" value={kbArkaDuvarAltYukseklik} onChange={setKbArkaDuvarAltYukseklik} testID="ag-kb-arka-duvar" />
                   </View>
-                  <Text style={[s.hint, { marginTop: -4 }]}>
+                  <Text style={s.hint}>
                     Ön dikme yüksekliği, arka duvar yüksekliğinden 8° çatı eğimine göre otomatik hesaplanır.
                   </Text>
-                  <NumField label="Ara Dikme Sayısı (opsiyonel)" value={kbAraDikmeSayisi} onChange={setKbAraDikmeSayisi} testID="ag-kb-ara-dikme" />
-                </View>
+                  <View style={{ marginTop: AGS.rowGap }}>
+                    <NumField label="Ara Dikme Sayısı (opsiyonel)" value={kbAraDikmeSayisi} onChange={setKbAraDikmeSayisi} testID="ag-kb-ara-dikme" />
+                  </View>
+                </Sheet>
                 </Reveal>
 
                 {/* Tip-bazlı ek seçenekler */}
@@ -1540,7 +1543,7 @@ export default function AlbertGenauScreen() {
                   <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
                     Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
                   </Text>
-                  {kbTypeMeta.camSkus.map((c) => (
+                  {(kbTypeMeta.camSkus || []).map((c) => (
                     <NumField
                       key={c.sku}
                       label={`${c.label} (₺/m²)`}
@@ -1586,13 +1589,13 @@ export default function AlbertGenauScreen() {
 
                 {/* Ölçüler */}
                 <Reveal variant="up" distance={18}>
-                <View style={s.card}>
-                  <Text style={s.sectionTitle}>Ölçüler (mm)</Text>
-                  <View style={s.row}>
+                <Sheet title="Ölçüler" note="Tüm ölçüler milimetre cinsindendir.">
+                  <Elevation w={bcGenislik} h={bcYukseklik} caption={bcTypeMeta?.label} />
+                  <View style={[s.row, { marginTop: AGS.rowGap }]}>
                     <NumField label="Genişlik" value={bcGenislik} onChange={setBcGenislik} testID="ag-bc-genislik" />
                     <NumField label="Yükseklik" value={bcYukseklik} onChange={setBcYukseklik} testID="ag-bc-yukseklik" />
                   </View>
-                </View>
+                </Sheet>
                 </Reveal>
 
                 {/* Ray tipi -- sadece SLIDER NEXT/FLAT sistemlerinde var */}
@@ -1669,7 +1672,7 @@ export default function AlbertGenauScreen() {
                     <Text style={[s.hint, { marginTop: -4, marginBottom: 10 }]}>
                       Cam, Albert Genau fiyat listesinde yer almaz; kendi tedarik fiyatınızla girin.
                     </Text>
-                    {bcTypeMeta.camItems.map((c) => (
+                    {(bcTypeMeta.camItems || []).map((c) => (
                       <NumField
                         key={c.camSku}
                         label={`${c.label} (₺/${c.unit})`}
@@ -1826,7 +1829,7 @@ export default function AlbertGenauScreen() {
             <View style={s.card}>
               <Text style={s.fieldLabel}>Kaplama / Renk</Text>
               <View style={s.typeWrap}>
-                {meta.finishes.map((f) => (
+                {(meta.finishes || []).map((f) => (
                   <TouchableOpacity
                     key={f}
                     style={[s.finishPill, finish === f && s.typePillActive]}

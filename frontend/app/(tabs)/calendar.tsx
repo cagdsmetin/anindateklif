@@ -177,6 +177,20 @@ export default function CalendarScreen() {
     setShowReminderModal(false);
   };
 
+  // Hero kunyesi: goruntulenen ayin is yuku.
+  const monthStats = useMemo(() => {
+    const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-`;
+    const today = todayIso();
+    let total = 0;
+    let service = 0;
+    Object.entries(eventsByDate).forEach(([iso, evs]) => {
+      if (!iso.startsWith(prefix)) return;
+      total += evs.length;
+      service += evs.filter((e) => e.kind === 'garanti' || e.kind === 'bakim').length;
+    });
+    return { total, service, today: (eventsByDate[today] || []).length };
+  }, [eventsByDate, viewYear, viewMonth]);
+
   const goPrevMonth = () => {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); } else { setViewMonth((m) => m - 1); }
   };
@@ -237,7 +251,13 @@ export default function CalendarScreen() {
         <ScreenHero
           icon="calendar"
           title={t('calendar.s001')}
+          subtitle={`${AY_ADLARI[viewMonth]} ${viewYear}`}
           color={theme.colors.modules.hatirlatma}
+          stats={[
+            { label: 'BU AY KAYIT', value: monthStats.total },
+            { label: 'BUGÜN', value: monthStats.today, tone: monthStats.today > 0 ? '#FCD34D' : undefined },
+            { label: 'GARANTİ / BAKIM', value: monthStats.service },
+          ]}
         />
         <View style={s.monthNav}>
           <TouchableOpacity onPress={goPrevMonth} style={s.monthNavBtn}>

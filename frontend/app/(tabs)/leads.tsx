@@ -516,7 +516,12 @@ export default function LeadsScreen() {
             <Text style={[s.assignBadgeText, { color: theme.colors.goldText }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
           </View>
         )}
-        {!!lead.notlar && <Text style={s.leadNote} numberOfLines={2}>📝 {lead.notlar}</Text>}
+        {!!lead.notlar && (
+                  <View style={s.leadNoteRow}>
+                    <Ionicons name="document-text-outline" size={12} color={theme.colors.textMuted} />
+                    <Text style={s.leadNote} numberOfLines={2}>{lead.notlar}</Text>
+                  </View>
+                )}
       </View>
       <View style={{ alignItems: 'flex-end', gap: 8 }}>
         <TouchableOpacity style={s.iconBtn} onPress={() => openNotes(lead)} testID={`lead-notes-${lead.id}`}>
@@ -723,7 +728,7 @@ export default function LeadsScreen() {
                                   </View>
                                   <View style={s.kanbanCardMetaRow}>
                                     <Text style={s.kanbanCardAssigned} numberOfLines={1}>
-                                      {lead.atananKullaniciId ? `👤 ${staffLabelById[lead.atananKullaniciId] || 'Personel'}` : 'Atanmadı'}
+                                      {lead.atananKullaniciId ? (staffLabelById[lead.atananKullaniciId] || 'Personel') : 'Atanmadı'}
                                     </Text>
                                     {!!lead.firsatTutari && <Text style={s.kanbanCardAmount}>₺{money(lead.firsatTutari)}</Text>}
                                   </View>
@@ -1086,7 +1091,8 @@ const s = themedStyles(() => StyleSheet.create({
   assignSectionTitle: { fontSize: 12.5, fontWeight: '900', color: theme.colors.goldDark, letterSpacing: 0.4 },
   leadName: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
-  leadNote: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, fontStyle: 'italic' },
+  leadNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
+  leadNote: { flex: 1, fontSize: 11, color: theme.colors.textMuted, fontStyle: 'italic', lineHeight: 15 },
   durumChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   durumChipText: { fontSize: 10, fontWeight: '800' },
   iconBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },

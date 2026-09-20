@@ -388,7 +388,12 @@ export default function AdsIntelScreen() {
                 </View>
                 <Text style={s.metaText}>{r.yayinGunSayisi} gün yayında</Text>
               </View>
-              {!!r.notlar && <Text style={s.cardNote} numberOfLines={2}>📝 {r.notlar}</Text>}
+              {!!r.notlar && (
+                    <View style={s.cardNoteRow}>
+                      <Ionicons name="document-text-outline" size={12} color={theme.colors.textMuted} />
+                      <Text style={s.cardNote} numberOfLines={2}>{r.notlar}</Text>
+                    </View>
+                  )}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                 {r.durum === 'Aktif' && (
                   <TouchableOpacity style={s.smallBtn} onPress={() => refreshToday(r)} testID={`ad-refresh-${r.id}`}>
@@ -521,7 +526,8 @@ const s = themedStyles(() => StyleSheet.create({
   card: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10 },
   cardTitle: { flex: 1, fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
   cardSub: { fontSize: 12, color: theme.colors.textMuted, marginTop: 3 },
-  cardNote: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6, fontStyle: 'italic' },
+  cardNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
+  cardNote: { flex: 1, fontSize: 11, color: theme.colors.textMuted, fontStyle: 'italic', lineHeight: 15 },
   linkText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.primary, textDecorationLine: 'underline', marginTop: 4 },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 10, fontWeight: '800' },

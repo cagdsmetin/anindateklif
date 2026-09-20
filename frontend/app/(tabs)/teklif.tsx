@@ -762,7 +762,7 @@ export default function EditorScreen() {
             <FGroup label={t('teklifPage.s027')} grid><MotionInput style={s.input} value={gecerlilik} onChangeText={setGecerlilik} placeholder={t('teklifPage.s001')} placeholderTextColor="#94a3b8" /></FGroup>
           </View>
 
-          <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `📇 Geçmiş (${customers.length})` : ''} onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
+          <SectionHeaderWithAction title={t('teklifPage.s028')} actionLabel={customers.length ? `Geçmiş (${customers.length})` : ''} actionIcon="albums-outline" onAction={customers.length ? () => setShowCustomerPicker(true) : undefined} icon="person" />
           <View style={{ marginBottom: 8, zIndex: 20 }}>
             <Text style={s.label}>{upper(t('teklifPage.s029'))}</Text>
             <MotionInput
@@ -1533,7 +1533,7 @@ function SectionHeader({ title, icon }: { title: string; icon?: keyof typeof Ion
     </View>
   );
 }
-function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title: string; actionLabel?: string; onAction?: () => void; icon?: keyof typeof Ionicons.glyphMap }) {
+function SectionHeaderWithAction({ title, actionLabel, onAction, icon, actionIcon }: { title: string; actionLabel?: string; onAction?: () => void; icon?: keyof typeof Ionicons.glyphMap; actionIcon?: keyof typeof Ionicons.glyphMap }) {
   return (
     <View>
     <View style={s.sectionRow}>
@@ -1545,7 +1545,12 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon }: { title
         )}
         <Text style={s.sectionH2}>{title}</Text>
       </View>
-      {actionLabel && onAction ? <TouchableOpacity onPress={onAction}><Text style={s.sectionAction}>{actionLabel}</Text></TouchableOpacity> : null}
+      {actionLabel && onAction ? (
+        <TouchableOpacity onPress={onAction} style={s.sectionActionBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          {actionIcon ? <Ionicons name={actionIcon} size={13} color={theme.colors.primary} /> : null}
+          <Text style={s.sectionAction}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
     <SectionLine />
     </View>
@@ -1599,6 +1604,7 @@ const s = themedStyles(() => StyleSheet.create({
   sectionIconWrap: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 2 },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.5 },
+  sectionActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
   // minHeight: 2 satırlık sabit yükseklik -- etiket 1 satıra mı 2 satıra mı
   // sardığı kutunun genişliğine göre değişse de, aynı satırdaki tüm

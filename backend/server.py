@@ -1953,6 +1953,10 @@ async def _send_staff_invite_email(to_email: str, company_name: str, invite_link
 async def invite_staff_member(company_id: str, payload: StaffInviteRequest, user=Depends(get_current_user)):
     if user.get("is_staff"):
         raise HTTPException(status_code=403, detail="Sadece firma sahibi personel davet edebilir")
+    # Davet e-postasi rastgele adrese gidebildigi icin kullanici basina
+    # saatlik sinir -- aksi halde bu uc toplu e-posta araci olarak
+    # kullanilabilir ve gonderim alan adimiz kara listeye duser.
+    _rate_limit(f"staff-invite:user:{user['user_id']}", 20, 3600)
     company = await _own_company(user, company_id)
     email = _normalize_email(payload.email)
 
@@ -4394,6 +4398,9 @@ async def delete_catalog_file(file_id: str, user=Depends(get_current_user)):
 
 @api_router.post("/company/catalog-files/{file_id}/share-email")
 async def share_catalog_file_email(file_id: str, payload: CatalogFileEmailShareRequest, user=Depends(get_current_user)):
+    # Katalog dosyasi EK olarak rastgele bir adrese gonderiliyor; hiz siniri
+    # olmadan bu uc bir spam rolesi haline gelir (bkz. invite_staff_member).
+    _rate_limit(f"catalog-share:user:{user['user_id']}", 30, 3600)
     doc = await db.catalog_files.find_one({"id": file_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Dosya bulunamadı")

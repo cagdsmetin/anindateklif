@@ -32,6 +32,9 @@ yarn-error.*
 *.pem
 
 # local env files
+# Not: duz `.env` de yok sayilir -- icinde backend adresi (ve ileride
+# eklenebilecek anahtarlar) var; yanlislikla commit'lenmesi onlensin.
+.env
 .env*.local
 
 # typescript

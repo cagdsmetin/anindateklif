@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
@@ -35,7 +36,10 @@ export default function KasaScreen() {
   const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast } = useApp();
   const insets = useSafeAreaInsets();
 
-  const [tur, setTur] = useState<'gelir' | 'gider'>('gelir');
+  // Panel > Genel Bakis'taki "Gider" dilimine dokunularak gelindiginde
+  // form dogrudan gider kaydinda acilir.
+  const kasaParams = useLocalSearchParams<{ tur?: string }>();
+  const [tur, setTur] = useState<'gelir' | 'gider'>(kasaParams.tur === 'gider' ? 'gider' : 'gelir');
   const [kategori, setKategori] = useState(GELIR_KATEGORILER[0]);
   const [tutar, setTutar] = useState('');
   const [paraBirimi, setParaBirimi] = useState('TRY');

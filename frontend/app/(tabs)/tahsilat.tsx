@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -104,12 +104,22 @@ export default function TahsilatScreen() {
   // altında $/€ dökümü kalıyor.
   const toplamAlacakTRY = useMemo(() => sumToTRY(toplamAlacakByCurrency, rates), [toplamAlacakByCurrency, rates]);
 
+  // Panel > Genel Bakis'ta bir odeme yontemine dokunularak gelindiginde
+  // liste o yonteme filtrelenir; ustte kaldirilabilir bir rozet gorunur.
+  const routeParams = useLocalSearchParams<{ yontem?: string }>();
+  const [yontemFilter, setYontemFilter] = useState<string>(
+    typeof routeParams.yontem === 'string' ? routeParams.yontem : ''
+  );
+
   const filtered = useMemo(() => {
     const list = [...tahsilat].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.id || '').localeCompare(a.id || ''));
-    if (!q.trim()) return list;
+    const byYontem = yontemFilter
+      ? list.filter((t) => t.tur === 'tahsilat' && (t.yontem || '') === yontemFilter)
+      : list;
     const qq = q.trim().toLowerCase();
-    return list.filter((t) => t.musteriAdi.toLowerCase().includes(qq) || (t.notlar || '').toLowerCase().includes(qq));
-  }, [tahsilat, q]);
+    if (!qq) return byYontem;
+    return byYontem.filter((t) => t.musteriAdi.toLowerCase().includes(qq) || (t.notlar || '').toLowerCase().includes(qq));
+  }, [tahsilat, q, yontemFilter]);
 
   const resetForm = () => {
     setMusteriAdi(''); setMusteriTelefon(''); setSelectedCustomerId('');
@@ -375,6 +385,17 @@ export default function TahsilatScreen() {
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
             <MotionInput style={s.searchInput} placeholder={t('tahsilat.s032')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="tahsilat-search-input" />
           </View>
+          {/* Panel'den bir odeme yontemine dokunularak gelindiyse: hangi
+              filtrenin acik oldugu gorunur ve tek dokunusla kaldirilir. */}
+          {yontemFilter ? (
+            <TouchableOpacity style={s.filterBadge} onPress={() => setYontemFilter('')} testID="tahsilat-clear-yontem">
+              <Ionicons name="funnel" size={12} color={theme.colors.primary} />
+              <Text style={s.filterBadgeText} numberOfLines={1}>
+                {statusLabel(lang, yontemFilter)} tahsilatlar · {filtered.length}
+              </Text>
+              <Ionicons name="close-circle" size={15} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+          ) : null}
           {filtered.length === 0 ? (
             <View style={s.emptyBox}>
               <Ionicons name="wallet-outline" size={30} color={theme.colors.textMuted} />
@@ -466,6 +487,12 @@ const s = themedStyles(() => StyleSheet.create({
   callBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
   ledgerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primarySoft, marginRight: 6 },
   callBtnText: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
+  filterBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start',
+    backgroundColor: theme.colors.primarySoft, borderWidth: 1, borderColor: theme.colors.primaryBorder,
+    borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, marginBottom: 10, maxWidth: '100%',
+  },
+  filterBadgeText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.primary, flexShrink: 1 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },
   txRow: {

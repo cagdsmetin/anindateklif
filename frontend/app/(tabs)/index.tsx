@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated as RNAnimated, Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Animated as RNAnimated, Platform, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -310,6 +310,8 @@ export default function PanelScreen() {
         label: statusLabel(lang, yontem),
         color: METHOD_SLICE_COLORS[yontem] || theme.colors.textMuted,
         value: sumToTRY(entries, rates as RatesLike) || 0,
+        // Dokununca Tahsilat bu yonteme filtrelenmis acilir.
+        yontem,
       }))
       .filter((x) => x.value > 0)
       .sort((a, b) => b.value - a.value);
@@ -322,8 +324,8 @@ export default function PanelScreen() {
       });
     });
     const borcTutar = sumToTRY(borcEntries, rates as RatesLike) || 0;
-    if (giderBuAy2 > 0) slices.push({ label: t('panel.s022'), color: '#EF4444', value: giderBuAy2 });
-    if (borcTutar > 0) slices.push({ label: t('panel.borcLabel'), color: '#F59E0B', value: borcTutar });
+    if (giderBuAy2 > 0) slices.push({ label: t('panel.s022'), color: '#EF4444', value: giderBuAy2, yontem: '__gider__' });
+    if (borcTutar > 0) slices.push({ label: t('panel.borcLabel'), color: '#F59E0B', value: borcTutar, yontem: '__borc__' });
     return slices;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tahsilatThisMonth, tahsilat, rates, giderBuAy2, lang]);
@@ -471,6 +473,12 @@ export default function PanelScreen() {
       color: d.color,
       value: fmtTRY(d.value),
       pctLabel: paymentTotal > 0 ? `${Math.round((d.value / paymentTotal) * 100)}%` : undefined,
+      onPress: () => {
+        const k = (d as any).yontem as string | undefined;
+        if (k === '__borc__') router.push('/(tabs)/borclu-musteriler' as any);
+        else if (k === '__gider__') router.push({ pathname: '/(tabs)/kasa', params: { tur: 'gider' } } as any);
+        else if (k) router.push({ pathname: '/(tabs)/tahsilat', params: { yontem: k } } as any);
+      },
     })),
     centerLabel: t('panel.toplamLabel'),
     centerValue: fmtCompactTRY(paymentTotal, t),
@@ -485,6 +493,7 @@ export default function PanelScreen() {
       label: statusLabel(lang, st),
       color: QUOTE_STATUS_COLORS[st],
       value: String(myQuoteStatusCounts[st] || 0),
+      onPress: () => router.push({ pathname: '/(tabs)/history', params: { filter: st } } as any),
     })),
     centerLabel: t('panel.s051'),
     centerValue: String(myQuoteStatusTotal),
@@ -501,6 +510,7 @@ export default function PanelScreen() {
       value: String(quoteStatusCounts[st] || 0),
       countLabel: String(quoteStatusCounts[st] || 0),
       amountLabel: fmtTRY(quoteStatusValues[st] || 0),
+      onPress: () => router.push({ pathname: '/(tabs)/history', params: { filter: st } } as any),
     })),
     centerLabel: t('panel.s051'),
     centerValue: String(quoteStatusTotal),
@@ -945,7 +955,14 @@ function SectionTitle({ icon, title, actionLabel, onAction }: { icon: IconName; 
 // Genel Bakış (halka grafikler)
 // ============================================================================
 
-type LegendRow = { label: string; color: string; value: string; countLabel?: string; amountLabel?: string; pctLabel?: string };
+// Efsane satirlari artik tiklanabilir: bir dilime dokununca o dilimin
+// ardindaki kayitlar ilgili ekranda filtreli acilir (nakit -> Tahsilat'ta
+// nakit tahsilatlar, Reddedildi -> Gecmis'te reddedilen teklifler...).
+type LegendRow = {
+  label: string; color: string; value: string;
+  countLabel?: string; amountLabel?: string; pctLabel?: string;
+  onPress?: () => void;
+};
 type PanelData = {
   title: string;
   slices: DonutSlice[];
@@ -984,7 +1001,13 @@ function OverviewPanel({ data }: { data: PanelData }) {
             <Text style={s.ovEmpty}>{data.emptyText}</Text>
           ) : (
             data.legend.map((row, i) => (
-              <View key={i} {...hoverProps(i)} style={[s.legendItem, hover === i && s.legendItemActive]}>
+              <Pressable
+                key={i}
+                {...hoverProps(i)}
+                onPress={row.onPress}
+                disabled={!row.onPress}
+                style={[s.legendItem, hover === i && s.legendItemActive]}
+              >
                 <View style={s.legendTop}>
                   <View style={[s.legendDot, { backgroundColor: row.color }]} />
                   <Text style={s.legendLabel} numberOfLines={1}>
@@ -1000,6 +1023,9 @@ function OverviewPanel({ data }: { data: PanelData }) {
                   <Text style={s.legendValue} numberOfLines={1}>
                     {row.countLabel !== undefined ? row.countLabel : row.value}
                   </Text>
+                  {row.onPress ? (
+                    <Ionicons name="chevron-forward" size={12} color={theme.colors.textMuted} style={{ marginLeft: 2 }} />
+                  ) : null}
                 </View>
                 {/* Teklif durumlarında adedin altında o durumun toplam tutarı */}
                 {row.amountLabel ? (
@@ -1007,7 +1033,7 @@ function OverviewPanel({ data }: { data: PanelData }) {
                     {row.amountLabel}
                   </Text>
                 ) : null}
-              </View>
+              </Pressable>
             ))
           )}
         </View>

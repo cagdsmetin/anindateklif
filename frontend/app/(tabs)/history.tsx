@@ -83,7 +83,15 @@ export default function HistoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string }>();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string>(params.filter === 'bekleyen' ? PENDING_FILTER : t('history.s003'));
+  // Panel > Genel Bakis'taki bir dilime dokunularak gelindiginde o durum
+  // dogrudan secili acilir (ornegin "Reddedildi").
+  const [filter, setFilter] = useState<string>(
+    params.filter === 'bekleyen'
+      ? PENDING_FILTER
+      : params.filter && STATUSES.includes(params.filter)
+        ? params.filter
+        : t('history.s003')
+  );
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
   const [maliyetFor, setMaliyetFor] = useState<string | null>(null);
   // Kalem bazında maliyet girişi -- teklif kalemi id'sine göre metin kutusu

@@ -308,6 +308,9 @@ const s = themedStyles(() =>
     scrim: { backgroundColor: 'rgba(8,11,20,0.42)' },
     scrimWeb: { backgroundColor: 'rgba(8,11,20,0.58)', backdropFilter: 'blur(10px)' } as any,
     sheet: {
+      width: '100%',
+      maxWidth: 520,
+      alignSelf: 'center',
       backgroundColor: theme.colors.surface,
       borderTopLeftRadius: 26,
       borderTopRightRadius: 26,
@@ -321,8 +324,8 @@ const s = themedStyles(() =>
     sheetInner: { paddingBottom: Platform.OS === 'ios' ? 26 : 14 },
     grabberWrap: { alignItems: 'center', paddingTop: 9, paddingBottom: 4 },
     grabber: { width: 40, height: 4, borderRadius: 2, backgroundColor: theme.colors.lineDark },
-    head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 18, paddingTop: 6 },
-    title: { fontSize: 18, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.3 },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingTop: 4 },
+    title: { fontSize: 16.5, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.3 },
     subtitle: { fontSize: 12, color: theme.colors.textMuted, marginTop: 3, lineHeight: 17 },
     closeBtn: {
       width: 30,
@@ -332,9 +335,9 @@ const s = themedStyles(() =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    headRule: { height: 2, marginTop: 12, marginHorizontal: 18, borderRadius: 1 },
-    body: { paddingHorizontal: 14, paddingTop: 12 },
-    scrollBody: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
+    headRule: { height: 2, marginTop: 10, marginHorizontal: 16, borderRadius: 1 },
+    body: { paddingHorizontal: 12, paddingTop: 10 },
+    scrollBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6 },
     footer: { paddingHorizontal: 18, paddingTop: 10 },
 
     row: {
@@ -362,12 +365,12 @@ const s = themedStyles(() =>
     pick: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 11,
-      paddingVertical: 12,
+      gap: 10,
+      paddingVertical: 9,
       paddingHorizontal: 10,
-      borderRadius: 13,
-      marginBottom: 2,
-      minHeight: 56,
+      borderRadius: 11,
+      marginBottom: 1,
+      minHeight: 46,
     },
     pickDot: {
       width: 8,
@@ -376,9 +379,9 @@ const s = themedStyles(() =>
       backgroundColor: theme.colors.lineDark,
     },
     pickDotOn: { backgroundColor: theme.colors.primary },
-    pickBadge: { fontSize: 9.5, color: theme.colors.primary, fontWeight: '900', letterSpacing: 0.5 },
-    pickTitle: { fontSize: 13.5, fontWeight: '700', color: theme.colors.text, marginTop: 1 },
-    pickMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+    pickBadge: { fontSize: 9, color: theme.colors.primary, fontWeight: '900', letterSpacing: 0.5 },
+    pickTitle: { fontSize: 13.5, fontWeight: '700', color: theme.colors.text },
+    pickMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 1 },
 
     empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, gap: 10 },
     emptyIcon: {

@@ -26,6 +26,7 @@ import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
 import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
 import { saveQuoteDraft, loadQuoteDraft, clearQuoteDraft, QuoteDraft } from '@/src/lib/quoteDraft';
+import { loadQuoteDefaults, saveQuoteDefault, QuoteDefaultsT } from '@/src/lib/quoteDefaults';
 import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
@@ -129,6 +130,10 @@ export default function EditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showFirmaSuggestions, setShowFirmaSuggestions] = useState(false);
   const bootedRef = useRef<string | null>(null);
+  // Varsayilanlari yalnizca YENI teklifte uygulamak icin editingId'nin
+  // bagimlilik yaratmayan aynasi.
+  const editingIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => { editingIdRef.current = editingId; }, [editingId]);
   // Geçmiş'ten "Kopyala" ile gelindiğinde aynı duplicateFrom id'sinin
   // formu tekrar tekrar sıfırlamasını önlemek için (kullanıcı formu
   // düzenlemeye başladıktan sonra da param URL'de kalmaya devam eder).
@@ -294,6 +299,40 @@ export default function EditorScreen() {
     showToast(t('history.s045'));
   };
 
+  // Firmanin kayitli teklif varsayilanlari (odeme sekli, mensei, teslim,
+  // para birimi, nakliye). Sabit metin yerine kullanicinin kendi sartlari
+  // ile aciliyor; bkz. src/lib/quoteDefaults.ts
+  const quoteDefaultsRef = useRef<QuoteDefaultsT>({});
+  useEffect(() => {
+    const cid = activeCompany?.id;
+    if (!cid) return;
+    let cancelled = false;
+    loadQuoteDefaults(cid).then((d) => {
+      if (cancelled) return;
+      quoteDefaultsRef.current = d;
+      // Yalnizca yeni (kaydedilmemis) teklifte uygula -- acik bir teklifi
+      // duzenlerken onun kendi degerleri korunmali.
+      if (editingIdRef.current) return;
+      if (d.odemeSekli) setOdemeSekli(d.odemeSekli);
+      if (d.mensei) setMensei(d.mensei);
+      if (d.teslimGun) setTeslimGun(d.teslimGun);
+      if (d.paraBirimi) setParaBirimi(d.paraBirimi);
+      if (d.nakliye) setNakliye(d.nakliye);
+    });
+    return () => { cancelled = true; };
+  }, [activeCompany?.id]);
+
+  // Kullanici alani doldurup odaktan cikinca girdigi deger bu firmanin
+  // varsayilani olur -- bir sonraki teklifte tekrar yazmak gerekmez.
+  const rememberDefault = useCallback((field: keyof QuoteDefaultsT, value: string) => {
+    const cid = activeCompany?.id;
+    if (!cid) return;
+    const v = (value || '').trim();
+    if (!v) return;
+    quoteDefaultsRef.current = { ...quoteDefaultsRef.current, [field]: v };
+    saveQuoteDefault(cid, field, v);
+  }, [activeCompany?.id]);
+
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
@@ -301,9 +340,16 @@ export default function EditorScreen() {
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); setExpandedItemId(null); bootedRef.current = null;
     setDurum('Beklemede'); setLeavingItemIds(new Set());
     teklifNoManualRef.current = false;
+    // Firma varsayilanlari "Temizle"den sonra da korunur.
+    const d = quoteDefaultsRef.current;
+    setOdemeSekli(d.odemeSekli || t('teklifPage.s008'));
+    setMensei(d.mensei || t('teklifPage.s009'));
+    setTeslimGun(d.teslimGun || t('teklifPage.s010'));
+    setParaBirimi(d.paraBirimi || 'USD');
+    setNakliye(d.nakliye || 'EXW');
     if (activeCompany?.id) clearQuoteDraft(activeCompany.id);
     setDraftBanner(null);
-  }, [activeCompany, quotes, user]);
+  }, [activeCompany, quotes, user, t]);
 
   const pickAttachments = async () => {
     try {
@@ -669,7 +715,7 @@ export default function EditorScreen() {
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={editingId ? t('teklifPage.s020') : 'Yeni Teklif'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 1100, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 820, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Grand total sticky */}
           {/* Genel toplam -- kenarı ışıklı koyu kart, tutar değiştikçe sayarak akar */}
           <BorderBeam
@@ -808,19 +854,34 @@ export default function EditorScreen() {
           <Row>
             <FGroup label={t('teklifPage.s040')} flex={1}>
               <View style={s.chipRow}>{['USD', 'EUR', 'TRY'].map((c) => (
-                <ChoiceChip key={c} testID={`cur-${c}`} label={c} selected={paraBirimi === c} onPress={() => setParaBirimi(c)} style={{ flex: 1 }} />
+                <ChoiceChip key={c} testID={`cur-${c}`} label={c} selected={paraBirimi === c} onPress={() => { setParaBirimi(c); rememberDefault('paraBirimi', c); }} style={{ flex: 1 }} />
               ))}</View>
             </FGroup>
             <FGroup label={t('teklifPage.s041')} flex={1}>
               <View style={s.chipRow}>{['EXW', 'FOB', 'CIF', 'DAP'].map((c) => (
-                <ChoiceChip key={c} label={c} selected={nakliye === c} onPress={() => setNakliye(c)} />
+                <ChoiceChip key={c} label={c} selected={nakliye === c} onPress={() => { setNakliye(c); rememberDefault('nakliye', c); }} />
               ))}</View>
             </FGroup>
           </Row>
           <View style={s.fieldGrid}>
-            <FGroup label={t('teklifPage.s042')} grid><MotionInput style={s.input} value={odemeSekli} onChangeText={setOdemeSekli} /></FGroup>
-            <FGroup label={t('teklifPage.s043')} grid><MotionInput style={s.input} value={mensei} onChangeText={setMensei} /></FGroup>
-            <FGroup label={t('teklifPage.s044')} grid><MotionInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} /></FGroup>
+            {/* Bu üç alan firmaya göre değişir ama firma içinde neredeyse hiç
+                değişmez: girilen değer o firmanın varsayılanı olarak
+                hatırlanır, sonraki tekliflerde hazır gelir. */}
+            <FGroup label={t('teklifPage.s042')} grid>
+              <MotionInput
+                style={s.input}
+                value={odemeSekli}
+                onChangeText={setOdemeSekli}
+                onBlur={() => rememberDefault('odemeSekli', odemeSekli)}
+                testID="quote-odeme-sekli"
+              />
+            </FGroup>
+            <FGroup label={t('teklifPage.s043')} grid>
+              <MotionInput style={s.input} value={mensei} onChangeText={setMensei} onBlur={() => rememberDefault('mensei', mensei)} />
+            </FGroup>
+            <FGroup label={t('teklifPage.s044')} grid>
+              <MotionInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} onBlur={() => rememberDefault('teslimGun', teslimGun)} />
+            </FGroup>
             <FGroup label={t('teklifPage.s045')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
             <FGroup label={t('teklifPage.s046')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
           </View>
@@ -1559,7 +1620,7 @@ function SectionHeaderWithAction({ title, actionLabel, onAction, icon, actionIco
   );
 }
 function FGroup({ label, children, flex, grid, narrow }: { label?: string; children: React.ReactNode; flex?: number; grid?: boolean; narrow?: boolean }) {
-  return <View style={[{ marginBottom: 8 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label} numberOfLines={2}>{upper(label)}</Text> : null}{children}</View>;
+  return <View style={[{ marginBottom: 9 }, flex ? { flex } : {}, grid ? s.fieldGridItem : {}, narrow ? s.fieldGridItemNarrow : {}]}>{label ? <Text style={s.label} numberOfLines={2}>{upper(label)}</Text> : null}{children}</View>;
 }
 // Seçim (select) tipi alanlar için genişlik: kutunun içeriği (en uzun
 // seçenek metni) ne kadar kısaysa kutu da o kadar dar olsun -- "LED
@@ -1598,21 +1659,21 @@ const s = themedStyles(() => StyleSheet.create({
   durumBadgeText: { color: '#fff', fontSize: 9.5, fontWeight: '800' },
   miniStat: { color: '#fff', fontSize: 12, fontWeight: '700' },
   miniStatSub: { color: theme.colors.primary, fontSize: 10, marginTop: 2, fontWeight: '800' },
-  sectionH: { flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 2 },
-  sectionLineWrap: { marginBottom: 10 },
+  sectionH: { flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 2 },
+  sectionLineWrap: { marginBottom: 8 },
   sectionLine: { height: 2, borderRadius: 1, marginTop: 6, overflow: 'hidden', transformOrigin: 'left' },
   totalShell: { marginBottom: 14 },
   sectionHText: { fontSize: 11, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.5 },
   sectionIconWrap: { width: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginBottom: 2 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, marginBottom: 2 },
   sectionH2: { fontSize: 11, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.5 },
   sectionActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   sectionAction: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
   // minHeight: 2 satırlık sabit yükseklik -- etiket 1 satıra mı 2 satıra mı
   // sardığı kutunun genişliğine göre değişse de, aynı satırdaki tüm
   // kutucukların altındaki input'lar hep aynı hizada başlasın diye.
-  label: { fontSize: 10, lineHeight: 13, minHeight: 26, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 4, letterSpacing: 0.4, },
-  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: Platform.OS === 'ios' ? 13 : 10, fontSize: 14, color: theme.colors.text },
+  label: { fontSize: 10, lineHeight: 13, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 3, letterSpacing: 0.4 },
+  input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10, paddingHorizontal: 11, paddingVertical: Platform.OS === 'ios' ? 10 : 8, fontSize: 13.5, color: theme.colors.text },
   multiline: { minHeight: 55, textAlignVertical: 'top' },
   // Teklif/Müşteri/Sipariş Bilgileri'ndeki kısa değerli alanlar (Teklif No,
   // Tarih, Telefon, Menşei, Teslim vb.) için ItemCard'daki kalem alanlarıyla
@@ -1620,8 +1681,8 @@ const s = themedStyles(() => StyleSheet.create({
   // sütuna kadar kendiliğinden sığdırır. flexGrow:0 -- bir satırda tek
   // başına kalan kutucuk (ör. son alan) tüm boş alanı kaplayıp aşırı
   // genişlemesin, sadece kendi içeriği kadar yer kaplasın.
-  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 0 },
-  fieldGridItem: { flexGrow: 1, flexShrink: 1, flexBasis: '46%', minWidth: 150, maxWidth: 280 },
+  fieldGrid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 10, rowGap: 2, alignItems: 'flex-end' },
+  fieldGridItem: { flexGrow: 1, flexShrink: 1, flexBasis: '30%', minWidth: 150, maxWidth: 262 },
   // İskonto/KDV gibi en fazla 3 haneli bir yüzde değeri (ör. "100") alan
   // alanlar için -- ItemCard'daki fieldGridItemNarrow ile aynı mantık.
   fieldGridItemNarrow: { flexGrow: 1, flexShrink: 1, flexBasis: '30%', minWidth: 96, maxWidth: 140 },

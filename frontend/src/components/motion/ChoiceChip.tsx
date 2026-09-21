@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { theme } from '@/src/lib/theme';
-import { alpha, themedStyles } from './paint';
+import { alpha, readableOn, themedStyles } from './paint';
 
 // Seçilebilir "hap" (pill) -- seçili duruma yaylanarak geçer, rengi yumuşak
 // bir geçişle dolar, basınca hafifçe küçülür. Para birimi/nakliye/kategori
@@ -56,8 +56,10 @@ export default function ChoiceChip({
     // undefined bırakılırsa Reanimated'ın web tarafı çöküyor.
     boxShadow: sel.value > 0.5 ? `0 6px 14px ${alpha(color, 0.35)}` : '0 0px 0px rgba(0,0,0,0)',
   }));
+  // Secili zemin acik bir vurgu rengi oldugunda beyaz metin okunmuyor.
+  const ink = readableOn(color);
   const text = useAnimatedStyle(() => ({
-    color: interpolateColor(sel.value, [0, 1], [theme.colors.textMuted, '#ffffff']),
+    color: interpolateColor(sel.value, [0, 1], [theme.colors.textMuted, ink]),
   }));
 
   return (

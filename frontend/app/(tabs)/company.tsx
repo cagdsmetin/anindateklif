@@ -21,7 +21,7 @@ import { useLanguage, LANGUAGES, upper } from '@/src/lib/i18n';
 import { useAppTheme } from '@/src/lib/theme-context';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
-import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, hashColor, themedStyles, useViewportProgress } from '@/src/components/motion';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, hashColor, readableOn, themedStyles, useViewportProgress } from '@/src/components/motion';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
@@ -190,7 +190,7 @@ export default function CompanyScreen() {
                   <TouchableOpacity key={c.id} testID={`switch-company-${c.id}`} style={[s.compItem, active && s.compItemActive]} onPress={() => setActiveCompanyId(c.id)}>
                     {c.logoBase64 ? <Image source={{ uri: c.logoBase64 }} style={s.compLogo} /> : (
                       <View style={[s.compLogo, { backgroundColor: hashColor(c.sirketAdi || c.id), alignItems: 'center', justifyContent: 'center' }]}>
-                        <Text style={s.compLogoLetter}>{(c.sirketAdi || '?').trim().charAt(0).toUpperCase()}</Text>
+                        <Text style={[s.compLogoLetter, { color: readableOn(hashColor(c.sirketAdi || c.id)) }]}>{(c.sirketAdi || '?').trim().charAt(0).toUpperCase()}</Text>
                       </View>
                     )}
                     <Text style={[s.compName, active && s.compNameActive]} numberOfLines={1}>{c.sirketAdi}</Text>
@@ -534,11 +534,11 @@ function LanguageSwitcher() {
                 borderRadius: 10,
                 borderWidth: 1.5,
                 borderColor: active ? theme.colors.primary : theme.colors.line,
-                backgroundColor: active ? theme.colors.primary + '12' : '#fff',
+                backgroundColor: active ? theme.colors.primarySoft : theme.colors.surfaceSoft,
               }}
               testID={`lang-${l.code}`}
             >
-              <Text style={{ fontSize: 18 }}>{l.flag}</Text>
+              <Text style={{ fontSize: 18, color: theme.colors.text }}>{l.flag}</Text>
               <Text style={{ fontSize: 12.5, fontWeight: active ? '900' : '600', color: active ? theme.colors.primary : theme.colors.text }}>{l.label}</Text>
             </TouchableOpacity>
           );

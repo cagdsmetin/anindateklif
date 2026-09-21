@@ -13,7 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { alpha, mix, themedStyles } from './paint';
+import { alpha, mix, readableOn, themedStyles } from './paint';
 
 // "Balon" aksiyon butonu (21st.dev'deki parlayan/yaylanan buton kalıplarından
 // uyarlandı): gradyan dolgu, içinde cam görünümlü ikon baloncuğu, üstünden
@@ -62,6 +62,10 @@ export default function BubbleButton({
     opacity: shine.value < 0.35 ? 0.5 - shine.value : 0,
     transform: [{ translateX: -160 + shine.value * 520 }, { rotate: '18deg' }],
   }));
+
+  // Dolgu butonun uzerindeki metin/ikon rengi zeminin parlakligina gore
+  // secilir -- koyu temada acilan yesil/amber zeminlerde beyaz okunmuyordu.
+  const ink = readableOn(color);
 
   const pad = size === 'lg' ? 16 : 12;
   const radius = 999;
@@ -113,16 +117,16 @@ export default function BubbleButton({
           <Animated.View pointerEvents="none" style={[s.shine, shineStyle]} />
         ) : null}
         {loading ? (
-          <ActivityIndicator color={solid ? '#fff' : color} />
+          <ActivityIndicator color={solid ? ink : color} />
         ) : (
           <>
-            <View style={[s.iconBubble, { backgroundColor: solid ? 'rgba(255,255,255,0.22)' : alpha(color, 0.16) }]}>
-              <Ionicons name={icon} size={16} color={solid ? '#fff' : color} />
+            <View style={[s.iconBubble, { backgroundColor: solid ? alpha(ink, 0.18) : alpha(color, 0.16) }]}>
+              <Ionicons name={icon} size={16} color={solid ? ink : color} />
             </View>
             {/* Dar satırlarda ("Toplu İçe Aktar" gibi uzun etiketler yan
                 yana iki butonda) tek satıra zorlamak metni kesiyordu; iki
                 satıra sarılmasına izin veriyoruz. */}
-            <Text style={[s.label, { color: solid ? '#fff' : color }, labelStyle]} numberOfLines={2}>
+            <Text style={[s.label, { color: solid ? ink : color }, labelStyle]} numberOfLines={2}>
               {label}
             </Text>
           </>

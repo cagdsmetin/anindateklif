@@ -148,7 +148,7 @@ const s = themedStyles(() => StyleSheet.create({
     backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line,
     padding: 14, marginBottom: 10, ...theme.shadow.sm,
   },
-  rowIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0F2FE', alignItems: 'center', justifyContent: 'center' },
+  rowIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   rowName: { fontSize: 14, fontWeight: '800', color: theme.colors.text },
   rowPhone: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
   curRow: { flexDirection: 'row', gap: 14, marginTop: 6, flexWrap: 'wrap' },

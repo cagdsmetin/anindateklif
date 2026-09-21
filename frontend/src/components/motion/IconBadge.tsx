@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { alpha, mix } from './paint';
+import { alpha, mix, readableOn } from './paint';
 import { useRevealVisible } from './Reveal';
 
 export type IconMotion = 'pop' | 'float' | 'pulse' | 'tilt' | 'none';
@@ -91,7 +91,7 @@ export default function IconBadge({
         end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFill, { borderRadius: r }]}
       />
-      <Ionicons name={icon} size={iconSize ?? Math.round(size * 0.48)} color="#fff" />
+      <Ionicons name={icon} size={iconSize ?? Math.round(size * 0.48)} color={readableOn(color)} />
     </Animated.View>
   );
 }

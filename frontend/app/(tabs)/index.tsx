@@ -17,7 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { statusColor, theme } from '@/src/lib/theme';
+import { getThemeMode, statusColor, theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
@@ -33,6 +33,7 @@ import {
   Marquee,
   mix,
   MotionScrollView,
+  readableOn,
   Reveal,
   themedSheet,
   TiltOnScroll,
@@ -116,8 +117,14 @@ function fmt(n: number, cur: string) {
   return `${sym} ${s}`;
 }
 
+// Yuzde rozetindeki metin rengi: koyu temada dilim rengi zeminle birlikte
+// koyulastigi icin rengi beyaza dogru acar. Acik temada oldugu gibi kalir.
+function legendInk(c: string): string {
+  return getThemeMode() === 'dark' ? mix(c, '#FFFFFF', 0.45) : c;
+}
+
 function urgency(days: number) {
-  if (days <= 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b' };
+  if (days <= 0) return { bg: theme.colors.redSoft, border: theme.colors.red, text: theme.colors.redText };
   if (days <= 7) return { bg: theme.colors.goldSoft, border: theme.colors.goldBorder, text: theme.colors.goldDark };
   return { bg: theme.colors.primarySoft, border: theme.colors.primaryBorder, text: theme.colors.primaryDark };
 }
@@ -837,7 +844,7 @@ function KpiCard({ icon, label, value, color, onPress }: { icon: IconName; label
         />
         <View style={s.kpiTop}>
           <View style={[s.kpiIcon, { backgroundColor: color, boxShadow: `0 6px 14px ${alpha(color, 0.4)}` }]}>
-            <Ionicons name={icon} size={16} color="#fff" />
+            <Ionicons name={icon} size={16} color={readableOn(color)} />
           </View>
           <Ionicons name="arrow-forward" size={13} color={theme.colors.textMuted} style={s.kpiArrow} />
         </View>
@@ -852,6 +859,9 @@ function KpiCard({ icon, label, value, color, onPress }: { icon: IconName; label
 
 function QuickTile({ icon, label, color, onPress }: { icon: IconName; label: string; color: string; onPress: () => void }) {
   const s = styles();
+  // Dolgu renginin uzerinde okunacak metin/ikon rengi. Gradyanin en acik
+  // ucu degil, en koyu ucu (color) baz alinir -- her iki uctan da okunur.
+  const ink = readableOn(color);
   return (
     <AnimatedPressable style={[s.quick, { boxShadow: `0 10px 22px ${alpha(color, 0.35)}` }]} onPress={onPress} scaleTo={0.95}>
       <View style={s.quickClip}>
@@ -862,10 +872,10 @@ function QuickTile({ icon, label, color, onPress }: { icon: IconName; label: str
           style={StyleSheet.absoluteFill}
         />
         <View style={s.quickGlow} />
-        <View style={s.quickIcon}>
-          <Ionicons name={icon} size={18} color="#fff" />
+        <View style={[s.quickIcon, { backgroundColor: alpha(ink, 0.16) }]}>
+          <Ionicons name={icon} size={18} color={ink} />
         </View>
-        <Text style={s.quickLabel} numberOfLines={1}>
+        <Text style={[s.quickLabel, { color: ink }]} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -884,7 +894,7 @@ function ModuleTile({ icon, label, color, onPress }: { icon: IconName; label: st
           end={{ x: 1, y: 1 }}
           style={[StyleSheet.absoluteFill, s.modIconFill]}
         />
-        <Ionicons name={icon} size={19} color="#fff" />
+        <Ionicons name={icon} size={19} color={readableOn(color)} />
       </View>
       <Text style={s.modLabel} numberOfLines={1}>
         {label}
@@ -965,7 +975,7 @@ function OverviewPanel({ data }: { data: PanelData }) {
           centerLabel={data.centerLabel}
           centerValue={data.centerValue}
           labelColor={theme.colors.textMuted}
-          valueColor={theme.colors.navy}
+          valueColor={theme.colors.text}
           hoverIndex={hover}
           onHoverSlice={Platform.OS === 'web' ? setHover : undefined}
         />
@@ -982,7 +992,7 @@ function OverviewPanel({ data }: { data: PanelData }) {
                   </Text>
                   {row.pctLabel ? (
                     <View style={[s.legendPct, { backgroundColor: alpha(row.color, 0.14) }]}>
-                      <Text style={[s.legendPctText, { color: row.color }]} numberOfLines={1}>
+                      <Text style={[s.legendPctText, { color: legendInk(row.color) }]} numberOfLines={1}>
                         {row.pctLabel}
                       </Text>
                     </View>
@@ -1436,7 +1446,7 @@ const styles = themedSheet(() => {
     kpiTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     kpiIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
     kpiArrow: { transform: [{ rotate: '-45deg' }], opacity: 0.5 },
-    kpiValue: { fontSize: 22, fontWeight: '900', color: c.navy, marginTop: 12 },
+    kpiValue: { fontSize: 22, fontWeight: '900', color: c.text, marginTop: 12 },
     kpiLabel: { fontSize: 11, color: c.textMuted, fontWeight: '800', marginTop: 2 },
 
     // HIZLI İŞLEM
@@ -1482,7 +1492,7 @@ const styles = themedSheet(() => {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    secTitle: { fontSize: 12.5, fontWeight: '900', color: c.navy, letterSpacing: 0.6 },
+    secTitle: { fontSize: 12.5, fontWeight: '900', color: c.text, letterSpacing: 0.6 },
     secAction: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     secActionText: { fontSize: 11.5, fontWeight: '800', color: c.primary },
     secLine: { height: 2, borderRadius: 1, marginTop: 9, overflow: 'hidden', transformOrigin: 'left' },
@@ -1530,7 +1540,7 @@ const styles = themedSheet(() => {
       paddingVertical: 11,
       paddingHorizontal: 12,
     },
-    rowTitle: { fontSize: 13, fontWeight: '800', color: c.navy },
+    rowTitle: { fontSize: 13, fontWeight: '800', color: c.text },
     rowSub: { fontSize: 11, color: c.textMuted, marginTop: 2 },
     badge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
     badgeText: { fontSize: 10.5, fontWeight: '800' },
@@ -1557,7 +1567,7 @@ const styles = themedSheet(() => {
     qAvatarText: { fontSize: 12.5, fontWeight: '900' },
     qStatus: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, borderWidth: 1, maxWidth: 110 },
     qStatusText: { fontSize: 10, fontWeight: '800' },
-    qFirm: { fontSize: 13.5, fontWeight: '900', color: c.navy },
+    qFirm: { fontSize: 13.5, fontWeight: '900', color: c.text },
     qMeta: { fontSize: 10.5, color: c.textMuted, marginTop: 3, fontWeight: '600' },
     qAmount: { fontSize: 17, fontWeight: '900', color: c.primary, marginTop: 10 },
   });

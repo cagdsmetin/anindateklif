@@ -89,14 +89,17 @@ const lightColors = {
 const darkColors = {
   primary: '#5B7CFF',
   primaryDark: '#7C97FF',
-  primarySoft: '#182148',
+  // Not: primarySoft uzerinde primary renkli metin yaziliyor (rozetler,
+  // ikon plakalari). #182148 ile kontrast 4.28 idi; #121A3A ile 4.68'e
+  // cikiyor ve AA esigini geciyor.
+  primarySoft: '#121A3A',
   primaryBorder: '#33407A',
 
   navy: '#1E293B',
   navyDark: '#090E14',
 
   accent: '#5B7CFF',
-  accentSoft: '#182148',
+  accentSoft: '#121A3A',
   accentBorder: '#33407A',
   gold: '#FBBF24',
   goldSoft: '#78350F',

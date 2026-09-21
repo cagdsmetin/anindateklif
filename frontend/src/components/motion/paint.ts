@@ -44,6 +44,29 @@ export function mix(a: string, b: string, t: number): string {
   return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
+// Bir dolgu renginin üzerinde okunacak metin/ikon rengi.
+//
+// Koyu temada vurgu renkleri açılıyor (ör. yeşil #16A34A -> #4ADE80, amber
+// #F59E0B -> #FBBF24). Beyaz metin bu açık zeminlerde 1.7:1'e kadar düşüyordu
+// -- "Kaydet", "Yeni Müşteri Ekle" gibi ana butonlar okunmaz haldeydi.
+// Zeminin bağıl parlaklığına bakıp koyu ya da beyaz metin seçer.
+export function readableOn(bg: string): string {
+  const rgb = parseHex(bg);
+  if (!rgb) return '#FFFFFF';
+  const lin = rgb.map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  const L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  // Sabit bir eşik yerine iki adayın gerçek kontrastını karşılaştır: orta
+  // tonlu zeminlerde (ör. #4D69D6) eşik mantığı ikisi de zayıf olan seçeneği
+  // seçebiliyordu.
+  const INK = 0.00518; // #0B1119 bağıl parlaklığı
+  const withWhite = 1.05 / (L + 0.05);
+  const withInk = (L + 0.05) / (INK + 0.05);
+  return withWhite >= withInk ? '#FFFFFF' : '#0B1119';
+}
+
 // theme.colors modül seviyesinde okunduğunda (StyleSheet.create) açık temanın
 // değerleri kalıcı olarak yakalanıyor; tema değişince ThemeProvider tüm ağacı
 // yeniden mount ediyor ama modül seviyesindeki stiller yeniden hesaplanmıyor.

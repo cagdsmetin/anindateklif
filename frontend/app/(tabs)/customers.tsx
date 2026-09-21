@@ -14,7 +14,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
-import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, themedStyles } from '@/src/components/motion';
+import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, readableOn, themedStyles } from '@/src/components/motion';
 import { useLanguage } from '@/src/lib/i18n';
 import { QuoteT } from '@/src/lib/api';
 
@@ -138,7 +138,7 @@ export default function CustomersScreen() {
                 {/* Top row: avatar + name/phone + actions */}
                 <View style={s.topRow}>
                   <View style={[s.avatar, { backgroundColor: tone, boxShadow: `0 6px 14px ${alpha(tone, 0.35)}` }]}>
-                    <Text style={s.avatarLetter}>{letter}</Text>
+                    <Text style={[s.avatarLetter, { color: readableOn(tone) }]}>{letter}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.name} numberOfLines={1}>{c.firma || t('customers.s005')}</Text>
@@ -314,7 +314,7 @@ const s = themedStyles(() => StyleSheet.create({
   },
   name: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   phone: { fontSize: 11, color: theme.colors.textMuted, marginTop: 1 },
-  phoneMuted: { fontSize: 10, color: theme.colors.lineDark, marginTop: 1, fontStyle: 'italic' },
+  phoneMuted: { fontSize: 10, color: theme.colors.textMuted, marginTop: 1, fontStyle: 'italic' },
   iconBtn: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
 
   cardDivider: { height: 1, backgroundColor: theme.colors.line, marginVertical: 6 },

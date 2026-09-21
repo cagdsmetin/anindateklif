@@ -271,7 +271,7 @@ export default function KasaScreen() {
                   <View key={k.kategori} style={{ marginBottom: 12 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
                       <Text style={s.katLabel}>{statusLabel(lang, k.kategori)} <Text style={s.katSub}>{upper(k.tur)}</Text></Text>
-                      <Text style={[s.katAmount, { color: k.tur === 'gelir' ? '#166534' : '#991b1b' }]}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.toplam, 'TRY')}</Text>
+                      <Text style={[s.katAmount, { color: k.tur === 'gelir' ? theme.colors.greenText : theme.colors.redText }]}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.toplam, 'TRY')}</Text>
                     </View>
                     <View style={s.barBg}><View style={[s.barFill, { width: `${k.pct}%`, backgroundColor: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} /></View>
                   </View>
@@ -331,7 +331,7 @@ const s = themedStyles(() => StyleSheet.create({
   card: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
   turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: theme.colors.surface },
   turBtnGelirActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
-  turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
+  turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: theme.colors.red },
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, letterSpacing: 0.4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },

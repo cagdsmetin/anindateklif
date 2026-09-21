@@ -164,7 +164,7 @@ export default function EFaturaScreen() {
             <Ionicons
               name={cfg?.lastTestOk ? 'checkmark-circle' : 'alert-circle-outline'}
               size={22}
-              color={cfg?.lastTestOk ? '#16a34a' : theme.colors.textMuted}
+              color={cfg?.lastTestOk ? theme.colors.green : theme.colors.textMuted}
             />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={s.statusTitle}>

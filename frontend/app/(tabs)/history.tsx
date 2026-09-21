@@ -499,7 +499,7 @@ export default function HistoryScreen() {
                 <Ionicons name="calculator-outline" size={13} color={theme.colors.textMuted} />
                 {quote.maliyet != null ? (
                   <Text style={s.maliyetText} numberOfLines={1}>
-                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: (quote.genelToplam - quote.maliyet) >= 0 ? '#16a34a' : theme.colors.red, fontWeight: '900' }}>{fmt(quote.genelToplam - quote.maliyet, quote.paraBirimi)}</Text>
+                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: (quote.genelToplam - quote.maliyet) >= 0 ? theme.colors.greenText : theme.colors.redText, fontWeight: '900' }}>{fmt(quote.genelToplam - quote.maliyet, quote.paraBirimi)}</Text>
                   </Text>
                 ) : (
                   <Text style={s.maliyetTextMuted}>{t('history.s037')}</Text>
@@ -520,7 +520,7 @@ export default function HistoryScreen() {
                   testID={`excel-${quote.id}`}
                   hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Ionicons name="grid-outline" size={16} color="#107C41" />
+                  <Ionicons name="grid-outline" size={16} color={theme.colors.greenText} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.actBtn, { backgroundColor: theme.colors.greenSoft }, waSharingId === quote.id && { opacity: 0.6 }]}
@@ -529,7 +529,7 @@ export default function HistoryScreen() {
                   testID={`whatsapp-${quote.id}`}
                 >
                   {waSharingId === quote.id ? <ActivityIndicator size="small" color="#16a34a" /> : <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />}
-                  <Text style={[s.actText, { color: '#16a34a' }]}>{t('history.s023')}</Text>
+                  <Text style={[s.actText, { color: theme.colors.greenText }]}>{t('history.s023')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.actBtnIcon, { backgroundColor: theme.colors.primary + '14' }]}

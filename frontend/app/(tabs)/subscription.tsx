@@ -415,7 +415,7 @@ export default function SubscriptionScreen() {
                         <View style={s.priceMetaRow}>
                           {save > 0 ? (
                             <View style={s.saveBadge}>
-                              <Ionicons name="pricetag" size={10} color="#065F46" />
+                              <Ionicons name="pricetag" size={10} color={theme.colors.greenText} />
                               <Text style={s.saveBadgeText}>%{save} indirim</Text>
                             </View>
                           ) : null}
@@ -562,7 +562,7 @@ const s = themedStyles(() => StyleSheet.create({
   statusCardInfo: { backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primaryBorder },
   statusCardActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
   statusCardWarn: { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.goldBorder },
-  statusCardDanger: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
+  statusCardDanger: { backgroundColor: theme.colors.redSoft, borderColor: theme.colors.red },
   statusTitle: { fontSize: 14.5, fontWeight: '800', color: theme.colors.text, marginBottom: 4 },
   statusText: { fontSize: 13, color: theme.colors.textMuted, lineHeight: 18 },
   seatNote: {
@@ -626,7 +626,7 @@ const s = themedStyles(() => StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  saveBadgeText: { color: '#065F46', fontSize: 10.5, fontWeight: '900' },
+  saveBadgeText: { color: theme.colors.greenText, fontSize: 10.5, fontWeight: '900' },
   bulletCheck: {
     width: 18,
     height: 18,

@@ -39,8 +39,8 @@ function trDate(iso: string): string {
 }
 
 function urgency(t: (k: string) => string, days: number) {
-  if (days < 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b', label: `${Math.abs(days)} gün önce doldu` };
-  if (days === 0) return { bg: theme.colors.redSoft, border: '#fca5a5', text: '#991b1b', label: t('remindersPage.s001') };
+  if (days < 0) return { bg: theme.colors.redSoft, border: theme.colors.red, text: theme.colors.redText, label: `${Math.abs(days)} gün önce doldu` };
+  if (days === 0) return { bg: theme.colors.redSoft, border: theme.colors.red, text: theme.colors.redText, label: t('remindersPage.s001') };
   if (days <= 7) return { bg: theme.colors.goldSoft, border: theme.colors.goldBorder, text: theme.colors.goldDark, label: `${days} gün kaldı` };
   return { bg: theme.colors.primarySoft, border: theme.colors.primaryBorder, text: theme.colors.primaryDark, label: `${days} gün kaldı` };
 }

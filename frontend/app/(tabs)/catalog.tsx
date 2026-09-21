@@ -615,7 +615,7 @@ export default function CatalogScreen() {
             <BubbleButton
               icon="cloud-upload"
               label={t('catalog.s002')}
-              color={theme.colors.navy}
+              color={theme.colors.text}
               variant="soft"
               onPress={() => setShowBulk(true)}
               testID="bulk-import-btn"
@@ -674,7 +674,7 @@ export default function CatalogScreen() {
               <Text style={s.agTitle}>Albert Genau Fiyat Hesaplama</Text>
               <Text style={s.agDesc}>Ölçüleri girin, malzeme + fiyat otomatik hesaplansın</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.navy} />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
           </TouchableOpacity>
         )}
 

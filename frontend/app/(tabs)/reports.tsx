@@ -13,6 +13,7 @@ import {
   CountUp,
   Donut,
   hashColor,
+  readableOn,
   MotionScrollView,
   Reveal,
   ScreenHero,
@@ -230,7 +231,7 @@ export default function ReportsScreen() {
               <Reveal key={c.firma} variant={idx % 2 === 0 ? 'left' : 'right'} distance={18}>
               <View style={[s.rankRow, idx < topCustomers.length - 1 && s.rankRowBorder]}>
                 <View style={[s.rankBadge, { backgroundColor: hashColor(c.firma) }]}>
-                  <Text style={s.rankBadgeText}>{idx + 1}</Text>
+                  <Text style={[s.rankBadgeText, { color: readableOn(hashColor(c.firma)) }]}>{idx + 1}</Text>
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.rankFirma} numberOfLines={1}>{c.firma}</Text>
@@ -266,7 +267,7 @@ export default function ReportsScreen() {
               centerLabel={t('reports.s016')}
               centerValue={`%${Math.round(conversionRate)}`}
               labelColor={theme.colors.textMuted}
-              valueColor={theme.colors.navy}
+              valueColor={theme.colors.text}
             />
             <View style={{ flex: 1, minWidth: 140 }}>
               <ConversionRow label={t('reports.s001')} count={conversion.onay} total={conversion.total} color={theme.colors.green} />
@@ -294,7 +295,7 @@ export default function ReportsScreen() {
               <Text style={[s.statLabel, { color: theme.colors.greenText }]}>{upper(t('reports.s021'))}</Text>
               <Text style={[s.statValue, { color: theme.colors.greenText }]}>{serviceStats.garantiAktif}</Text>
             </View>
-            <View style={[s.statCard, { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' }]}>
+            <View style={[s.statCard, { backgroundColor: theme.colors.redSoft, borderColor: theme.colors.red }]}>
               <Text style={[s.statLabel, { color: theme.colors.redText }]}>{upper(t('reports.s022'))}</Text>
               <Text style={[s.statValue, { color: theme.colors.redText }]}>{serviceStats.garantiBitmis}</Text>
             </View>

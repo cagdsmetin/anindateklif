@@ -19,7 +19,7 @@ import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
-import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, hashColor, themedStyles } from '@/src/components/motion';
+import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, hashColor, readableOn, themedStyles } from '@/src/components/motion';
 
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
 
@@ -345,7 +345,7 @@ export default function TahsilatScreen() {
                 <Reveal key={b.key} variant={i % 2 === 0 ? 'left' : 'right'} distance={16}>
                 <View style={[s.pendingRow, i === balances.length - 1 && { borderBottomWidth: 0, marginBottom: 0, paddingBottom: 0 }]}>
                   <View style={[s.pendingAvatar, { backgroundColor: hashColor(b.musteriAdi || b.key) }]}>
-                    <Text style={s.pendingAvatarText}>{(b.musteriAdi || '?').trim().charAt(0).toUpperCase()}</Text>
+                    <Text style={[s.pendingAvatarText, { color: readableOn(hashColor(b.musteriAdi || b.key)) }]}>{(b.musteriAdi || '?').trim().charAt(0).toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -425,7 +425,7 @@ const s = themedStyles(() => StyleSheet.create({
   card: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 14, ...theme.shadow.sm },
   turBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, alignItems: 'center', backgroundColor: theme.colors.surface },
   turBtnGelirActive: { backgroundColor: theme.colors.greenSoft, borderColor: '#86efac' },
-  turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: '#fca5a5' },
+  turBtnGiderActive: { backgroundColor: theme.colors.redSoft, borderColor: theme.colors.red },
   turBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.textMuted },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textSoft, marginBottom: 6, letterSpacing: 0.4 },
   input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
@@ -464,7 +464,7 @@ const s = themedStyles(() => StyleSheet.create({
   overdueTag: { backgroundColor: theme.colors.redSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   overdueTagText: { fontSize: 9, fontWeight: '800', color: theme.colors.redText },
   callBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
-  ledgerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F2FE', marginRight: 6 },
+  ledgerBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primarySoft, marginRight: 6 },
   callBtnText: { fontSize: 11, fontWeight: '800', color: theme.colors.primary },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, paddingHorizontal: 12, gap: 8, marginBottom: 4 },
   searchInput: { flex: 1, paddingVertical: Platform.OS === 'ios' ? 12 : 8, fontSize: 13, color: theme.colors.text },

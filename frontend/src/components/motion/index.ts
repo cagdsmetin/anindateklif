@@ -21,4 +21,4 @@ export type { IconMotion } from './IconBadge';
 export { default as ScreenHero } from './ScreenHero';
 export type { HeroStat } from './ScreenHero';
 export { SheetModal, SheetRow, SheetPick, SheetEmpty } from './SheetModal';
-export { alpha, compactNumber, mix, cssGradient, glowBlob, hashColor, themedSheet, themedStyles } from './paint';
+export { alpha, compactNumber, mix, cssGradient, glowBlob, hashColor, readableOn, themedSheet, themedStyles } from './paint';

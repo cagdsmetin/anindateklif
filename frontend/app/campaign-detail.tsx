@@ -310,7 +310,7 @@ const s = themedStyles(() => StyleSheet.create({
   custSub: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   custActions: { flexDirection: 'row', gap: 6 },
   waBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7, paddingHorizontal: 8, backgroundColor: theme.colors.greenSoft, borderRadius: 8 },
-  waBtnText: { fontSize: 10.5, fontWeight: '800', color: '#16a34a' },
+  waBtnText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.greenText },
   sentBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 7, paddingHorizontal: 8, backgroundColor: theme.colors.primarySoft, borderRadius: 8 },
   sentBtnDone: { backgroundColor: theme.colors.primary },
   sentBtnText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primary },

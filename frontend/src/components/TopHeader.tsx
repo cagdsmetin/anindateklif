@@ -39,7 +39,7 @@ export default function TopHeader({ title }: { title?: string }) {
             testID="hamburger-btn"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="menu" size={22} color={theme.colors.navy} />
+            <Ionicons name="menu" size={22} color={theme.colors.text} />
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity

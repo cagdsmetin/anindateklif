@@ -45,5 +45,5 @@ const s = themedStyles(() => StyleSheet.create({
     backgroundColor: 'rgba(59,130,246,0.18)',
     borderColor: '#3B82F6',
   },
-  flag: { fontSize: 16 },
+  flag: { fontSize: 16, color: '#F3F6FB' },
 }));

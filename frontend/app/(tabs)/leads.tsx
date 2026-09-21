@@ -13,23 +13,29 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { theme } from '@/src/lib/theme';
+import { getThemeMode, theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { api, LeadCompanyT, StaffMemberT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useOrderedNames } from '@/src/lib/orderPrefs';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
-import { BubbleButton, ChoiceChip, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
+import { BubbleButton, ChoiceChip, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, hashColor, mix, readableOn, themedStyles } from '@/src/components/motion';
 
 const DURUM_OPTIONS = ['Aranmadı', 'Arandı', 'Cevap Yok', 'Olumlu Dönüş', 'Olumsuz Dönüş', 'Kapandı'];
+// Durum rozetindeki metin: zemin durum renginin soluk bir tonu oldugu icin
+// koyu temada rengi beyaza dogru acilir, acik temada koyulastirilir.
+function statusInk(c: string): string {
+  return getThemeMode() === 'dark' ? mix(c, '#FFFFFF', 0.45) : mix(c, '#000000', 0.25);
+}
+
 const DURUM_COLORS: Record<string, string> = {
   'Aranmadı': '#94a3b8',
   'Arandı': '#3b82f6',
   'Cevap Yok': '#f59e0b',
   'Olumlu Dönüş': '#16a34a',
   'Olumsuz Dönüş': '#ef4444',
-  'Kapandı': '#0f172a',
+  'Kapandı': '#64748b',
 };
 
 // WhatsApp mesaj şablonları -- firma arama sırasında en çok kullanılan 4
@@ -451,92 +457,134 @@ export default function LeadsScreen() {
     );
   }
 
+  // Bulunan firma kartı.
+  //
+  // Önceki düzen: sağda dikey dizilmiş dört ikon butonu, altta beş ayrı
+  // renkte durum cipi yan yana. Hem yer israfıydı hem de hangi firmanın
+  // hangi durumda olduğu bir bakışta okunmuyordu. Yeni düzen tek bir
+  // hikâye anlatıyor: kim (avatar + ad + durum rozeti), nasıl ulaşılır
+  // (telefon/site), sırada ne var (durum seçimi), ne yapabilirim (eylem
+  // çubuğu).
   const renderLeadRow = (lead: LeadCompanyT) => {
     const assignedToMe = isStaffUser && !!me?.user_id && lead.atananKullaniciId === me.user_id;
+    const tone = DURUM_COLORS[lead.durum] || theme.colors.textMuted;
+    const letter = ((lead.firma || '?').trim().charAt(0) || '?').toUpperCase();
+    const meta = [lead.bolge, lead.kategori].filter(Boolean).join(' · ');
+    const site = lead.website ? lead.website.replace(/^https?:\/\//i, '') : '';
     return (
     <View key={lead.id} style={[s.leadCard, assignedToMe && s.leadCardAssigned]} testID={`lead-${lead.id}`}>
-      <View style={{ flex: 1 }}>
-        <Text style={s.leadName} numberOfLines={1}>{lead.firma}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
-          <View style={s.tagPill}><Text style={s.tagPillText}>{t('leads.s030')}{lead.bolge || '-'}</Text></View>
-          <View style={s.tagPill}><Text style={s.tagPillText}>{t('leads.s031')}{lead.kategori || '-'}</Text></View>
+      <View style={[s.leadStripe, { backgroundColor: tone }]} />
+
+      {/* Kim */}
+      <View style={s.leadHead}>
+        <View style={[s.leadAvatar, { backgroundColor: hashColor(lead.firma || lead.id) }]}>
+          <Text style={[s.leadAvatarText, { color: readableOn(hashColor(lead.firma || lead.id)) }]}>{letter}</Text>
         </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.leadName} numberOfLines={1}>{lead.firma}</Text>
+          {meta ? <Text style={s.leadMeta} numberOfLines={1}>{meta}</Text> : null}
+        </View>
+        <View style={[s.leadStatus, { backgroundColor: alpha(tone, 0.16), borderColor: alpha(tone, 0.5) }]}>
+          <View style={[s.leadStatusDot, { backgroundColor: tone }]} />
+          <Text style={[s.leadStatusText, { color: statusInk(tone) }]} numberOfLines={1}>{statusLabel(lang, lead.durum)}</Text>
+        </View>
+      </View>
+
+      {/* Nasıl ulaşılır */}
+      <View style={s.leadContacts}>
         {lead.telefon ? (
-          <TouchableOpacity style={s.phoneRow} onPress={() => callLead(lead)} testID={`lead-call-${lead.id}`}>
+          <TouchableOpacity style={s.contactChip} onPress={() => callLead(lead)} testID={`lead-call-${lead.id}`}>
             <Ionicons name="call" size={13} color={theme.colors.primary} />
-            <Text style={s.phoneRowText}>{lead.telefon}</Text>
+            <Text style={s.contactChipText} numberOfLines={1}>{lead.telefon}</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={s.leadSub}>{t('leads.s032')}</Text>
+          <View style={[s.contactChip, s.contactChipEmpty]}>
+            <Ionicons name="call-outline" size={13} color={theme.colors.textMuted} />
+            <Text style={s.contactChipEmptyText}>{t('leads.s032')}</Text>
+          </View>
         )}
         {!!lead.website && (
           <TouchableOpacity
-            style={s.phoneRow}
+            style={s.contactChip}
             onPress={() => {
               const url = /^https?:\/\//i.test(lead.website) ? lead.website : `https://${lead.website}`;
               Linking.openURL(url).catch(() => showToast(t('leads.s033')));
             }}
           >
             <Ionicons name="globe-outline" size={13} color={theme.colors.primary} />
-            <Text style={s.phoneRowText} numberOfLines={1}>{lead.website}</Text>
+            <Text style={s.contactChipText} numberOfLines={1}>{site}</Text>
           </TouchableOpacity>
         )}
         {!!lead.email && (
-          <TouchableOpacity style={s.phoneRow} onPress={() => Linking.openURL(`mailto:${lead.email}`).catch(() => showToast(t('leads.s034')))}>
+          <TouchableOpacity style={s.contactChip} onPress={() => Linking.openURL(`mailto:${lead.email}`).catch(() => showToast(t('leads.s034')))}>
             <Ionicons name="mail-outline" size={13} color={theme.colors.primary} />
-            <Text style={s.phoneRowText} numberOfLines={1}>{lead.email}</Text>
+            <Text style={s.contactChipText} numberOfLines={1}>{lead.email}</Text>
           </TouchableOpacity>
         )}
-        <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-          {DURUM_OPTIONS.map((d) => (
+      </View>
+
+      {/* Sırada ne var -- yalnızca seçili durum dolu, digerleri sakin */}
+      <View style={s.durumRow}>
+        {DURUM_OPTIONS.map((d) => {
+          const on = lead.durum === d;
+          const dc = DURUM_COLORS[d] || theme.colors.textMuted;
+          return (
             <TouchableOpacity
               key={d}
-              style={[s.durumChip, { borderColor: DURUM_COLORS[d] }, lead.durum === d && { backgroundColor: DURUM_COLORS[d] }]}
+              style={[s.durumChip, on && { backgroundColor: dc, borderColor: dc }]}
               onPress={() => updateStatus(lead, d)}
             >
-              <Text style={[s.durumChipText, { color: lead.durum === d ? '#fff' : DURUM_COLORS[d] }]}>{statusLabel(lang, d)}</Text>
+              <Text style={[s.durumChipText, on ? { color: readableOn(dc) } : null]} numberOfLines={1}>
+                {statusLabel(lang, d)}
+              </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-        {!!lead.tekrarTarihi && (
-          <View style={s.reminderBadge}>
-            <Ionicons name="alarm-outline" size={12} color="#b45309" />
-            <Text style={s.reminderBadgeText}>{t('leads.s035')}{trDateShort(lead.tekrarTarihi)}</Text>
-          </View>
-        )}
-        {!!lead.atananKullaniciId && !isStaffUser && (
-          <View style={s.assignBadge}>
-            <Ionicons name="person-outline" size={12} color="#5b21b6" />
-            <Text style={s.assignBadgeText}>{staffLabelById[lead.atananKullaniciId] || 'Personel'}: {lead.atananNot || t('leads.s003')}</Text>
-          </View>
-        )}
-        {assignedToMe && (
-          <View style={[s.assignBadge, { backgroundColor: theme.colors.goldSoft }]}>
-            <Ionicons name="notifications-outline" size={12} color="#b45309" />
-            <Text style={[s.assignBadgeText, { color: theme.colors.goldText }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
-          </View>
-        )}
-        {!!lead.notlar && (
-                  <View style={s.leadNoteRow}>
-                    <Ionicons name="document-text-outline" size={12} color={theme.colors.textMuted} />
-                    <Text style={s.leadNote} numberOfLines={2}>{lead.notlar}</Text>
-                  </View>
-                )}
+          );
+        })}
       </View>
-      <View style={{ alignItems: 'flex-end', gap: 8 }}>
-        <TouchableOpacity style={s.iconBtn} onPress={() => openNotes(lead)} testID={`lead-notes-${lead.id}`}>
-          <Ionicons name="create-outline" size={16} color={theme.colors.primary} />
+
+      {!!lead.tekrarTarihi && (
+        <View style={s.reminderBadge}>
+          <Ionicons name="alarm-outline" size={12} color={theme.colors.goldText} />
+          <Text style={s.reminderBadgeText}>{t('leads.s035')}{trDateShort(lead.tekrarTarihi)}</Text>
+        </View>
+      )}
+      {!!lead.atananKullaniciId && !isStaffUser && (
+        <View style={s.assignBadge}>
+          <Ionicons name="person-outline" size={12} color={theme.colors.blueText} />
+          <Text style={s.assignBadgeText}>{staffLabelById[lead.atananKullaniciId] || 'Personel'}: {lead.atananNot || t('leads.s003')}</Text>
+        </View>
+      )}
+      {assignedToMe && (
+        <View style={[s.assignBadge, { backgroundColor: theme.colors.goldSoft }]}>
+          <Ionicons name="notifications-outline" size={12} color={theme.colors.goldText} />
+          <Text style={[s.assignBadgeText, { color: theme.colors.goldText }]}>{t('leads.s037')}{lead.atananNot || t('leads.s003')}</Text>
+        </View>
+      )}
+      {!!lead.notlar && (
+        <View style={s.leadNoteRow}>
+          <Ionicons name="document-text-outline" size={12} color={theme.colors.textMuted} />
+          <Text style={s.leadNote} numberOfLines={2}>{lead.notlar}</Text>
+        </View>
+      )}
+
+      {/* Ne yapabilirim */}
+      <View style={s.leadActions}>
+        <TouchableOpacity style={s.actBtn} onPress={() => openWhatsApp(lead)}>
+          <Ionicons name="logo-whatsapp" size={15} color={theme.colors.greenText} />
+          <Text style={[s.actBtnText, { color: theme.colors.greenText }]}>WhatsApp</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.actBtn} onPress={() => openNotes(lead)} testID={`lead-notes-${lead.id}`}>
+          <Ionicons name="create-outline" size={15} color={theme.colors.primary} />
+          <Text style={s.actBtnText}>Not</Text>
         </TouchableOpacity>
         {!isStaffUser && (
-          <TouchableOpacity style={s.iconBtn} onPress={() => openAssign(lead)} testID={`lead-assign-${lead.id}`}>
-            <Ionicons name="person-add-outline" size={16} color="#5b21b6" />
+          <TouchableOpacity style={s.actBtn} onPress={() => openAssign(lead)} testID={`lead-assign-${lead.id}`}>
+            <Ionicons name="person-add-outline" size={15} color={theme.colors.blueText} />
+            <Text style={[s.actBtnText, { color: theme.colors.blueText }]}>Ata</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={s.waBtn} onPress={() => openWhatsApp(lead)}>
-          <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-        </TouchableOpacity>
-        <TouchableOpacity style={s.iconBtn} onPress={() => removeLead(lead)}>
-          <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+        <TouchableOpacity style={s.actBtnIcon} onPress={() => removeLead(lead)}>
+          <Ionicons name="trash-outline" size={15} color={theme.colors.red} />
         </TouchableOpacity>
       </View>
     </View>
@@ -877,7 +925,7 @@ export default function LeadsScreen() {
               </TouchableOpacity>
               {!!reminderDate && (
                 <TouchableOpacity style={[s.reminderPreset, { backgroundColor: theme.colors.redSoft, borderColor: '#fecaca' }]} onPress={() => setReminderDate('')}>
-                  <Text style={[s.reminderPresetText, { color: '#dc2626' }]}>{t('leads.s064')}</Text>
+                  <Text style={[s.reminderPresetText, { color: theme.colors.redText }]}>{t('leads.s064')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1029,7 +1077,7 @@ export default function LeadsScreen() {
               </TouchableOpacity>
               {!!assignFor?.atananKullaniciId && (
                 <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.redSoft }]} onPress={clearAssign} disabled={assignSaving}>
-                  <Text style={[s.modalBtnText, { color: '#dc2626' }]}>{t('leads.s081')}</Text>
+                  <Text style={[s.modalBtnText, { color: theme.colors.redText }]}>{t('leads.s081')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.colors.primary }]} onPress={saveAssign} disabled={assignSaving}>
@@ -1083,7 +1131,48 @@ const s = themedStyles(() => StyleSheet.create({
   ctaTalepBtnText: { color: '#fff', fontWeight: '800', fontSize: 12.5 },
   addManualBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 10, height: 40, marginBottom: 12, backgroundColor: theme.colors.surface },
   addManualBtnText: { color: theme.colors.primary, fontWeight: '800', fontSize: 12.5 },
-  leadCard: { flexDirection: 'row', backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
+  leadCard: {
+    backgroundColor: theme.colors.surface, borderRadius: 16, borderWidth: 1,
+    borderColor: theme.colors.line, paddingVertical: 13, paddingLeft: 16, paddingRight: 13,
+    marginBottom: 12, overflow: 'hidden', ...theme.shadow.sm,
+  },
+  // Sol kenardaki ince serit karti duruma gore renklendirir: listede
+  // gozle tarayinca hangi firmanin hangi asamada oldugu hemen secilir.
+  leadStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  leadHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  leadAvatar: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  leadAvatarText: { fontSize: 15, fontWeight: '900' },
+  leadMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+  leadStatus: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1,
+    borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4, maxWidth: 122,
+  },
+  leadStatusDot: { width: 6, height: 6, borderRadius: 3 },
+  leadStatusText: { fontSize: 10.5, fontWeight: '800' },
+  leadContacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 11 },
+  contactChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.colors.primarySoft,
+    borderWidth: 1, borderColor: theme.colors.primaryBorder, borderRadius: 9,
+    paddingHorizontal: 9, paddingVertical: 6, maxWidth: '100%',
+  },
+  contactChipText: { fontSize: 12, fontWeight: '700', color: theme.colors.primary, flexShrink: 1 },
+  contactChipEmpty: { backgroundColor: theme.colors.surfaceSoft, borderColor: theme.colors.line },
+  contactChipEmptyText: { fontSize: 12, fontWeight: '600', color: theme.colors.textMuted },
+  durumRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  leadActions: {
+    flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12,
+    borderTopWidth: 1, borderTopColor: theme.colors.line, paddingTop: 11,
+  },
+  actBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flex: 1,
+    backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line,
+    borderRadius: 10, paddingVertical: 9, paddingHorizontal: 6, minHeight: 36,
+  },
+  actBtnIcon: {
+    width: 38, minHeight: 36, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: theme.colors.redSoft, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 10,
+  },
+  actBtnText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.primary },
   leadCardAssigned: { borderColor: '#f59e0b', borderWidth: 1.5, backgroundColor: theme.colors.goldSoft },
   assignBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: theme.colors.primarySoft, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
   assignBadgeText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.primaryDark },
@@ -1093,8 +1182,11 @@ const s = themedStyles(() => StyleSheet.create({
   leadSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
   leadNoteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, marginTop: 6 },
   leadNote: { flex: 1, fontSize: 11, color: theme.colors.textMuted, fontStyle: 'italic', lineHeight: 15 },
-  durumChip: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
-  durumChipText: { fontSize: 10, fontWeight: '800' },
+  durumChip: {
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, borderWidth: 1,
+    borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft,
+  },
+  durumChipText: { fontSize: 10.5, fontWeight: '700', color: theme.colors.textMuted },
   iconBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.surfaceSoft, alignItems: 'center', justifyContent: 'center' },
   waBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.colors.greenSoft, alignItems: 'center', justifyContent: 'center' },
   input: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: theme.colors.text, backgroundColor: theme.colors.surface, marginBottom: 10 },

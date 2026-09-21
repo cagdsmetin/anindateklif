@@ -229,7 +229,7 @@ export default function PreviewScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => router.back()} testID="back-btn"><Ionicons name="arrow-back" size={22} color={theme.colors.navy} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} testID="back-btn"><Ionicons name="arrow-back" size={22} color={theme.colors.text} /></TouchableOpacity>
         <Text style={s.topTitle}>PDF Önizleme</Text>
         <View style={{ width: 22 }} />
       </View>
@@ -315,7 +315,7 @@ export default function PreviewScreen() {
           {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={16} color="#fff" /><Text style={s.actionBtnAccText}>WhatsApp</Text></>)}
         </TouchableOpacity>
         <TouchableOpacity style={s.actionBtnExcel} onPress={doExcelDownload} testID="preview-excel-btn" hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}>
-          <Ionicons name="grid-outline" size={18} color="#107C41" />
+          <Ionicons name="grid-outline" size={18} color={theme.colors.greenText} />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

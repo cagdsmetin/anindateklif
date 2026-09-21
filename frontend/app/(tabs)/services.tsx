@@ -202,7 +202,7 @@ export default function ServicesScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={[s.actBtn, { backgroundColor: theme.colors.greenSoft }]} onPress={() => remind(svc)} testID={`svc-remind-${svc.id}`}>
                   <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-                  <Text style={[s.actText, { color: '#16a34a' }]}>{t('services.s020')}</Text>
+                  <Text style={[s.actText, { color: theme.colors.greenText }]}>{t('services.s020')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actBtnIcon} onPress={() => deleteService(svc.id)} testID={`svc-delete-${svc.id}`}>
                   <Ionicons name="trash-outline" size={16} color={theme.colors.red} />

@@ -32,8 +32,10 @@ import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
-import { BorderBeam, BubbleButton, ChoiceChip, CountUp, IconBadge, MotionInput, MotionScrollView, Reveal, SheetEmpty, SheetModal, SheetPick, SheetRow, alpha, themedStyles, useViewportProgress } from '@/src/components/motion';
+import { BorderBeam, BubbleButton, ChoiceChip, CountUp, IconBadge, MotionInput, MotionScrollView, Reveal, SheetEmpty, SheetModal, SheetPick, SheetRow, alpha, readableOn, themedStyles, useViewportProgress } from '@/src/components/motion';
 import Reanimated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
+
+const WA_GREEN = '#25D366'; // WhatsApp marka yesili
 
 function todayIso() { return new Date().toISOString().split('T')[0]; }
 function plusDaysIso(days: number) { return new Date(Date.now() + days * 86400000).toISOString().split('T')[0]; }
@@ -1047,7 +1049,7 @@ export default function EditorScreen() {
           {/* İndirmeden/paylaşmadan sadece kaydetme -- bilgiler girildikten sonra
               PDF/WhatsApp akışına girmeden teklifi kayıt altına almak için. */}
           <TouchableOpacity style={[s.btnSave, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving} testID="save-only-btn">
-            {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="save-outline" size={17} color="#fff" /><Text style={s.btnPrimaryText}>Kaydet</Text></>)}
+            {saving ? <ActivityIndicator color={readableOn(theme.colors.green)} /> : (<><Ionicons name="save-outline" size={17} color={readableOn(theme.colors.green)} /><Text style={s.btnSaveText}>Kaydet</Text></>)}
           </TouchableOpacity>
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
@@ -1066,7 +1068,7 @@ export default function EditorScreen() {
               {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s070')}</Text></>)}
             </TouchableOpacity>
             <TouchableOpacity style={[s.btnWhatsApp, { flex: 1 }, (saving || waSharing) && { opacity: 0.6 }]} onPress={handleWhatsAppShare} disabled={saving || waSharing} testID="share-whatsapp-btn">
-              {waSharing ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="logo-whatsapp" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s071')}</Text></>)}
+              {waSharing ? <ActivityIndicator color={readableOn(WA_GREEN)} /> : (<><Ionicons name="logo-whatsapp" size={17} color={readableOn(WA_GREEN)} /><Text style={s.btnWaText}>{t('teklifPage.s071')}</Text></>)}
             </TouchableOpacity>
           </View>
         </MotionScrollView>
@@ -1695,7 +1697,10 @@ const s = themedStyles(() => StyleSheet.create({
   btnPrimary: { marginTop: 12, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
   btnSave: { marginTop: 14, backgroundColor: theme.colors.green, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.green, shadowOpacity: 0.35 },
   btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
-  btnWhatsApp: { marginTop: 12, backgroundColor: '#25D366', paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: '#25D366', shadowOpacity: 0.35 },
+  // Yesil zeminler koyu temada aciliyor; uzerindeki yazi zemine gore secilir.
+  btnSaveText: { color: readableOn(theme.colors.green), fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
+  btnWaText: { color: readableOn(WA_GREEN), fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
+  btnWhatsApp: { marginTop: 12, backgroundColor: WA_GREEN, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: WA_GREEN, shadowOpacity: 0.35 },
   ekCard: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },
   ekHdr: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   ekBadge: { fontSize: 10, fontWeight: '900', color: theme.colors.primary, backgroundColor: theme.colors.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, letterSpacing: 0.4 },

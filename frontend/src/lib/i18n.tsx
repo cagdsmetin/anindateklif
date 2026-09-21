@@ -637,7 +637,7 @@ const tr: Dict = {
     s029: 'Önce firma seçiniz',
     s030: 'Bölge:',
     s031: 'Sektör:',
-    s032: 'telefon yok',
+    s032: 'Telefon yok',
     s033: 'Site açılamadı',
     s034: 'E-posta açılamadı',
     s035: 'Tekrar ara:',

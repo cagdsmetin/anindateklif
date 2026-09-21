@@ -336,7 +336,7 @@ export async function shareQuoteViaWhatsApp(opts: {
         // rejects navigator.share() outright. Handing the finished file to a
         // sheet whose button click is a brand-new gesture makes the outcome
         // the same every single time.
-        const r = await promptWhatsAppShareWeb({ file, message, fileName: desiredName, pdfUri, waUrl });
+        const r = await promptWhatsAppShareWeb({ file, message, fileName: desiredName, fileUri: pdfUri, waUrl });
         if (r.action === 'shared') return { attached: true, downloaded: false };
         if (r.action === 'downloaded') {
           return {

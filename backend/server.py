@@ -199,17 +199,34 @@ ADMIN_EMAILS = set(
 )
 
 BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL", "https://anindateklif-production.up.railway.app")
-FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://just-mercy-production.up.railway.app")
+# Every customer-facing link we generate (e-posta dogrulama, sifre sifirlama,
+# ekip daveti, odeme sonucu) is built from this. It used to default to the raw
+# Railway domain, and since the env var was never set in production that is the
+# address customers actually received -- our own brand nowhere in sight.
+#
+# Deliberately the "www" host, not the apex: anindateklif.co only redirects its
+# root, so anindateklif.co/reset-password?token=... 404s. That fix needs a DNS
+# change at the registrar; until then www is the host that serves deep links.
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://www.anindateklif.co")
+RAILWAY_FRONTEND_URL = "https://just-mercy-production.up.railway.app"
 WHATSAPP_SUPPORT_NUMBER = os.environ.get("WHATSAPP_SUPPORT_NUMBER", "")
 
 # Explicit CORS allowlist — override via the ALLOWED_ORIGINS env var (comma
 # separated) if a new frontend domain goes live without a code change.
-ALLOWED_ORIGINS = [
-    o.strip() for o in os.environ.get(
-        "ALLOWED_ORIGINS",
-        f"{FRONTEND_BASE_URL},https://anindateklif.co,https://www.anindateklif.co",
-    ).split(",") if o.strip()
-]
+#
+# The Railway-generated domain stays on the list even though FRONTEND_BASE_URL
+# no longer points at it: it is still publicly reachable and is where we'd look
+# if the custom domain ever had trouble. Duplicates are collapsed so the list
+# stays clean whichever host FRONTEND_BASE_URL names.
+_DEFAULT_ALLOWED_ORIGINS = ",".join([
+    FRONTEND_BASE_URL,
+    "https://anindateklif.co",
+    "https://www.anindateklif.co",
+    RAILWAY_FRONTEND_URL,
+])
+ALLOWED_ORIGINS = list(dict.fromkeys(
+    o.strip() for o in os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ALLOWED_ORIGINS).split(",") if o.strip()
+))
 
 MAX_LOGO_BASE64_CHARS = 2_800_000  # ~2MB decoded
 MAX_CATALOG_FILE_BASE64_CHARS = 21_000_000  # ~15MB decoded (base64 is ~1.37x raw size); MongoDB doc limit is 16MB so this is the practical ceiling

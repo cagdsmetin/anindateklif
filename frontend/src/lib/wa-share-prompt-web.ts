@@ -62,20 +62,27 @@ function isAbort(e: any): boolean {
  * Show the "hazır, göndermek için dokunun" sheet and resolve once the person
  * has picked one of the options (or backed out).
  *
- * @param file     the finished PDF, already built — nothing may be awaited
- *                 between the button click and navigator.share().
- * @param message  the WhatsApp message text to travel with the file.
- * @param pdfUri   blob:/data: URI of the same PDF, for the "indir" fallback.
- * @param waUrl    wa.me link (pre-filled chat) for the text-only fallback.
+ * @param file      the finished file, already built — nothing may be awaited
+ *                  between the button click and navigator.share().
+ * @param fileUri   blob:/data: URI of the same file, for the "indir" fallback.
+ * @param waUrl     wa.me link (pre-filled chat) for the text-only fallback.
+ * @param message   optional WhatsApp text to travel with the file.
+ * @param title     optional sheet heading; defaults to the quote wording.
+ * @param downloadLabel optional label for the save button.
  */
 export function promptWhatsAppShareWeb(opts: {
   file: File;
-  message: string;
   fileName: string;
-  pdfUri: string;
+  fileUri: string;
   waUrl: string;
+  message?: string;
+  title?: string;
+  downloadLabel?: string;
 }): Promise<WaSharePromptResult> {
-  const { file, message, fileName, pdfUri, waUrl } = opts;
+  const { file, fileName, fileUri, waUrl } = opts;
+  const message = opts.message || '';
+  const headingText = opts.title || 'Teklif hazır';
+  const downloadLabel = opts.downloadLabel || "PDF'i İndir";
   const dark = prefersDark();
 
   return new Promise<WaSharePromptResult>((resolve) => {
@@ -104,7 +111,7 @@ export function promptWhatsAppShareWeb(opts: {
     } as any);
 
     const title = document.createElement('div');
-    title.textContent = 'Teklif hazır';
+    title.textContent = headingText;
     Object.assign(title.style, { fontSize: '18px', fontWeight: '700', marginBottom: '6px' } as any);
 
     const sub = document.createElement('div');
@@ -150,7 +157,7 @@ export function promptWhatsAppShareWeb(opts: {
 
     const row = document.createElement('div');
     Object.assign(row.style, { display: 'flex', gap: '10px', marginTop: '10px' } as any);
-    const dlBtn = mkBtn("PDF'i İndir", 'ghost');
+    const dlBtn = mkBtn(downloadLabel, 'ghost');
     const chatBtn = mkBtn('Sohbeti Aç', 'ghost');
     row.append(dlBtn, chatBtn);
 
@@ -190,22 +197,24 @@ export function promptWhatsAppShareWeb(opts: {
       const nav: any = navigator;
       let p: Promise<void>;
       try {
-        p = nav.share({ files: [file], text: message, title: fileName });
+        p = message
+          ? nav.share({ files: [file], text: message, title: fileName })
+          : nav.share({ files: [file], title: fileName });
       } catch {
-        showError('WhatsApp paylaşımı açılamadı. "PDF’i İndir" ile kaydedip sohbete ekleyebilirsiniz.');
+        showError(`WhatsApp paylaşımı açılamadı. “${downloadLabel}” ile kaydedip sohbete ekleyebilirsiniz.`);
         return;
       }
       setBusy(true);
       p.then(() => close('shared')).catch((e: any) => {
         if (isAbort(e)) { close('cancelled'); return; }
-        showError('WhatsApp paylaşımı açılamadı. "PDF’i İndir" ile kaydedip sohbete ekleyebilirsiniz.');
+        showError(`WhatsApp paylaşımı açılamadı. “${downloadLabel}” ile kaydedip sohbete ekleyebilirsiniz.`);
       });
     });
 
     dlBtn.addEventListener('click', () => {
       // Fire-and-forget: the download starts inside this gesture, and closing
       // the sheet must not wait on it.
-      downloadFileWeb(pdfUri, fileName).catch(() => {});
+      downloadFileWeb(fileUri, fileName).catch(() => {});
       close('downloaded');
     });
 

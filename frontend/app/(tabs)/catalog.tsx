@@ -230,9 +230,14 @@ export default function CatalogScreen() {
   };
 
   const shareCatalogFileWhatsApp = async (f: CatalogFileT) => {
+    // The file comes down from the API first, which on a slow connection is a
+    // few silent seconds with nothing on screen -- say something up front, and
+    // report what actually happened afterwards.
+    showToast('Hazırlanıyor...');
     try {
       const full = await api.downloadCatalogFile(f.id);
-      await shareFileViaWhatsApp({ name: full.name, mime: full.mime, dataBase64: full.dataBase64 });
+      const r = await shareFileViaWhatsApp({ name: full.name, mime: full.mime, dataBase64: full.dataBase64 });
+      if (r.toast) showToast(r.toast);
     } catch (e: any) {
       showToast(t('catalog.s009') + (e?.message || ''));
     }

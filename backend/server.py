@@ -668,6 +668,11 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[
     account = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0})
     if not account:
         raise HTTPException(status_code=401, detail="User not found")
+    # Admin tarafindan silinmis (geri alinabilir durumdaki) hesap oturum
+    # acamaz ve elindeki token da calismaz -- veriler 30 gun saklanir ama
+    # hesap kullanilamaz (bkz. DELETE /admin/customers/{user_id}).
+    if account.get("deleted_at"):
+        raise HTTPException(status_code=401, detail="Bu hesap kapatildi")
 
     # Şifre sıfırlanınca (forgot-password akışı), o andan ÖNCE verilmiş tüm
     # access token'ları geçersiz say -- aksi halde çalınmış/sızmış bir token,
@@ -986,6 +991,9 @@ async def login(payload: LoginRequest, request: Request):
     valid = _verify_password(payload.password, u["hashed_password"] if u else _DUMMY_HASH)
     if not u or not valid or not u.get("hashed_password"):
         raise HTTPException(status_code=401, detail="E-posta veya şifre hatalı")
+    # Admin tarafindan silinmis hesap (geri alma suresi dolmadan) giris yapamaz.
+    if u.get("deleted_at"):
+        raise HTTPException(status_code=403, detail="Bu hesap kapatıldı. Destek ile iletişime geçin.")
     access = _make_access_token(u)
     return AuthResponse(access_token=access, user=_user_out(u))
 
@@ -6409,10 +6417,13 @@ class ImpersonateResponse(BaseModel):
 @api_router.get("/admin/customers", response_model=List[AdminCustomerOut])
 async def admin_list_customers(user=Depends(get_current_user)):
     _require_admin(user)
+    # Geri alma suresi dolmus hesaplar bu listeye her bakildiginda temizlenir
+    # (bkz. _purge_expired_accounts).
+    await _purge_expired_accounts()
     # Sadece gerçek firma sahibi hesapları (personel hesapları hariç) —
     # personelin hesabına değil, doğrudan firma sahibine girilir.
     docs = await db.users.find(
-        {"staff_owner_user_id": {"$in": [None, ""]}},
+        {"staff_owner_user_id": {"$in": [None, ""]}, "deleted_at": {"$in": [None, ""]}},
         {"_id": 0, "user_id": 1, "email": 1, "name": 1, "phone": 1, "createdAt": 1, "subscription_expires_at": 1},
     ).sort("createdAt", -1).to_list(2000)
     out: List[AdminCustomerOut] = []
@@ -6435,6 +6446,139 @@ async def admin_list_customers(user=Depends(get_current_user)):
             albert_genau_claimed=bool((company or {}).get("albertGenauClaimed", False)),
             created_at=d.get("createdAt"),
             subscription_active=_is_subscription_active(d),
+        ))
+    return out
+
+
+# ============================================================================
+# Admin: hesap silme (geri alinabilir) + 30 gun sonra kalici temizlik
+# ----------------------------------------------------------------------------
+# Yanlislikla silinen bir hesabin geri getirilebilmesi icin silme islemi
+# once "yumusak" yapilir: kullanici dokumanina deleted_at / purge_after
+# yazilir. Hesap o andan itibaren oturum acamaz (bkz. get_current_user) ama
+# firma verileri (teklifler, musteriler, kasa...) oldugu gibi durur.
+# purge_after gecince veriler depolama alanindan kalici olarak silinir.
+#
+# Temizlik icin ayri bir zamanlayici kurmak yerine admin listeyi her actiginda
+# suresi dolmuslar temizlenir -- tek admin ekrani oldugu icin bu yeterli ve
+# calismayan bir cron'a bagli kalmaz.
+# ============================================================================
+
+ACCOUNT_PURGE_DAYS = 30
+
+
+async def _hard_delete_user_data(uid: str) -> None:
+    """Bir firma sahibinin tum is verilerini ve bagli personel girislerini
+    kalici olarak siler. (Kullanicinin kendi hesabini silmesiyle ayni kapsam
+    -- bkz. DELETE /auth/account.)"""
+    await db.companies.delete_many({"userId": uid})
+    await db.catalog.delete_many({"userId": uid})
+    await db.customers.delete_many({"userId": uid})
+    await db.quotes.delete_many({"userId": uid})
+    await db.services.delete_many({"userId": uid})
+    await db.campaigns.delete_many({"userId": uid})
+    await db.manual_reminders.delete_many({"userId": uid})
+    await db.kasa.delete_many({"userId": uid})
+    await db.tahsilat.delete_many({"userId": uid})
+    await db.company_invites.delete_many({"ownerUserId": uid})
+    await db.subscription_payments.delete_many({"user_id": uid})
+    await db.email_verifications.delete_many({"user_id": uid})
+    await db.password_resets.delete_many({"user_id": uid})
+    await db.users.delete_many({"staff_owner_user_id": uid})
+    await db.users.delete_one({"user_id": uid})
+
+
+async def _purge_expired_accounts() -> int:
+    """Geri alma suresi dolmus hesaplari kalici olarak siler. Silinen hesap
+    sayisini dondurur."""
+    now = utc_now_iso()
+    expired = await db.users.find(
+        {"deleted_at": {"$ne": None}, "purge_after": {"$lte": now}},
+        {"_id": 0, "user_id": 1},
+    ).to_list(500)
+    for doc in expired:
+        await _hard_delete_user_data(doc["user_id"])
+    return len(expired)
+
+
+class DeletedAccountOut(BaseModel):
+    user_id: str
+    email: str
+    name: str = ""
+    company_name: str = ""
+    deleted_at: str
+    purge_after: str
+    days_left: int
+
+
+@api_router.delete("/admin/customers/{target_user_id}")
+async def admin_delete_customer(target_user_id: str, user=Depends(get_current_user)):
+    """Hesabi geri alinabilir sekilde siler. Veriler ACCOUNT_PURGE_DAYS gun
+    saklanir, sonra kalici olarak temizlenir."""
+    _require_admin(user)
+    doc = await db.users.find_one({"user_id": target_user_id}, {"_id": 0, "user_id": 1, "email": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Hesap bulunamadi")
+    email = (doc.get("email") or "").strip().lower()
+    if email in ADMIN_EMAILS:
+        raise HTTPException(status_code=400, detail="Admin hesabi silinemez")
+    if target_user_id == _self_id(user):
+        raise HTTPException(status_code=400, detail="Kendi hesabinizi buradan silemezsiniz")
+    now = utc_now()
+    await db.users.update_one(
+        {"user_id": target_user_id},
+        {"$set": {
+            "deleted_at": now.isoformat(),
+            "deleted_by": (user.get("email") or ""),
+            "purge_after": (now + timedelta(days=ACCOUNT_PURGE_DAYS)).isoformat(),
+        }},
+    )
+    return {"ok": True, "user_id": target_user_id, "purge_days": ACCOUNT_PURGE_DAYS}
+
+
+@api_router.post("/admin/customers/{target_user_id}/restore")
+async def admin_restore_customer(target_user_id: str, user=Depends(get_current_user)):
+    """Yanlislikla silinen hesabi geri getirir (veriler hic silinmemisti)."""
+    _require_admin(user)
+    doc = await db.users.find_one({"user_id": target_user_id}, {"_id": 0, "user_id": 1, "deleted_at": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Hesap bulunamadi")
+    if not doc.get("deleted_at"):
+        raise HTTPException(status_code=400, detail="Bu hesap zaten aktif")
+    await db.users.update_one(
+        {"user_id": target_user_id},
+        {"$unset": {"deleted_at": "", "deleted_by": "", "purge_after": ""}},
+    )
+    return {"ok": True, "user_id": target_user_id}
+
+
+@api_router.get("/admin/customers/deleted", response_model=List[DeletedAccountOut])
+async def admin_list_deleted_customers(user=Depends(get_current_user)):
+    _require_admin(user)
+    await _purge_expired_accounts()
+    docs = await db.users.find(
+        {"deleted_at": {"$ne": None}},
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "deleted_at": 1, "purge_after": 1},
+    ).sort("deleted_at", -1).to_list(500)
+    out: List[DeletedAccountOut] = []
+    now = utc_now()
+    for d in docs:
+        try:
+            purge = datetime.fromisoformat(d.get("purge_after") or "")
+            if purge.tzinfo is None:
+                purge = purge.replace(tzinfo=timezone.utc)
+            days_left = max(0, (purge - now).days)
+        except Exception:
+            days_left = 0
+        company = await db.companies.find_one({"userId": d["user_id"]}, {"_id": 0, "sirketAdi": 1})
+        out.append(DeletedAccountOut(
+            user_id=d["user_id"],
+            email=d.get("email", ""),
+            name=d.get("name", ""),
+            company_name=(company or {}).get("sirketAdi", ""),
+            deleted_at=d.get("deleted_at") or "",
+            purge_after=d.get("purge_after") or "",
+            days_left=days_left,
         ))
     return out
 

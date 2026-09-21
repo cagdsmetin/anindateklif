@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
-import { api, AdminCustomerT } from '@/src/lib/api';
+import { api, AdminCustomerT, DeletedAccountT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
@@ -95,6 +95,65 @@ export default function AdminCustomersScreen() {
       setError(msg);
     } finally {
       setBusyId('');
+    }
+  };
+
+  // Silinen hesaplar: yumusak silme sayesinde 30 gun icinde geri alinabilir.
+  const [deleted, setDeleted] = useState<DeletedAccountT[]>([]);
+  const [delBusyId, setDelBusyId] = useState('');
+
+  const loadDeleted = useCallback(async () => {
+    try {
+      setDeleted(await api.listDeletedAccounts());
+    } catch {
+      // yoksay -- ana liste calismaya devam etsin
+    }
+  }, []);
+  useEffect(() => { if (isAdmin) loadDeleted(); }, [isAdmin, loadDeleted]);
+
+  const doDelete = async (c: AdminCustomerT) => {
+    setDelBusyId(c.user_id);
+    try {
+      await api.adminDeleteCustomer(c.user_id);
+      setCustomers((prev) => prev.filter((x) => x.user_id !== c.user_id));
+      await loadDeleted();
+    } catch {
+      setError('Hesap silinemedi.');
+    } finally {
+      setDelBusyId('');
+    }
+  };
+
+  // Silme geri alinabilir olsa da veri kaybi riski tasidigi icin her zaman
+  // acik bir uyariyla onaylatilir.
+  const onDeletePress = (c: AdminCustomerT) => {
+    const label = c.company_name || c.name || c.email;
+    const message =
+      `"${label}" hesabı silinecek.\n\n` +
+      '• Hesap hemen giriş yapamaz hale gelir.\n' +
+      '• Verileri 30 gün saklanır, bu süre içinde geri alabilirsiniz.\n' +
+      '• 30 gün sonra tüm verileri kalıcı olarak silinir.\n\n' +
+      'Devam edilsin mi?';
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-alert
+      if (window.confirm(message)) doDelete(c);
+      return;
+    }
+    Alert.alert('Hesabı Sil', message, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Sil', style: 'destructive', onPress: () => doDelete(c) },
+    ]);
+  };
+
+  const onRestore = async (d: DeletedAccountT) => {
+    setDelBusyId(d.user_id);
+    try {
+      await api.adminRestoreCustomer(d.user_id);
+      await Promise.all([load(), loadDeleted()]);
+    } catch {
+      setError('Hesap geri alınamadı.');
+    } finally {
+      setDelBusyId('');
     }
   };
 
@@ -218,6 +277,43 @@ export default function AdminCustomersScreen() {
 
           {error ? <Text style={s.errorText}>{error}</Text> : null}
 
+          {deleted.length > 0 ? (
+            <View style={s.deletedBox}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <Ionicons name="trash-bin-outline" size={15} color={theme.colors.redText} />
+                <Text style={s.deletedTitle}>Silinen hesaplar ({deleted.length})</Text>
+              </View>
+              <Text style={s.deletedHint}>
+                Bu hesaplar giriş yapamaz. Verileri 30 gün saklanır; süre dolunca kalıcı olarak silinir.
+              </Text>
+              {deleted.map((d) => (
+                <View key={d.user_id} style={s.deletedRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.deletedName} numberOfLines={1}>{d.company_name || d.name || d.email}</Text>
+                    <Text style={s.deletedMeta} numberOfLines={1}>
+                      {d.email} · {d.days_left} gün sonra kalıcı silinecek
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[s.restoreBtn, delBusyId === d.user_id && { opacity: 0.6 }]}
+                    onPress={() => onRestore(d)}
+                    disabled={!!delBusyId}
+                    testID={`admin-restore-${d.user_id}`}
+                  >
+                    {delBusyId === d.user_id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="arrow-undo-outline" size={14} color="#fff" />
+                        <Text style={s.restoreBtnText}>Geri al</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           <Text style={[s.sectionLabel, { marginTop: 18 }]}>MÜŞTERİLER ({filtered.length})</Text>
           {filtered.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Kayıt bulunamadı.</Text>
@@ -255,20 +351,37 @@ export default function AdminCustomersScreen() {
                     </View>
                   ) : null}
                 </View>
-                <TouchableOpacity
-                  style={[s.enterBtn, busyId === c.user_id && { opacity: 0.6 }]}
-                  onPress={() => onEnterPress(c)}
-                  disabled={!!busyId}
-                >
-                  {busyId === c.user_id ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="log-in-outline" size={15} color="#fff" />
-                      <Text style={s.enterBtnText}>Müşteri olarak gir</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[s.enterBtn, busyId === c.user_id && { opacity: 0.6 }]}
+                    onPress={() => onEnterPress(c)}
+                    disabled={!!busyId}
+                  >
+                    {busyId === c.user_id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="log-in-outline" size={15} color="#fff" />
+                        <Text style={s.enterBtnText}>Müşteri olarak gir</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.delBtn, delBusyId === c.user_id && { opacity: 0.6 }]}
+                    onPress={() => onDeletePress(c)}
+                    disabled={!!delBusyId}
+                    testID={`admin-delete-${c.user_id}`}
+                  >
+                    {delBusyId === c.user_id ? (
+                      <ActivityIndicator size="small" color={theme.colors.red} />
+                    ) : (
+                      <>
+                        <Ionicons name="trash-outline" size={14} color={theme.colors.red} />
+                        <Text style={s.delBtnText}>Hesabı sil</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
               </Reveal>
             ))
@@ -361,6 +474,29 @@ const s = themedStyles(() => StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '800' },
   badgeTextActive: { color: theme.colors.greenText },
   badgeTextInactive: { color: theme.colors.textMuted },
+  delBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    borderWidth: 1, borderColor: theme.colors.red, backgroundColor: theme.colors.redSoft,
+    borderRadius: 10, paddingVertical: 7, paddingHorizontal: 11, minHeight: 32,
+  },
+  delBtnText: { color: theme.colors.redText, fontSize: 11.5, fontWeight: '800' },
+  deletedBox: {
+    marginTop: 18, borderWidth: 1, borderColor: theme.colors.red + '55',
+    backgroundColor: theme.colors.redSoft, borderRadius: 16, padding: 14,
+  },
+  deletedTitle: { fontSize: 13, fontWeight: '900', color: theme.colors.redText },
+  deletedHint: { fontSize: 11.5, color: theme.colors.textMuted, lineHeight: 16, marginBottom: 10 },
+  deletedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9,
+    borderTopWidth: 1, borderTopColor: theme.colors.red + '33',
+  },
+  deletedName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
+  deletedMeta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
+  restoreBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: theme.colors.primary, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 12, minHeight: 34,
+  },
+  restoreBtnText: { color: '#fff', fontSize: 11.5, fontWeight: '800' },
   enterBtn: {
     flexDirection: 'row',
     alignItems: 'center',

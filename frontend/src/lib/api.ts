@@ -206,6 +206,13 @@ export const api = {
   // Müşteri olarak gir (admin impersonation) — sadece ADMIN_EMAILS'teki
   // hesaba açık. Şifre görülmeden/sorulmadan, kısa süreli ve audit'li erişim.
   listAdminCustomers: (): Promise<AdminCustomerT[]> => req('/admin/customers'),
+  // Admin hesap silme: once geri alinabilir (yumusak) silme, 30 gun sonra
+  // veriler kalici olarak temizlenir (bkz. backend _purge_expired_accounts).
+  listDeletedAccounts: (): Promise<DeletedAccountT[]> => req('/admin/customers/deleted'),
+  adminDeleteCustomer: (userId: string): Promise<{ ok: boolean; purge_days: number }> =>
+    req(`/admin/customers/${userId}`, { method: 'DELETE' }),
+  adminRestoreCustomer: (userId: string): Promise<{ ok: boolean }> =>
+    req(`/admin/customers/${userId}/restore`, { method: 'POST' }),
   impersonateCustomer: (userId: string): Promise<{ access_token: string; user: UserT; company_name: string }> =>
     req(`/admin/impersonate/${userId}`, { method: 'POST' }),
   endImpersonation: () => req('/admin/impersonate/end', { method: 'POST' }),
@@ -608,6 +615,16 @@ export type RatesT = {
 
 export type SystemField = { id: string; label: string; type: 'text' | 'select' | 'number' | 'checkbox'; options: string[] };
 export type SystemTypeDefT = { id: string; name: string; fields: SystemField[] };
+
+export type DeletedAccountT = {
+  user_id: string;
+  email: string;
+  name: string;
+  company_name: string;
+  deleted_at: string;
+  purge_after: string;
+  days_left: number;
+};
 
 export type CompanyT = {
   id: string;

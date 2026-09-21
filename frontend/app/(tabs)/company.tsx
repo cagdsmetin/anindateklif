@@ -91,6 +91,23 @@ export default function CompanyScreen() {
 
   useEffect(() => { if (activeCompany) setForm({ ...activeCompany }); }, [activeCompany]);
 
+  // Abonelik ozeti: kalan gun / hediye kodu durumu Firma ekraninda da
+  // gorunsun (kullanici icin en cok merak edilen bilgi).
+  const [subStatus, setSubStatus] = useState<{
+    subscription_active: boolean;
+    plan_label?: string | null;
+    subscription_plan?: string | null;
+    days_left?: number | null;
+    promo_days_total?: number | null;
+    remaining_free?: number | null;
+    free_limit?: number;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api.subscriptionStatus().then((r: any) => { if (!cancelled) setSubStatus(r); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const pickLogo = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { showToast(t('firma.toastPhotoPermission')); return; }
@@ -157,7 +174,7 @@ export default function CompanyScreen() {
       <TopHeader title={t('firma.headerTitle')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <MotionScrollView
-          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 1100, alignSelf: 'center' }}
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 880, alignSelf: 'center' }}
           keyboardShouldPersistTaps="handled"
           progressColors={[theme.colors.modules.firma, theme.colors.primary, '#A855F7']}
         >
@@ -361,13 +378,57 @@ export default function CompanyScreen() {
               gradyan ikon rozeti, kaydırdıkça sırayla beliren kartlar.
               (Google Play / App Store zorunluluğu: gizlilik politikası
               uygulama içinden de erişilebilir kalmalı.) */}
+          {/* Abonelik: kisayol karolarindan once, kendi kartiyla. Kalan sure
+              ve hediye kodu durumu burada goruunur -- eskiden sadece kucuk
+              bir karoydu ve "sonuk" kaliyordu. */}
+          <Reveal variant="up" distance={18}>
+            <AnimatedPressable style={s.subCard} onPress={() => router.push('/subscription')} testID="subscription-btn" scaleTo={0.985}>
+              <LinearGradient
+                colors={[alpha(theme.colors.gold, 0.22), alpha(theme.colors.gold, 0.04)] as [string, string]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={s.subCardTop}>
+                <IconBadge icon="star" color={theme.colors.gold} size={42} motion="pulse" />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.subCardLabel}>{t('firma.subscriptionManagement')}</Text>
+                  <Text style={s.subCardTitle} numberOfLines={1}>
+                    {subStatus?.subscription_active
+                      ? (subStatus.subscription_plan === 'promo' ? 'Hediye kodu kullanımda' : `${subStatus.plan_label || 'Abonelik'} aktif`)
+                      : 'Ücretsiz kullanımdasınız'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.goldText} />
+              </View>
+              <View style={s.subCardFoot}>
+                {subStatus?.subscription_active && typeof subStatus.days_left === 'number' ? (
+                  <>
+                    <Text style={s.subCardDays}>
+                      {Math.max(0, subStatus.days_left)}
+                      <Text style={s.subCardDaysUnit}> gün kaldı</Text>
+                    </Text>
+                    {subStatus.subscription_plan === 'promo' && subStatus.promo_days_total ? (
+                      <Text style={s.subCardHint}>{subStatus.promo_days_total} günlük hediye kodu</Text>
+                    ) : null}
+                  </>
+                ) : (
+                  <Text style={s.subCardHint}>
+                    {typeof subStatus?.remaining_free === 'number'
+                      ? `${Math.max(0, subStatus.remaining_free)} ücretsiz teklif hakkınız kaldı`
+                      : 'Plan seçmek için dokunun'}
+                  </Text>
+                )}
+              </View>
+            </AnimatedPressable>
+          </Reveal>
+
           <View style={s.tileGrid}>
             {[
               { key: 'reminders', icon: 'notifications' as const, label: t('firma.reminders'), color: theme.colors.modules.hatirlatma, onPress: () => router.push('/reminders'), testID: 'reminders-btn' },
               { key: 'reports', icon: 'bar-chart' as const, label: t('firma.reports'), color: theme.colors.modules.raporlar, onPress: () => router.push('/reports'), testID: 'reports-btn' },
               { key: 'whatsapp', icon: 'logo-whatsapp' as const, label: t('firma.writeWhatsapp'), color: '#16A34A', onPress: () => Linking.openURL('https://wa.me/905415858988'), testID: 'whatsapp-support-btn' },
               { key: 'assistant', icon: 'sparkles' as const, label: t('firma.talkToAssistant'), color: theme.colors.modules.mesaj, onPress: () => router.push('/(tabs)/assistant'), testID: 'ai-assistant-btn' },
-              { key: 'subscription', icon: 'star' as const, label: t('firma.subscriptionManagement'), color: theme.colors.gold, onPress: () => router.push('/subscription'), testID: 'subscription-btn' },
               { key: 'privacy', icon: 'shield-checkmark' as const, label: t('firma.privacyPolicy'), color: theme.colors.modules.firma, onPress: () => router.push('/privacy'), testID: 'privacy-policy-btn' },
             ].map((item, i) => (
               <Reveal key={item.key} variant="tilt" style={s.tileCell}>
@@ -570,6 +631,22 @@ const s = themedStyles(() => StyleSheet.create({
     padding: 13,
     ...theme.shadow.sm,
   },
+  // Abonelik karti: kisayol karolarindan once, daha buyuk ve altin tonlu.
+  subCard: {
+    borderRadius: 18, borderWidth: 1, borderColor: alpha(theme.colors.gold, 0.45),
+    padding: 15, marginBottom: 14, overflow: 'hidden', backgroundColor: theme.colors.surface,
+    ...theme.shadow.sm,
+  },
+  subCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  subCardLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1, color: theme.colors.goldText },
+  subCardTitle: { fontSize: 15, fontWeight: '800', color: theme.colors.text, marginTop: 3, letterSpacing: -0.2 },
+  subCardFoot: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10,
+    marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: alpha(theme.colors.gold, 0.25),
+  },
+  subCardDays: { fontSize: 22, fontWeight: '900', color: theme.colors.text, letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  subCardDaysUnit: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0 },
+  subCardHint: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, flexShrink: 1, textAlign: 'right' },
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tileCell: { width: '48%', flexGrow: 1 },
   tile: {

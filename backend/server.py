@@ -5627,7 +5627,13 @@ class SubscriptionStatus(BaseModel):
     subscription_active: bool
     subscription_expires_at: Optional[str] = None
     subscription_plan: Optional[str] = None
+    # Kullaniciya gosterilecek plan adi ("Haftalik", "Yillik", "Hediye kodu").
+    plan_label: Optional[str] = None
     days_left: Optional[int] = None
+    # Hediye kodu kullanildiysa: kodun toplam gun sayisi ve kodun kendisi --
+    # "90 gunluk hediye kodunun 47 gunu kaldi" diyebilmek icin.
+    promo_days_total: Optional[int] = None
+    promo_code: Optional[str] = None
     renewal_due_soon: bool = False
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
     plans: List[PlanOut] = []
@@ -5662,11 +5668,20 @@ async def subscription_status(user=Depends(get_current_user)):
     seats = await _seat_count(user["user_id"])
     tier = _seat_tier(seats)
     plans = _plans_for_tier(tier)
+    plan_id = user.get("subscription_plan")
+    if plan_id == "promo":
+        plan_label = "Hediye kodu"
+    else:
+        plan_cfg = plans.get(plan_id) if plan_id else None
+        plan_label = plan_cfg["label"] if plan_cfg else None
     return SubscriptionStatus(
         subscription_active=state["subscription_active"],
         subscription_expires_at=user.get("subscription_expires_at"),
-        subscription_plan=user.get("subscription_plan"),
+        subscription_plan=plan_id,
+        plan_label=plan_label,
         days_left=days_left,
+        promo_days_total=user.get("promo_days_total") if plan_id == "promo" else None,
+        promo_code=user.get("promo_code") if plan_id == "promo" else None,
         renewal_due_soon=state["subscription_active"] and _renewal_due_soon(user, days_left),
         plan_price_try=plans[DEFAULT_SUBSCRIPTION_PLAN]["price_try"],
         plans=_plans_out(plans),
@@ -6553,6 +6568,11 @@ async def redeem_promo_code(payload: PromoRedeemRequest, user=Depends(get_curren
             "subscription_status": "active",
             "subscription_expires_at": new_expiry.isoformat(),
             "subscription_plan": "promo",
+            # Abonelik ekraninda "90 gunluk hediye kodunun X gunu kaldi"
+            # diyebilmek icin toplam sure ve kullanim ani da saklanir.
+            "promo_code": code,
+            "promo_days_total": duration_days,
+            "promo_redeemed_at": utc_now_iso(),
         }},
     )
     return {"ok": True, "subscription_expires_at": new_expiry.isoformat(), "duration_days": duration_days}

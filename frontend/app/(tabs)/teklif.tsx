@@ -1113,8 +1113,8 @@ export default function EditorScreen() {
             {saving ? <ActivityIndicator color={readableOn(theme.colors.green)} /> : (<><Ionicons name="save-outline" size={17} color={readableOn(theme.colors.green)} /><Text style={s.btnSaveText}>Kaydet</Text></>)}
           </TouchableOpacity>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-            <TouchableOpacity style={[s.btnGhost, { flex: 0.8 }]} onPress={resetForm}>
+          <View style={s.actionRow}>
+            <TouchableOpacity style={[s.btnGhost, { flex: 1 }]} onPress={resetForm}>
               <Ionicons name="refresh-outline" size={16} color={theme.colors.textSoft} />
               <Text style={s.btnGhostText}>{t('teklifPage.s068')}</Text>
             </TouchableOpacity>
@@ -1124,7 +1124,7 @@ export default function EditorScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          <View style={s.actionRow}>
             <TouchableOpacity style={[s.btnPrimary, { flex: 1 }, saving && { opacity: 0.6 }]} onPress={handleShare} disabled={saving} testID="share-pdf-btn">
               {saving ? <ActivityIndicator color="#fff" /> : (<><Ionicons name="share-social" size={17} color="#fff" /><Text style={s.btnPrimaryText}>{t('teklifPage.s070')}</Text></>)}
             </TouchableOpacity>
@@ -1755,13 +1755,15 @@ const s = themedStyles(() => StyleSheet.create({
   grand: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, backgroundColor: theme.colors.navy, borderRadius: 8, marginTop: 4 },
   grandLabel: { color: '#cbd5e1', fontSize: 11.5, fontWeight: '900', letterSpacing: 0.6 },
   grandValue: { color: '#fff', fontSize: 17, fontWeight: '900' },
-  btnPrimary: { marginTop: 12, backgroundColor: theme.colors.primary, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
-  btnSave: { marginTop: 14, backgroundColor: theme.colors.green, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.green, shadowOpacity: 0.35 },
+  btnPrimary: { backgroundColor: theme.colors.primary, paddingVertical: 14, borderRadius: 13, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.primary, shadowOpacity: 0.35 },
+  btnSave: { marginTop: 14, backgroundColor: theme.colors.green, paddingVertical: 14, borderRadius: 13, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: theme.colors.green, shadowOpacity: 0.35 },
+  // Alt eylem satirlari: ayni bosluk, ayni bolunme noktasi.
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   btnPrimaryText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
   // Yesil zeminler koyu temada aciliyor; uzerindeki yazi zemine gore secilir.
   btnSaveText: { color: readableOn(theme.colors.green), fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
   btnWaText: { color: readableOn(WA_GREEN), fontWeight: '900', fontSize: 13, letterSpacing: 0.3 },
-  btnWhatsApp: { marginTop: 12, backgroundColor: WA_GREEN, paddingVertical: 15, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: WA_GREEN, shadowOpacity: 0.35 },
+  btnWhatsApp: { backgroundColor: WA_GREEN, paddingVertical: 14, borderRadius: 13, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, ...theme.shadow.md, shadowColor: WA_GREEN, shadowOpacity: 0.35 },
   ekCard: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 10, marginBottom: 8 },
   ekHdr: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   ekBadge: { fontSize: 10, fontWeight: '900', color: theme.colors.primary, backgroundColor: theme.colors.primarySoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, letterSpacing: 0.4 },
@@ -1770,9 +1772,9 @@ const s = themedStyles(() => StyleSheet.create({
   attachName: { fontSize: 12.5, color: theme.colors.text, fontWeight: '700' },
   attachMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   helperTinyMuted: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15, marginBottom: 8, marginTop: -4 },
-  btnSecondary: { backgroundColor: theme.colors.navy, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  btnSecondary: { backgroundColor: theme.colors.navy, paddingVertical: 14, borderRadius: 13, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   btnSecondaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  btnGhost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark },
+  btnGhost: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, minHeight: 48, backgroundColor: theme.colors.surface, borderRadius: 13, borderWidth: 1, borderColor: theme.colors.lineDark },
   btnGhostText: { color: theme.colors.textSoft, fontWeight: '800', fontSize: 12.5 },
   emailRowActive: { backgroundColor: theme.colors.primarySoft },
   emailTextActive: { color: theme.colors.primary, fontWeight: '800' },

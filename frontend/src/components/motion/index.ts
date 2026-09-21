@@ -2,7 +2,7 @@
 // Reanimated ile native (iOS/Android) ve web'de aynı çalışan bileşenler.
 // Kullanım: ekranın ana ScrollView'ı yerine MotionScrollView; içindeki
 // öğeler Reveal / TiltOnScroll / TracingBeam / Marquee ile sarılır.
-export { MotionScrollView, useScrollScene, useCreateScrollScene, useViewportProgress } from './scene';
+export { MotionScrollView, PAGE_MAX_WIDTH, useScrollScene, useCreateScrollScene, useViewportProgress } from './scene';
 export type { ScrollScene } from './scene';
 export { default as Reveal, useRevealVisible } from './Reveal';
 export { default as TiltOnScroll } from './TiltOnScroll';

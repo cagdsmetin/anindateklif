@@ -7,7 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage } from '@/src/lib/i18n';
-import { IconBadge, Reveal, ScreenHero, compactNumber, themedStyles } from '@/src/components/motion';
+import { IconBadge, PAGE_MAX_WIDTH, Reveal, ScreenHero, compactNumber, themedStyles } from '@/src/components/motion';
 
 /**
  * Tahsilat ekranındaki "BORÇLU MÜŞTERİ" kartına tıklanınca açılan liste.
@@ -85,7 +85,7 @@ export default function BorcluMusterilerScreen() {
       <FlatList
         data={debtors}
         keyExtractor={(d) => d.key}
-        contentContainerStyle={{ padding: 14, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 32, width: '100%', maxWidth: PAGE_MAX_WIDTH, alignSelf: 'center' }}
         ListHeaderComponent={
           <ScreenHero
             icon="wallet"

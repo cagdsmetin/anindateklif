@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { AlbertGenauKalemT } from '@/src/lib/api';
-import { themedStyles } from '@/src/components/motion';
+import { PAGE_MAX_WIDTH, themedStyles } from '@/src/components/motion';
 
 // Albert Genau malzeme listesi — ayrı bir sayfa olarak açılır (sonuç kartının
 // içine inline genişleyerek AÇILMAZ). Bunun nedeni: React Native Web'de
@@ -56,7 +56,7 @@ export default function AlbertGenauKalemlerScreen() {
       <FlatList
         data={kalemler}
         keyExtractor={(_, i) => String(i)}
-        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 24 }}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 24, width: '100%', maxWidth: PAGE_MAX_WIDTH, alignSelf: 'center' }}
         renderItem={({ item: k }) => (
           <View style={s.kalemRow}>
             <View style={{ flex: 1, paddingRight: 8 }}>

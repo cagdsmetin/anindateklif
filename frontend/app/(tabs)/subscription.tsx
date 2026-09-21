@@ -37,7 +37,10 @@ type StatusT = {
   subscription_active: boolean;
   subscription_expires_at?: string | null;
   subscription_plan?: string | null;
+  plan_label?: string | null;
   days_left?: number | null;
+  promo_days_total?: number | null;
+  promo_code?: string | null;
   renewal_due_soon?: boolean;
   plan_price_try: number;
   plans: PlanT[];
@@ -246,6 +249,23 @@ export default function SubscriptionScreen() {
   const remaining = status?.subscription_active ? null : status?.remaining_free ?? 0;
   const usedUp = !status?.subscription_active && (status?.remaining_free ?? 0) <= 0;
   const dueSoon = !!(status?.subscription_active && status?.renewal_due_soon);
+  const isPromo = status?.subscription_plan === 'promo';
+  const daysLeft = typeof status?.days_left === 'number' ? Math.max(0, status.days_left) : null;
+  const promoTotal = isPromo && status?.promo_days_total ? status.promo_days_total : null;
+  // Dolum orani: hediye kodunda kodun toplam suresine, abonelikte plan
+  // suresine gore. Plan bilinmiyorsa 30 gunluk bir olcek varsayilir.
+  const remainRatio = (() => {
+    if (daysLeft === null) return 0;
+    const planDays = promoTotal
+      || (status?.subscription_plan === 'yearly' ? 365 : status?.subscription_plan === 'weekly' ? 7 : 30);
+    return Math.max(0.04, Math.min(1, daysLeft / planDays));
+  })();
+  const expiryLabel = (() => {
+    const raw = status?.subscription_expires_at;
+    if (!raw) return '';
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+  })();
   const showPlanSection = !status?.subscription_active || dueSoon;
 
   return (
@@ -283,18 +303,45 @@ export default function SubscriptionScreen() {
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.subHeroEyebrow}>ABONELİK</Text>
+                    <Text style={s.subHeroEyebrow}>{isPromo ? 'HEDİYE KODU' : 'ABONELİK'}</Text>
                     <Text style={s.subHeroTitle} numberOfLines={2}>
                       {status?.subscription_active
-                        ? dueSoon
-                          ? `Aboneliğiniz ${Math.max(status.days_left ?? 0, 0)} gün sonra sona eriyor`
-                          : 'Aboneliğiniz aktif'
+                        ? isPromo
+                          ? 'Hediye kodunuz kullanımda'
+                          : `${status.plan_label || 'Aboneliğiniz'} aktif`
                         : usedUp
                           ? 'Ücretsiz hakkınız doldu'
                           : 'Ücretsiz kullanımdasınız'}
                     </Text>
                   </View>
                 </View>
+
+                {/* Kalan süre her zaman görünür: kullanıcı aboneliğinin ne
+                    kadar kaldığını görmek için hesap ekranına girmek veya
+                    süre dolmaya yaklaşmasını beklemek zorunda kalmasın. */}
+                {status?.subscription_active && daysLeft !== null ? (
+                  <View style={s.remainWrap}>
+                    <View style={s.remainTop}>
+                      <Text style={s.remainValue}>
+                        {daysLeft}
+                        <Text style={s.remainUnit}> gün kaldı</Text>
+                      </Text>
+                      {promoTotal ? (
+                        <Text style={s.remainOf}>{promoTotal} günün {promoTotal - daysLeft} günü kullanıldı</Text>
+                      ) : expiryLabel ? (
+                        <Text style={s.remainOf}>Bitiş: {expiryLabel}</Text>
+                      ) : null}
+                    </View>
+                    <View style={s.remainTrack}>
+                      <View
+                        style={[
+                          s.remainFill,
+                          { width: `${Math.round(remainRatio * 100)}%`, backgroundColor: dueSoon ? theme.colors.gold : theme.colors.green },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ) : null}
                 <Text style={s.subHeroText}>
                   {status?.subscription_active
                     ? dueSoon
@@ -594,6 +641,17 @@ const s = themedStyles(() => StyleSheet.create({
   subHeroEyebrow: { color: 'rgba(203,213,225,0.85)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   subHeroTitle: { color: '#fff', fontSize: 17, fontWeight: '900', marginTop: 2, letterSpacing: -0.2 },
   subHeroText: { color: 'rgba(203,213,225,0.9)', fontSize: 12.5, lineHeight: 18, marginTop: 12 },
+  // Kalan sure okunurlugu: buyuk rakam + ince ilerleme cubugu.
+  remainWrap: {
+    marginTop: 14, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11,
+  },
+  remainTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 },
+  remainValue: { color: '#fff', fontSize: 25, fontWeight: '900', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  remainUnit: { color: 'rgba(226,232,240,0.85)', fontSize: 12.5, fontWeight: '800', letterSpacing: 0 },
+  remainOf: { color: 'rgba(203,213,225,0.85)', fontSize: 11, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
+  remainTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 9, overflow: 'hidden' },
+  remainFill: { height: 6, borderRadius: 3 },
   quotaWrap: { marginTop: 14 },
   quotaBar: { height: 7, borderRadius: 4, backgroundColor: 'rgba(148,163,184,0.25)', overflow: 'hidden' },
   quotaFill: { height: '100%', borderRadius: 4 },

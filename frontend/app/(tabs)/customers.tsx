@@ -256,7 +256,7 @@ export default function CustomersScreen() {
 
 const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
-  contentWrap: { width: '100%', maxWidth: 720, alignSelf: 'center' },
+  contentWrap: { width: '100%', maxWidth: 760, alignSelf: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
 

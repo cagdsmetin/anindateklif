@@ -64,12 +64,33 @@ type MotionScrollViewProps = ScrollViewProps & {
   /** Üst kenarda ince, gradyanlı kaydırma ilerleme çubuğu. */
   progressBar?: boolean;
   progressColors?: string[];
+  /** İçeriğin geniş ekranda alabileceği en fazla genişlik. Varsayılan tüm
+   *  uygulamada ortak; `null` verilirse sınır kalkar (tam genişlik). */
+  contentMaxWidth?: number | null;
 };
+
+// Geniş ekranda (web/tablet) içerik sayfanın iki kenarına yapışmasın diye
+// ortak bir sayfa genişliği. Her ekran kendi ScrollView'ında ayrı ayrı
+// ayarlamak yerine buradan gelir; ekran isterse contentContainerStyle ile
+// (veya contentMaxWidth ile) kendi değerini verebilir -- kendi stili en
+// sona eklendiği için üste yazar.
+export const PAGE_MAX_WIDTH = 880;
 
 // ScrollView'ın birebir yerine geçer (aynı prop'lar, ref ile scrollTo çalışır).
 // Tek fark: onScroll prop'u desteklenmez -- kaydırma olayını sahne kullanıyor.
 export const MotionScrollView = forwardRef<ScrollView, MotionScrollViewProps>(function MotionScrollView(
-  { scene: external, progressBar = true, progressColors, onLayout, onContentSizeChange, style, children, ...rest },
+  {
+    scene: external,
+    progressBar = true,
+    progressColors,
+    onLayout,
+    onContentSizeChange,
+    style,
+    children,
+    contentContainerStyle,
+    contentMaxWidth = PAGE_MAX_WIDTH,
+    ...rest
+  },
   ref
 ) {
   const own = useCreateScrollScene();
@@ -99,6 +120,11 @@ export const MotionScrollView = forwardRef<ScrollView, MotionScrollViewProps>(fu
           ref={ref as any}
           {...rest}
           style={s.fill}
+          contentContainerStyle={[
+            s.pageWrap,
+            contentMaxWidth ? { maxWidth: contentMaxWidth } : null,
+            contentContainerStyle,
+          ]}
           onScroll={onScroll}
           scrollEventThrottle={16}
           onLayout={handleLayout}
@@ -176,6 +202,7 @@ export function useViewportProgress(
 const s = themedStyles(() => StyleSheet.create({
   wrap: { flex: 1 },
   fill: { flex: 1 },
+  pageWrap: { width: '100%', alignSelf: 'center' },
   progressTrack: {
     position: 'absolute',
     top: 0,

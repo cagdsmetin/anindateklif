@@ -1343,7 +1343,7 @@ const styles = themedSheet(() => {
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     emptyText: { color: c.textMuted },
     scroll: { paddingHorizontal: 16, paddingTop: 14 },
-    page: { width: '100%', maxWidth: 1180, alignSelf: 'center' },
+    page: { width: '100%', maxWidth: 1040, alignSelf: 'center' },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
     twoCol: { flexDirection: 'row', gap: 20, alignItems: 'flex-start' },
     col: { flex: 1, minWidth: 0 },

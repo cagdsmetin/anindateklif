@@ -27,7 +27,7 @@ import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesTod
 import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
 import { saveQuoteDraft, loadQuoteDraft, clearQuoteDraft, QuoteDraft } from '@/src/lib/quoteDraft';
 import { loadQuoteDefaults, saveQuoteDefault, QuoteDefaultsT } from '@/src/lib/quoteDefaults';
-import { shareQuoteViaWhatsApp } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, shouldPreOpenWaWindow } from '@/src/lib/whatsapp';
 import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -674,7 +674,14 @@ export default function EditorScreen() {
       // Open the tab synchronously, still inside this click's user-gesture
       // window — PDF generation below takes long enough that window.open()
       // after it gets silently blocked as a popup.
-      const waWindow = Platform.OS === 'web' ? window.open('', '_blank') : null;
+      //
+      // Desktop only (shouldPreOpenWaWindow). This used to fire on every web
+      // platform, phones included, and on iOS Safari that was actively
+      // harmful: the new tab comes to the front, the app's own tab drops to
+      // the background where its rendering is throttled, and the PDF render
+      // never finishes — which is how people ended up parked on a blank
+      // about:blank tab with nothing else happening.
+      const waWindow = shouldPreOpenWaWindow() ? window.open('', '_blank') : null;
       try {
         const { uri, fileName } = await generatePdfUri(saved);
         const r = await shareQuoteViaWhatsApp({
@@ -685,6 +692,8 @@ export default function EditorScreen() {
           waWindow,
         });
         if (r.attached && waWindow) { try { waWindow.close(); } catch {} }
+        if (r.toast) showToast(r.toast);
+        else if (r.downloaded) showToast('PDF indirildi — WhatsApp Web açıldı, sohbeti seçip dosyayı sürükleyip bırakın');
       } catch (e: any) {
         if (waWindow) { try { waWindow.close(); } catch {} }
         showToast(t('teklifPage.s019') + (e?.message || ''));

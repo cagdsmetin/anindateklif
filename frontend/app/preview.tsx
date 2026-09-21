@@ -20,7 +20,7 @@ import { useApp } from '@/src/state/AppContext';
 import { buildQuotePdfHtml, PdfTemplateId } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
 import { fetchQuoteExcelBytes } from '@/src/lib/api';
-import { shareQuoteViaWhatsApp, canShareFilesWeb } from '@/src/lib/whatsapp';
+import { shareQuoteViaWhatsApp, shouldPreOpenWaWindow } from '@/src/lib/whatsapp';
 import { mergeAttachmentsIntoPdf, bytesToBase64 } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
@@ -120,6 +120,21 @@ export default function PreviewScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template, quote?.id]);
 
+  // Covers the WHOLE flow (PDF generation + WhatsApp hand-off), not just the
+  // save step — previously nothing disabled the button while the PDF was
+  // being rendered, so a slow/unstable connection made it look like the
+  // screen had frozen (no feedback, and repeated taps could stack up
+  // multiple popups/PDF generations at once).
+  //
+  // Declared up here, above the early return below, because hooks have to run
+  // in the same order on every render. It used to sit further down: on the
+  // first render the quote list is often still loading, so the component took
+  // the early return and never reached this useState — then the quote arrived
+  // and the same component suddenly ran one hook more than last time, which
+  // React rejects outright ("Rendered more hooks than during the previous
+  // render") and the whole preview screen blew up.
+  const [waSharing, setWaSharing] = useState(false);
+
   if (!quote || !activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top', 'bottom']}>
@@ -157,12 +172,6 @@ export default function PreviewScreen() {
     } catch (e: any) { showToast('PDF hatası: ' + (e?.message || '')); }
   };
 
-  // Covers the WHOLE flow (PDF generation + WhatsApp hand-off), not just the
-  // save step — previously nothing disabled the button while the PDF was
-  // being rendered, so a slow/unstable connection made it look like the
-  // screen had frozen (no feedback, and repeated taps could stack up
-  // multiple popups/PDF generations at once).
-  const [waSharing, setWaSharing] = useState(false);
   const doWhatsAppShare = async () => {
     if (waSharing) return;
     setWaSharing(true);
@@ -173,14 +182,16 @@ export default function PreviewScreen() {
     // only after that delay is what was silently getting blocked by the
     // browser's popup blocker (no error, WhatsApp just never opened). We
     // navigate this already-open tab to the real wa.me URL once it's ready.
-    const waWindow = Platform.OS === 'web' && !canShareFilesWeb() ? window.open('', '_blank') : null;
+    const waWindow = shouldPreOpenWaWindow() ? window.open('', '_blank') : null;
     try {
       const { uri, fileName } = await generatePdf();
       const result = await shareQuoteViaWhatsApp({ pdfUri: uri, fileName, quote, companyName: activeCompany.sirketAdi, waWindow });
       // WhatsApp's web/deep-link URLs can never carry a file — when the native
       // share sheet isn't available we download the PDF and open the chat, so
       // let the user know the one manual step they still need to do.
-      if (result.downloaded) {
+      if (result.toast) {
+        showToast(result.toast);
+      } else if (result.downloaded) {
         showToast('PDF indirildi — WhatsApp Web açıldı, sohbeti seçip dosyayı sürükleyip bırakın');
       }
       if (result.attached && waWindow) { try { waWindow.close(); } catch {} }

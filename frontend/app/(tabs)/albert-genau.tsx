@@ -83,6 +83,28 @@ const FALLBACK_VERTIFLEX_TYPES: AlbertGenauVertiflexTypeMetaT[] = [
   { id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08', panelSayisiOptions: ['2', '3'], motorOptions: ['ag', 'somfy'], kumandaKanalOptions: { ag: [1, 5, 16], somfy: [1, 5] }, kumandaOptional: true, inoxZincirli: true, alicisiz: false, suTahliyeliAltKasa: false, secumaxTaraf: false, camSkus: [{ sku: 'CAM-8MM-TEMPERLI', label: '8mm Temperli Cam' }] },
 ];
 
+// Backend meta'sı eksik ya da kısmi gelirse (örn. VERTIFLEX_SYSTEM_TYPES'a
+// VERTIFLEX_TYPE_META karşılığı olmayan bir tip eklenirse) tüm ekran çökmesin
+// diye tip meta'sı okunmadan önce buradan geçirilir: eksik alanlar "bu tipte
+// böyle bir seçenek yok" anlamına gelen güvenli varsayılanlara iner.
+const safeVertiflexTypeMeta = (
+  tm?: Partial<AlbertGenauVertiflexTypeMetaT> | null,
+): AlbertGenauVertiflexTypeMetaT => ({
+  id: tm?.id || '',
+  label: tm?.label || '',
+  panelSayisiOptions: tm?.panelSayisiOptions || [],
+  motorOptions: tm?.motorOptions || [],
+  kumandaKanalOptions: tm?.kumandaKanalOptions || {},
+  // Meta yoksa kumanda opsiyonel sayılır -- kanal seçenekleri de boş
+  // olacağı için aksi halde kullanıcıya hiçbir geçerli seçim kalmaz.
+  kumandaOptional: tm?.kumandaOptional ?? true,
+  inoxZincirli: !!tm?.inoxZincirli,
+  alicisiz: !!tm?.alicisiz,
+  suTahliyeliAltKasa: !!tm?.suTahliyeliAltKasa,
+  secumaxTaraf: !!tm?.secumaxTaraf,
+  camSkus: tm?.camSkus || [],
+});
+
 const VF_KUMANDA_LABELS: Record<number, string> = { 1: 'Tek Kanal', 5: '5 Kanal', 15: '15 Kanal', 16: '16 Kanal' };
 
 // KIŞ BAHÇESİ (sabit cam tavanlı, 2 alt tip: PREMIUM 08-10 / PREMIUM TWIN) --
@@ -100,6 +122,19 @@ const FALLBACK_KIS_BAHCESI_TYPES: AlbertGenauKisBahcesiTypeMetaT[] = [
   },
 ];
 
+// VERTIFLEX'teki gibi: kısmi/eksik gelen meta ekranı çökertmesin.
+const safeKisBahcesiTypeMeta = (
+  tm?: Partial<AlbertGenauKisBahcesiTypeMetaT> | null,
+): AlbertGenauKisBahcesiTypeMetaT => ({
+  id: tm?.id || '',
+  label: tm?.label || '',
+  ayarliDuvarBaglantisi: !!tm?.ayarliDuvarBaglantisi,
+  kirisUstuVidaKapama: !!tm?.kirisUstuVidaKapama,
+  ortaKayit: !!tm?.ortaKayit,
+  ucgenMikroPencere: !!tm?.ucgenMikroPencere,
+  camSkus: tm?.camSkus || [],
+});
+
 // BC ailesi (TIARA/TIARA FLAT/INT/ZERO/SLIM, SLIDER NEXT/SLIDE MASTER,
 // ATRIUM/MOMENTUM/CENTRUM HD, TANGO/OPTIMA — 39 kaydırmalı sistem
 // varyantı) -- gerçek liste + tip bazlı dinamik meta /albert-genau/bc/types
@@ -111,6 +146,22 @@ const FALLBACK_BC_TYPES: AlbertGenauBcTypeMetaT[] = [
     kanatInputs: {}, flagInputs: {}, camItems: [], hasRayType: false,
   },
 ];
+
+// VERTIFLEX'teki gibi: kısmi/eksik gelen meta ekranı çökertmesin. BC'de
+// kanat/bayrak/cam alanları tamamen meta'dan kurulduğu için eksik meta
+// "hiç alan gösterme" demektir.
+const safeBcTypeMeta = (
+  tm?: Partial<AlbertGenauBcTypeMetaT> | null,
+): AlbertGenauBcTypeMetaT => ({
+  id: tm?.id || '',
+  label: tm?.label || '',
+  defaultGenislik: Number(tm?.defaultGenislik) || 0,
+  defaultYukseklik: Number(tm?.defaultYukseklik) || 0,
+  kanatInputs: tm?.kanatInputs || {},
+  flagInputs: tm?.flagInputs || {},
+  camItems: tm?.camItems || [],
+  hasRayType: !!tm?.hasRayType,
+});
 
 // BC tipleri 39 adet olduğu için tek satırda göstermek yerine alt-marka
 // bazında gruplanır (kullanıcı dostu). Grup eşleşmesi tip id önekine göre.
@@ -183,7 +234,9 @@ export default function AlbertGenauScreen() {
   const [vfMeta, setVfMeta] = useState<AlbertGenauVertiflexTypesResponseT>({ types: FALLBACK_VERTIFLEX_TYPES, finishes: FALLBACK_FINISHES });
   const [vfTip, setVfTip] = useState('vertiflex_mono08');
   const vfTypeMeta: AlbertGenauVertiflexTypeMetaT = useMemo(
-    () => (vfMeta.types || []).find((t) => t.id === vfTip) || (vfMeta.types || [])[0] || FALLBACK_VERTIFLEX_TYPES[0],
+    () => safeVertiflexTypeMeta(
+      (vfMeta.types || []).find((t) => t.id === vfTip) || (vfMeta.types || [])[0] || FALLBACK_VERTIFLEX_TYPES[0],
+    ),
     [vfMeta.types, vfTip],
   );
   const [vfGenislik, setVfGenislik] = useState('');
@@ -205,15 +258,29 @@ export default function AlbertGenauScreen() {
     api.albertGenauVertiflexTypes(activeCompany?.id).then(setVfMeta).catch(() => {});
   }, [activeCompany?.id]);
 
+  // Secili tip meta listesinde yoksa (varsayilan vfTip artik gecerli degilse,
+  // bayi degisince liste daraldiysa ya da /albert-genau/types ile
+  // /albert-genau/vertiflex/types farkli tipler donduruyorsa) form sessizce
+  // listenin ilk tipinin meta'sini kullanir: secicide hicbir tip isaretli
+  // gorunmez ve Hesapla'ya meta'si olmayan bir tip gider. Gecersiz secimi
+  // listenin ilk tipine cekerek secici/form/istek ucunu ayni tipte tutuyoruz.
+  useEffect(() => {
+    const ids = (vfMeta.types || []).map((t) => t.id);
+    if (!ids.length || ids.includes(vfTip)) return;
+    setVfTip(ids[0]);
+  }, [vfMeta.types, vfTip]);
+
   // Tip degisince o tipte gecerli olmayan secenekleri (onceki tipten kalma)
   // sifirla -- orn. TAMBALKON'dan UP TWIN'e gecince inox secili kalmasin.
   useEffect(() => {
     const tm = vfTypeMeta;
     if (!tm) return;
-    if (tm.panelSayisiOptions.length && !tm.panelSayisiOptions.includes(vfPanelSayisi)) {
-      setVfPanelSayisi(tm.panelSayisiOptions[0]);
+    const panelOpts = tm.panelSayisiOptions || [];
+    const motorOpts = tm.motorOptions || [];
+    if (panelOpts.length && !panelOpts.includes(vfPanelSayisi)) {
+      setVfPanelSayisi(panelOpts[0]);
     }
-    if (!tm.motorOptions.includes(vfMotor)) setVfMotor(tm.motorOptions[0] || 'ag');
+    if (!motorOpts.includes(vfMotor)) setVfMotor(motorOpts[0] || 'ag');
     if (!tm.inoxZincirli) setVfInoxZincirli(false);
     if (!tm.alicisiz) setVfAlicisiz(false);
     if (!tm.suTahliyeliAltKasa) setVfSuTahliyeli(false);
@@ -238,7 +305,9 @@ export default function AlbertGenauScreen() {
   const [kbMeta, setKbMeta] = useState<AlbertGenauKisBahcesiTypesResponseT>({ types: FALLBACK_KIS_BAHCESI_TYPES, finishes: FALLBACK_FINISHES });
   const [kbTip, setKbTip] = useState('kis_bahcesi_premium_08_10');
   const kbTypeMeta: AlbertGenauKisBahcesiTypeMetaT = useMemo(
-    () => (kbMeta.types || []).find((t) => t.id === kbTip) || (kbMeta.types || [])[0] || FALLBACK_KIS_BAHCESI_TYPES[0],
+    () => safeKisBahcesiTypeMeta(
+      (kbMeta.types || []).find((t) => t.id === kbTip) || (kbMeta.types || [])[0] || FALLBACK_KIS_BAHCESI_TYPES[0],
+    ),
     [kbMeta.types, kbTip],
   );
   const [kbGenislik, setKbGenislik] = useState('');
@@ -255,6 +324,14 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     api.albertGenauKisBahcesiTypes(activeCompany?.id).then(setKbMeta).catch(() => {});
   }, [activeCompany?.id]);
+
+  // vfTip senkronunun aynisi: secili tip meta listesinde yoksa secici hicbir
+  // tipi isaretlemez ve Hesapla'ya meta'si olmayan bir tip gider.
+  useEffect(() => {
+    const ids = (kbMeta.types || []).map((t) => t.id);
+    if (!ids.length || ids.includes(kbTip)) return;
+    setKbTip(ids[0]);
+  }, [kbMeta.types, kbTip]);
 
   // Tip degisince o tipte gecerli olmayan secenekleri sifirla -- orn.
   // PREMIUM 08-10'dan TWIN'e gecince ayarli-duvar-baglantisi secili kalmasin.
@@ -277,7 +354,9 @@ export default function AlbertGenauScreen() {
   const [bcMeta, setBcMeta] = useState<AlbertGenauBcTypesResponseT>({ types: FALLBACK_BC_TYPES, finishes: FALLBACK_FINISHES });
   const [bcTip, setBcTip] = useState('bc_tiara_08');
   const bcTypeMeta: AlbertGenauBcTypeMetaT = useMemo(
-    () => (bcMeta.types || []).find((t) => t.id === bcTip) || (bcMeta.types || [])[0] || FALLBACK_BC_TYPES[0],
+    () => safeBcTypeMeta(
+      (bcMeta.types || []).find((t) => t.id === bcTip) || (bcMeta.types || [])[0] || FALLBACK_BC_TYPES[0],
+    ),
     [bcMeta.types, bcTip],
   );
   const [bcGenislik, setBcGenislik] = useState('');
@@ -290,6 +369,14 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     api.albertGenauBcTypes(activeCompany?.id).then(setBcMeta).catch(() => {});
   }, [activeCompany?.id]);
+
+  // vfTip senkronunun aynisi -- BC'de ayrica kanat/bayrak/cam alanlari tamamen
+  // meta'dan kuruldugu icin gecersiz tipte form bosalir.
+  useEffect(() => {
+    const ids = (bcMeta.types || []).map((t) => t.id);
+    if (!ids.length || ids.includes(bcTip)) return;
+    setBcTip(ids[0]);
+  }, [bcMeta.types, bcTip]);
 
   // Tip değişince ölçü alanlarını o tipin varsayılanıyla doldur, kanat/bayrak/
   // ray/cam girdilerini sıfırla -- bir önceki tipe ait ref'ler (örn. C18)
@@ -1623,7 +1710,7 @@ export default function AlbertGenauScreen() {
                   <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Kanat Takımları (Adet)</Text>
-                    {Object.entries(bcTypeMeta.kanatInputs).map(([ref, meta]) => (
+                    {Object.entries(bcTypeMeta.kanatInputs || {}).map(([ref, meta]) => (
                       <NumField
                         key={ref}
                         label={meta.label}
@@ -1641,7 +1728,7 @@ export default function AlbertGenauScreen() {
                   <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Ek Seçenekler</Text>
-                    {Object.entries(bcTypeMeta.flagInputs).map(([ref, meta]) =>
+                    {Object.entries(bcTypeMeta.flagInputs || {}).map(([ref, meta]) =>
                       meta.kind === 'bool' ? (
                         <ToggleRow
                           key={ref}

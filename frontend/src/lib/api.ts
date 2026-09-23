@@ -1,5 +1,8 @@
 import { Platform } from 'react-native';
 import { storage } from '@/src/utils/storage';
+import type { CizimModeli } from '@/src/components/albert/Cizim';
+
+export type { CizimModeli };
 
 // Build-time backend URL, with a hardcoded fallback so a missing/empty EXPO_PUBLIC_BACKEND_URL
 // in an APK build doesn't leave the app pointing at a relative "/api" URL (which resolves to
@@ -386,6 +389,12 @@ export const api = {
     req(`/albert-genau/types${companyId ? `?companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauCalculate: (data: AlbertGenauCalculateInputT): Promise<AlbertGenauResultT> =>
     req('/albert-genau/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  // Çizim modeli -- FİYAT HESAPLAMAZ. Kullanıcı ölçü yazarken debounce ile
+  // çağrılır; dönen model hem ekrandaki canlı çizimi hem teklife eklenen
+  // teknik çizimi besler (bkz. backend/ag_geometry.py). Pahalı olan
+  // albertGenauCalculate'ten kasıtlı olarak ayrıdır.
+  albertGenauGeometry: (data: AlbertGenauGeometryInputT): Promise<CizimModeli> =>
+    req('/albert-genau/geometry', { method: 'POST', body: JSON.stringify(data) }),
   albertGenauPartsListItems: (systemId: string, companyId?: string): Promise<AlbertGenauPartsListItemsResponseT> =>
     req(`/albert-genau/parts-list-items?systemId=${encodeURIComponent(systemId)}${companyId ? `&companyId=${encodeURIComponent(companyId)}` : ''}`),
   albertGenauPartsListCalculate: (data: AlbertGenauPartsListCalculateInputT): Promise<AlbertGenauPartsListResultT> =>
@@ -849,6 +858,11 @@ export type QuoteItemT = {
   agMaliyet?: number | null;
   agMontajBedeli?: number | null;
   agImalatBedeli?: number | null;
+  // Albert Genau kaleminin çizim modeli (bkz. backend/ag_geometry.py). Teklif
+  // PDF'indeki teknik çizim sayfası bundan üretilir; ekrandaki çizimle aynı
+  // model olduğu için ikisi birbirinden kayamaz. Çizimi olmayan kalemlerde
+  // yok -- eski teklifler ve elle girilen kalemler etkilenmez.
+  agCizim?: CizimModeli | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };
@@ -1222,6 +1236,41 @@ export type AlbertGenauYedekParcaResultT = {
   karTutari: number;
   satisFiyati: number;
   kalemler: AlbertGenauKalemT[];
+};
+
+export type AlbertGenauCepheInputT = {
+  genislikMm: number;
+  yukseklikMm: number;
+  /** Boş bırakılırsa ölçüden önerilir (bkz. ag_geometry.onerilen_kanat_sayisi). */
+  kanatSayisi?: number | null;
+  adet?: number;
+  /** 'duvar' | 90 | 135 | 225 | 270 | serbest derece */
+  sagAci?: 'duvar' | number | null;
+  toplanmaYonu?: 'sola' | 'saga' | 'sagavesola' | 'sola_kaydir' | 'saga_kaydir' | 'sabit';
+  solKoseGenisKapak?: boolean;
+  sagKoseGenisKapak?: boolean;
+};
+
+export type AlbertGenauGeometryInputT = {
+  companyId?: string;
+  kind: 'cephe' | 'modul' | 'giyotin';
+  // kind='cephe'
+  cepheler?: AlbertGenauCepheInputT[];
+  maxKanatMm?: number;
+  /** BC tipi verilirse dönen modele `bcOneri` eklenir: kanat miktarları ve
+   *  köşe sayısı için form önerisi (bkz. backend/ag_geometry.bc_oneri). */
+  bcTip?: string;
+  // kind='modul' (bioklimatik pergola) / kind='giyotin' (VERTIFLEX)
+  tip?: string;
+  genislikMm?: number;
+  derinlikMm?: number;
+  yukseklikMm?: number;
+  panelSayisi?: number;
+  /** kind='modul' için elle verilen bölünme. Albert Genau dışındaki
+   *  kalemlerde AG derinlik tablosu geçerli olmadığı için modül/lamel
+   *  sayısı kullanıcıdan alınır; verilirse fiyat listesine hiç gidilmez. */
+  modulSayisi?: number;
+  lamelSayisiToplam?: number;
 };
 
 export type AlbertGenauCalculateInputT = {

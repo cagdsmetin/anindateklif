@@ -48,8 +48,11 @@ import { bytesToBase64, AttachmentT } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import NavDrawer from '@/src/components/NavDrawer';
 import { Aurora, BorderBeam, CountUp, MotionScrollView, Reveal, TiltOnScroll, alpha, themedStyles } from '@/src/components/motion';
-import { AG, AGS, Axis, DimField, Sheet, SystemRow } from '@/src/components/albert/ag-kit';
+import { AG, AGS, Axis, DimField, PickField, PickItem, Sheet } from '@/src/components/albert/ag-kit';
 import Elevation from '@/src/components/albert/Elevation';
+import Cizim from '@/src/components/albert/Cizim';
+import { useCizimModeli, mm } from '@/src/hooks/use-cizim-modeli';
+import CepheListesi, { yeniCephe, type CepheGirdi } from '@/src/components/albert/CepheListesi';
 
 // Albert Genau parametrik pergola/bioklimatik hesaplayıcı — genel Katalog ve
 // Ürün/Hizmet Yapılandırıcı'dan tamamen ayrı bir bölüm. Dealer genişlik/
@@ -350,7 +353,12 @@ export default function AlbertGenauScreen() {
   // Diğer ailelerden farklı olarak kanat/bayrak/cam alanları TİPE GÖRE
   // DEĞİŞİR -- form, backend'den gelen meta'ya (BC_TYPE_META) göre dinamik
   // kurulur; sabit state alanları yerine {ref: değer} sözlükleri kullanılır.
-  const bcTypes = meta.bcTypes && meta.bcTypes.length ? meta.bcTypes : [{ id: 'bc_tiara_08', label: 'TIARA 08' }];
+  // Seçicinin liste dizisi (bcTypeItems) buna bağlı; her render'da yeni bir
+  // dizi üretmemesi için sabitleniyor.
+  const bcTypes = useMemo(
+    () => (meta.bcTypes && meta.bcTypes.length ? meta.bcTypes : [{ id: 'bc_tiara_08', label: 'TIARA 08' }]),
+    [meta.bcTypes],
+  );
   const [bcMeta, setBcMeta] = useState<AlbertGenauBcTypesResponseT>({ types: FALLBACK_BC_TYPES, finishes: FALLBACK_FINISHES });
   const [bcTip, setBcTip] = useState('bc_tiara_08');
   const bcTypeMeta: AlbertGenauBcTypeMetaT = useMemo(
@@ -359,8 +367,10 @@ export default function AlbertGenauScreen() {
     ),
     [bcMeta.types, bcTip],
   );
-  const [bcGenislik, setBcGenislik] = useState('');
-  const [bcYukseklik, setBcYukseklik] = useState('');
+  // BC ailesi artik tek genislik/yukseklik yerine CEPHE ZINCIRI ile
+  // olculuyor (bkz. CepheListesi). Fiyat hesabina giden tek genislik,
+  // cephelerin toplamidir; yukseklik ise en buyukleri.
+  const [bcCepheler, setBcCepheler] = useState<CepheGirdi[]>(() => [yeniCephe()]);
   const [bcKanatMiktarlari, setBcKanatMiktarlari] = useState<Record<string, string>>({});
   const [bcBayrakDegerleri, setBcBayrakDegerleri] = useState<Record<string, string>>({});
   const [bcRayTipi, setBcRayTipi] = useState<number>(1);
@@ -384,8 +394,15 @@ export default function AlbertGenauScreen() {
   useEffect(() => {
     const tm = bcTypeMeta;
     if (!tm) return;
-    setBcGenislik(String(tm.defaultGenislik || ''));
-    setBcYukseklik(String(tm.defaultYukseklik || ''));
+    // Tipin varsayilan olcusu artik TEK bir cephe olarak baslatilir --
+    // cok cepheli bir zincir baska bir tipe tasinamaz, ref'leri degisir.
+    setBcCepheler([
+      {
+        ...yeniCephe(),
+        genislik: String(tm.defaultGenislik || ''),
+        yukseklik: String(tm.defaultYukseklik || ''),
+      },
+    ]);
     setBcKanatMiktarlari({});
     setBcBayrakDegerleri({});
     setBcRayTipi(1);
@@ -472,6 +489,133 @@ export default function AlbertGenauScreen() {
   const selectedTypeLabel = useMemo(
     () => (meta.types || []).find((tp) => tp.id === tip)?.label || '',
     [meta.types, tip]
+  );
+
+  // --- Tek satırlık seçicilerin listeleri --------------------------------
+  // Ürün ailesi (6) ve BC alt tipi (39) alt alta kart olarak dizilince ekran
+  // metrelerce aşağı uzuyordu; ikisi de artık PickField ile tek satır. Liste
+  // içerikleri burada hazırlanır.
+  const familyItems = useMemo<PickItem[]>(
+    () => [
+      { id: 'geometric', label: 'AG BIOFLEX / BIO', caption: 'Bioklimatik pergola — ölçü bazlı hesap', code: 'ÖLÇÜ' },
+      ...partsListSystems.map((sysOpt) => ({
+        id: `airflex_modul:${sysOpt.id}`,
+        label: sysOpt.label,
+        caption: 'Modül adedi üzerinden parça listesi',
+        code: 'MODÜL',
+      })),
+      { id: 'vertiflex', label: 'VERTIFLEX', caption: 'Dikey giyotin cam sistemi', code: 'ÖLÇÜ' },
+      { id: 'kis_bahcesi', label: 'KIŞ BAHÇESİ', caption: 'Sabit cam tavan', code: 'ÖLÇÜ' },
+      { id: 'bc', label: 'BC AİLESİ', caption: 'Tiara, Slider, Slide Master, HD, Tango ve Optima', code: 'ÖLÇÜ' },
+      { id: 'yedek_parca', label: 'Yedek parça', caption: 'Tek tek parça ve miktar girişi', code: 'PARÇA' },
+    ],
+    [partsListSystems],
+  );
+
+  // Parça listesiyle çalışan aileler backend'den geliyor; ileride ikinci bir
+  // sistem eklenirse hepsi aynı 'airflex_modul' ailesine düşüyor. Seçicide
+  // id'ler çakışmasın diye "aile:sistem" biçiminde tutulup seçimde tekrar
+  // aileye indirgeniyor.
+  const familyItemId = useMemo(
+    () => (family === 'airflex_modul' ? familyItems.find((it) => it.id.startsWith('airflex_modul'))?.id || family : family),
+    [family, familyItems],
+  );
+
+  const onPickFamily = (id: string) => {
+    setFamily(id.split(':')[0] as typeof family);
+    setResult(null);
+    setError('');
+  };
+
+  // BC'nin 39 varyantı seçicide alt-marka başlıklarıyla gruplanır (bkz.
+  // BC_GROUPS); sıralama grup sırasını izler, grup içi sıra backend'den
+  // geldiği gibi kalır.
+  const bcTypeItems = useMemo<PickItem[]>(() => {
+    const gi = (id: string) => {
+      const i = BC_GROUPS.findIndex((g) => g.match(id));
+      return i < 0 ? BC_GROUPS.length : i;
+    };
+    return bcTypes
+      .map((tp, i) => ({ tp, i }))
+      .sort((a, b) => gi(a.tp.id) - gi(b.tp.id) || a.i - b.i)
+      .map(({ tp }) => ({ id: tp.id, label: tp.label, group: BC_GROUPS[gi(tp.id)]?.title || 'Diğer' }));
+  }, [bcTypes]);
+
+  // --- Canlı çizim modelleri -------------------------------------------
+  // Ölçü yazılırken (Hesapla'ya basmadan) backend'den çizim modeli çekilir.
+  // Bölünmeyi backend üretir ki ekrandaki çizim ile teklife eklenen teknik
+  // çizim aynı sayıları göstersin (bkz. backend/ag_geometry.py).
+  //
+  // BIOFLEX/BIO = bioklimatik pergola: modül + lamel şeması.
+  const pergolaCizim = useCizimModeli(
+    mm(genislik) && mm(derinlik)
+      ? {
+          companyId: activeCompany?.id,
+          kind: 'modul',
+          tip,
+          genislikMm: mm(genislik),
+          derinlikMm: mm(derinlik),
+        }
+      : null
+  );
+
+  // BC ailesi = cam balkon: soldan sağa cephe zinciri. bcTip da gönderilir ki
+  // backend kanat miktarları ve köşe sayısı için form önerisi üretsin
+  // (bkz. ag_geometry.bc_oneri) -- bugün bayinin elle yazdığı sayılar.
+  const bcGecerliCepheler = useMemo(
+    () => bcCepheler.filter((c) => mm(c.genislik) > 0 && mm(c.yukseklik) > 0),
+    [bcCepheler]
+  );
+  const bcCizim = useCizimModeli(
+    bcGecerliCepheler.length
+      ? {
+          companyId: activeCompany?.id,
+          kind: 'cephe',
+          bcTip,
+          cepheler: bcGecerliCepheler.map((c, i) => ({
+            genislikMm: mm(c.genislik),
+            yukseklikMm: mm(c.yukseklik),
+            kanatSayisi: mm(c.kanatSayisi) || null,
+            // Son cephenin sağ açısı her zaman duvar -- backend de zorluyor
+            // ama istek gövdesi de tutarlı olsun.
+            sagAci: i === bcGecerliCepheler.length - 1 ? 'duvar' : c.sagAci,
+            toplanmaYonu: c.toplanmaYonu,
+          })),
+        }
+      : null
+  );
+  const bcModel = bcCizim.model?.kind === 'cephe' ? bcCizim.model : null;
+  const bcOneri = bcModel?.bcOneri;
+
+  /** Çizimden gelen kanat/köşe sayılarını forma yazar. Üzerine yazma
+   *  kasıtlı olarak tek dokunuşluk ve geri alınabilir: bayi isterse
+   *  alanları tekrar elle değiştirir. */
+  const bcCizimdenDoldur = () => {
+    if (!bcOneri) return;
+    setBcKanatMiktarlari((prev) => {
+      const y = { ...prev };
+      Object.entries(bcOneri.kanatMiktarlari).forEach(([ref, n]) => { y[ref] = String(n); });
+      return y;
+    });
+    setBcBayrakDegerleri((prev) => {
+      const y = { ...prev };
+      Object.entries(bcOneri.bayrakDegerleri).forEach(([ref, n]) => { y[ref] = String(n); });
+      return y;
+    });
+  };
+
+  // VERTIFLEX = giyotin: üst üste yatay paneller, hareketliler yukarı kayar.
+  const giyotinCizim = useCizimModeli(
+    mm(vfGenislik) && mm(vfYukseklik)
+      ? {
+          companyId: activeCompany?.id,
+          kind: 'giyotin',
+          tip: vfTip,
+          genislikMm: mm(vfGenislik),
+          yukseklikMm: mm(vfYukseklik),
+          panelSayisi: Number(vfPanelSayisi) || 3,
+        }
+      : null
   );
 
   // Kullanici derinligi YAZARKEN (Hesapla'ya basmadan), Excel'deki gibi anlik
@@ -719,10 +863,13 @@ export default function AlbertGenauScreen() {
 
   const onCalculateBc = async () => {
     setError('');
-    const g = Number(bcGenislik.replace(',', '.'));
-    const y = Number(bcYukseklik.replace(',', '.'));
-    if (!g || g <= 0) { setError('Genişlik (mm) girin'); return; }
-    if (!y || y <= 0) { setError('Yükseklik (mm) girin'); return; }
+    // Fiyat hesabi tek bir genislik/yukseklik aliyor: cephelerin toplam
+    // genisligi ve en buyuk yuksekligi kullanilir (farkli yukseklikler
+    // varsa backend cizim modelinde bunu ayrica uyariyor).
+    const gecerli = bcCepheler.filter((c) => mm(c.genislik) > 0 && mm(c.yukseklik) > 0);
+    if (!gecerli.length) { setError('En az bir cephenin genişlik ve yüksekliğini girin'); return; }
+    const g = gecerli.reduce((t, c) => t + mm(c.genislik), 0);
+    const y = Math.max(...gecerli.map((c) => mm(c.yukseklik)));
     const tm = bcTypeMeta;
     setBusy(true);
     setResult(null);
@@ -1032,6 +1179,14 @@ export default function AlbertGenauScreen() {
   // için -- "Teklife Ekle" butonu kalıcı olarak gri/pasif kalıyordu.
   // Artık: kalem AppContext'teki bekleme alanına konuyor (bkz. teklif.tsx'teki
   // tüketici efekt) ve router.back() ile AYNI Teklif ekranı örneğine dönülüyor.
+  // Hesaplaması yapılan ailenin çizim modeli. Teklife eklenen kalemle birlikte
+  // taşınır ki PDF'teki teknik çizim ekrandakiyle birebir aynı olsun.
+  const aktifCizimModeli =
+    family === 'bc' ? bcCizim.model
+    : family === 'vertiflex' ? giyotinCizim.model
+    : family === 'geometric' ? pergolaCizim.model
+    : null;
+
   const onAddToQuote = () => {
     if (!result) return;
     if (adding) return;
@@ -1046,6 +1201,10 @@ export default function AlbertGenauScreen() {
         agMaliyet: Math.round((result.maliyetIndirimli || 0) * 100) / 100,
         agMontajBedeli: Math.round((result.montajBedeli || 0) * 100) / 100,
         agImalatBedeli: Math.round((result.imalatBedeli || 0) * 100) / 100,
+        // Ekranda görünen çizim modelinin AYNISI kalemle birlikte taşınır;
+        // teklif PDF'indeki teknik çizim sayfası bundan üretilir. Ailesinde
+        // çizim yoksa (yedek parça, AIRFLEX modül) null kalır.
+        agCizim: aktifCizimModeli,
       });
       showToast('Albert Genau kalemi teklife eklendi');
       router.back();
@@ -1127,56 +1286,13 @@ export default function AlbertGenauScreen() {
                 eklenecek diğerleri) düz parça listesi + miktara göre hesaplar. */}
             <Reveal variant="up" distance={18}>
             <Sheet index="01" title="Ürün ailesi" note="Hesaplama yöntemi seçtiğiniz aileye göre değişir.">
-              <SystemRow
-                label="AG BIOFLEX / BIO"
-                caption="Bioklimatik pergola — ölçü bazlı hesap"
-                code="ÖLÇÜ"
-                selected={family === 'geometric'}
-                onPress={() => { setFamily('geometric'); setResult(null); setError(''); }}
-                testID="ag-family-geometric"
-              />
-              {partsListSystems.map((sysOpt) => (
-                <SystemRow
-                  key={sysOpt.id}
-                  label={sysOpt.label}
-                  caption="Modül adedi üzerinden parça listesi"
-                  code="MODÜL"
-                  selected={family === 'airflex_modul'}
-                  onPress={() => { setFamily('airflex_modul'); setResult(null); setError(''); }}
-                  testID={`ag-family-${sysOpt.id}`}
-                />
-              ))}
-              <SystemRow
-                label="VERTIFLEX"
-                caption="Dikey giyotin cam sistemi"
-                code="ÖLÇÜ"
-                selected={family === 'vertiflex'}
-                onPress={() => { setFamily('vertiflex'); setResult(null); setError(''); }}
-                testID="ag-family-vertiflex"
-              />
-              <SystemRow
-                label="KIŞ BAHÇESİ"
-                caption="Sabit cam tavan"
-                code="ÖLÇÜ"
-                selected={family === 'kis_bahcesi'}
-                onPress={() => { setFamily('kis_bahcesi'); setResult(null); setError(''); }}
-                testID="ag-family-kis-bahcesi"
-              />
-              <SystemRow
-                label="BC AİLESİ"
-                caption="Tiara, Slider, Slide Master, HD, Tango ve Optima"
-                code="ÖLÇÜ"
-                selected={family === 'bc'}
-                onPress={() => { setFamily('bc'); setResult(null); setError(''); }}
-                testID="ag-family-bc"
-              />
-              <SystemRow
-                label="Yedek parça"
-                caption="Tek tek parça ve miktar girişi"
-                code="PARÇA"
-                selected={family === 'yedek_parca'}
-                onPress={() => { setFamily('yedek_parca'); setResult(null); setError(''); }}
-                testID="ag-family-yedek-parca"
+              <PickField
+                items={familyItems}
+                value={familyItemId}
+                onChange={onPickFamily}
+                sheetTitle="Ürün ailesi"
+                sheetNote="Hesaplama yöntemi seçtiğiniz aileye göre değişir."
+                testID="ag-family"
               />
             </Sheet>
             </Reveal>
@@ -1241,21 +1357,16 @@ export default function AlbertGenauScreen() {
               index="02"
               title="Sistem tipi"
               note="Ayak düzeni; girilecek ölçüleri belirler."
-              status={
-                selectedTypeLabel ? { text: selectedTypeLabel, done: true } : { text: 'seçilmedi' }
-              }
+              status={selectedTypeLabel ? { text: 'seçildi', done: true } : { text: 'seçilmedi' }}
             >
-              <View style={s.typeWrap}>
-                {(meta.types || []).map((tp) => (
-                  <SpecOption
-                    key={tp.id}
-                    label={tp.label}
-                    selected={tip === tp.id}
-                    onPress={() => { setTip(tp.id); setResult(null); }}
-                    testID={`ag-type-${tp.id}`}
-                  />
-                ))}
-              </View>
+              <PickField
+                items={(meta.types || []).map((tp) => ({ id: tp.id, label: tp.label }))}
+                value={tip}
+                onChange={(id) => { setTip(id); setResult(null); }}
+                sheetTitle="Sistem tipi"
+                sheetNote="Ayak düzeni; girilecek ölçüleri belirler."
+                testID="ag-type"
+              />
             </Sheet>
             </Reveal>
 
@@ -1273,12 +1384,12 @@ export default function AlbertGenauScreen() {
                 done: !!genislik && !!derinlik && (!needsHeight(tip) || !!yukseklik),
               }}
             >
-              <Elevation
-                w={genislik}
-                h={needsHeight(tip) ? yukseklik : ''}
-                d={derinlik}
-                plan={!needsHeight(tip)}
+              <Cizim
+                model={pergolaCizim.model}
+                yukleniyor={pergolaCizim.yukleniyor}
                 caption={selectedTypeLabel}
+                kindIpucu="modul"
+                bosMesaj="Genişlik ve derinlik girin, modül şeması oluşsun"
               />
               <View style={[s.row, { marginTop: AGS.rowGap }]}>
                 <NumField label="Genişlik" value={genislik} onChange={setGenislik} testID="ag-genislik" />
@@ -1377,25 +1488,27 @@ export default function AlbertGenauScreen() {
                 {/* Alt tip seçimi */}
                 <Reveal variant="up" distance={18}>
                 <View style={s.card}>
-                  <Text style={s.fieldLabel}>VERTIFLEX Alt Tipi</Text>
-                  <View style={s.typeWrap}>
-                    {vertiflexTypes.map((tp) => (
-                      <SpecOption
-                        key={tp.id}
-                        label={tp.label}
-                        selected={vfTip === tp.id}
-                        onPress={() => setVfTip(tp.id)}
-                        testID={`ag-vf-type-${tp.id}`}
-                      />
-                    ))}
-                  </View>
+                  <PickField
+                    label="VERTIFLEX ALT TİPİ"
+                    items={vertiflexTypes.map((tp) => ({ id: tp.id, label: tp.label }))}
+                    value={vfTip}
+                    onChange={setVfTip}
+                    sheetTitle="VERTIFLEX alt tipi"
+                    testID="ag-vf-type"
+                  />
                 </View>
                 </Reveal>
 
                 {/* Ölçüler */}
                 <Reveal variant="up" distance={18}>
                 <Sheet title="Ölçüler" note="Tüm ölçüler milimetre cinsindendir.">
-                  <Elevation w={vfGenislik} h={vfYukseklik} caption={vfTypeMeta?.label} />
+                  <Cizim
+                    model={giyotinCizim.model}
+                    yukleniyor={giyotinCizim.yukleniyor}
+                    caption={vfTypeMeta?.label}
+                    kindIpucu="giyotin"
+                    bosMesaj="Genişlik ve yükseklik girin, panel şeması oluşsun"
+                  />
                   <View style={[s.row, { marginTop: AGS.rowGap }]}>
                     <NumField label="Genişlik" value={vfGenislik} onChange={setVfGenislik} testID="ag-vf-genislik" />
                     <NumField label="Yükseklik" value={vfYukseklik} onChange={setVfYukseklik} testID="ag-vf-yukseklik" />
@@ -1565,18 +1678,14 @@ export default function AlbertGenauScreen() {
                 {/* Alt tip seçimi */}
                 <Reveal variant="up" distance={18}>
                 <View style={s.card}>
-                  <Text style={s.fieldLabel}>KIŞ BAHÇESİ Alt Tipi</Text>
-                  <View style={s.typeWrap}>
-                    {kisBahcesiTypes.map((tp) => (
-                      <SpecOption
-                        key={tp.id}
-                        label={tp.label}
-                        selected={kbTip === tp.id}
-                        onPress={() => setKbTip(tp.id)}
-                        testID={`ag-kb-type-${tp.id}`}
-                      />
-                    ))}
-                  </View>
+                  <PickField
+                    label="KIŞ BAHÇESİ ALT TİPİ"
+                    items={kisBahcesiTypes.map((tp) => ({ id: tp.id, label: tp.label }))}
+                    value={kbTip}
+                    onChange={setKbTip}
+                    sheetTitle="KIŞ BAHÇESİ alt tipi"
+                    testID="ag-kb-type"
+                  />
                 </View>
                 </Reveal>
 
@@ -1646,41 +1755,45 @@ export default function AlbertGenauScreen() {
 
             {family === 'bc' && (
               <>
-                {/* Alt tip seçimi -- 39 varyant olduğu için alt-marka bazında
-                    gruplanmış (bkz. BC_GROUPS). */}
+                {/* Alt tip seçimi -- 39 varyant ekranda tek satır; liste,
+                    alt-marka başlıklarıyla (bkz. BC_GROUPS) açılan seçicide. */}
                 <Reveal variant="up" distance={18}>
                 <View style={s.card}>
-                  <Text style={s.fieldLabel}>BC Alt Tipi</Text>
-                  {BC_GROUPS.map((g) => {
-                    const groupTypes = bcTypes.filter((t) => g.match(t.id));
-                    if (!groupTypes.length) return null;
-                    return (
-                      <View key={g.title} style={{ marginBottom: 10 }}>
-                        <Text style={s.hint}>{g.title}</Text>
-                        <View style={s.typeWrap}>
-                          {groupTypes.map((tp) => (
-                            <SpecOption
-                              key={tp.id}
-                              label={tp.label}
-                              selected={bcTip === tp.id}
-                              onPress={() => setBcTip(tp.id)}
-                              testID={`ag-bc-type-${tp.id}`}
-                            />
-                          ))}
-                        </View>
-                      </View>
-                    );
-                  })}
+                  <PickField
+                    label="BC ALT TİPİ"
+                    items={bcTypeItems}
+                    value={bcTip}
+                    onChange={setBcTip}
+                    sheetTitle="BC alt tipi"
+                    sheetNote="39 varyant alt-marka bazında gruplanmıştır; yazarak arayabilirsiniz."
+                    testID="ag-bc-type"
+                  />
                 </View>
                 </Reveal>
 
                 {/* Ölçüler */}
                 <Reveal variant="up" distance={18}>
-                <Sheet title="Ölçüler" note="Tüm ölçüler milimetre cinsindendir.">
-                  <Elevation w={bcGenislik} h={bcYukseklik} caption={bcTypeMeta?.label} />
-                  <View style={[s.row, { marginTop: AGS.rowGap }]}>
-                    <NumField label="Genişlik" value={bcGenislik} onChange={setBcGenislik} testID="ag-bc-genislik" />
-                    <NumField label="Yükseklik" value={bcYukseklik} onChange={setBcYukseklik} testID="ag-bc-yukseklik" />
+                <Sheet
+                  title="Ölçüler"
+                  note="Balkonu soldan sağa cephe cephe girin; köşeler açıyla bağlanır."
+                  status={{
+                    text: `${bcGecerliCepheler.length || 0} cephe`,
+                    done: bcGecerliCepheler.length > 0,
+                  }}
+                >
+                  <Cizim
+                    model={bcCizim.model}
+                    yukleniyor={bcCizim.yukleniyor}
+                    caption={bcTypeMeta?.label}
+                    kindIpucu="cephe"
+                    bosMesaj="Cephe ölçülerini girin, çizim burada oluşur"
+                  />
+                  <View style={{ marginTop: AGS.rowGap }}>
+                    <CepheListesi
+                      cepheler={bcCepheler}
+                      onChange={setBcCepheler}
+                      onerilenKanatlar={bcModel?.cepheler.map((c) => c.onerilenKanatSayisi)}
+                    />
                   </View>
                 </Sheet>
                 </Reveal>
@@ -1710,6 +1823,28 @@ export default function AlbertGenauScreen() {
                   <Reveal variant="up" distance={18}>
                   <View style={s.card}>
                     <Text style={s.sectionTitle}>Kanat Takımları (Adet)</Text>
+                    {/* Çizimden doldur: bugün bayinin kafadan yazdığı sayılar
+                        cephe zincirinden geliyor. Öneri niteliğinde -- üzerine
+                        yazdıktan sonra her alan elle değiştirilebilir. */}
+                    {bcOneri && Object.keys(bcOneri.kanatMiktarlari).length > 0 ? (
+                      <>
+                        <TouchableOpacity
+                          style={s.drawingBtn}
+                          onPress={bcCizimdenDoldur}
+                          testID="ag-bc-cizimden-doldur"
+                          accessibilityRole="button"
+                        >
+                          <Ionicons name="color-wand-outline" size={16} color={theme.colors.primary} />
+                          <Text style={s.drawingBtnText}>
+                            Çizimden doldur ({bcModel?.toplamKanat} kanat
+                            {bcModel?.koseDikmesi ? `, ${bcModel.koseDikmesi} köşe` : ''})
+                          </Text>
+                        </TouchableOpacity>
+                        {bcOneri.aciklama.map((a, i) => (
+                          <Text key={i} style={s.bcOneriNot}>{a}</Text>
+                        ))}
+                      </>
+                    ) : null}
                     {Object.entries(bcTypeMeta.kanatInputs || {}).map(([ref, meta]) => (
                       <NumField
                         key={ref}
@@ -2568,6 +2703,7 @@ const s = themedStyles(() => StyleSheet.create({
   excelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: 'rgba(182,18,49,0.16)', borderWidth: 1, borderColor: 'rgba(182,18,49,0.4)', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginTop: 12 },
   excelBtnText: { color: AG_RED_LIGHT, fontSize: 13.5, fontWeight: '800' },
   drawingBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: AG_SURFACE_SOFT, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(182,18,49,0.4)', borderRadius: 16, paddingVertical: 13, paddingHorizontal: 12, marginTop: 10 },
+  bcOneriNot: { color: AG_TEXT_MUTED, fontSize: 10.5, fontWeight: '600', lineHeight: 14, marginTop: 6 },
   drawingBtnText: { color: AG_RED_LIGHT, fontSize: 12.5, fontWeight: '800', flexShrink: 1, textAlign: 'center' },
   toast: { position: 'absolute', top: 8, alignSelf: 'center', backgroundColor: theme.colors.navy, flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 24, zIndex: 9999, gap: 6, ...theme.shadow.md },
   toastText: { color: '#fff', fontSize: 12.5, fontWeight: '700' },

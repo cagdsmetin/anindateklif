@@ -1,5 +1,6 @@
 import type { CompanyT, QuoteT } from './api';
 import { buildItemDescription, parseNoteSegments } from './quote-utils';
+import { CIZIM_CSS, buildCizimPagesHtml } from './cizim-html';
 
 export type PdfTemplateId = 'classic' | 'modern' | 'minimal' | 'kurumsal' | 'renkli';
 
@@ -124,11 +125,27 @@ function buildQuoteQrText(company: CompanyT, quote: QuoteT): string {
 // history re-share) keeps producing exactly the same PDF as before this
 // file gained multiple templates.
 export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT, template: PdfTemplateId = 'classic'): string {
-  if (template === 'modern') return buildModernHtml(company, quote);
-  if (template === 'minimal') return buildMinimalHtml(company, quote);
-  if (template === 'kurumsal') return buildKurumsalHtml(company, quote);
-  if (template === 'renkli') return buildRenkliHtml(company, quote);
-  return buildClassicHtml(company, quote);
+  const govde =
+    template === 'modern' ? buildModernHtml(company, quote)
+    : template === 'minimal' ? buildMinimalHtml(company, quote)
+    : template === 'kurumsal' ? buildKurumsalHtml(company, quote)
+    : template === 'renkli' ? buildRenkliHtml(company, quote)
+    : buildClassicHtml(company, quote);
+  return withCizimPages(company, quote, govde);
+}
+
+// Teknik çizim sayfaları beş şablonun da SONUNA eklenir. Her şablonu tek tek
+// düzenlemek yerine burada enjekte ediliyor: şablonların kendi düzeni değişmez,
+// çizim sayfası hepsinde aynı görünür. Çizimli kalem yoksa hiçbir şey eklenmez.
+function withCizimPages(company: CompanyT, quote: QuoteT, html: string): string {
+  const sayfalar = buildCizimPagesHtml(company, quote);
+  if (!sayfalar) return html;
+  const stilli = html.includes('</head>')
+    ? html.replace('</head>', `<style>${CIZIM_CSS}</style></head>`)
+    : `<style>${CIZIM_CSS}</style>` + html;
+  return stilli.includes('</body>')
+    ? stilli.replace('</body>', `${sayfalar}</body>`)
+    : stilli + sayfalar;
 }
 
 // ============================================================================

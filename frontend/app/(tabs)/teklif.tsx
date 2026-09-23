@@ -17,6 +17,8 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
+import Cizim, { type CizimModeli, type CizimPaleti } from '@/src/components/albert/Cizim';
+import CizimEkle from '@/src/components/albert/CizimEkle';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
@@ -235,6 +237,8 @@ export default function EditorScreen() {
           agMaliyet: data.agMaliyet ?? null,
           agMontajBedeli: data.agMontajBedeli ?? null,
           agImalatBedeli: data.agImalatBedeli ?? null,
+          // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
+          agCizim: data.agCizim ?? null,
         };
         next = [...next, it];
         lastId = it.id;
@@ -1302,6 +1306,24 @@ function ItemCard({
   onMoveDown?: () => void;
 }) {
   const { t, lang } = useLanguage();
+  const [cizimAcik, setCizimAcik] = useState(false);
+  // Çizim önizlemesi kalem kartının içinde duruyor, o yüzden uygulamanın kendi
+  // temasını kullanır -- Albert Genau ekranındaki kırmızı-koyu palet burada
+  // yabancı dururdu. Editör modalı tam ekran açıldığı için kendi koyu
+  // paletinde kalıyor.
+  const cizimPaleti: CizimPaleti = useMemo(
+    () => ({
+      yuzey: theme.colors.surfaceSoft,
+      cizgi: theme.colors.line,
+      vurgu: theme.colors.primary,
+      vurguSoluk: theme.colors.primaryBorder,
+      cam: theme.colors.primarySoft,
+      camSabit: theme.colors.line,
+      metin: theme.colors.text,
+      metinSoluk: theme.colors.textMuted,
+    }),
+    []
+  );
   // Adet ve Birim Fiyat alanları için ayrı bir "ham metin" state'i tutulur.
   // Neden: value={String(item.adet)} kullanılırsa, kullanıcı "667," yazdığı anda
   // Number("667,") -> "667." -> 667 olarak parse edilip state'e yazılır, sonraki
@@ -1545,6 +1567,58 @@ function ItemCard({
           <FieldGroup label={t('teklifPage.s102')} flex={1.4} maxWidth={200}><MotionInput style={itemStyles.input} keyboardType="decimal-pad" value={priceText} onChangeText={onPriceTextChange} testID={`item-price-${idx}`} /></FieldGroup>
         </View>
       </View>
+
+      {/* Teknik çizim -- her kalem türünde kullanılabilir. Albert Genau
+          kalemlerinde çizim hesabın yan ürünü olarak zaten gelir; elle girilen
+          kalemlerde bayi buradan kendisi oluşturur. İkisi de aynı geometri
+          modelini taşır, PDF'te aynı sayfayı üretir. */}
+      <View style={itemStyles.cizimBlok}>
+        <View style={itemStyles.blockHeadRow}>
+          <Ionicons name="shapes-outline" size={12} color={theme.colors.primary} />
+          <Text style={itemStyles.blockHead}>TEKNİK ÇİZİM</Text>
+          <View style={{ flex: 1 }} />
+          {item.agCizim ? (
+            <TouchableOpacity
+              onPress={() => onChange({ agCizim: null })}
+              testID={`item-${idx}-cizim-kaldir`}
+              accessibilityRole="button"
+              accessibilityLabel="Çizimi kaldır"
+            >
+              <Text style={itemStyles.cizimKaldir}>Kaldır</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {item.agCizim ? (
+          <>
+            <Cizim model={item.agCizim} palet={cizimPaleti} caption="teklife eklenecek" />
+            <TouchableOpacity
+              style={itemStyles.cizimBtn}
+              onPress={() => setCizimAcik(true)}
+              testID={`item-${idx}-cizim-duzenle`}
+            >
+              <Ionicons name="create-outline" size={14} color={theme.colors.primary} />
+              <Text style={itemStyles.cizimBtnYazi}>Çizimi düzenle</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={itemStyles.cizimBtn}
+            onPress={() => setCizimAcik(true)}
+            testID={`item-${idx}-cizim-ekle`}
+          >
+            <Ionicons name="add" size={15} color={theme.colors.primary} />
+            <Text style={itemStyles.cizimBtnYazi}>Teknik çizim ekle</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <CizimEkle
+        acik={cizimAcik}
+        deger={item.agCizim}
+        onKaydet={(model) => { onChange({ agCizim: model }); setCizimAcik(false); }}
+        onKapat={() => setCizimAcik(false)}
+      />
 
       {/* Per-item PDF cell preview */}
       {(item.mode === 'technical' || item.mode === 'manual') && (
@@ -1790,6 +1864,28 @@ const s = themedStyles(() => StyleSheet.create({
 }));
 
 const itemStyles = themedStyles(() => StyleSheet.create({
+  cizimBlok: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.line,
+    backgroundColor: theme.colors.surface,
+    gap: 8,
+  },
+  cizimBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: theme.colors.primaryBorder,
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  cizimBtnYazi: { color: theme.colors.primary, fontSize: 12.5, fontWeight: '700' },
+  cizimKaldir: { color: theme.colors.redText, fontSize: 11, fontWeight: '700' },
   card: { backgroundColor: theme.colors.surface, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: theme.colors.line, borderLeftWidth: 4, marginBottom: 10, ...theme.shadow.sm },
   hdr: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   moveCol: { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginRight: 2 },

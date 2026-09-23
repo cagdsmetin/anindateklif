@@ -27,6 +27,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
 import albert_genau_calc as ag_calc
+import ag_geometry as ag_geom
 
 
 ROOT_DIR = Path(__file__).parent
@@ -1585,6 +1586,11 @@ class QuoteItem(BaseModel):
     agMaliyet: Optional[float] = None
     agMontajBedeli: Optional[float] = None
     agImalatBedeli: Optional[float] = None
+    # Kalemin cizim modeli (bkz. ag_geometry.py). Teklif PDF'indeki teknik
+    # cizim sayfasi bundan uretilir. Serbest sekilli tutulur: modelin alanlari
+    # (cephe/modul/giyotin) aile bazinda degisiyor ve burada dogrulanmasi
+    # gerekmiyor -- uretildigi yer zaten ag_geometry.
+    agCizim: Optional[Dict[str, Any]] = None
 
 
 class Quote(BaseModel):
@@ -2902,6 +2908,54 @@ async def test_efatura_connection(company_id: str, user=Depends(get_current_user
 # Albert Genau yeni bir fiyat listesi yayinladiginda tek yapilmasi gereken
 # seyin ayni Excel dosyasini tekrar yuklemek olmasini saglar.
 
+class AlbertGenauCepheInput(BaseModel):
+    """Soldan saga girilen tek bir cephe. Bir balkon bu cephelerin
+    zinciridir -- ustanin sahada olcu alma sirasiyla ayni."""
+    genislikMm: float
+    yukseklikMm: float
+    kanatSayisi: Optional[int] = None   # bos ise olcuden onerilir
+    adet: int = 1
+    sagAci: Optional[Any] = None        # 'duvar' | 90 | 135 | 225 | 270 | serbest derece
+    toplanmaYonu: Optional[str] = None  # bkz. ag_geom.TOPLANMA_YONLERI
+    solKoseGenisKapak: bool = False
+    sagKoseGenisKapak: bool = False
+
+
+class AlbertGenauGeometryRequest(BaseModel):
+    """Cizim modeli istegi -- FIYAT HESAPLAMAZ.
+
+    Kullanici olcu yazarken (debounce ile) cagrilir; donen model hem
+    ekrandaki canli cizimi hem teklife eklenen teknik cizimi besler.
+    Pahali olan fiyat hesabi (calculate) bundan tamamen ayridir."""
+    companyId: Optional[str] = None
+    kind: str                                          # 'cephe' | 'modul' | 'giyotin'
+    # kind='cephe'
+    cepheler: Optional[List[AlbertGenauCepheInput]] = None
+    maxKanatMm: Optional[float] = None
+    # kind='cephe' + bcTip: donen modele BC formu icin oneri (kanat
+    # miktarlari + kose sayisi) eklenir; bkz. ag_geometry.bc_oneri.
+    bcTip: Optional[str] = None
+    # kind='modul' (bioklimatik pergola) ve kind='giyotin' (VERTIFLEX)
+    tip: Optional[str] = None
+    genislikMm: Optional[float] = None
+    derinlikMm: Optional[float] = None
+    yukseklikMm: Optional[float] = None
+    panelSayisi: Optional[int] = None
+    # kind='modul' icin elle verilen bolunme. Albert Genau disindaki (elle
+    # girilen) kalemlerde modul/lamel sayisi AG fiyat listesindeki derinlik
+    # tablosundan turetilemez -- orada bu tablo gecerli degil. Verilirse
+    # PriceBook'a hic gidilmez.
+    modulSayisi: Optional[int] = None
+    lamelSayisiToplam: Optional[int] = None
+
+    @field_validator("kind")
+    @classmethod
+    def _kind_valid(cls, v: str) -> str:
+        if v not in ("cephe", "modul", "giyotin"):
+            raise ValueError(f"Gecersiz cizim tipi: {v}")
+        return v
+
+
 class AlbertGenauCalculateRequest(BaseModel):
     # Opsiyonel: gonderilirse hesaplama o firmanin kendi yukledigi Albert
     # Genau fiyat listesini kullanir (bkz. _get_ag_price_data). Gonderilmezse
@@ -3923,7 +3977,13 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     from io import BytesIO
 
     modul_sayisi = max(1, int(girdi.get("modulSayisi") or 1))
-    panel_sayisi = min(30, max(1, int(girdi.get("panelSayisiModul") or 1)))
+    # `panelSayisiModul` adina ragmen TUM modullerin TOPLAM lamel sayisidir
+    # (module_panel_count'taki G3 formulu C3 ile carpilir). Her modulun icine
+    # toplami cizersek cok modullu pergolada lamel sayisi katlanir -- ekrandaki
+    # canli cizim ile ayni bolunmeyi gostermesi icin modul basina dusen sayi
+    # kullanilir (bkz. ag_geometry.modul_semasi).
+    lamel_toplam = max(1, int(girdi.get("panelSayisiModul") or 1))
+    panel_sayisi = min(30, max(1, round(lamel_toplam / modul_sayisi)))
     genislik_mm = girdi.get("genislikMm") or 0
     derinlik_mm = girdi.get("yapilabilirDerinlikMm") or girdi.get("derinlikMmGirilen") or 0
 
@@ -3968,7 +4028,10 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
     tb = d.textbbox((0, 0), title_text, font=font_title)
     d.text(((canvas_w - (tb[2] - tb[0])) / 2, (TITLE_H - (tb[3] - tb[1])) / 2 - tb[1]), title_text, font=font_title, fill="#FFFFFF")
 
-    info_text = f"Genişlik: {genislik_mm:.0f} mm    Derinlik: {derinlik_mm:.0f} mm    Modül Sayısı: {modul_sayisi}"
+    info_text = (
+        f"Genişlik: {genislik_mm:.0f} mm    Derinlik: {derinlik_mm:.0f} mm    "
+        f"Modül Sayısı: {modul_sayisi}    Lamel: {panel_sayisi}/modül (toplam {lamel_toplam})"
+    )
     ib = d.textbbox((0, 0), info_text, font=font_info)
     d.text(((canvas_w - (ib[2] - ib[0])) / 2, TITLE_H + 8), info_text, font=font_info, fill="#374151")
 
@@ -4018,6 +4081,88 @@ async def albert_genau_export_drawing(payload: AlbertGenauCalculateRequest, user
         media_type="image/png",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@api_router.post("/albert-genau/geometry")
+async def albert_genau_geometry(payload: AlbertGenauGeometryRequest, user=Depends(get_current_user)):
+    """Olculerden cizim modelini uretir -- fiyat hesaplamadan.
+
+    Cizim geometrisinin TEK kaynagi burasi: ekrandaki canli cizim de,
+    teklife eklenen teknik cizim de ayni modeli kullanir, boylece ikisi
+    birbirinden kaymaz. Modul (pergola) bolunmesi hala PriceBook'tan
+    gelir -- Excel'den dogrulanmis matematigi cogaltmamak icin.
+    """
+    if payload.companyId:
+        company_doc = await _own_company(user, payload.companyId)
+        _require_albert_genau_enabled(company_doc)
+
+    try:
+        if payload.kind == "cephe":
+            if not payload.cepheler:
+                raise HTTPException(422, "En az bir cephe gerekli")
+            model = ag_geom.cephe_zinciri(
+                [c.dict() for c in payload.cepheler],
+                max_kanat_mm=payload.maxKanatMm or ag_geom.VARSAYILAN_MAX_KANAT_MM,
+                # Profil dusum degerleri Albert Genau'dan gelene kadar yok:
+                # cam olculeri bilerek uretilmez (bkz. ag_geometry basligi).
+                profil_dusumu=None,
+            )
+            # BC tipi biliniyorsa form onerisini de uret: bugun bayinin elle
+            # yazdigi kanat miktarlari ve kose sayisi cizimden gelsin.
+            bc_meta = ag_calc.BC_TYPE_META.get(payload.bcTip) if payload.bcTip else None
+            if bc_meta:
+                model["bcOneri"] = ag_geom.bc_oneri(
+                    model, bc_meta.get("kanatInputs"), bc_meta.get("flagInputs")
+                )
+            # Cepheler farkli yukseklikteyse calculate'e tek bir yukseklik
+            # gitmek zorunda -- en buyugu alinir ve kullaniciya soylenir.
+            yukseklikler = {c["yukseklikMm"] for c in model["cepheler"]}
+            if len(yukseklikler) > 1:
+                model["uyarilar"].append(
+                    "Cepheler farkli yukseklikte; fiyat hesabinda en buyuk "
+                    f"yukseklik ({max(yukseklikler):.0f}mm) kullanilacak."
+                )
+            return model
+
+        if payload.kind == "modul":
+            if payload.genislikMm is None or payload.derinlikMm is None:
+                raise HTTPException(422, "Genislik ve derinlik gerekli")
+            if payload.modulSayisi:
+                # Elle girilen kalem: bolunme kullanicidan gelir, derinlik
+                # standart olcuye oturtulmaz (AG derinlik tablosu gecerli degil).
+                model = ag_geom.modul_semasi(
+                    genislik_mm=payload.genislikMm,
+                    derinlik_mm=payload.derinlikMm,
+                    modul_sayisi=payload.modulSayisi,
+                    lamel_sayisi_toplam=payload.lamelSayisiToplam or payload.modulSayisi,
+                )
+                return model
+            price_data = await _get_ag_price_data(payload.companyId)
+            pb = ag_calc.PriceBook(price_data)
+            modul_sayisi, lamel_sayisi, derinlik_snap = pb.module_panel_count(
+                payload.genislikMm, payload.derinlikMm
+            )
+            model = ag_geom.modul_semasi(
+                genislik_mm=payload.genislikMm,
+                derinlik_mm=derinlik_snap,
+                modul_sayisi=modul_sayisi,
+                lamel_sayisi_toplam=lamel_sayisi,
+            )
+            model["derinlikGirilenMm"] = payload.derinlikMm
+            model["derinlikSnapMm"] = derinlik_snap
+            return model
+
+        # kind == 'giyotin'
+        if payload.genislikMm is None or payload.yukseklikMm is None:
+            raise HTTPException(422, "Genislik ve yukseklik gerekli")
+        return ag_geom.giyotin_semasi(
+            tip=payload.tip or "",
+            genislik_mm=payload.genislikMm,
+            yukseklik_mm=payload.yukseklikMm,
+            panel_sayisi=payload.panelSayisi or 3,
+        )
+    except ag_geom.GeometriHatasi as e:
+        raise HTTPException(422, str(e))
 
 
 @api_router.get("/albert-genau/items", response_model=List[AlbertGenauItem])

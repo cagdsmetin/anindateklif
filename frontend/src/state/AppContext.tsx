@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Platform } from 'react-native';
 import { usePathname } from 'expo-router';
 import { api, CampaignT, CatalogItemT, CompanyT, CustomerT, KasaEntryT, ManualReminderT, QuoteT, QuoteEditRequestT, QuoteEkstraMaliyetT, ServiceT, TahsilatEntryT } from '@/src/lib/api';
+import type { CizimModeli } from '@/src/components/albert/Cizim';
 import type { AttachmentT } from '@/src/lib/pdf-merge';
 import { storage } from '@/src/utils/storage';
 import { useAuth } from './AuthContext';
@@ -19,6 +20,9 @@ export type PendingAlbertGenauItemT = {
   agMaliyet?: number;
   agMontajBedeli?: number;
   agImalatBedeli?: number;
+  /** Kalemin çizim modeli -- teklif PDF'indeki teknik çizim sayfası bundan
+   *  üretilir (bkz. src/lib/cizim-html.ts). Çizimi olmayan ailelerde yok. */
+  agCizim?: CizimModeli | null;
 };
 
 type Ctx = {

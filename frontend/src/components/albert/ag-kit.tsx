@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleProp,
   StyleSheet,
   Text,
@@ -339,6 +341,228 @@ export function SystemRow({
   );
 }
 
+// --- Tek satırlık seçici (aile / alt tip) -------------------------------
+// Ürün ailesi 6, BC alt tipi 39 satırdı; hepsi alt alta "balon" olarak
+// dizilince föy ekranı metrelerce aşağı uzuyordu. Artık seçim ekranda TEK
+// satır kaplıyor: satıra basınca tüm liste alt sayfada açılıyor, seçilen
+// kapanınca satıra yazılıyor. Uzun listeler (BC) grup başlıklarıyla gelir ve
+// arama kutusu otomatik açılır; açılışta seçili kayıt görünür konuma kaydırılır.
+export type PickItem = {
+  id: string;
+  label: string;
+  /** İsmin altındaki açıklama -- ör. "Bioklimatik pergola — ölçü bazlı hesap". */
+  caption?: string;
+  /** Sağdaki küçük rozet -- ör. "ÖLÇÜ" / "MODÜL" / "PARÇA". */
+  code?: string;
+  /** Alt sayfada bu başlığın altında toplanır -- ör. "TIARA Ailesi". */
+  group?: string;
+};
+
+// Türkçe arama: "ic" yazınca "İÇ", "tiara slim" yazınca "TIARA SLIM 10"
+// eşleşsin diye harfler ASCII karşılıklarına indirgenir.
+function fold(t: string): string {
+  return t
+    .replace(/[İIı]/g, 'i')
+    .toLowerCase()
+    .replace(/ş/g, 's')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+}
+
+export function PickField({
+  label,
+  items,
+  value,
+  onChange,
+  placeholder = 'Seçin',
+  sheetTitle,
+  sheetNote,
+  searchable,
+  testID,
+  style,
+}: {
+  /** Satırın üstündeki küçük etiket. Föy panelinin başlığı zaten aynı şeyi
+   *  söylüyorsa verilmez. */
+  label?: string;
+  items: PickItem[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+  sheetTitle?: string;
+  sheetNote?: string;
+  /** Verilmezse 10'dan fazla seçenekte kendiliğinden açılır. */
+  searchable?: boolean;
+  testID?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const listRef = useRef<ScrollView>(null);
+  const selY = useRef(0);
+
+  const selected = useMemo(() => items.find((it) => it.id === value), [items, value]);
+  const withSearch = searchable ?? items.length > 10;
+
+  const filtered = useMemo(() => {
+    const needle = fold(q.trim());
+    if (!needle) return items;
+    return items.filter(
+      (it) => fold(it.label).includes(needle) || fold(it.caption || '').includes(needle) || fold(it.group || '').includes(needle),
+    );
+  }, [items, q]);
+
+  // Grup başlıkları ile seçenekler tek düz listede -- seçili satırın
+  // ScrollView içindeki y'si böylece doğrudan okunabiliyor.
+  const rows = useMemo(() => {
+    const out: ({ kind: 'group'; title: string } | { kind: 'item'; item: PickItem })[] = [];
+    let last: string | undefined;
+    for (const it of filtered) {
+      if (it.group && it.group !== last) {
+        out.push({ kind: 'group', title: it.group });
+        last = it.group;
+      }
+      out.push({ kind: 'item', item: it });
+    }
+    return out;
+  }, [filtered]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQ('');
+    selY.current = 0;
+    // Liste ölçülene kadar bir kare bekle, sonra seçili kaydı üst boşluğa al.
+    const t = setTimeout(() => {
+      if (selY.current > 120) listRef.current?.scrollTo({ y: Math.max(0, selY.current - 96), animated: false });
+    }, 90);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  // Haptik geri bildirimi satırın kendisi (SystemRow) veriyor.
+  const pick = (id: string) => {
+    onChange(id);
+    setOpen(false);
+  };
+
+  return (
+    <View style={style}>
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={`${label || sheetTitle || 'Seçim'}: ${selected?.label || placeholder}`}
+        onPress={() => {
+          if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+          setOpen(true);
+        }}
+        style={({ pressed }) => [k.pickRow, pressed && k.pickRowPressed]}
+      >
+        <View style={k.pickBar} />
+        <View style={k.pickText}>
+          {label ? <Text style={k.pickLabel}>{label}</Text> : null}
+          <Text style={[k.pickValue, !selected && k.pickValueEmpty]} numberOfLines={1}>
+            {selected?.label || placeholder}
+          </Text>
+          {selected?.caption ? (
+            <Text style={k.pickCaption} numberOfLines={1}>
+              {selected.caption}
+            </Text>
+          ) : null}
+        </View>
+        {selected?.code ? <Text style={k.pickCode}>{selected.code}</Text> : null}
+        <View style={k.pickChevron}>
+          <Ionicons name="chevron-down" size={15} color={AG.redLift} />
+        </View>
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <View style={k.pickRoot}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setOpen(false)} accessibilityLabel="Kapat" />
+          <View style={k.pickSheet}>
+            <View style={k.pickGrabWrap}>
+              <View style={k.pickGrab} />
+            </View>
+            <View style={k.pickHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={k.pickHeadTitle} numberOfLines={1}>
+                  {sheetTitle || label || 'Seçim'}
+                </Text>
+                {sheetNote ? <Text style={k.pickHeadNote}>{sheetNote}</Text> : null}
+              </View>
+              <Pressable
+                onPress={() => setOpen(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={k.pickClose}
+                testID={testID ? `${testID}-close` : undefined}
+              >
+                <Ionicons name="close" size={17} color={AG.graphite} />
+              </Pressable>
+            </View>
+
+            {withSearch ? (
+              <View style={k.pickSearch}>
+                <Ionicons name="search" size={15} color={AG.graphiteDim} />
+                <TextInput
+                  style={k.pickSearchInput}
+                  value={q}
+                  onChangeText={setQ}
+                  placeholder="Ara"
+                  placeholderTextColor={AG.graphiteDim}
+                  autoCorrect={false}
+                  testID={testID ? `${testID}-search` : undefined}
+                />
+                {q ? (
+                  <Pressable onPress={() => setQ('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Ionicons name="close-circle" size={15} color={AG.graphiteDim} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            <ScrollView
+              ref={listRef}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={k.pickList}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {rows.length === 0 ? (
+                <Text style={k.pickEmpty}>Eşleşen seçenek yok</Text>
+              ) : (
+                rows.map((r, i) =>
+                  r.kind === 'group' ? (
+                    <Text key={`g-${r.title}-${i}`} style={k.pickGroup}>
+                      {r.title}
+                    </Text>
+                  ) : (
+                    // Listenin satırı föydeki sistem satırının ta kendisi --
+                    // seçim penceresi ayrı bir görsel dil getirmiyor.
+                    <View
+                      key={r.item.id}
+                      onLayout={(e) => {
+                        if (r.item.id === value) selY.current = e.nativeEvent.layout.y;
+                      }}
+                    >
+                      <SystemRow
+                        label={r.item.label}
+                        caption={r.item.caption}
+                        code={r.item.code}
+                        selected={r.item.id === value}
+                        onPress={() => pick(r.item.id)}
+                        testID={testID ? `${testID}-${r.item.id}` : undefined}
+                      />
+                    </View>
+                  ),
+                )
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 // Tek satırlık, kompakt seçim (yüzey rengi, ray tipi gibi çok seçenekli
 // gruplar için). SystemRow'un yatay kardeşi.
 export function SpecPill({
@@ -492,6 +716,105 @@ const k = themedStyles(() =>
     sysCaption: { color: AG.graphiteDim, fontSize: 10.5, lineHeight: 14, marginTop: 2 },
     sysCode: { color: AG.graphiteDim, fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
     sysCodeActive: { color: AG.redLift },
+
+    // --- tek satırlık seçici ---
+    pickRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      backgroundColor: AG.well,
+      borderWidth: 1,
+      borderColor: 'rgba(182,18,49,0.32)',
+      borderRadius: AGS.radiusSm,
+      paddingRight: 11,
+      paddingLeft: 0,
+      paddingVertical: 10,
+      overflow: 'hidden',
+      minHeight: 54,
+    },
+    pickRowPressed: { backgroundColor: 'rgba(182,18,49,0.10)', borderColor: 'rgba(182,18,49,0.55)' },
+    pickBar: { width: 4, alignSelf: 'stretch', backgroundColor: AG.red, borderRadius: 2 },
+    pickText: { flex: 1, paddingLeft: 3 },
+    pickLabel: { color: AG.graphiteDim, fontSize: 9.5, fontWeight: '900', letterSpacing: 1.1, marginBottom: 2 },
+    pickValue: { color: AG.chalk, fontSize: 13.5, fontWeight: '800', lineHeight: 18 },
+    pickValueEmpty: { color: AG.graphite },
+    pickCaption: { color: AG.graphiteDim, fontSize: 10.5, lineHeight: 14, marginTop: 1 },
+    pickCode: { color: AG.redLift, fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
+    pickChevron: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: 'rgba(182,18,49,0.16)',
+      borderWidth: 1,
+      borderColor: 'rgba(182,18,49,0.36)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    // --- seçici alt sayfası ---
+    pickRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(5,5,8,0.62)' },
+    pickSheet: {
+      width: '100%',
+      maxWidth: 520,
+      maxHeight: '84%',
+      alignSelf: 'center',
+      backgroundColor: AG.paper,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: 'rgba(182,18,49,0.34)',
+      paddingBottom: Platform.OS === 'ios' ? 26 : 14,
+      overflow: 'hidden',
+    },
+    pickGrabWrap: { alignItems: 'center', paddingTop: 9, paddingBottom: 2 },
+    pickGrab: { width: 38, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)' },
+    pickHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
+    pickHeadTitle: { color: AG.chalk, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
+    pickHeadNote: { color: AG.graphite, fontSize: 11.5, lineHeight: 16, marginTop: 3 },
+    pickClose: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: AG.well,
+      borderWidth: 1,
+      borderColor: AG.line,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pickSearch: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 14,
+      marginBottom: 8,
+      paddingHorizontal: 11,
+      height: 40,
+      backgroundColor: AG.well,
+      borderWidth: 1,
+      borderColor: AG.line,
+      borderRadius: AGS.radiusSm,
+    },
+    pickSearchInput: {
+      flex: 1,
+      minWidth: 0,
+      color: AG.chalk,
+      fontSize: 13,
+      fontWeight: '700',
+      paddingVertical: 0,
+      ...(Platform.OS === 'web' ? ({ outlineWidth: 0 } as any) : {}),
+    },
+    pickList: { paddingHorizontal: 14, paddingBottom: 8 },
+    pickGroup: {
+      color: AG.graphiteDim,
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 1.1,
+      marginTop: 12,
+      marginBottom: 6,
+    },
+    pickEmpty: { color: AG.graphite, fontSize: 12.5, textAlign: 'center', paddingVertical: 26 },
 
     // --- kompakt seçim ---
     pill: {

@@ -23,7 +23,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { QuoteItemT, QuoteT, QuoteEkT, SystemTypeDefT } from '@/src/lib/api';
+import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
+import { convertFromEur, extractZipSize, isZipItem, loadZipKar, saveZipKar, zipLookup } from '@/src/lib/zip-perde';
+import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
 import { loadPriceMemory, savePriceMemory, normalizeItemName } from '@/src/lib/itemPricePrefs';
@@ -148,6 +150,24 @@ export default function EditorScreen() {
     if (!activeCompany?.id) { priceMemoryRef.current = {}; return; }
     loadPriceMemory(activeCompany.id).then((m) => { priceMemoryRef.current = m; });
   }, [activeCompany?.id]);
+
+  // Zip Perde bayisi ise: elle girilen Zip Perde kalemlerinde (teknik modda
+  // sistem adı, manuel/genel modda ürün adı "zip" içeriyorsa) EN/BOY yazılır
+  // yazılmaz fiyat bayi tablosundan gelir (bkz. ItemCard zipInfo).
+  const zipEnabled = !!activeCompany?.zipPerdeEnabled;
+  const [zipTable, setZipTable] = useState<ZipPerdeTableT | null>(null);
+  const [zipRates, setZipRates] = useState<RatesT | null>(null);
+  const [zipKar, setZipKar] = useState(0);
+  useEffect(() => {
+    if (!zipEnabled || !activeCompany?.id) { setZipTable(null); return; }
+    api.zipPerdeTable(activeCompany.id).then(setZipTable).catch(() => {});
+    api.rates().then(setZipRates).catch(() => {});
+    loadZipKar(activeCompany.id).then(setZipKar);
+  }, [zipEnabled, activeCompany?.id]);
+  const onZipKarChange = (pct: number) => {
+    setZipKar(pct);
+    if (activeCompany?.id) saveZipKar(activeCompany.id, pct);
+  };
   // Tracks whether the person has hand-edited the Teklif No field — once
   // they have, the auto-numbering effect below stops overwriting it.
   const teklifNoManualRef = useRef(false);
@@ -222,32 +242,37 @@ export default function EditorScreen() {
   // açıp geri tuşunu bozmuyor (bkz. o dosyadaki onAddToQuote yorum notu).
   useEffect(() => {
     if (pendingAlbertGenauItems.length === 0) return;
-    setItems((prev) => {
-      let next = prev;
-      let lastId = '';
-      for (const data of pendingAlbertGenauItems) {
-        const it = {
-          ...makeItem('general'),
-          urunAdi: data.urunAdi || 'Albert Genau',
-          birim: 'Adet',
-          birimFiyat: Number(data.birimFiyat) || 0,
-          aciklama: data.aciklama || '',
-          // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
-          // otomatik doldurmak için (bkz. history.tsx), kalemle birlikte saklanır.
-          agMaliyet: data.agMaliyet ?? null,
-          agMontajBedeli: data.agMontajBedeli ?? null,
-          agImalatBedeli: data.agImalatBedeli ?? null,
-          // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
-          agCizim: data.agCizim ?? null,
-        };
-        next = [...next, it];
-        lastId = it.id;
-      }
-      if (lastId) setExpandedItemId(lastId);
-      return next;
+    // Zip Perde kalemleri fiyatı her para biriminde taşır; kur alınamadığı
+    // için teklifin biriminde karşılığı yoksa fiyat boş bırakılır (EUR
+    // rakamını TL teklife yazmak sessizce yanlış fiyat verirdi).
+    let kurEksik = false;
+    const names = pendingAlbertGenauItems.map((d) => d.urunAdi);
+    const cur = paraBirimi === 'TL' ? 'TRY' : paraBirimi;
+    const added = pendingAlbertGenauItems.map((data) => {
+      const fiyat = data.fiyatlar ? data.fiyatlar[cur] : Number(data.birimFiyat) || 0;
+      if (data.fiyatlar && fiyat == null) kurEksik = true;
+      return {
+        ...makeItem('general'),
+        urunAdi: data.urunAdi || 'Albert Genau',
+        birim: 'Adet',
+        adet: data.adet || 1,
+        birimFiyat: fiyat ?? 0,
+        aciklama: data.aciklama || '',
+        // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
+        // otomatik doldurmak için (bkz. history.tsx), kalemle birlikte saklanır.
+        agMaliyet: (data.maliyetler ? data.maliyetler[cur] : data.agMaliyet) ?? null,
+        agMontajBedeli: data.agMontajBedeli ?? null,
+        agImalatBedeli: data.agImalatBedeli ?? null,
+        // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
+        agCizim: data.agCizim ?? null,
+      };
     });
+    setItems((prev) => [...prev, ...added]);
+    setExpandedItemId(added[added.length - 1].id);
     clearPendingAlbertGenauItems();
-    showToast('Albert Genau kalemi eklendi');
+    showToast(kurEksik
+      ? 'Kur alınamadı, birim fiyatı elle girin'
+      : `${names.every((n) => n === 'Zip Perde') ? 'Zip Perde' : 'Albert Genau'} kalemi eklendi`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAlbertGenauItems]);
 
@@ -462,7 +487,9 @@ export default function EditorScreen() {
       if (it.id !== id) return it;
       const merged: QuoteItemT = { ...it, ...patch };
       // Sadece Manuel/Genel modda: ürün adına göre fiyat hatırlama.
-      if (merged.mode === 'manual' || merged.mode === 'general') {
+      // Zip Perde kalemlerinin fiyatı tablodan gelir; hatırlanan eski fiyat
+      // onu ezmesin.
+      if ((merged.mode === 'manual' || merged.mode === 'general') && !(zipTable && isZipItem(merged))) {
         // İsim değişti ve fiyat henüz girilmemişse (0/boş), daha önce bu
         // isimle kaydedilmiş fiyat varsa otomatik doldur -- kullanıcı
         // isterse üzerine yazıp değiştirebilir ya da hiç dokunmayıp kendi
@@ -952,6 +979,7 @@ export default function EditorScreen() {
               canMoveDown={idx < items.length - 1}
               onMoveUp={() => moveItem(it.id, 'up')}
               onMoveDown={() => moveItem(it.id, 'down')}
+              zip={zipTable ? { table: zipTable, rates: zipRates, kar: zipKar, onKarChange: onZipKarChange } : null}
             />
             </Reveal>
           ))}
@@ -1168,6 +1196,16 @@ export default function EditorScreen() {
           onPress={() => { setShowModeSheet(false); router.push('/albert-genau'); }}
           testID="add-albertgenau"
         />
+        {zipEnabled && (
+          <SheetRow
+            icon="grid"
+            title="Zip Perde Hesapla"
+            desc="EN × BOY girin, bayi fiyatı tablodan gelsin"
+            color={ZIP_COLOR}
+            onPress={() => { setShowModeSheet(false); router.push('/zip-perde?from=teklif' as any); }}
+            testID="add-zipperde"
+          />
+        )}
       </SheetModal>
 
       {/* Katalog */}
@@ -1285,7 +1323,7 @@ export default function EditorScreen() {
 // ============ ITEM CARD ============
 function ItemCard({
   item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onDuplicate, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
-  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown, zip,
 }: {
   item: QuoteItemT;
   idx: number;
@@ -1304,6 +1342,7 @@ function ItemCard({
   canMoveDown?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  zip?: { table: ZipPerdeTableT; rates: RatesT | null; kar: number; onKarChange: (pct: number) => void } | null;
 }) {
   const { t, lang } = useLanguage();
   const [cizimAcik, setCizimAcik] = useState(false);
@@ -1334,6 +1373,43 @@ function ItemCard({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [adetText, setAdetText] = useState(String(item.adet ?? ''));
   const [priceText, setPriceText] = useState(String(item.birimFiyat ?? ''));
+
+  // Zip Perde: ölçüden tablo fiyatı. Fiyat alanı boşsa ya da en son bizim
+  // yazdığımız değerdeyse ölçü değiştikçe otomatik güncellenir; bayi fiyatı
+  // elle değiştirdiyse dokunulmaz ("Tablo fiyatını uygula" ile geri döner).
+  const zipInfo = useMemo(() => {
+    if (!zip || !isZipItem(item)) return null;
+    const size = extractZipSize(item);
+    if (!size) return { ok: false as const, reason: 'EN ve BOY girin, fiyat Zip Perde tablosundan otomatik gelsin' };
+    const hit = zipLookup(zip.table, size.en, size.boy);
+    if (!hit.ok) return { ok: false as const, reason: hit.reason };
+    const satisEur = Math.round(hit.price * (1 + zip.kar / 100) * 100) / 100;
+    return {
+      ok: true as const,
+      hit,
+      satisEur,
+      fiyat: convertFromEur(satisEur, currency, zip.rates),
+      maliyet: convertFromEur(hit.price, currency, zip.rates),
+    };
+  }, [zip, item, currency]);
+  const zipAutoRef = useRef<number | null>(null);
+  const applyZip = () => {
+    if (!zipInfo?.ok || zipInfo.fiyat == null) return;
+    zipAutoRef.current = zipInfo.fiyat;
+    onChange({ birimFiyat: zipInfo.fiyat, agMaliyet: zipInfo.maliyet });
+  };
+  const zipFiyat = zipInfo?.ok ? zipInfo.fiyat : null;
+  useEffect(() => {
+    if (zipFiyat == null) return;
+    const cur = item.birimFiyat || 0;
+    if (cur === 0 || cur === zipAutoRef.current) {
+      if (cur !== zipFiyat) applyZip();
+      else zipAutoRef.current = zipFiyat;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zipFiyat]);
+  const [zipKarText, setZipKarText] = useState(String(zip?.kar ?? 0));
+  useEffect(() => { if (zip && Number(zipKarText.replace(',', '.')) !== zip.kar) setZipKarText(String(zip.kar)); }, [zip?.kar]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const parsed = Number(adetText.replace(',', '.')) || 0;
     if (parsed !== (item.adet || 0)) setAdetText(String(item.adet ?? ''));
@@ -1548,6 +1624,43 @@ function ItemCard({
             <MotionInput style={[itemStyles.input, { minHeight: 40, textAlignVertical: 'top' }]} multiline value={item.aciklama} onChangeText={(v) => onChange({ aciklama: v })} />
           </FieldGroup>
         </>
+      )}
+
+      {zipInfo && (
+        <View style={[itemStyles.priceBlock, { borderColor: ZIP_COLOR + '55' }]} testID={`item-${idx}-zip`}>
+          <View style={itemStyles.blockHeadRow}>
+            <Ionicons name="grid" size={12} color={ZIP_COLOR} />
+            <Text style={[itemStyles.blockHead, { color: ZIP_COLOR }]}>ZIP PERDE TABLOSU</Text>
+            <View style={{ flex: 1 }} />
+            <Text style={itemStyles.zipKarLabel}>Kâr %</Text>
+            <MotionInput
+              style={itemStyles.zipKarInput}
+              keyboardType="decimal-pad"
+              value={zipKarText}
+              onChangeText={(v) => { setZipKarText(v); zip?.onKarChange(Number(v.replace(',', '.')) || 0); }}
+              testID={`item-${idx}-zip-kar`}
+            />
+          </View>
+          {!zipInfo.ok ? (
+            <Text style={itemStyles.zipMuted}>{zipInfo.reason}</Text>
+          ) : (
+            <>
+              <Text style={itemStyles.zipLine}>
+                EN {zipInfo.hit.en} × BOY {zipInfo.hit.boy} cm basamağı · Bayi € {zipInfo.hit.price} → Satış € {zipInfo.satisEur}
+              </Text>
+              {zipInfo.fiyat == null ? (
+                <Text style={itemStyles.zipMuted}>Kur alınamadı; {currency} karşılığını elle girin.</Text>
+              ) : zipInfo.fiyat !== item.birimFiyat ? (
+                <TouchableOpacity style={itemStyles.zipApply} onPress={applyZip} testID={`item-${idx}-zip-apply`}>
+                  <Ionicons name="refresh" size={13} color={ZIP_COLOR} />
+                  <Text style={itemStyles.zipApplyText}>Tablo fiyatını uygula ({fmt(zipInfo.fiyat, currency)})</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={[itemStyles.zipMuted, { color: ZIP_COLOR }]}>✓ Birim fiyat tablodan alındı</Text>
+              )}
+            </>
+          )}
+        </View>
       )}
 
       {/* Quantity / Unit / Price -- Birim Fiyat'a maxWidth: para birimi
@@ -1922,6 +2035,12 @@ const itemStyles = themedStyles(() => StyleSheet.create({
   blockHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   blockHead: { fontSize: 10, fontWeight: '900', color: theme.colors.textMuted, letterSpacing: 1 },
   blockTotal: { fontSize: 13.5, fontWeight: '900', color: theme.colors.primary },
+  zipKarLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted },
+  zipKarInput: { width: 54, paddingVertical: 3, paddingHorizontal: 6, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, fontSize: 12.5, fontWeight: '700', color: theme.colors.text, backgroundColor: theme.colors.surface, textAlign: 'center' },
+  zipLine: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text, lineHeight: 18 },
+  zipMuted: { fontSize: 12, color: theme.colors.textMuted, lineHeight: 17 },
+  zipApply: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: ZIP_COLOR + '66', backgroundColor: ZIP_COLOR + '12' },
+  zipApplyText: { fontSize: 12, fontWeight: '800', color: ZIP_COLOR },
   previewLabel: { fontSize: 9, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.5, marginBottom: 4 },
   previewText: { fontSize: 12, color: theme.colors.text, lineHeight: 17 },
   // Teknik alanlar (Cephe, Derinlik, Yükseklik, RAL vb.) genelde kısa

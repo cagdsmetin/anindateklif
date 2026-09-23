@@ -27,6 +27,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
 import albert_genau_calc as ag_calc
+import zip_perde
 import ag_geometry as ag_geom
 
 
@@ -1298,6 +1299,10 @@ class Company(BaseModel):
     # tarafindan ayrica acilmali). Bu yuzden bilerek CompanyCreate'de de var --
     # albertGenauEnabled'in aksine firma sahibi bunu ozgurce degistirebilir.
     albertGenauClaimed: bool = False
+    # Zip Perde bayiligi -- albertGenauEnabled ile ayni kural: sadece platform
+    # admini acar (bkz. /admin/companies/{id}/zip-perde-enabled), bu yuzden
+    # CompanyCreate'de YOK.
+    zipPerdeEnabled: bool = False
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -1801,6 +1806,11 @@ def _require_albert_genau_enabled(company_doc: Optional[Dict[str, Any]]):
     # o sadece "bu firma senin" der, "bu firma Albert Genau bayisi" demez.
     if not company_doc or not company_doc.get("albertGenauEnabled"):
         raise HTTPException(status_code=403, detail="Bu firma icin Albert Genau modulu aktif degil")
+
+
+def _require_zip_perde_enabled(company_doc: Optional[Dict[str, Any]]):
+    if not company_doc or not company_doc.get("zipPerdeEnabled"):
+        raise HTTPException(status_code=403, detail="Bu firma icin Zip Perde modulu aktif degil")
 
 
 # ============ COMPANY ROUTES ============
@@ -4472,6 +4482,72 @@ async def albert_genau_export_price_csv(user=Depends(get_current_user)):
     )
 
 
+# ============ ZIP PERDE (bayi fiyat tablosu) ============
+# Tek merkezi tablo (zip_perde_config, "id": "default"): admin tedarikcinin
+# Excel'ini yukler, zipPerdeEnabled olan tum firmalar aninda yeni fiyatlari
+# kullanir. Hesap/arama mantigi icin bkz. backend/zip_perde.py.
+async def _get_zip_perde_table() -> Dict[str, Any]:
+    doc = await db.zip_perde_config.find_one({"id": "default"}, {"_id": 0})
+    if doc and doc.get("prices"):
+        return doc
+    return {**zip_perde.DEFAULT_TABLE, "source": "varsayilan"}
+
+
+def _decode_excel_upload(payload: Dict[str, str]) -> bytes:
+    b64 = (payload or {}).get("fileBase64", "")
+    if not b64 or "," not in b64:
+        raise HTTPException(status_code=422, detail="Geçersiz dosya verisi")
+    try:
+        file_bytes = base64.b64decode(b64.split(",", 1)[1])
+    except Exception:
+        raise HTTPException(status_code=422, detail="Dosya çözümlenemedi")
+    if len(file_bytes) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Dosya çok büyük (maksimum 20MB)")
+    return file_bytes
+
+
+@api_router.get("/zip-perde/table")
+async def zip_perde_table(companyId: str, user=Depends(get_current_user)):
+    company_doc = await _own_company(user, companyId)
+    _require_zip_perde_enabled(company_doc)
+    t = await _get_zip_perde_table()
+    return {k: t.get(k) for k in ("widths", "heights", "prices", "currency", "updatedAt")}
+
+
+@api_router.get("/zip-perde/admin-status")
+async def zip_perde_admin_status(user=Depends(get_current_user)):
+    _require_admin(user)
+    t = await _get_zip_perde_table()
+    return {
+        "exists": t.get("source") != "varsayilan",
+        "source": "yüklenen Excel" if t.get("source") != "varsayilan" else "varsayılan (paket içinde)",
+        "widths": t["widths"],
+        "heights": t["heights"],
+        "prices": t["prices"],
+        "currency": t.get("currency", zip_perde.CURRENCY),
+        "updatedAt": t.get("updatedAt"),
+        "updatedBy": t.get("updatedBy"),
+    }
+
+
+@api_router.post("/zip-perde/admin-upload")
+async def zip_perde_admin_upload(payload: Dict[str, str], user=Depends(get_current_user)):
+    _require_admin(user)
+    file_bytes = _decode_excel_upload(payload)
+    try:
+        parsed = zip_perde.parse_excel(file_bytes)
+    except zip_perde.ZipPerdeTabloHatasi as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    doc = {
+        "id": "default",
+        **parsed,
+        "updatedAt": utc_now_iso(),
+        "updatedBy": user.get("email", ""),
+    }
+    await db.zip_perde_config.replace_one({"id": "default"}, doc, upsert=True)
+    return {"ok": True, "widthCount": len(parsed["widths"]), "heightCount": len(parsed["heights"]), "zamPct": parsed["zamPct"]}
+
+
 # ============ COMPANY CATALOG FILES (hazır PDF/görsel katalog paylaşımı) ============
 MAX_CATALOG_FILES_PER_COMPANY = 20
 
@@ -6572,6 +6648,7 @@ class AdminCustomerOut(BaseModel):
     company_id: Optional[str] = None
     albert_genau_enabled: bool = False
     albert_genau_claimed: bool = False
+    zip_perde_enabled: bool = False
     created_at: Optional[str] = None
     subscription_active: bool = False
 
@@ -6602,7 +6679,7 @@ async def admin_list_customers(user=Depends(get_current_user)):
             continue
         company = await db.companies.find_one(
             {"userId": d["user_id"]},
-            {"_id": 0, "id": 1, "sirketAdi": 1, "albertGenauEnabled": 1, "albertGenauClaimed": 1},
+            {"_id": 0, "id": 1, "sirketAdi": 1, "albertGenauEnabled": 1, "albertGenauClaimed": 1, "zipPerdeEnabled": 1},
         )
         out.append(AdminCustomerOut(
             user_id=d["user_id"],
@@ -6613,6 +6690,7 @@ async def admin_list_customers(user=Depends(get_current_user)):
             company_id=(company or {}).get("id"),
             albert_genau_enabled=bool((company or {}).get("albertGenauEnabled", False)),
             albert_genau_claimed=bool((company or {}).get("albertGenauClaimed", False)),
+            zip_perde_enabled=bool((company or {}).get("zipPerdeEnabled", False)),
             created_at=d.get("createdAt"),
             subscription_active=_is_subscription_active(d),
         ))
@@ -6769,6 +6847,19 @@ async def admin_set_albert_genau_enabled(company_id: str, payload: AlbertGenauEn
         {"$set": {"albertGenauEnabled": bool(payload.enabled), "updatedAt": utc_now_iso()}},
     )
     return {"ok": True, "companyId": company_id, "albertGenauEnabled": bool(payload.enabled)}
+
+
+@api_router.patch("/admin/companies/{company_id}/zip-perde-enabled")
+async def admin_set_zip_perde_enabled(company_id: str, payload: AlbertGenauEnabledRequest, user=Depends(get_current_user)):
+    _require_admin(user)
+    company = await db.companies.find_one({"id": company_id}, {"_id": 0, "id": 1})
+    if not company:
+        raise HTTPException(status_code=404, detail="Firma bulunamadı")
+    await db.companies.update_one(
+        {"id": company_id},
+        {"$set": {"zipPerdeEnabled": bool(payload.enabled), "updatedAt": utc_now_iso()}},
+    )
+    return {"ok": True, "companyId": company_id, "zipPerdeEnabled": bool(payload.enabled)}
 
 
 @api_router.post("/admin/impersonate/{target_user_id}", response_model=ImpersonateResponse)

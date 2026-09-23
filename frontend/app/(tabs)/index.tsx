@@ -461,6 +461,7 @@ export default function PanelScreen() {
   if (isAdmin) {
     modules.push({ key: 'promo', icon: 'gift', label: t('panel.s077'), color: theme.colors.gold, onPress: () => router.push('/(tabs)/promo-admin' as any) });
     modules.push({ key: 'ag', icon: 'calculator', label: 'Albert Genau Fiyat', color: theme.colors.gold, onPress: () => router.push('/(tabs)/albert-genau-admin' as any) });
+    modules.push({ key: 'zip', icon: 'grid', label: 'Zip Perde Fiyat', color: theme.colors.gold, onPress: () => router.push('/(tabs)/zip-perde-admin' as any) });
   }
 
   // Genel Bakış panelleri -- pasta dilimleri ve açıklama satırları aynı

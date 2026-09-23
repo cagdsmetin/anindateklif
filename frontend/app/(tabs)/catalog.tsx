@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as XLSX from 'xlsx';
+import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
@@ -678,6 +679,43 @@ export default function CatalogScreen() {
             <View style={{ flex: 1 }}>
               <Text style={s.agTitle}>Albert Genau Fiyat Hesaplama</Text>
               <Text style={s.agDesc}>Ölçüleri girin, malzeme + fiyat otomatik hesaplansın</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+          </TouchableOpacity>
+        )}
+
+        {/* Zip Perde Fiyat Tablosu (Admin) -- tedarikçiden yeni tablo gelince
+            buradan yüklenir, tüm Zip Perde bayilerine anında yansır. */}
+        {(me?.email || '').toLowerCase() === 'ncagdasm@gmail.com' && (
+          <TouchableOpacity
+            style={[s.agCard, { backgroundColor: theme.colors.navy }]}
+            onPress={() => router.push('/(tabs)/zip-perde-admin' as any)}
+            testID="open-zip-perde-admin"
+            activeOpacity={0.9}
+          >
+            <View style={[s.agIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+              <Ionicons name="grid" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.agTitle, { color: '#fff' }]}>Zip Perde Fiyat Tablosu (Admin)</Text>
+              <Text style={[s.agDesc, { color: 'rgba(255,255,255,0.75)' }]}>
+                {"Yeni fiyat tablosu Excel'i geldiğinde buradan yükleyin"}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
+
+        {/* Zip Perde -- Albert Genau'dan ayrı bir bayilik; sadece admin bu
+            firma için açtıysa görünür (bkz. Company.zipPerdeEnabled). */}
+        {!!activeCompany?.zipPerdeEnabled && (
+          <TouchableOpacity style={s.agCard} onPress={() => router.push('/zip-perde' as any)} testID="open-zip-perde" activeOpacity={0.9}>
+            <View style={[s.agIcon, { backgroundColor: ZIP_COLOR }]}>
+              <Ionicons name="grid" size={22} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.agTitle}>Zip Perde Fiyat Hesaplama</Text>
+              <Text style={s.agDesc}>EN × BOY girin, bayi fiyatı tablodan gelsin</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
           </TouchableOpacity>

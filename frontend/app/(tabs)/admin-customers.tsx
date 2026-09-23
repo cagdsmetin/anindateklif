@@ -172,6 +172,20 @@ export default function AdminCustomersScreen() {
     }
   };
 
+  const onToggleZipPerde = async (c: AdminCustomerT, next: boolean) => {
+    if (!c.company_id || agBusyId) return;
+    setAgBusyId(c.user_id);
+    setCustomers((prev) => prev.map((x) => (x.user_id === c.user_id ? { ...x, zip_perde_enabled: next } : x)));
+    try {
+      await api.adminSetZipPerdeEnabled(c.company_id, next);
+    } catch {
+      setCustomers((prev) => prev.map((x) => (x.user_id === c.user_id ? { ...x, zip_perde_enabled: !next } : x)));
+      setError('Zip Perde ayarı güncellenemedi.');
+    } finally {
+      setAgBusyId('');
+    }
+  };
+
   const onEnterPress = (c: AdminCustomerT) => {
     const label = c.company_name || c.name || c.email;
     const message = `"${label}" hesabına, şifresini bilmeden, geçici destek erişimi açılacak. Devam edilsin mi?`;
@@ -348,6 +362,19 @@ export default function AdminCustomersScreen() {
                           <Text style={s.claimBadgeText}>Bayilik belirtti</Text>
                         </View>
                       ) : null}
+                    </View>
+                  ) : null}
+                  {c.company_id ? (
+                    <View style={s.agRow}>
+                      <Text style={s.agLabel}>Zip Perde bayisi</Text>
+                      <Switch
+                        value={!!c.zip_perde_enabled}
+                        onValueChange={(v) => onToggleZipPerde(c, v)}
+                        disabled={agBusyId === c.user_id}
+                        trackColor={{ false: '#E2E8F0', true: theme.colors.primary }}
+                        thumbColor="#fff"
+                        testID={`zip-toggle-${c.user_id}`}
+                      />
                     </View>
                   ) : null}
                 </View>

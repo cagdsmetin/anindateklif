@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // adı tekrar yazıldığında fiyat alanı otomatik dolar (fiyat henüz boşsa),
 // kullanıcı isterse üzerine yazıp değiştirebilir ya da hatırlanan değeri
 // yok sayıp kendi manuel girebilir. Firma bazlı ayrı tutulur.
-async function readRaw(key: string): Promise<string | null> {
+export async function readRaw(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
     try {
       if (typeof window === 'undefined' || !window.localStorage) return null;
@@ -22,7 +22,7 @@ async function readRaw(key: string): Promise<string | null> {
   }
 }
 
-async function writeRaw(key: string, value: string): Promise<void> {
+export async function writeRaw(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
     try {
       if (typeof window !== 'undefined' && window.localStorage) window.localStorage.setItem(key, value);

@@ -223,6 +223,9 @@ export const api = {
   // belirler -- firma sahibi kendi kendine açamaz.
   adminSetAlbertGenauEnabled: (companyId: string, enabled: boolean): Promise<{ ok: boolean; albertGenauEnabled: boolean }> =>
     req(`/admin/companies/${companyId}/albert-genau-enabled`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  // Zip Perde bayiliği -- Albert Genau ile aynı kural, sadece admin açar.
+  adminSetZipPerdeEnabled: (companyId: string, enabled: boolean): Promise<{ ok: boolean; zipPerdeEnabled: boolean }> =>
+    req(`/admin/companies/${companyId}/zip-perde-enabled`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
 
   // Companies
   listCompanies: () => req('/companies'),
@@ -456,6 +459,28 @@ export const api = {
   // Bayi (dealer) paketi — yeni bir Albert Genau bayisine kendi kurulumuna
   // yüklemesi için verilecek taşınabilir fiyat/tablo paketi.
   albertGenauExportPackage: (): Promise<any> => req('/albert-genau/export-package'),
+  // Zip Perde bayi fiyat tablosu (EN x BOY -> EUR adet fiyatı), tek merkezi
+  // tablo -- admin yeni Excel'i yükler, tüm Zip Perde bayilerine yansır.
+  zipPerdeTable: (companyId: string): Promise<ZipPerdeTableT> =>
+    req(`/zip-perde/table?companyId=${encodeURIComponent(companyId)}`),
+  zipPerdeAdminStatus: (): Promise<ZipPerdeAdminStatusT> => req('/zip-perde/admin-status'),
+  uploadZipPerdeTable: (fileBase64: string): Promise<{ ok: boolean; widthCount: number; heightCount: number; zamPct: number }> =>
+    req('/zip-perde/admin-upload', { method: 'POST', body: JSON.stringify({ fileBase64 }) }, 40000),
+};
+
+export type ZipPerdeTableT = {
+  widths: number[];
+  heights: number[];
+  /** prices[boyIndex][enIndex]; null = o ölçü üretilmiyor */
+  prices: (number | null)[][];
+  currency: string;
+  updatedAt?: string | null;
+};
+
+export type ZipPerdeAdminStatusT = ZipPerdeTableT & {
+  exists: boolean;
+  source: string;
+  updatedBy?: string | null;
 };
 
 // Albert Genau hesap sonucunu Excel olarak indirme -- POST gövdesiyle
@@ -541,6 +566,7 @@ export type AdminCustomerT = {
   // Firma sahibinin kendi beyanı ("Albert Genau bayisiyim") -- sadece admin'e
   // bilgi verir, erişimi tek başına açmaz (bkz. albert_genau_enabled).
   albert_genau_claimed?: boolean;
+  zip_perde_enabled?: boolean;
   created_at?: string | null;
   subscription_active: boolean;
 };
@@ -660,6 +686,8 @@ export type CompanyT = {
   // Firma sahibinin kendi beyanı ("Albert Genau bayisiyim") -- kayıt
   // sırasında veya sonradan kendisi değiştirebilir, erişim açmaz.
   albertGenauClaimed?: boolean;
+  // Zip Perde bayiliği -- sadece admin açar (bkz. adminSetZipPerdeEnabled).
+  zipPerdeEnabled?: boolean;
 };
 
 export type LeadCompanyT = {

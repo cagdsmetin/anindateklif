@@ -23,6 +23,12 @@ export type PendingAlbertGenauItemT = {
   /** Kalemin çizim modeli -- teklif PDF'indeki teknik çizim sayfası bundan
    *  üretilir (bkz. src/lib/cizim-html.ts). Çizimi olmayan ailelerde yok. */
   agCizim?: CizimModeli | null;
+  /** Zip Perde gibi döviz bazlı tablolardan gelen kalemler: birim fiyatın
+   *  ve kâr hariç maliyetin her para birimindeki karşılığı. Teklif ekranı
+   *  kendi para birimini seçer; yoksa birimFiyat/agMaliyet kullanılır. */
+  fiyatlar?: Record<string, number>;
+  maliyetler?: Record<string, number>;
+  adet?: number;
 };
 
 type Ctx = {

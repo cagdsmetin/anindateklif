@@ -106,44 +106,135 @@ export async function saveZipKar(companyId: string, pct: number): Promise<void> 
   await writeRaw(karKey(companyId), String(pct));
 }
 
-// Ek seçenekler: tablo fiyatının ÜSTÜNE m² başına EUR eklenir. m², yuvarlanmış
-// tablo basamağından değil GİRİLEN gerçek ölçüden (EN × BOY) hesaplanır.
-export const ZIP_EKLER = [
-  { key: 'logo', label: 'Logo baskı', eurM2: 5, re: /logo/ },
-  { key: 'sergeFerrari', label: 'Serge Ferrari kumaş', eurM2: 5, re: /ferrari/ },
-] as const;
+// Seçenek grupları: her grupta TEK seçim yapılır, ilk seçenek varsayılandır.
+// Ek fiyat tablo fiyatının ÜSTÜNE, kârdan ÖNCE eklenir. `adet` ekleri perde
+// başına sabit, `m2` ekleri GİRİLEN gerçek ölçünün (EN × BOY) m²'si başına.
+export type ZipSecenekT = { id: string; label: string; eur: number; per: 'adet' | 'm2'; re?: RegExp; aciklama?: string };
+export type ZipGrupT = { key: string; label: string; secenekler: ZipSecenekT[] };
+
+export const ZIP_GRUPLAR: ZipGrupT[] = [
+  {
+    key: 'motor',
+    label: 'Motor',
+    secenekler: [
+      { id: 'mosel', label: 'Mosel', eur: 0, per: 'adet', re: /mosel/, aciklama: 'Mosel motor' },
+      { id: 'somfy', label: 'Somfy', eur: 70, per: 'adet', re: /somfy/, aciklama: 'Somfy motor' },
+    ],
+  },
+  {
+    key: 'kumas',
+    label: 'Kumaş',
+    secenekler: [
+      { id: 'screen', label: 'Screen', eur: 0, per: 'm2', re: /screen/, aciklama: 'Screen kumaş' },
+      { id: 'sergeFerrari', label: 'Serge Ferrari', eur: 10, per: 'm2', re: /ferrari/, aciklama: 'Serge Ferrari kumaş' },
+    ],
+  },
+  {
+    key: 'logo',
+    label: 'Logo baskı',
+    secenekler: [
+      { id: 'yok', label: 'Yok', eur: 0, per: 'adet' },
+      { id: 'var', label: 'Var', eur: 40, per: 'adet', re: /logo/, aciklama: 'Logo baskı' },
+    ],
+  },
+];
+
+export type ZipSecimT = Record<string, string>;
+
+export const varsayilanZipSecim = (): ZipSecimT =>
+  Object.fromEntries(ZIP_GRUPLAR.map((g) => [g.key, g.secenekler[0].id]));
 
 const HAYIR_RE = /^(|-|—|yok|hayır|hayir|no|0)$/;
 
-/** Kalem henüz seçim yapılmamışsa (zipEkler yok) metinden tahmin eder:
- *  "Logo Baskı: Evet" alanı, "Serge Ferrari" yazan kumaş alanı ya da
- *  hesaplayıcının yazdığı açıklama. */
-export function zipEklerOf(item: QuoteItemT): Record<string, boolean> {
-  if (item.zipEkler) return item.zipEkler;
+/** Kalemdeki seçim; yoksa metinden tahmin: "Motor: Somfy", "Kumaş: Serge
+ *  Ferrari", "Logo Baskı: Evet" alanları ya da hesaplayıcının yazdığı
+ *  açıklama. Eski {logo: true, sergeFerrari: true} kayıtları da okunur. */
+export function zipSecimOf(item: QuoteItemT): ZipSecimT {
+  const secim = varsayilanZipSecim();
+  const kayitli = (item.zipEkler || null) as Record<string, unknown> | null;
+  if (kayitli) {
+    for (const g of ZIP_GRUPLAR) {
+      const v = kayitli[g.key];
+      if (typeof v === 'string' && g.secenekler.some((o) => o.id === v)) secim[g.key] = v;
+    }
+    if (kayitli.logo === true) secim.logo = 'var';
+    if (kayitli.sergeFerrari === true) secim.kumas = 'sergeFerrari';
+    return secim;
+  }
   const pairs =
     item.mode === 'technical'
       ? (item.sistemFields || []).map((f) => [f.label, f.value])
       : (item.customFields || []).map((f) => [f.key, f.value]);
-  const out: Record<string, boolean> = {};
-  for (const ek of ZIP_EKLER) {
-    let on = false;
-    for (const [l, v] of pairs) {
-      const val = norm(v || '').trim();
-      if (ek.re.test(norm(val))) on = true;
-      else if (ek.re.test(norm(l || '')) && !HAYIR_RE.test(val)) on = true;
+  const metin = norm(`${item.aciklama || ''} ${item.urunAdi || ''}`);
+  for (const g of ZIP_GRUPLAR) {
+    for (const o of g.secenekler) {
+      if (!o.re) continue;
+      let on = o.re.test(metin);
+      for (const [l, v] of pairs) {
+        const val = norm(v || '').trim();
+        if (o.re.test(val)) on = true;
+        // "Logo Baskı: Evet" -- etiket eşleşir, değer olumsuz değilse seçili.
+        else if (o.re.test(norm(l || '')) && !HAYIR_RE.test(val) && !g.secenekler.some((x) => x.re?.test(val))) {
+          if (g.key === 'logo') on = true;
+        }
+      }
+      if (on) secim[g.key] = o.id;
     }
-    if (!on && ek.re.test(norm(`${item.aciklama || ''} ${item.urunAdi || ''}`))) on = true;
-    out[ek.key] = on;
   }
-  return out;
+  return secim;
 }
 
-export type ZipFiyatT = { bayi: number; m2: number; ekTutar: number; maliyet: number; satis: number };
+export function zipSecilenler(secim: ZipSecimT): ZipSecenekT[] {
+  return ZIP_GRUPLAR.map((g) => g.secenekler.find((o) => o.id === secim[g.key]) || g.secenekler[0]);
+}
 
-export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, ekler: Record<string, boolean>, karPct: number): ZipFiyatT {
-  const m2 = Math.round((enCm * boyCm) / 10000 * 100) / 100;
-  const ekTutar = Math.round(ZIP_EKLER.reduce((a, ek) => a + (ekler[ek.key] ? ek.eurM2 * m2 : 0), 0) * 100) / 100;
-  const maliyet = Math.round((tabloFiyati + ekTutar) * 100) / 100;
-  const satis = Math.round(maliyet * (1 + karPct / 100) * 100) / 100;
-  return { bayi: tabloFiyati, m2, ekTutar, maliyet, satis };
+/** Teklif açıklamasına yazılacak seçenek adları (Mosel motor, Screen kumaş ...). */
+export function zipSecimAciklama(secim: ZipSecimT): string[] {
+  return zipSecilenler(secim).map((o) => o.aciklama).filter(Boolean) as string[];
+}
+
+export type ZipFiyatT = {
+  bayi: number;
+  m2: number;
+  ekKalemler: { label: string; tutar: number }[];
+  ekTutar: number;
+  maliyet: number;
+  satis: number;
+};
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim: ZipSecimT, karPct: number): ZipFiyatT {
+  const m2 = r2((enCm * boyCm) / 10000);
+  const ekKalemler = zipSecilenler(secim)
+    .filter((o) => o.eur > 0)
+    .map((o) => ({
+      label: o.per === 'm2' ? `${o.aciklama} (${m2.toLocaleString('tr-TR')} m² × €${o.eur})` : `${o.aciklama} (+€${o.eur})`,
+      tutar: r2(o.per === 'm2' ? o.eur * m2 : o.eur),
+    }));
+  const ekTutar = r2(ekKalemler.reduce((a, k) => a + k.tutar, 0));
+  const maliyet = r2(tabloFiyati + ekTutar);
+  return { bayi: tabloFiyati, m2, ekKalemler, ekTutar, maliyet, satis: r2(maliyet * (1 + karPct / 100)) };
+}
+
+/** Seçim değişince kalem açıklamasındaki seçenek adlarını da günceller
+ *  ("..., Somfy motor, ..." -> "..., Mosel motor, ..."), böylece teklif
+ *  PDF'ine eski seçim yazılmaz. Her grupta o gruba ait TÜM adlar silinip
+ *  yerine yalnız seçili olan yazılır (tutarsız eski açıklamalar da düzelir).
+ *  Grubun hiçbir adı yoksa ve açıklama hesaplayıcının biçimindeyse
+ *  ("EN … × BOY … cm") sona eklenir; elle yazılmış açıklamaya dokunulmaz. */
+export function zipAciklamaGuncelle(aciklama: string, eski: ZipSecimT, yeni: ZipSecimT): string {
+  let parts = (aciklama || '').split(',').map((p) => p.trim()).filter(Boolean);
+  const hesaplayiciBicimi = /^EN \d/.test(parts[0] || '');
+  for (const g of ZIP_GRUPLAR) {
+    if (eski[g.key] === yeni[g.key]) continue;
+    const adlar = g.secenekler.map((o) => o.aciklama).filter(Boolean).map((x) => norm(x as string));
+    const idx = parts.findIndex((p) => adlar.includes(norm(p)));
+    const yeniAd = g.secenekler.find((o) => o.id === yeni[g.key])?.aciklama;
+    if (idx < 0 && !hesaplayiciBicimi) continue;
+    const kalan = parts.filter((p) => !adlar.includes(norm(p)));
+    if (yeniAd) kalan.splice(idx < 0 ? kalan.length : Math.min(idx, kalan.length), 0, yeniAd);
+    parts = kalan;
+  }
+  return parts.join(', ');
 }

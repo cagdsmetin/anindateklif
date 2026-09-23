@@ -1596,9 +1596,10 @@ class QuoteItem(BaseModel):
     # (cephe/modul/giyotin) aile bazinda degisiyor ve burada dogrulanmasi
     # gerekmiyor -- uretildigi yer zaten ag_geometry.
     agCizim: Optional[Dict[str, Any]] = None
-    # Zip Perde ek secenekleri (orn. {"logo": true, "sergeFerrari": false}) --
-    # m2 basina ek fiyat, bkz. frontend src/lib/zip-perde.ts ZIP_EKLER.
-    zipEkler: Optional[Dict[str, bool]] = None
+    # Zip Perde secimi (orn. {"motor": "somfy", "kumas": "screen", "logo": "var"};
+    # eski kayitlarda {"logo": true} gibi bool). Ek fiyatlar icin bkz.
+    # frontend src/lib/zip-perde.ts ZIP_GRUPLAR.
+    zipEkler: Optional[Dict[str, Any]] = None
 
 
 class Quote(BaseModel):

@@ -891,8 +891,8 @@ export type QuoteItemT = {
   // model olduğu için ikisi birbirinden kayamaz. Çizimi olmayan kalemlerde
   // yok -- eski teklifler ve elle girilen kalemler etkilenmez.
   agCizim?: CizimModeli | null;
-  /** Zip Perde ek seçenekleri (logo baskı, Serge Ferrari kumaş) -- bkz. ZIP_EKLER. */
-  zipEkler?: Record<string, boolean> | null;
+  /** Zip Perde seçimi, ör. {motor: 'somfy', kumas: 'screen', logo: 'var'} -- bkz. ZIP_GRUPLAR. */
+  zipEkler?: Record<string, string | boolean> | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };

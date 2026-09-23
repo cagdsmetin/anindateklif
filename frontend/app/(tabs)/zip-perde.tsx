@@ -6,7 +6,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, RatesT, ZipPerdeTableT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
-import { convertFromEur, loadZipKar, saveZipKar, ZIP_EKLER, zipFiyat, zipLookup } from '@/src/lib/zip-perde';
+import { convertFromEur, loadZipKar, saveZipKar, varsayilanZipSecim, zipFiyat, zipLookup, zipSecimAciklama, ZipSecimT } from '@/src/lib/zip-perde';
+import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
 import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 
@@ -36,7 +37,7 @@ export default function ZipPerdeScreen() {
   const [boy, setBoy] = useState('');
   const [adet, setAdet] = useState('1');
   const [kar, setKar] = useState('0');
-  const [ekler, setEkler] = useState<Record<string, boolean>>({});
+  const [secim, setSecim] = useState<ZipSecimT>(varsayilanZipSecim);
 
   useEffect(() => {
     if (!activeCompany?.id || !enabled) return;
@@ -51,9 +52,8 @@ export default function ZipPerdeScreen() {
   };
 
   const hit = useMemo(() => (table && num(en) && num(boy) ? zipLookup(table, num(en), num(boy)) : null), [table, en, boy]);
-  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), ekler, num(kar)) : null;
+  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar)) : null;
   const satisEur = fiyat ? fiyat.satis : null;
-  const ekAdlari = ZIP_EKLER.filter((ek) => ekler[ek.key]).map((ek) => ek.label);
   const adetN = Math.max(1, num(adet));
   const tl = satisEur != null ? convertFromEur(satisEur, 'TRY', rates) : null;
   const usd = satisEur != null ? convertFromEur(satisEur, 'USD', rates) : null;
@@ -72,13 +72,13 @@ export default function ZipPerdeScreen() {
     };
     addPendingAlbertGenauItem({
       urunAdi: 'Zip Perde',
-      aciklama: [`EN ${num(en)} × BOY ${num(boy)} cm`, ...ekAdlari].join(', '),
+      aciklama: [`EN ${num(en)} × BOY ${num(boy)} cm`, ...zipSecimAciklama(secim)].join(', '),
       birimFiyat: satisEur,
       fiyatlar: perCur(satisEur),
       adet: adetN,
       // Kar HARİÇ bayi maliyeti -- Geçmiş'teki "Maliyet Ekle" önerisi için.
       maliyetler: perCur(fiyat.maliyet),
-      zipEkler: ekler,
+      zipEkler: secim,
     });
     showToast('Zip Perde kalemi teklife eklendi');
     if (params.from === 'teklif') router.back();
@@ -129,24 +129,8 @@ export default function ZipPerdeScreen() {
               <Field label="Adet" value={adet} onChange={setAdet} testID="zip-adet" />
               <Field label="Kâr Marjı (%)" value={kar} onChange={onKarChange} testID="zip-kar" />
             </View>
-            <Text style={[s.sectionLabel, { marginTop: 4 }]}>EKSTRALAR</Text>
-            <View style={s.ekRow}>
-              {ZIP_EKLER.map((ek) => {
-                const on = !!ekler[ek.key];
-                return (
-                  <TouchableOpacity
-                    key={ek.key}
-                    style={[s.ekChip, on && s.ekChipOn]}
-                    onPress={() => setEkler((p) => ({ ...p, [ek.key]: !on }))}
-                    testID={`zip-ek-${ek.key}`}
-                  >
-                    <Ionicons name={on ? 'checkbox' : 'square-outline'} size={18} color={on ? ZIP_COLOR : theme.colors.textMuted} />
-                    <Text style={[s.ekText, on && { color: ZIP_COLOR }]}>{ek.label}</Text>
-                    <Text style={s.ekPrice}>+€{ek.eurM2}/m²</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <Text style={[s.sectionLabel, { marginTop: 4 }]}>SEÇENEKLER</Text>
+            <ZipSecimSecici secim={secim} onChange={setSecim} />
           </View>
 
           {hit && (
@@ -159,9 +143,7 @@ export default function ZipPerdeScreen() {
               ) : (
                 <>
                   <Line label="Bayi fiyatı (adet)" value={eur(hit.price)} />
-                  {fiyat && fiyat.ekTutar > 0 && (
-                    <Line label={`${ekAdlari.join(' + ')} (${fiyat.m2.toLocaleString('tr-TR')} m²)`} value={eur(fiyat.ekTutar)} />
-                  )}
+                  {fiyat?.ekKalemler.map((k) => <Line key={k.label} label={k.label} value={eur(k.tutar)} />)}
                   <Line label={`Kâr (%${num(kar)})`} value={eur((satisEur || 0) - (fiyat?.maliyet || 0))} />
                   <Line label="Satış fiyatı (adet)" value={eur(satisEur || 0)} strong />
                   {(tl != null || usd != null) && (
@@ -219,11 +201,6 @@ const s = themedStyles(() => StyleSheet.create({
   line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   lineLabel: { flex: 1, marginRight: 10, fontSize: 13, color: theme.colors.textMuted, fontWeight: '600' },
   lineValue: { fontSize: 13.5, color: theme.colors.text, fontWeight: '800' },
-  ekRow: { gap: 8 },
-  ekChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
-  ekChipOn: { borderColor: ZIP_COLOR, backgroundColor: ZIP_COLOR + '12' },
-  ekText: { flex: 1, fontSize: 13, fontWeight: '700', color: theme.colors.text },
-  ekPrice: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   equiv: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'right', marginTop: 6 },
   warnBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.redSoft, borderRadius: 10, padding: 10 },
   warnText: { color: theme.colors.red, fontSize: 12.5, fontWeight: '700', flex: 1 },

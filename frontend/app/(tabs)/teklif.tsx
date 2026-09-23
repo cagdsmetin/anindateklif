@@ -1403,7 +1403,9 @@ function ItemCard({
     // hesaplanamaz; yanlış (montajsız) fiyat yazmaktansa boş bırakılır.
     const montajTl = item.zipMontajTl ?? zip.montajTl;
     const montajEur = montajTlToEur(montajTl, zip.rates);
-    const f = hesaplaZipFiyat(hit.price, size.en, size.boy, zipSecimOf(item), zip.kar, montajEur ?? 0);
+    // Montaj toplamda bir kez: birim fiyata adede bölünmüş payı girer.
+    const adet = Math.max(1, Number(item.adet) || 1);
+    const f = hesaplaZipFiyat(hit.price, size.en, size.boy, zipSecimOf(item), zip.kar, montajEur ?? 0, adet);
     const kurYok = montajEur == null;
     return {
       ok: true as const,
@@ -1412,7 +1414,8 @@ function ItemCard({
       montajTl,
       satisEur: f.satis,
       fiyat: kurYok ? null : convertFromEur(f.satis, currency, zip.rates),
-      maliyet: convertFromEur(f.maliyet, currency, zip.rates),
+      // Kalem maliyeti satır toplamıdır (bkz. history.tsx): perde maliyeti × adet.
+      maliyet: convertFromEur(Math.round(f.maliyet * adet * 100) / 100, currency, zip.rates),
       montaj: kurYok ? null : convertFromEur(f.montaj, currency, zip.rates),
     };
   }, [zip, item, currency]);
@@ -1676,7 +1679,7 @@ function ItemCard({
             />
           </View>
           <View style={[itemStyles.blockHeadRow, { justifyContent: 'flex-end' }]}>
-            <Text style={itemStyles.zipKarLabel}>Montaj ₺ (adet, kâr hariç)</Text>
+            <Text style={itemStyles.zipKarLabel}>Montaj ₺ (toplam, kâr hariç)</Text>
             <MotionInput
               style={[itemStyles.zipKarInput, { width: 84 }]}
               keyboardType="decimal-pad"
@@ -1706,7 +1709,11 @@ function ItemCard({
                 Bayi € {zipInfo.hit.price}
                 {zipInfo.f.ekKalemler.map((k) => ` + ${k.label.replace(/ \(.*\)$/, '')} € ${k.tutar}`).join('')}
                 {zipInfo.f.kar > 0 ? ` + kâr € ${zipInfo.f.kar}` : ''}
-                {zipInfo.f.montaj > 0 ? ` + montaj € ${zipInfo.f.montaj} (₺${zipInfo.montajTl.toLocaleString('tr-TR')})` : ''} → Satış € {zipInfo.satisEur}
+                {zipInfo.f.montaj > 0
+                  ? (zipInfo.f.montajPay !== zipInfo.f.montaj
+                    ? ` + montaj payı € ${zipInfo.f.montajPay} (₺${zipInfo.montajTl.toLocaleString('tr-TR')} ÷ ${Math.max(1, Number(item.adet) || 1)} adet)`
+                    : ` + montaj € ${zipInfo.f.montaj} (₺${zipInfo.montajTl.toLocaleString('tr-TR')})`)
+                  : ''} → Birim satış € {zipInfo.satisEur}
               </Text>
               {zipInfo.fiyat == null ? (
                 <Text style={itemStyles.zipMuted}>Kur alınamadı; {currency} karşılığını elle girin.</Text>

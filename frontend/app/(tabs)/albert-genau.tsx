@@ -1207,7 +1207,9 @@ export default function AlbertGenauScreen() {
         agCizim: aktifCizimModeli,
       });
       showToast('Albert Genau kalemi teklife eklendi');
-      router.back();
+      // router.back() DEĞİL: sekmeli yapıda geri, ilk sekmeye (Panel) döner.
+      // navigate açık duran Teklif sekmesine gider; kalem orada görünür.
+      router.navigate('/(tabs)/teklif' as any);
     } finally {
       setAdding(false);
     }

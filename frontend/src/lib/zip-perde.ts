@@ -102,7 +102,7 @@ export async function loadZipKar(companyId: string): Promise<number> {
   return raw != null && isFinite(n) ? n : 0;
 }
 
-// Montaj bedeli TL girilir (perde başına); firma bazında son değer hatırlanır.
+// Montaj bedeli TL girilir (toplamda bir kez); firma bazında son değer hatırlanır.
 const montajKey = (companyId: string) => `zip-perde-montaj-tl:${companyId}`;
 
 export async function loadZipMontajTl(companyId: string): Promise<number> {
@@ -220,15 +220,19 @@ export type ZipFiyatT = {
   /** Kâr hariç: tablo + ekler */
   maliyet: number;
   kar: number;
-  /** Montaj (EUR, adet) -- kâra dahil DEĞİL, en sona eklenir. */
+  /** Montaj (EUR) -- TOPLAMDA bir kez, kâra dahil DEĞİL. */
   montaj: number;
+  /** Montajın perde başına payı (montaj / adet), birim fiyata eklenir. */
+  montajPay: number;
+  /** Birim satış fiyatı: maliyet + kâr + montaj payı. adet × satis = perdeler + tek montaj. */
   satis: number;
 };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Satış = (tablo + ekler) × (1 + kâr) + montaj. Montaj kârdan etkilenmez. */
-export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim: ZipSecimT, karPct: number, montajEur = 0): ZipFiyatT {
+/** Birim satış = (tablo + ekler) × (1 + kâr) + montaj / adet. Montaj kârdan
+ *  etkilenmez ve adet kaç olursa olsun toplamda BİR KEZ sayılır. */
+export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim: ZipSecimT, karPct: number, montajEur = 0, adet = 1): ZipFiyatT {
   const m2 = r2((enCm * boyCm) / 10000);
   const ekKalemler = zipSecilenler(secim)
     .filter((o) => o.eur > 0)
@@ -240,7 +244,8 @@ export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim
   const maliyet = r2(tabloFiyati + ekTutar);
   const kar = r2((maliyet * karPct) / 100);
   const montaj = r2(montajEur);
-  return { bayi: tabloFiyati, m2, ekKalemler, ekTutar, maliyet, kar, montaj, satis: r2(maliyet + kar + montaj) };
+  const montajPay = r2(montaj / Math.max(1, adet));
+  return { bayi: tabloFiyati, m2, ekKalemler, ekTutar, maliyet, kar, montaj, montajPay, satis: r2(maliyet + kar + montajPay) };
 }
 
 /** Seçim değişince kalem açıklamasındaki seçenek adlarını da günceller

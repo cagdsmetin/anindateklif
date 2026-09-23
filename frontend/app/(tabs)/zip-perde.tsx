@@ -58,13 +58,14 @@ export default function ZipPerdeScreen() {
     if (activeCompany?.id) saveZipMontajTl(activeCompany.id, num(v));
   };
 
-  // Montaj TL girilir, canlı kurla EUR'ya çevrilip kâr HARİÇ en sona eklenir.
+  // Montaj TL girilir (toplamda BİR KEZ), canlı kurla EUR'ya çevrilip kâr HARİÇ
+  // eklenir; birim fiyata adede bölünmüş payı girer.
   const montajEur = montajTlToEur(num(montajTl), rates);
 
   const hit = useMemo(() => (table && num(en) && num(boy) ? zipLookup(table, num(en), num(boy)) : null), [table, en, boy]);
-  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar), montajEur ?? 0) : null;
-  const satisEur = fiyat ? fiyat.satis : null;
   const adetN = Math.max(1, num(adet));
+  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar), montajEur ?? 0, adetN) : null;
+  const satisEur = fiyat ? fiyat.satis : null;
   const tl = satisEur != null ? convertFromEur(satisEur, 'TRY', rates) : null;
   const usd = satisEur != null ? convertFromEur(satisEur, 'USD', rates) : null;
 
@@ -88,19 +89,22 @@ export default function ZipPerdeScreen() {
       fiyatlar: perCur(satisEur),
       adet: adetN,
       // Kar HARİÇ bayi maliyeti -- Geçmiş'teki "Maliyet Ekle" önerisi için.
-      maliyetler: perCur(fiyat.maliyet),
+      // Kalem maliyeti satır toplamıdır (bkz. history.tsx): perde maliyeti × adet.
+      maliyetler: perCur(Math.round(fiyat.maliyet * adetN * 100) / 100),
       zipEkler: secim,
       zipMontajTl: num(montajTl),
       montajlar: perCur(fiyat.montaj),
     });
     showToast('Zip Perde kalemi teklife eklendi');
-    if (params.from === 'teklif') router.back();
-    else router.replace('/(tabs)/teklif' as any);
+    // router.back() DEĞİL: sekmeli yapıda geri, ilk sekmeye (Panel) döner.
+    router.navigate('/(tabs)/teklif' as any);
   };
 
   const Header = (
     <View style={s.header}>
-      <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+      <TouchableOpacity
+        onPress={() => (params.from === 'teklif' ? router.navigate('/(tabs)/teklif' as any) : router.back())}
+        style={s.headerBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
         <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
       </TouchableOpacity>
       <Text style={s.headerTitle}>Zip Perde Fiyat Hesaplama</Text>
@@ -143,7 +147,7 @@ export default function ZipPerdeScreen() {
               <Field label="Kâr Marjı (%)" value={kar} onChange={onKarChange} testID="zip-kar" />
             </View>
             <View style={s.row}>
-              <Field label="Montaj Bedeli (₺, adet başı)" value={montajTl} onChange={onMontajChange} testID="zip-montaj" />
+              <Field label="Montaj Bedeli (₺, toplam)" value={montajTl} onChange={onMontajChange} testID="zip-montaj" />
             </View>
             <Text style={[s.sectionLabel, { marginTop: 4 }]}>SEÇENEKLER</Text>
             <ZipSecimSecici secim={secim} onChange={setSecim} />
@@ -163,8 +167,10 @@ export default function ZipPerdeScreen() {
                   <Line label={`Kâr (%${num(kar)})`} value={eur(fiyat?.kar || 0)} />
                   {num(montajTl) > 0 && (
                     <Line
-                      label={`Montaj (₺${num(montajTl).toLocaleString('tr-TR')}, kâr hariç)`}
-                      value={montajEur == null ? 'kur yok' : eur(fiyat?.montaj || 0)}
+                      label={adetN > 1
+                        ? `Montaj payı (₺${num(montajTl).toLocaleString('tr-TR')} ÷ ${adetN} adet, kâr hariç)`
+                        : `Montaj (₺${num(montajTl).toLocaleString('tr-TR')}, kâr hariç)`}
+                      value={montajEur == null ? 'kur yok' : eur(fiyat?.montajPay || 0)}
                     />
                   )}
                   <Line label="Satış fiyatı (adet)" value={eur(satisEur || 0)} strong />

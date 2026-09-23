@@ -24,7 +24,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
-import { convertFromEur, extractZipSize, isZipItem, loadZipKar, saveZipKar, zipLookup } from '@/src/lib/zip-perde';
+import { convertFromEur, extractZipSize, isZipItem, loadZipKar, saveZipKar, ZIP_EKLER, zipEklerOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
@@ -265,6 +265,7 @@ export default function EditorScreen() {
         agImalatBedeli: data.agImalatBedeli ?? null,
         // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
         agCizim: data.agCizim ?? null,
+        zipEkler: data.zipEkler ?? null,
       };
     });
     setItems((prev) => [...prev, ...added]);
@@ -1321,6 +1322,12 @@ export default function EditorScreen() {
 }
 
 // ============ ITEM CARD ============
+// Kur, ekranlar arasında birkaç saniyede biraz oynayabiliyor; %1'lik fark
+// "aynı fiyat" sayılır (bkz. ItemCard Zip Perde otomatik fiyat).
+function zipYakin(a: number, b: number) {
+  return Math.abs(a - b) <= Math.max(0.01, Math.abs(b) * 0.01);
+}
+
 function ItemCard({
   item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onDuplicate, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
   canMoveUp, canMoveDown, onMoveUp, onMoveDown, zip,
@@ -1383,13 +1390,14 @@ function ItemCard({
     if (!size) return { ok: false as const, reason: 'EN ve BOY girin, fiyat Zip Perde tablosundan otomatik gelsin' };
     const hit = zipLookup(zip.table, size.en, size.boy);
     if (!hit.ok) return { ok: false as const, reason: hit.reason };
-    const satisEur = Math.round(hit.price * (1 + zip.kar / 100) * 100) / 100;
+    const f = hesaplaZipFiyat(hit.price, size.en, size.boy, zipEklerOf(item), zip.kar);
     return {
       ok: true as const,
       hit,
-      satisEur,
-      fiyat: convertFromEur(satisEur, currency, zip.rates),
-      maliyet: convertFromEur(hit.price, currency, zip.rates),
+      f,
+      satisEur: f.satis,
+      fiyat: convertFromEur(f.satis, currency, zip.rates),
+      maliyet: convertFromEur(f.maliyet, currency, zip.rates),
     };
   }, [zip, item, currency]);
   const zipAutoRef = useRef<number | null>(null);
@@ -1402,6 +1410,13 @@ function ItemCard({
   useEffect(() => {
     if (zipFiyat == null) return;
     const cur = item.birimFiyat || 0;
+    // Hesaplayıcıdan gelen ya da geri yüklenen kalemde fiyat, kur oynaması
+    // kadar farklı olabilir; bunu da tablodan gelmiş say, ölçü değişince
+    // güncellensin ama bayinin gördüğü rakam kendiliğinden kaymasın.
+    if (zipAutoRef.current == null && cur !== 0 && zipYakin(cur, zipFiyat)) {
+      zipAutoRef.current = cur;
+      return;
+    }
     if (cur === 0 || cur === zipAutoRef.current) {
       if (cur !== zipFiyat) applyZip();
       else zipAutoRef.current = zipFiyat;
@@ -1641,16 +1656,34 @@ function ItemCard({
               testID={`item-${idx}-zip-kar`}
             />
           </View>
+          <View style={itemStyles.zipEkRow}>
+            {ZIP_EKLER.map((ek) => {
+              const ekler = zipEklerOf(item);
+              const on = !!ekler[ek.key];
+              return (
+                <TouchableOpacity
+                  key={ek.key}
+                  style={[itemStyles.zipEk, on && itemStyles.zipEkOn]}
+                  onPress={() => onChange({ zipEkler: { ...ekler, [ek.key]: !on } })}
+                  testID={`item-${idx}-zip-ek-${ek.key}`}
+                >
+                  <Ionicons name={on ? 'checkbox' : 'square-outline'} size={15} color={on ? ZIP_COLOR : theme.colors.textMuted} />
+                  <Text style={[itemStyles.zipEkText, on && { color: ZIP_COLOR }]}>{ek.label} +€{ek.eurM2}/m²</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           {!zipInfo.ok ? (
             <Text style={itemStyles.zipMuted}>{zipInfo.reason}</Text>
           ) : (
             <>
               <Text style={itemStyles.zipLine}>
-                EN {zipInfo.hit.en} × BOY {zipInfo.hit.boy} cm basamağı · Bayi € {zipInfo.hit.price} → Satış € {zipInfo.satisEur}
+                Bayi € {zipInfo.hit.price}
+                {zipInfo.f.ekTutar > 0 ? ` + ekstra € ${zipInfo.f.ekTutar} (${zipInfo.f.m2} m²)` : ''} → Satış € {zipInfo.satisEur}
               </Text>
               {zipInfo.fiyat == null ? (
                 <Text style={itemStyles.zipMuted}>Kur alınamadı; {currency} karşılığını elle girin.</Text>
-              ) : zipInfo.fiyat !== item.birimFiyat ? (
+              ) : !zipYakin(item.birimFiyat || 0, zipInfo.fiyat) ? (
                 <TouchableOpacity style={itemStyles.zipApply} onPress={applyZip} testID={`item-${idx}-zip-apply`}>
                   <Ionicons name="refresh" size={13} color={ZIP_COLOR} />
                   <Text style={itemStyles.zipApplyText}>Tablo fiyatını uygula ({fmt(zipInfo.fiyat, currency)})</Text>
@@ -2039,6 +2072,10 @@ const itemStyles = themedStyles(() => StyleSheet.create({
   zipKarInput: { width: 54, paddingVertical: 3, paddingHorizontal: 6, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, fontSize: 12.5, fontWeight: '700', color: theme.colors.text, backgroundColor: theme.colors.surface, textAlign: 'center' },
   zipLine: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text, lineHeight: 18 },
   zipMuted: { fontSize: 12, color: theme.colors.textMuted, lineHeight: 17 },
+  zipEkRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  zipEk: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surface },
+  zipEkOn: { borderColor: ZIP_COLOR, backgroundColor: ZIP_COLOR + '12' },
+  zipEkText: { flexShrink: 1, fontSize: 12, fontWeight: '700', color: theme.colors.text },
   zipApply: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: ZIP_COLOR + '66', backgroundColor: ZIP_COLOR + '12' },
   zipApplyText: { fontSize: 12, fontWeight: '800', color: ZIP_COLOR },
   previewLabel: { fontSize: 9, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.5, marginBottom: 4 },

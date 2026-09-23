@@ -29,6 +29,7 @@ export type PendingAlbertGenauItemT = {
   fiyatlar?: Record<string, number>;
   maliyetler?: Record<string, number>;
   adet?: number;
+  zipEkler?: Record<string, boolean>;
 };
 
 type Ctx = {

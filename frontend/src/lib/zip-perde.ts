@@ -105,3 +105,45 @@ export async function loadZipKar(companyId: string): Promise<number> {
 export async function saveZipKar(companyId: string, pct: number): Promise<void> {
   await writeRaw(karKey(companyId), String(pct));
 }
+
+// Ek seçenekler: tablo fiyatının ÜSTÜNE m² başına EUR eklenir. m², yuvarlanmış
+// tablo basamağından değil GİRİLEN gerçek ölçüden (EN × BOY) hesaplanır.
+export const ZIP_EKLER = [
+  { key: 'logo', label: 'Logo baskı', eurM2: 5, re: /logo/ },
+  { key: 'sergeFerrari', label: 'Serge Ferrari kumaş', eurM2: 5, re: /ferrari/ },
+] as const;
+
+const HAYIR_RE = /^(|-|—|yok|hayır|hayir|no|0)$/;
+
+/** Kalem henüz seçim yapılmamışsa (zipEkler yok) metinden tahmin eder:
+ *  "Logo Baskı: Evet" alanı, "Serge Ferrari" yazan kumaş alanı ya da
+ *  hesaplayıcının yazdığı açıklama. */
+export function zipEklerOf(item: QuoteItemT): Record<string, boolean> {
+  if (item.zipEkler) return item.zipEkler;
+  const pairs =
+    item.mode === 'technical'
+      ? (item.sistemFields || []).map((f) => [f.label, f.value])
+      : (item.customFields || []).map((f) => [f.key, f.value]);
+  const out: Record<string, boolean> = {};
+  for (const ek of ZIP_EKLER) {
+    let on = false;
+    for (const [l, v] of pairs) {
+      const val = norm(v || '').trim();
+      if (ek.re.test(norm(val))) on = true;
+      else if (ek.re.test(norm(l || '')) && !HAYIR_RE.test(val)) on = true;
+    }
+    if (!on && ek.re.test(norm(`${item.aciklama || ''} ${item.urunAdi || ''}`))) on = true;
+    out[ek.key] = on;
+  }
+  return out;
+}
+
+export type ZipFiyatT = { bayi: number; m2: number; ekTutar: number; maliyet: number; satis: number };
+
+export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, ekler: Record<string, boolean>, karPct: number): ZipFiyatT {
+  const m2 = Math.round((enCm * boyCm) / 10000 * 100) / 100;
+  const ekTutar = Math.round(ZIP_EKLER.reduce((a, ek) => a + (ekler[ek.key] ? ek.eurM2 * m2 : 0), 0) * 100) / 100;
+  const maliyet = Math.round((tabloFiyati + ekTutar) * 100) / 100;
+  const satis = Math.round(maliyet * (1 + karPct / 100) * 100) / 100;
+  return { bayi: tabloFiyati, m2, ekTutar, maliyet, satis };
+}

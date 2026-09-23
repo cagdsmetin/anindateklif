@@ -30,6 +30,8 @@ export type PendingAlbertGenauItemT = {
   maliyetler?: Record<string, number>;
   adet?: number;
   zipEkler?: Record<string, string>;
+  zipMontajTl?: number;
+  montajlar?: Record<string, number>;
 };
 
 type Ctx = {

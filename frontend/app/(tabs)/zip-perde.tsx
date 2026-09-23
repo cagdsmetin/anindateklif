@@ -6,7 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, RatesT, ZipPerdeTableT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
-import { convertFromEur, loadZipKar, saveZipKar, varsayilanZipSecim, zipFiyat, zipLookup, zipSecimAciklama, ZipSecimT } from '@/src/lib/zip-perde';
+import { convertFromEur, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, varsayilanZipSecim, zipFiyat, zipLookup, zipSecimAciklama, ZipSecimT } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
 import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
@@ -37,12 +37,14 @@ export default function ZipPerdeScreen() {
   const [boy, setBoy] = useState('');
   const [adet, setAdet] = useState('1');
   const [kar, setKar] = useState('0');
+  const [montajTl, setMontajTl] = useState('0');
   const [secim, setSecim] = useState<ZipSecimT>(varsayilanZipSecim);
 
   useEffect(() => {
     if (!activeCompany?.id || !enabled) return;
     api.zipPerdeTable(activeCompany.id).then(setTable).catch((e) => setLoadError(e?.message || 'Fiyat tablosu yüklenemedi'));
     loadZipKar(activeCompany.id).then((k) => setKar(String(k)));
+    loadZipMontajTl(activeCompany.id).then((m) => setMontajTl(String(m)));
     api.rates().then(setRates).catch(() => {});
   }, [activeCompany?.id, enabled]);
 
@@ -51,8 +53,16 @@ export default function ZipPerdeScreen() {
     if (activeCompany?.id) saveZipKar(activeCompany.id, num(v));
   };
 
+  const onMontajChange = (v: string) => {
+    setMontajTl(v);
+    if (activeCompany?.id) saveZipMontajTl(activeCompany.id, num(v));
+  };
+
+  // Montaj TL girilir, canlı kurla EUR'ya çevrilip kâr HARİÇ en sona eklenir.
+  const montajEur = montajTlToEur(num(montajTl), rates);
+
   const hit = useMemo(() => (table && num(en) && num(boy) ? zipLookup(table, num(en), num(boy)) : null), [table, en, boy]);
-  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar)) : null;
+  const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar), montajEur ?? 0) : null;
   const satisEur = fiyat ? fiyat.satis : null;
   const adetN = Math.max(1, num(adet));
   const tl = satisEur != null ? convertFromEur(satisEur, 'TRY', rates) : null;
@@ -60,6 +70,7 @@ export default function ZipPerdeScreen() {
 
   const onAddToQuote = () => {
     if (!hit?.ok || !fiyat || satisEur == null) return;
+    if (montajEur == null) { showToast('Kur alınamadı, montaj EUR\'ya çevrilemedi'); return; }
     // Teklifin para birimi burada bilinmiyor; her birimdeki karşılık
     // taşınır, Teklif ekranı kendi birimini seçer (bkz. teklif.tsx).
     const perCur = (e: number) => {
@@ -79,6 +90,8 @@ export default function ZipPerdeScreen() {
       // Kar HARİÇ bayi maliyeti -- Geçmiş'teki "Maliyet Ekle" önerisi için.
       maliyetler: perCur(fiyat.maliyet),
       zipEkler: secim,
+      zipMontajTl: num(montajTl),
+      montajlar: perCur(fiyat.montaj),
     });
     showToast('Zip Perde kalemi teklife eklendi');
     if (params.from === 'teklif') router.back();
@@ -129,6 +142,9 @@ export default function ZipPerdeScreen() {
               <Field label="Adet" value={adet} onChange={setAdet} testID="zip-adet" />
               <Field label="Kâr Marjı (%)" value={kar} onChange={onKarChange} testID="zip-kar" />
             </View>
+            <View style={s.row}>
+              <Field label="Montaj Bedeli (₺, adet başı)" value={montajTl} onChange={onMontajChange} testID="zip-montaj" />
+            </View>
             <Text style={[s.sectionLabel, { marginTop: 4 }]}>SEÇENEKLER</Text>
             <ZipSecimSecici secim={secim} onChange={setSecim} />
           </View>
@@ -144,7 +160,13 @@ export default function ZipPerdeScreen() {
                 <>
                   <Line label="Bayi fiyatı (adet)" value={eur(hit.price)} />
                   {fiyat?.ekKalemler.map((k) => <Line key={k.label} label={k.label} value={eur(k.tutar)} />)}
-                  <Line label={`Kâr (%${num(kar)})`} value={eur((satisEur || 0) - (fiyat?.maliyet || 0))} />
+                  <Line label={`Kâr (%${num(kar)})`} value={eur(fiyat?.kar || 0)} />
+                  {num(montajTl) > 0 && (
+                    <Line
+                      label={`Montaj (₺${num(montajTl).toLocaleString('tr-TR')}, kâr hariç)`}
+                      value={montajEur == null ? 'kur yok' : eur(fiyat?.montaj || 0)}
+                    />
+                  )}
                   <Line label="Satış fiyatı (adet)" value={eur(satisEur || 0)} strong />
                   {(tl != null || usd != null) && (
                     <Text style={s.equiv}>

@@ -24,7 +24,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
-import { convertFromEur, extractZipSize, isZipItem, loadZipKar, saveZipKar, zipAciklamaGuncelle, zipSecimOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
+import { convertFromEur, extractZipSize, isZipItem, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, zipAciklamaGuncelle, zipSecimOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
@@ -159,12 +159,19 @@ export default function EditorScreen() {
   const [zipTable, setZipTable] = useState<ZipPerdeTableT | null>(null);
   const [zipRates, setZipRates] = useState<RatesT | null>(null);
   const [zipKar, setZipKar] = useState(0);
+  const [zipMontajTl, setZipMontajTl] = useState(0);
   useEffect(() => {
     if (!zipEnabled || !activeCompany?.id) { setZipTable(null); return; }
     api.zipPerdeTable(activeCompany.id).then(setZipTable).catch(() => {});
     api.rates().then(setZipRates).catch(() => {});
     loadZipKar(activeCompany.id).then(setZipKar);
+    loadZipMontajTl(activeCompany.id).then(setZipMontajTl);
   }, [zipEnabled, activeCompany?.id]);
+  // Montaj: yeni kalemlerde firmanın son girdiği TL tutarı varsayılan olur.
+  const onZipMontajChange = (tl: number) => {
+    setZipMontajTl(tl);
+    if (activeCompany?.id) saveZipMontajTl(activeCompany.id, tl);
+  };
   const onZipKarChange = (pct: number) => {
     setZipKar(pct);
     if (activeCompany?.id) saveZipKar(activeCompany.id, pct);
@@ -262,7 +269,8 @@ export default function EditorScreen() {
         // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
         // otomatik doldurmak için (bkz. history.tsx), kalemle birlikte saklanır.
         agMaliyet: (data.maliyetler ? data.maliyetler[cur] : data.agMaliyet) ?? null,
-        agMontajBedeli: data.agMontajBedeli ?? null,
+        agMontajBedeli: (data.montajlar ? data.montajlar[cur] : data.agMontajBedeli) ?? null,
+        zipMontajTl: data.zipMontajTl ?? null,
         agImalatBedeli: data.agImalatBedeli ?? null,
         // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
         agCizim: data.agCizim ?? null,
@@ -981,7 +989,7 @@ export default function EditorScreen() {
               canMoveDown={idx < items.length - 1}
               onMoveUp={() => moveItem(it.id, 'up')}
               onMoveDown={() => moveItem(it.id, 'down')}
-              zip={zipTable ? { table: zipTable, rates: zipRates, kar: zipKar, onKarChange: onZipKarChange } : null}
+              zip={zipTable ? { table: zipTable, rates: zipRates, kar: zipKar, onKarChange: onZipKarChange, montajTl: zipMontajTl, onMontajChange: onZipMontajChange } : null}
             />
             </Reveal>
           ))}
@@ -1350,7 +1358,7 @@ function ItemCard({
   canMoveDown?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
-  zip?: { table: ZipPerdeTableT; rates: RatesT | null; kar: number; onKarChange: (pct: number) => void } | null;
+  zip?: { table: ZipPerdeTableT; rates: RatesT | null; kar: number; onKarChange: (pct: number) => void; montajTl: number; onMontajChange: (tl: number) => void } | null;
 }) {
   const { t, lang } = useLanguage();
   const [cizimAcik, setCizimAcik] = useState(false);
@@ -1391,21 +1399,28 @@ function ItemCard({
     if (!size) return { ok: false as const, reason: 'EN ve BOY girin, fiyat Zip Perde tablosundan otomatik gelsin' };
     const hit = zipLookup(zip.table, size.en, size.boy);
     if (!hit.ok) return { ok: false as const, reason: hit.reason };
-    const f = hesaplaZipFiyat(hit.price, size.en, size.boy, zipSecimOf(item), zip.kar);
+    // Montaj TL -> EUR (kâr HARİÇ en sona eklenir). Kur yoksa fiyat
+    // hesaplanamaz; yanlış (montajsız) fiyat yazmaktansa boş bırakılır.
+    const montajTl = item.zipMontajTl ?? zip.montajTl;
+    const montajEur = montajTlToEur(montajTl, zip.rates);
+    const f = hesaplaZipFiyat(hit.price, size.en, size.boy, zipSecimOf(item), zip.kar, montajEur ?? 0);
+    const kurYok = montajEur == null;
     return {
       ok: true as const,
       hit,
       f,
+      montajTl,
       satisEur: f.satis,
-      fiyat: convertFromEur(f.satis, currency, zip.rates),
+      fiyat: kurYok ? null : convertFromEur(f.satis, currency, zip.rates),
       maliyet: convertFromEur(f.maliyet, currency, zip.rates),
+      montaj: kurYok ? null : convertFromEur(f.montaj, currency, zip.rates),
     };
   }, [zip, item, currency]);
   const zipAutoRef = useRef<number | null>(null);
   const applyZip = () => {
     if (!zipInfo?.ok || zipInfo.fiyat == null) return;
     zipAutoRef.current = zipInfo.fiyat;
-    onChange({ birimFiyat: zipInfo.fiyat, agMaliyet: zipInfo.maliyet });
+    onChange({ birimFiyat: zipInfo.fiyat, agMaliyet: zipInfo.maliyet, agMontajBedeli: zipInfo.montaj });
   };
   const zipFiyat = zipInfo?.ok ? zipInfo.fiyat : null;
   useEffect(() => {
@@ -1425,6 +1440,9 @@ function ItemCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zipFiyat]);
   const [zipKarText, setZipKarText] = useState(String(zip?.kar ?? 0));
+  const [zipMontajText, setZipMontajText] = useState(String(item.zipMontajTl ?? zip?.montajTl ?? 0));
+  // Firma varsayılanı sonradan yüklenirse (kalem kendi değerini taşımıyorsa) göster.
+  useEffect(() => { if (item.zipMontajTl == null && zip) setZipMontajText(String(zip.montajTl)); }, [zip?.montajTl]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (zip && Number(zipKarText.replace(',', '.')) !== zip.kar) setZipKarText(String(zip.kar)); }, [zip?.kar]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const parsed = Number(adetText.replace(',', '.')) || 0;
@@ -1657,6 +1675,21 @@ function ItemCard({
               testID={`item-${idx}-zip-kar`}
             />
           </View>
+          <View style={[itemStyles.blockHeadRow, { justifyContent: 'flex-end' }]}>
+            <Text style={itemStyles.zipKarLabel}>Montaj ₺ (adet, kâr hariç)</Text>
+            <MotionInput
+              style={[itemStyles.zipKarInput, { width: 84 }]}
+              keyboardType="decimal-pad"
+              value={zipMontajText}
+              onChangeText={(v) => {
+                setZipMontajText(v);
+                const tl = Number(v.replace(',', '.')) || 0;
+                onChange({ zipMontajTl: tl });
+                zip?.onMontajChange(tl);
+              }}
+              testID={`item-${idx}-zip-montaj`}
+            />
+          </View>
           <View style={{ marginBottom: 8 }}>
             <ZipSecimSecici
               compact
@@ -1671,7 +1704,9 @@ function ItemCard({
             <>
               <Text style={itemStyles.zipLine}>
                 Bayi € {zipInfo.hit.price}
-                {zipInfo.f.ekKalemler.map((k) => ` + ${k.label.replace(/ \(.*\)$/, '')} € ${k.tutar}`).join('')} → Satış € {zipInfo.satisEur}
+                {zipInfo.f.ekKalemler.map((k) => ` + ${k.label.replace(/ \(.*\)$/, '')} € ${k.tutar}`).join('')}
+                {zipInfo.f.kar > 0 ? ` + kâr € ${zipInfo.f.kar}` : ''}
+                {zipInfo.f.montaj > 0 ? ` + montaj € ${zipInfo.f.montaj} (₺${zipInfo.montajTl.toLocaleString('tr-TR')})` : ''} → Satış € {zipInfo.satisEur}
               </Text>
               {zipInfo.fiyat == null ? (
                 <Text style={itemStyles.zipMuted}>Kur alınamadı; {currency} karşılığını elle girin.</Text>

@@ -1600,6 +1600,9 @@ class QuoteItem(BaseModel):
     # eski kayitlarda {"logo": true} gibi bool). Ek fiyatlar icin bkz.
     # frontend src/lib/zip-perde.ts ZIP_GRUPLAR.
     zipEkler: Optional[Dict[str, Any]] = None
+    # Zip Perde montaj bedeli (perde basina TL; fiyata EUR'ya cevrilip kar
+    # HARIC en sona eklenir).
+    zipMontajTl: Optional[float] = None
 
 
 class Quote(BaseModel):

@@ -893,6 +893,8 @@ export type QuoteItemT = {
   agCizim?: CizimModeli | null;
   /** Zip Perde seçimi, ör. {motor: 'somfy', kumas: 'screen', logo: 'var'} -- bkz. ZIP_GRUPLAR. */
   zipEkler?: Record<string, string | boolean> | null;
+  /** Zip Perde montaj bedeli, perde başına TL (fiyata EUR'ya çevrilip eklenir). */
+  zipMontajTl?: number | null;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };

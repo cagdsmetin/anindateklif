@@ -102,6 +102,25 @@ export async function loadZipKar(companyId: string): Promise<number> {
   return raw != null && isFinite(n) ? n : 0;
 }
 
+// Montaj bedeli TL girilir (perde başına); firma bazında son değer hatırlanır.
+const montajKey = (companyId: string) => `zip-perde-montaj-tl:${companyId}`;
+
+export async function loadZipMontajTl(companyId: string): Promise<number> {
+  const raw = await readRaw(montajKey(companyId));
+  const n = Number(raw);
+  return raw != null && isFinite(n) ? n : 0;
+}
+
+export async function saveZipMontajTl(companyId: string, tl: number): Promise<void> {
+  await writeRaw(montajKey(companyId), String(tl));
+}
+
+/** TL montajı EUR'ya çevirir; kur yoksa null (0 TL her zaman 0). */
+export function montajTlToEur(tl: number, rates: RatesT | null): number | null {
+  if (!tl) return 0;
+  return rates?.eur_try ? Math.round((tl / rates.eur_try) * 100) / 100 : null;
+}
+
 export async function saveZipKar(companyId: string, pct: number): Promise<void> {
   await writeRaw(karKey(companyId), String(pct));
 }
@@ -198,13 +217,18 @@ export type ZipFiyatT = {
   m2: number;
   ekKalemler: { label: string; tutar: number }[];
   ekTutar: number;
+  /** Kâr hariç: tablo + ekler */
   maliyet: number;
+  kar: number;
+  /** Montaj (EUR, adet) -- kâra dahil DEĞİL, en sona eklenir. */
+  montaj: number;
   satis: number;
 };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim: ZipSecimT, karPct: number): ZipFiyatT {
+/** Satış = (tablo + ekler) × (1 + kâr) + montaj. Montaj kârdan etkilenmez. */
+export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim: ZipSecimT, karPct: number, montajEur = 0): ZipFiyatT {
   const m2 = r2((enCm * boyCm) / 10000);
   const ekKalemler = zipSecilenler(secim)
     .filter((o) => o.eur > 0)
@@ -214,7 +238,9 @@ export function zipFiyat(tabloFiyati: number, enCm: number, boyCm: number, secim
     }));
   const ekTutar = r2(ekKalemler.reduce((a, k) => a + k.tutar, 0));
   const maliyet = r2(tabloFiyati + ekTutar);
-  return { bayi: tabloFiyati, m2, ekKalemler, ekTutar, maliyet, satis: r2(maliyet * (1 + karPct / 100)) };
+  const kar = r2((maliyet * karPct) / 100);
+  const montaj = r2(montajEur);
+  return { bayi: tabloFiyati, m2, ekKalemler, ekTutar, maliyet, kar, montaj, satis: r2(maliyet + kar + montaj) };
 }
 
 /** Seçim değişince kalem açıklamasındaki seçenek adlarını da günceller

@@ -70,6 +70,14 @@ export function SheetModal({
   const reduced = useReducedMotion();
   const tint = accent || theme.colors.primary;
 
+  // Liste kaydırma alanına sığıyor mu? Sığmıyorsa alt kenarı yumuşakça
+  // soldururuz: satırın ortadan kesilmesi "bozuk" görünüyor, sönerek biten
+  // bir liste ise "devamı var, kaydır" demektir.
+  const [viewportH, setViewportH] = React.useState(0);
+  const [contentH, setContentH] = React.useState(0);
+  const [atEnd, setAtEnd] = React.useState(false);
+  const moreBelow = contentH > viewportH + 2 && !atEnd;
+
   const body = (
     <View style={s.sheetInner}>
       {/* tutamak */}
@@ -110,18 +118,33 @@ export function SheetModal({
         />
       ) : null}
 
-      {scroll ? (
+      {/* Kaydırma alanı her zaman ScrollView; `scroll` yalnızca uzun liste
+          ipucudur. Eskiden `scroll` verilmeyen sayfalar düz View idi ve içerik
+          sayfanın tavanını aşınca son satıra hiç ulaşılamıyordu. */}
+      <View style={s.scrollWrap}>
         <ScrollView
-          style={{ flexGrow: 0 }}
+          style={s.scroller}
           contentContainerStyle={s.scrollBody}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={Platform.OS === 'web' && scroll}
+          onLayout={(e) => setViewportH(e.nativeEvent.layout.height)}
+          onContentSizeChange={(_w, h) => setContentH(h)}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            setAtEnd(contentOffset.y + layoutMeasurement.height >= contentSize.height - 8);
+          }}
         >
           {children}
         </ScrollView>
-      ) : (
-        <View style={s.body}>{children}</View>
-      )}
+        {moreBelow ? (
+          <LinearGradient
+            pointerEvents="none"
+            colors={[alpha(theme.colors.surface, 0), theme.colors.surface] as [string, string]}
+            style={s.fadeBottom}
+          />
+        ) : null}
+      </View>
 
       {footer ? <View style={s.footer}>{footer}</View> : null}
     </View>
@@ -321,7 +344,10 @@ const s = themedStyles(() =>
       overflow: 'hidden',
       boxShadow: '0 -18px 50px rgba(2,6,23,0.35)',
     },
-    sheetInner: { paddingBottom: Platform.OS === 'ios' ? 26 : 14 },
+    // flexShrink olmadan iç sütun içeriği kadar uzuyor, sheet'in maxHeight'i
+    // onu kırpıyordu; ScrollView de "içeriğim tam sığıyor" sanıp hiç
+    // kaydırmıyordu. Kısalabilmesi kaydırmanın ön şartı.
+    sheetInner: { flexShrink: 1, minHeight: 0, paddingBottom: Platform.OS === 'ios' ? 26 : 14 },
     grabberWrap: { alignItems: 'center', paddingTop: 9, paddingBottom: 4 },
     grabber: { width: 40, height: 4, borderRadius: 2, backgroundColor: theme.colors.lineDark },
     head: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingTop: 4 },
@@ -336,7 +362,9 @@ const s = themedStyles(() =>
       justifyContent: 'center',
     },
     headRule: { height: 2, marginTop: 10, marginHorizontal: 16, borderRadius: 1 },
-    body: { paddingHorizontal: 12, paddingTop: 10 },
+    scrollWrap: { flexShrink: 1, minHeight: 0 },
+    scroller: { flexGrow: 0, flexShrink: 1 },
+    fadeBottom: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 26 },
     scrollBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6 },
     footer: { paddingHorizontal: 18, paddingTop: 10 },
 

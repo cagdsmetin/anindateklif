@@ -409,6 +409,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       notlar: data.notlar || '',
       tarih: data.tarih || new Date().toISOString().split('T')[0],
       kurTRY: Number(data.kurTRY) || 0,
+      hesap: data.hesap || 'Ana Kasa',
+      kdvOrani: Number(data.kdvOrani) || 0,
     });
     await reloadKasa();
   }, [activeCompanyId, reloadKasa]);

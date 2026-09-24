@@ -300,6 +300,14 @@ export const api = {
   listKasa: (companyId: string) => req(`/kasa/${companyId}`),
   createKasaEntry: (data: any) => req('/kasa', { method: 'POST', body: JSON.stringify(data) }),
   deleteKasaEntry: (id: string) => req(`/kasa/${id}`, { method: 'DELETE' }),
+  getKasaSettings: (companyId: string): Promise<KasaSettingsT> => req(`/kasa-settings/${companyId}`),
+  putKasaSettings: (data: KasaSettingsT): Promise<KasaSettingsT> => req('/kasa-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  listKasaRecurring: (companyId: string): Promise<KasaRecurringT[]> => req(`/kasa-recurring/${companyId}`),
+  createKasaRecurring: (data: Partial<KasaRecurringT> & { companyId: string }): Promise<KasaRecurringT> =>
+    req('/kasa-recurring', { method: 'POST', body: JSON.stringify(data) }),
+  patchKasaRecurring: (id: string, data: { aktif?: boolean; tutar?: number; bitis?: string }): Promise<KasaRecurringT> =>
+    req(`/kasa-recurring/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteKasaRecurring: (id: string) => req(`/kasa-recurring/${id}`, { method: 'DELETE' }),
   listContracts: (companyId: string): Promise<ContractT[]> => req(`/contracts/${companyId}`),
   createContract: (data: Partial<ContractT> & { companyId: string; baslik: string }): Promise<ContractT> =>
     req('/contracts', { method: 'POST', body: JSON.stringify(data) }),
@@ -805,6 +813,33 @@ export type KasaEntryT = {
   tarih: string;
   quoteId?: string | null;
   kurTRY?: number; // paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (referans)
+  hesap?: string; // kasa/banka hesabı (varsayılan 'Ana Kasa')
+  kdvOrani?: number; // >0 ise tutar KDV dahil
+  recurringId?: string | null; // tekrarlayan kuraldan üretildiyse
+};
+
+export type KasaSettingsT = {
+  companyId: string;
+  gelirKategorileri: string[];
+  giderKategorileri: string[];
+  hesaplar: string[];
+};
+
+export type KasaRecurringT = {
+  id: string;
+  companyId: string;
+  tur: 'gelir' | 'gider';
+  kategori: string;
+  tutar: number;
+  paraBirimi: string;
+  yontem: string;
+  notlar: string;
+  hesap: string;
+  kdvOrani: number;
+  gun: number;
+  baslangic: string;
+  bitis: string;
+  aktif: boolean;
 };
 
 export type TahsilatEntryT = {

@@ -13,7 +13,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, RatesT } from '@/src/lib/api';
+import { api, KasaSettingsT, RatesT } from '@/src/lib/api';
+import KasaAnaliz from '@/src/components/kasa/KasaAnaliz';
+import KasaRecurring from '@/src/components/kasa/KasaRecurring';
+import KasaRaporlar from '@/src/components/kasa/KasaRaporlar';
+import { buildPeriod, inRange, pctChange, sumTRY } from '@/src/lib/finance';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
 import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, themedStyles } from '@/src/components/motion';
@@ -22,6 +26,14 @@ const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir']
 const GIDER_KATEGORILER = ['Kira', 'Maaş', 'Malzeme', 'Fatura', 'Vergi', 'Ulaşım', 'Diğer Gider'];
 const YONTEMLER = ['Nakit', 'Kart', 'Havale/EFT', 'Diğer'];
 const CURRENCIES = ['TRY', 'USD', 'EUR'];
+const KDV_ORANLARI = [0, 1, 10, 20];
+type KasaTab = 'islemler' | 'tekrarlayan' | 'analiz' | 'raporlar';
+const TABS: { key: KasaTab; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  { key: 'islemler', label: 'İşlemler', icon: 'swap-vertical' },
+  { key: 'tekrarlayan', label: 'Tekrarlayan', icon: 'repeat' },
+  { key: 'analiz', label: 'Analiz', icon: 'stats-chart' },
+  { key: 'raporlar', label: 'Raporlar', icon: 'document-text' },
+];
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -33,7 +45,14 @@ function monthKey(d: string) { return (d || '').slice(0, 7); }
 
 export default function KasaScreen() {
   const { t, lang } = useLanguage();
-  const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast } = useApp();
+  const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast, quotes, reloadKasa } = useApp();
+  const [tab, setTab] = useState<KasaTab>('islemler');
+  const [settings, setSettings] = useState<KasaSettingsT | null>(null);
+  const [hesap, setHesap] = useState('Ana Kasa');
+  const [hesapFilter, setHesapFilter] = useState<string | null>(null);
+  const [kdvOrani, setKdvOrani] = useState(0);
+  const [adding, setAdding] = useState<null | 'kategori' | 'hesap'>(null);
+  const [newName, setNewName] = useState('');
   const insets = useSafeAreaInsets();
 
   // Panel > Genel Bakis'taki "Gider" dilimine dokunularak gelindiginde
@@ -57,10 +76,63 @@ export default function KasaScreen() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
+  useEffect(() => {
+    if (!activeCompany) return;
+    let alive = true;
+    api.getKasaSettings(activeCompany.id).then((st) => { if (alive) setSettings(st); }).catch(() => {});
+    return () => { alive = false; };
+  }, [activeCompany]);
+
+  // Varsayilan kategoriler + firmanin kendi ekledikleri ("Diger ..." hep en sonda).
+  const gelirKategorileri = useMemo(() => {
+    const base = GELIR_KATEGORILER.filter((k) => !k.startsWith('Diğer'));
+    return [...base, ...(settings?.gelirKategorileri || []).filter((k) => !base.includes(k)), 'Diğer Gelir'];
+  }, [settings]);
+  const giderKategorileri = useMemo(() => {
+    const base = GIDER_KATEGORILER.filter((k) => !k.startsWith('Diğer'));
+    return [...base, ...(settings?.giderKategorileri || []).filter((k) => !base.includes(k)), 'Diğer Gider'];
+  }, [settings]);
+  const hesaplar = settings?.hesaplar?.length ? settings.hesaplar : ['Ana Kasa'];
+
+  const saveSettings = async (next: KasaSettingsT) => {
+    try {
+      setSettings(await api.putKasaSettings(next));
+    } catch (e: any) {
+      showToast(t('common.errorPrefix') + (e?.message || ''));
+    }
+  };
+
+  const addName = async () => {
+    const name = newName.trim();
+    if (!name || !activeCompany) { setAdding(null); return; }
+    const cur: KasaSettingsT = settings || { companyId: activeCompany.id, gelirKategorileri: [], giderKategorileri: [], hesaplar: ['Ana Kasa'] };
+    if (adding === 'hesap') {
+      await saveSettings({ ...cur, hesaplar: [...hesaplar.filter((h) => h !== name), name] });
+      setHesap(name);
+    } else if (tur === 'gelir') {
+      await saveSettings({ ...cur, gelirKategorileri: [...cur.gelirKategorileri.filter((k) => k !== name), name] });
+      setKategori(name);
+    } else {
+      await saveSettings({ ...cur, giderKategorileri: [...cur.giderKategorileri.filter((k) => k !== name), name] });
+      setKategori(name);
+    }
+    setNewName('');
+    setAdding(null);
+  };
+
   const setTurAndKategori = (t: 'gelir' | 'gider') => {
     setTur(t);
     setKategori(t === 'gelir' ? GELIR_KATEGORILER[0] : GIDER_KATEGORILER[0]);
+    if (t === 'gelir') setKdvOrani(0);
   };
+
+  // Gecen ayin ayni gunune kadarki toplamlarla karsilastirma (hero altindaki satir).
+  const monthCompare = useMemo(() => {
+    const p = buildPeriod('thisMonth');
+    const cur = sumTRY(kasa.filter((k) => inRange(k.tarih, p.start, p.end)), rates);
+    const prev = sumTRY(kasa.filter((k) => inRange(k.tarih, p.prevStart, p.prevEnd)), rates);
+    return { gelir: pctChange(cur.gelir, prev.gelir), gider: pctChange(cur.gider, prev.gider), net: pctChange(cur.net, prev.net) };
+  }, [kasa, rates]);
 
   const thisMonth = monthKey(todayIso());
   const monthEntries = useMemo(() => kasa.filter((k) => monthKey(k.tarih) === thisMonth), [kasa, thisMonth]);
@@ -121,11 +193,13 @@ export default function KasaScreen() {
   }, [monthEntries]);
 
   const filtered = useMemo(() => {
-    const list = [...kasa].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.id || '').localeCompare(a.id || ''));
+    const list = [...kasa]
+      .filter((k) => !hesapFilter || (k.hesap || 'Ana Kasa') === hesapFilter)
+      .sort((a, b) => (b.tarih || '').localeCompare(a.tarih || '') || (b.id || '').localeCompare(a.id || ''));
     if (!q.trim()) return list;
     const qq = q.trim().toLowerCase();
     return list.filter((k) => k.kategori.toLowerCase().includes(qq) || (k.notlar || '').toLowerCase().includes(qq));
-  }, [kasa, q]);
+  }, [kasa, q, hesapFilter]);
 
   const isDiger = kategori.startsWith('Diğer') || yontem === 'Diğer';
 
@@ -134,7 +208,7 @@ export default function KasaScreen() {
     if (isDiger && !notlar.trim()) { showToast(t('kasa.s007')); return; }
     setSaving(true);
     try {
-      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates) });
+      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates), hesap, kdvOrani: tur === 'gider' ? kdvOrani : 0 });
       showToast(tur === 'gelir' ? t('kasa.s033') : t('kasa.s034'));
       setTutar('');
       setNotlar('');
@@ -163,7 +237,7 @@ export default function KasaScreen() {
     );
   }
 
-  const kategoriler = tur === 'gelir' ? GELIR_KATEGORILER : GIDER_KATEGORILER;
+  const kategoriler = tur === 'gelir' ? gelirKategorileri : giderKategorileri;
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -200,6 +274,41 @@ export default function KasaScreen() {
             ]}
           />
 
+          <View style={s.compareRow} testID="kasa-compare">
+            <Ionicons name="trending-up" size={14} color={theme.colors.textMuted} />
+            <Text style={s.compareText}>
+              Geçen aya göre:{'  '}
+              <CompareVal label="Gelir" pct={monthCompare.gelir} />{'  ·  '}
+              <CompareVal label="Gider" pct={monthCompare.gider} invert />{'  ·  '}
+              <CompareVal label="Net" pct={monthCompare.net} />
+            </Text>
+          </View>
+
+          <View style={s.tabBar}>
+            {TABS.map((tb) => (
+              <TouchableOpacity key={tb.key} style={[s.tabBtn, tab === tb.key && s.tabBtnActive]} onPress={() => setTab(tb.key)} testID={`kasa-tab-${tb.key}`}>
+                <Ionicons name={tb.icon} size={15} color={tab === tb.key ? '#fff' : theme.colors.textMuted} />
+                <Text style={[s.tabText, tab === tb.key && s.tabTextActive]}>{tb.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {tab === 'tekrarlayan' && (
+            <KasaRecurring
+              companyId={activeCompany.id}
+              gelirKategorileri={gelirKategorileri}
+              giderKategorileri={giderKategorileri}
+              hesaplar={hesaplar}
+              onChanged={() => { reloadKasa().catch(() => {}); }}
+              showToast={showToast}
+            />
+          )}
+          {tab === 'analiz' && <KasaAnaliz kasa={kasa} quotes={quotes} rates={rates} />}
+          {tab === 'raporlar' && (
+            <KasaRaporlar firma={activeCompany.sirketAdi} kasa={kasa} quotes={quotes} rates={rates} hesaplar={hesaplar} showToast={showToast} />
+          )}
+
+          {tab === 'islemler' && (<>
           <Text style={s.sectionH}>{t('kasa.s016')}</Text>
           <View style={s.card}>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -218,7 +327,11 @@ export default function KasaScreen() {
                   <Text style={[s.chipText, kategori === k && s.chipTextActive]}>{statusLabel(lang, k)}</Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('kategori'); setNewName(''); }} testID="kasa-kategori-ekle">
+                <Text style={s.chipAddText}>+ Kategori</Text>
+              </TouchableOpacity>
             </View>
+            {adding === 'kategori' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={tur === 'gelir' ? 'Yeni gelir kategorisi' : 'Yeni gider kategorisi'} />}
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1.4 }}>
@@ -245,6 +358,32 @@ export default function KasaScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={[s.label, { marginTop: 12 }]}>HESAP</Text>
+            <View style={s.chipRow}>
+              {hesaplar.map((h) => (
+                <TouchableOpacity key={h} style={[s.chip, hesap === h && s.chipActive]} onPress={() => setHesap(h)} testID={`kasa-hesap-${h}`}>
+                  <Text style={[s.chipText, hesap === h && s.chipTextActive]}>{h}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('hesap'); setNewName(''); }} testID="kasa-hesap-ekle">
+                <Text style={s.chipAddText}>+ Hesap</Text>
+              </TouchableOpacity>
+            </View>
+            {adding === 'hesap' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder="ör. Ziraat Bankası, POS, Kredi Kartı" />}
+
+            {tur === 'gider' && (
+              <>
+                <Text style={[s.label, { marginTop: 12 }]}>KDV (TUTAR KDV DAHİL)</Text>
+                <View style={s.chipRow}>
+                  {KDV_ORANLARI.map((r) => (
+                    <TouchableOpacity key={r} style={[s.chip, kdvOrani === r && s.chipActive]} onPress={() => setKdvOrani(r)} testID={`kasa-kdv-${r}`}>
+                      <Text style={[s.chipText, kdvOrani === r && s.chipTextActive]}>{r === 0 ? 'KDV yok' : `%${r}`}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
 
             <Text style={[s.label, { marginTop: 12 }]}>{upper(isDiger ? t('kasa.s023') : t('common.notOptional'))}</Text>
             <MotionInput
@@ -285,6 +424,15 @@ export default function KasaScreen() {
           )}
 
           <Text style={s.sectionH}>{t('kasa.s027')}</Text>
+          {hesaplar.length > 1 && (
+            <View style={[s.chipRow, { marginBottom: 8 }]}>
+              {[null, ...hesaplar].map((h) => (
+                <TouchableOpacity key={h || 'all'} style={[s.chip, hesapFilter === h && s.chipActive]} onPress={() => setHesapFilter(h)} testID={`kasa-filter-${h || 'tumu'}`}>
+                  <Text style={[s.chipText, hesapFilter === h && s.chipTextActive]}>{h || 'Tümü'}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View style={s.searchWrap}>
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
             <MotionInput style={s.searchInput} placeholder={t('kasa.s028')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} testID="kasa-search-input" />
@@ -306,7 +454,11 @@ export default function KasaScreen() {
                 />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
-                  <Text style={s.txMeta}>{statusLabel(lang, k.yontem)} · {k.tarih}</Text>
+                  <Text style={s.txMeta}>
+                    {k.recurringId ? '↻ ' : ''}{statusLabel(lang, k.yontem)} · {k.tarih}
+                    {hesaplar.length > 1 || (k.hesap && k.hesap !== 'Ana Kasa') ? ` · ${k.hesap || 'Ana Kasa'}` : ''}
+                    {k.kdvOrani ? ` · KDV %${k.kdvOrani}` : ''}
+                  </Text>
                 </View>
                 <Text style={[s.txAmount, { color: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.tutar, k.paraBirimi)}</Text>
                 <TouchableOpacity onPress={() => remove(k.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`kasa-delete-${k.id}`}>
@@ -316,13 +468,43 @@ export default function KasaScreen() {
               </Reveal>
             ))
           )}
+          </>)}
         </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
+function CompareVal({ label, pct, invert }: { label: string; pct: number | null; invert?: boolean }) {
+  if (pct == null) return <Text style={s.compareText}>{label} —</Text>;
+  const good = invert ? pct <= 0 : pct >= 0;
+  return (
+    <Text style={[s.compareText, { color: good ? theme.colors.greenText : theme.colors.redText, fontWeight: '800' }]}>
+      {label} {pct >= 0 ? '▲' : '▼'}%{Math.abs(pct).toFixed(0)}
+    </Text>
+  );
+}
+
+function AddNameRow({ value, onChange, onSubmit, onCancel, placeholder }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onCancel: () => void; placeholder: string }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
+      <MotionInput style={[s.input, { flex: 1 }]} value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94a3b8" autoFocus onSubmitEditing={onSubmit} testID="kasa-new-name" />
+      <TouchableOpacity style={[s.chip, s.chipActive]} onPress={onSubmit} testID="kasa-new-name-save"><Text style={[s.chipText, s.chipTextActive]}>Ekle</Text></TouchableOpacity>
+      <TouchableOpacity onPress={onCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><Ionicons name="close" size={18} color={theme.colors.textMuted} /></TouchableOpacity>
+    </View>
+  );
+}
+
 const s = themedStyles(() => StyleSheet.create({
+  compareRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  compareText: { fontSize: 11.5, color: theme.colors.textMuted, fontWeight: '600' },
+  tabBar: { flexDirection: 'row', gap: 6, marginTop: 14, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 4 },
+  tabBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 10, borderRadius: 10 },
+  tabBtnActive: { backgroundColor: theme.colors.modules.kasa },
+  tabText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
+  tabTextActive: { color: '#fff' },
+  chipAdd: { borderStyle: 'dashed', borderColor: theme.colors.modules.kasa },
+  chipAddText: { fontSize: 12, fontWeight: '800', color: theme.colors.modules.kasa },
   container: { flex: 1, backgroundColor: theme.colors.bg },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },

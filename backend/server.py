@@ -1458,6 +1458,9 @@ class KasaEntry(BaseModel):
     quoteId: Optional[str] = None  # onaylanan tekliften otomatik oluşturulduysa bağlantı (mükerrer önleme için)
     tahsilatId: Optional[str] = None  # bir tahsilat (para girişi) kaydından otomatik oluşturulduysa bağlantı
     kurTRY: float = 0.0  # paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (bilgi amaçlı, referans)
+    hesap: str = "Ana Kasa"  # hangi kasa/banka hesabı (Kasa ayarlarından tanımlanır)
+    kdvOrani: float = 0.0  # >0 ise tutar KDV dahildir; KDV özetinde indirilecek/hesaplanan KDV'ye girer
+    recurringId: Optional[str] = None  # tekrarlayan bir kuraldan otomatik oluşturulduysa kuralın id'si
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1471,6 +1474,8 @@ class KasaEntryCreate(BaseModel):
     notlar: str = ""
     tarih: str
     kurTRY: float = 0.0
+    hesap: str = "Ana Kasa"
+    kdvOrani: float = 0.0
 
 
 class TahsilatEntry(BaseModel):
@@ -4668,6 +4673,7 @@ def _require_kasa_access(user: Dict[str, Any]):
 async def list_kasa(company_id: str, user=Depends(get_current_user)):
     _require_kasa_access(user)
     await _own_company(user, company_id)
+    await _materialize_recurring(user["user_id"], company_id)
     docs = await db.kasa.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
     return [KasaEntry(**d) for d in docs]
 
@@ -4685,6 +4691,200 @@ async def create_kasa_entry(payload: KasaEntryCreate, user=Depends(get_current_u
 async def delete_kasa_entry(entry_id: str, user=Depends(get_current_user)):
     _require_kasa_access(user)
     await db.kasa.delete_one({"id": entry_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ---- Kasa ayarları: özel kategoriler + birden fazla kasa/banka hesabı ----
+# Firma belgesine değil ayrı koleksiyona yazılıyor: /companies PUT tüm belgeyi
+# CompanyCreate varsayılanlarıyla değiştirdiği için eski sürüm istemciler bu
+# alanları sessizce sıfırlayabilirdi.
+DEFAULT_KASA_HESAPLARI = ["Ana Kasa"]
+
+
+class KasaSettings(BaseModel):
+    companyId: str
+    gelirKategorileri: List[str] = Field(default_factory=list)
+    giderKategorileri: List[str] = Field(default_factory=list)
+    hesaplar: List[str] = Field(default_factory=lambda: list(DEFAULT_KASA_HESAPLARI))
+
+
+def _clean_names(items: List[str], limit: int = 50) -> List[str]:
+    out: List[str] = []
+    for x in items or []:
+        x = (x or "").strip()[:40]
+        if x and x not in out:
+            out.append(x)
+    return out[:limit]
+
+
+@api_router.get("/kasa-settings/{company_id}", response_model=KasaSettings)
+async def get_kasa_settings(company_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    doc = await db.kasa_settings.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0, "userId": 0})
+    return KasaSettings(**(doc or {"companyId": company_id}))
+
+
+@api_router.put("/kasa-settings", response_model=KasaSettings)
+async def put_kasa_settings(payload: KasaSettings, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
+    obj = KasaSettings(
+        companyId=payload.companyId,
+        gelirKategorileri=_clean_names(payload.gelirKategorileri),
+        giderKategorileri=_clean_names(payload.giderKategorileri),
+        hesaplar=_clean_names(payload.hesaplar, 20) or list(DEFAULT_KASA_HESAPLARI),
+    )
+    await db.kasa_settings.update_one(
+        {"companyId": payload.companyId, "userId": user["user_id"]},
+        {"$set": {**obj.dict(), "userId": user["user_id"]}},
+        upsert=True,
+    )
+    return obj
+
+
+# ---- Tekrarlayan gelir/gider (kira, maaş, abonelik...) ----
+# Kural her ay "gun" gününde bir Kasa kaydı üretir. Kayıtlar Kasa listesi
+# istendiğinde tembel (lazy) olarak oluşturulur: arka planda cron gerekmez,
+# (recurringId, tarih) çifti ile mükerrer kayıt engellenir.
+class KasaRecurring(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    tur: str  # "gelir" | "gider"
+    kategori: str
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = "Havale/EFT"
+    notlar: str = ""
+    hesap: str = "Ana Kasa"
+    kdvOrani: float = 0.0
+    gun: int = 1  # ayın kaçıncı günü (1-28)
+    baslangic: str  # YYYY-MM-DD
+    bitis: str = ""  # YYYY-MM-DD, boşsa süresiz
+    aktif: bool = True
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class KasaRecurringCreate(BaseModel):
+    companyId: str
+    tur: str
+    kategori: str
+    tutar: float
+    paraBirimi: str = "TRY"
+    yontem: str = "Havale/EFT"
+    notlar: str = ""
+    hesap: str = "Ana Kasa"
+    kdvOrani: float = 0.0
+    gun: int = 1
+    baslangic: str = ""
+    bitis: str = ""
+
+
+class KasaRecurringPatch(BaseModel):
+    aktif: Optional[bool] = None
+    tutar: Optional[float] = None
+    bitis: Optional[str] = None
+
+
+def _istanbul_today():
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Europe/Istanbul")).date()
+    except Exception:
+        return (_utc() + timedelta(hours=3)).date()
+
+
+def _recurring_due_dates(rule: Dict[str, Any], today) -> List[str]:
+    """Kuralın bugüne kadar (dahil) vadesi gelmiş ay tarihleri (YYYY-MM-DD), en fazla son 36 ay."""
+    try:
+        start = datetime.strptime(rule["baslangic"], "%Y-%m-%d").date()
+    except Exception:
+        return []
+    end = today
+    if rule.get("bitis"):
+        try:
+            end = min(end, datetime.strptime(rule["bitis"], "%Y-%m-%d").date())
+        except Exception:
+            pass
+    gun = max(1, min(28, int(rule.get("gun") or 1)))
+    out: List[str] = []
+    # Çok eski bir başlangıç tarihi girilse bile en fazla ~3 yıl geriye gidilir.
+    floor = today.replace(year=today.year - 3, day=1)
+    y, m = (start.year, start.month) if start >= floor else (floor.year, floor.month)
+    while True:
+        d = datetime(y, m, gun).date()
+        if d > end:
+            break
+        if d >= start:
+            out.append(d.isoformat())
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+    return out[-36:]
+
+
+async def _materialize_recurring(user_id: str, company_id: str) -> int:
+    today = _istanbul_today()
+    created = 0
+    rules = await db.kasa_recurring.find({"userId": user_id, "companyId": company_id, "aktif": True}, {"_id": 0}).to_list(200)
+    for r in rules:
+        for tarih in _recurring_due_dates(r, today):
+            if await db.kasa.find_one({"userId": user_id, "recurringId": r["id"], "tarih": tarih}, {"_id": 1}):
+                continue
+            entry = KasaEntry(
+                userId=user_id, companyId=company_id, tur=r["tur"], kategori=r["kategori"], tutar=r["tutar"],
+                paraBirimi=r.get("paraBirimi", "TRY"), yontem=r.get("yontem", "Havale/EFT"),
+                notlar=r.get("notlar") or "Tekrarlayan", tarih=tarih, hesap=r.get("hesap", "Ana Kasa"),
+                kdvOrani=r.get("kdvOrani", 0.0), recurringId=r["id"],
+            )
+            await db.kasa.insert_one(entry.dict())
+            created += 1
+    return created
+
+
+@api_router.get("/kasa-recurring/{company_id}", response_model=List[KasaRecurring])
+async def list_kasa_recurring(company_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    docs = await db.kasa_recurring.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(200)
+    return [KasaRecurring(**d) for d in docs]
+
+
+@api_router.post("/kasa-recurring", response_model=KasaRecurring)
+async def create_kasa_recurring(payload: KasaRecurringCreate, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
+    if payload.tur not in ("gelir", "gider"):
+        raise HTTPException(status_code=422, detail="Tür gelir veya gider olmalı")
+    if payload.tutar <= 0:
+        raise HTTPException(status_code=422, detail="Tutar sıfırdan büyük olmalı")
+    data = payload.dict()
+    data["gun"] = max(1, min(28, int(data.get("gun") or 1)))
+    data["baslangic"] = data.get("baslangic") or _istanbul_today().isoformat()
+    obj = KasaRecurring(userId=user["user_id"], **data)
+    await db.kasa_recurring.insert_one(obj.dict())
+    await _materialize_recurring(user["user_id"], payload.companyId)
+    return obj
+
+
+@api_router.patch("/kasa-recurring/{rule_id}", response_model=KasaRecurring)
+async def patch_kasa_recurring(rule_id: str, payload: KasaRecurringPatch, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    doc = await db.kasa_recurring.find_one({"id": rule_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kural bulunamadı")
+    patch = {k: v for k, v in payload.dict().items() if v is not None}
+    await db.kasa_recurring.update_one({"id": rule_id, "userId": user["user_id"]}, {"$set": patch})
+    doc.update(patch)
+    return KasaRecurring(**doc)
+
+
+@api_router.delete("/kasa-recurring/{rule_id}")
+async def delete_kasa_recurring(rule_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    # Kural silinir; geçmişte oluşturduğu Kasa kayıtları yerinde kalır.
+    await db.kasa_recurring.delete_one({"id": rule_id, "userId": user["user_id"]})
     return {"ok": True}
 
 

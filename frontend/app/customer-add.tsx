@@ -42,6 +42,10 @@ export default function CustomerAddScreen() {
   const [email, setEmail] = useState(editing?.email || '');
   const [sirket, setSirket] = useState(editing?.yetkili || '');
   const [adres, setAdres] = useState(editing?.adres || '');
+  const [vergiNo, setVergiNo] = useState(editing?.vergiNo || '');
+  const [vergiDairesi, setVergiDairesi] = useState(editing?.vergiDairesi || '');
+  const [il, setIl] = useState(editing?.il || '');
+  const [ilce, setIlce] = useState(editing?.ilce || '');
   const [busy, setBusy] = useState(false);
   const [errName, setErrName] = useState(false);
   const [errPhone, setErrPhone] = useState(false);
@@ -69,6 +73,10 @@ export default function CustomerAddScreen() {
         telefon: telefon.trim(),
         email: email.trim(),
         adres: adres.trim(),
+        vergiNo: vergiNo.trim(),
+        vergiDairesi: vergiDairesi.trim(),
+        il: il.trim(),
+        ilce: ilce.trim(),
       };
       if (editingId) {
         await api.updateCustomer(editingId, payload);
@@ -180,8 +188,50 @@ export default function CustomerAddScreen() {
               onChange={setAdres}
               multiline
               testID="cadd-address"
-              isLast
             />
+            <View style={s.row}>
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('custTax.vkn')}
+                icon="card-outline"
+                placeholder={t('custTax.vknPh')}
+                value={vergiNo}
+                onChange={(v: string) => setVergiNo(v.replace(/\D/g, '').slice(0, 11))}
+                keyboardType="number-pad"
+                testID="cadd-vkn"
+              />
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('custTax.office')}
+                icon="library-outline"
+                placeholder={t('custTax.officePh')}
+                value={vergiDairesi}
+                onChange={setVergiDairesi}
+                testID="cadd-vd"
+              />
+            </View>
+            <View style={s.row}>
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('custTax.district')}
+                icon="navigate-outline"
+                placeholder={t('custTax.district')}
+                value={ilce}
+                onChange={setIlce}
+                testID="cadd-ilce"
+                isLast
+              />
+              <FieldRow
+                rowStyle={{ flex: 1 }}
+                label={t('custTax.city')}
+                icon="map-outline"
+                placeholder={t('custTax.city')}
+                value={il}
+                onChange={setIl}
+                testID="cadd-il"
+                isLast
+              />
+            </View>
           </View>
           </View>
         </MotionScrollView>

@@ -18,6 +18,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
       'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
       'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura', 'nav.sozlesmeler': 'Sozlesmeler',
+      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.yorumlar': 'Yorum Yanitla',
     };
     return fallback[k] || k;
   });
@@ -29,6 +30,8 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'customers', title: tt('nav.musteri'), icon: 'people', color: m.musteri },
     { name: 'services', title: tt('nav.servis'), icon: 'construct', color: m.servis },
     { name: 'campaigns', title: tt('nav.kampanya'), icon: 'megaphone', color: m.kampanya },
+    { name: 'kuponlar', title: tt('nav.kuponlar'), icon: 'pricetags', color: m.kupon },
+    { name: 'yorumlar', title: tt('nav.yorumlar'), icon: 'star', color: m.yorum },
     { name: 'leads', title: tt('nav.musteriAvcisi'), icon: 'search', color: m.lead },
     { name: 'ads-intel', title: tt('nav.reklamIstihbarati'), icon: 'megaphone', color: m.reklam },
     { name: 'efatura', title: tt('nav.eFatura'), icon: 'receipt', color: m.efatura },
@@ -57,6 +60,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     // teklifleri (durum dağılımı + fiyat detayları) izleyebilsin diye --
     // personel ekranıyla aynı şekilde sadece firma sahibine gösterilir.
     items.push({ name: 'personel-teklifleri', title: tt('nav.personelTeklifleri'), icon: 'pie-chart', color: theme.colors.modules.raporlar });
+    items.push({ name: 'prim', title: tt('nav.prim'), icon: 'trophy', color: theme.colors.modules.prim });
   }
   // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.
   if (opts?.isAdmin) {

@@ -1349,6 +1349,12 @@ class CatalogItem(BaseModel):
     birim: str = "Adet"
     birimFiyat: float = 0.0
     paraBirimi: str = "USD"
+    # Stok takibi (opsiyonel): acik olan urunlerde onaylanan tekliflerdeki
+    # adet stoktan otomatik duser (bkz. _apply_quote_stock).
+    stokTakip: bool = False
+    stok: float = 0.0
+    minStok: float = 0.0
+    stokKodu: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1360,6 +1366,11 @@ class CatalogItemCreate(BaseModel):
     birim: str = "Adet"
     birimFiyat: float = 0.0
     paraBirimi: str = "USD"
+    # None = dokunma (Excel fiyat guncellemesi stoku sifirlamasin)
+    stokTakip: Optional[bool] = None
+    stok: Optional[float] = None
+    minStok: Optional[float] = None
+    stokKodu: Optional[str] = None
 
 
 class CatalogBulkCreate(BaseModel):
@@ -1522,6 +1533,11 @@ class Customer(BaseModel):
     telefon: str = ""
     email: str = ""
     adres: str = ""
+    # e-Fatura/e-Arsiv icin alici bilgileri (opsiyonel).
+    vergiNo: str = ""
+    vergiDairesi: str = ""
+    il: str = ""
+    ilce: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1532,6 +1548,11 @@ class CustomerCreate(BaseModel):
     telefon: str = ""
     email: str = ""
     adres: str = ""
+    # None = bu alanlara dokunma (eski istemciler gondermez, mevcut deger silinmesin)
+    vergiNo: Optional[str] = None
+    vergiDairesi: Optional[str] = None
+    il: Optional[str] = None
+    ilce: Optional[str] = None
 
 
 class Service(BaseModel):
@@ -1652,6 +1673,13 @@ class Quote(BaseModel):
     createdByUserId: str = ""
     createdByEmail: str = ""
     createdByName: str = ""
+    # Musteriye verilen kampanya/kupon kodu (bkz. /coupons) -- iskonto'ya
+    # zaten yansitilmis olarak gelir, burada sadece kayit/kullanim sayimi icin.
+    kuponKodu: str = ""
+    # Ilk "Onaylandı" anı (personel primi donem hesabi icin).
+    approvedAt: Optional[str] = None
+    # Onayla birlikte katalog stoğundan düşüldü mü (bkz. _apply_quote_stock).
+    stokDusuldu: bool = False
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
     deletedAt: Optional[str] = None
@@ -1680,6 +1708,7 @@ class QuoteCreate(BaseModel):
     items: List[QuoteItem] = Field(default_factory=list)
     ekler: List[Dict[str, str]] = Field(default_factory=list)
     durum: str = "Beklemede"
+    kuponKodu: str = ""
 
 
 class QuoteStatusUpdate(BaseModel):
@@ -1769,6 +1798,7 @@ class ManualReminder(BaseModel):
     notu: str = ""
     tarih: str  # YYYY-MM-DD
     tamamlandi: bool = False
+    icsUid: str = ""  # .ics iceri aktarimindan geldiyse (mukerrer onleme)
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -2404,8 +2434,10 @@ def _require_owner(user: Dict[str, Any]):
 async def create_catalog_item(payload: CatalogItemCreate, user=Depends(get_current_user)):
     _require_owner(user)
     await _own_company(user, payload.companyId)
-    obj = CatalogItem(userId=user["user_id"], **payload.dict())
+    obj = CatalogItem(userId=user["user_id"], **payload.dict(exclude_none=True))
     await db.catalog.insert_one(obj.dict())
+    if obj.stokTakip and obj.stok:
+        await _log_stock_move(user, obj.dict(), "giris", obj.stok, 0.0, obj.stok, "Açılış stoku")
     return obj
 
 
@@ -2433,7 +2465,7 @@ async def bulk_create_catalog(payload: CatalogBulkCreate, user=Depends(get_curre
     created_count = 0
     updated_count = 0
     for it in payload.items:
-        d = it.dict()
+        d = it.dict(exclude_none=True)
         d["companyId"] = payload.companyId
         key = (d.get("urunAdi") or "").strip().casefold()
         match = existing_by_name.get(key) if key else None
@@ -2459,8 +2491,12 @@ async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Dep
     doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Item not found")
-    updated = {**doc, **payload.dict()}
+    updated = {**doc, **payload.dict(exclude_none=True)}
     await db.catalog.replace_one({"id": item_id, "userId": user["user_id"]}, updated)
+    old_stok = float(doc.get("stok") or 0)
+    new_stok = float(updated.get("stok") or 0)
+    if updated.get("stokTakip") and abs(new_stok - old_stok) > 1e-9:
+        await _log_stock_move(user, updated, "duzeltme", new_stok - old_stok, old_stok, new_stok, "Elle düzeltme")
     return CatalogItem(**updated)
 
 
@@ -2768,6 +2804,9 @@ class EFaturaConfig(BaseModel):
     firmaVergiNo: str = ""
     firmaUnvani: str = ""
     firmaAdres: str = ""
+    firmaVergiDairesi: str = ""
+    firmaIl: str = ""
+    firmaIlce: str = ""
     faturaSerisi: str = ""
     sablonId: str = ""
     lastTestOk: bool = False
@@ -2784,6 +2823,9 @@ class EFaturaConfigUpdate(BaseModel):
     firmaVergiNo: Optional[str] = None
     firmaUnvani: Optional[str] = None
     firmaAdres: Optional[str] = None
+    firmaVergiDairesi: Optional[str] = None
+    firmaIl: Optional[str] = None
+    firmaIlce: Optional[str] = None
     faturaSerisi: Optional[str] = None
     sablonId: Optional[str] = None
 
@@ -2803,6 +2845,9 @@ class EFaturaConfigOut(BaseModel):
     firmaVergiNo: str = ""
     firmaUnvani: str = ""
     firmaAdres: str = ""
+    firmaVergiDairesi: str = ""
+    firmaIl: str = ""
+    firmaIlce: str = ""
     faturaSerisi: str = ""
     sablonId: str = ""
     lastTestOk: bool = False
@@ -2826,6 +2871,9 @@ def _efatura_out(doc: Dict[str, Any], company_id: str) -> EFaturaConfigOut:
         firmaVergiNo=doc.get("firmaVergiNo", ""),
         firmaUnvani=doc.get("firmaUnvani", ""),
         firmaAdres=doc.get("firmaAdres", ""),
+        firmaVergiDairesi=doc.get("firmaVergiDairesi", ""),
+        firmaIl=doc.get("firmaIl", ""),
+        firmaIlce=doc.get("firmaIlce", ""),
         faturaSerisi=doc.get("faturaSerisi", ""),
         sablonId=doc.get("sablonId", ""),
         lastTestOk=bool(doc.get("lastTestOk", False)),
@@ -2868,6 +2916,10 @@ async def update_efatura_config(payload: EFaturaConfigUpdate, user=Depends(get_c
         updates["firmaUnvani"] = payload.firmaUnvani.strip()[:200]
     if payload.firmaAdres is not None:
         updates["firmaAdres"] = payload.firmaAdres.strip()[:500]
+    for fld in ("firmaVergiDairesi", "firmaIl", "firmaIlce"):
+        val = getattr(payload, fld)
+        if val is not None:
+            updates[fld] = val.strip()[:100]
     if payload.faturaSerisi is not None:
         updates["faturaSerisi"] = payload.faturaSerisi.strip()[:20]
     if payload.sablonId is not None:
@@ -4952,10 +5004,10 @@ async def create_customer(payload: CustomerCreate, user=Depends(get_current_user
         {"companyId": payload.companyId, "firma": payload.firma, "userId": user["user_id"]}, {"_id": 0}
     )
     if existing:
-        updated = {**existing, **payload.dict()}
+        updated = {**existing, **payload.dict(exclude_none=True)}
         await db.customers.replace_one({"id": existing["id"], "userId": user["user_id"]}, updated)
         return Customer(**updated)
-    obj = Customer(userId=user["user_id"], **payload.dict())
+    obj = Customer(userId=user["user_id"], **payload.dict(exclude_none=True))
     await db.customers.insert_one(obj.dict())
     return obj
 
@@ -5020,7 +5072,7 @@ async def update_customer(customer_id: str, payload: CustomerCreate, user=Depend
     existing = await db.customers.find_one({"id": customer_id, "userId": user["user_id"]}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Customer not found")
-    updated = {**existing, **payload.dict()}
+    updated = {**existing, **payload.dict(exclude_none=True)}
     await db.customers.replace_one({"id": customer_id, "userId": user["user_id"]}, updated)
     return Customer(**updated)
 
@@ -5169,8 +5221,11 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     data["createdByUserId"] = _self_id(user)
     data["createdByEmail"] = _actor_email(user)
     data["createdByName"] = _actor_name(user)
+    data["kuponKodu"] = (data.get("kuponKodu") or "").strip().upper()[:40]
     obj = Quote(userId=user["user_id"], **data)
     await db.quotes.insert_one(obj.dict())
+    if obj.kuponKodu:
+        await _consume_coupon(user, obj.companyId, obj.kuponKodu)
     # upsert customer
     if obj.musFirma:
         existing = await db.customers.find_one(
@@ -5291,8 +5346,11 @@ async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_cur
     data["kdvTutar"] = kdvTutar
     data["genelToplam"] = genelToplam
     data["updatedAt"] = utc_now_iso()
+    data["kuponKodu"] = (data.get("kuponKodu") or "").strip().upper()[:40]
     updated = {**doc, **data}
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, updated)
+    if data["kuponKodu"] and data["kuponKodu"] != (doc.get("kuponKodu") or ""):
+        await _consume_coupon(user, payload.companyId, data["kuponKodu"])
     return Quote(**updated)
 
 
@@ -5309,6 +5367,15 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
         raise HTTPException(status_code=403, detail="Onaylı bir teklifi sadece firma sahibi reddedebilir")
     doc["durum"] = payload.durum
     doc["updatedAt"] = utc_now_iso()
+    if payload.durum == "Onaylandı" and not doc.get("approvedAt"):
+        doc["approvedAt"] = doc["updatedAt"]
+    # Stok: onaylanınca katalogdaki stok takipli ürünlerden düş; onaydan
+    # çıkınca (Reddedildi/Beklemede) geri ekle.
+    if payload.durum == "Onaylandı" and not doc.get("stokDusuldu"):
+        doc["stokDusuldu"] = await _apply_quote_stock(user, doc, -1)
+    elif payload.durum != "Onaylandı" and doc.get("stokDusuldu"):
+        await _apply_quote_stock(user, doc, +1)
+        doc["stokDusuldu"] = False
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
 
     # Teklif "Onaylandı" durumuna ilk kez geçtiğinde, müşteri için otomatik bir
@@ -7584,6 +7651,1324 @@ async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current
     return ContractAiResponse(baslik=baslik, icerik=text)
 
 
+# ============ STOK TAKİBİ ============
+# Katalogda "stokTakip" açık olan ürünler için stok hareketleri. Teklif
+# "Onaylandı" olunca kalemlerdeki adet, ürün adı eşleşen katalog kaleminden
+# otomatik düşer; onaydan çıkınca geri eklenir (bkz. update_quote_status).
+class StockMove(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    itemId: str
+    urunAdi: str = ""
+    tip: str  # giris | cikis | duzeltme | satis | iade
+    miktar: float  # işaretli: + stoka giriş, - stoktan çıkış
+    onceki: float = 0.0
+    sonraki: float = 0.0
+    aciklama: str = ""
+    quoteId: str = ""
+    createdByEmail: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class StockMoveCreate(BaseModel):
+    companyId: str
+    tip: str  # giris | cikis | duzeltme (sayım: miktar = yeni stok)
+    miktar: float
+    aciklama: str = ""
+
+
+async def _log_stock_move(user, item, tip, miktar, onceki, sonraki, aciklama, quote_id=""):
+    mv = StockMove(
+        userId=user["user_id"], companyId=item.get("companyId", ""), itemId=item["id"],
+        urunAdi=item.get("urunAdi", ""), tip=tip, miktar=round(float(miktar), 4),
+        onceki=round(float(onceki), 4), sonraki=round(float(sonraki), 4),
+        aciklama=(aciklama or "")[:300], quoteId=quote_id, createdByEmail=_actor_email(user),
+    )
+    await db.stock_moves.insert_one(mv.dict())
+
+
+async def _apply_quote_stock(user: Dict[str, Any], quote: Dict[str, Any], sign: int) -> bool:
+    """sign=-1: onay (stoktan düş), +1: onaydan çıkış (geri ekle). Stok takipli
+    en az bir ürün etkilendiyse True döner."""
+    items = quote.get("items") or []
+    if not items:
+        return False
+    catalog = await db.catalog.find(
+        {"userId": user["user_id"], "companyId": quote.get("companyId"), "stokTakip": True}, {"_id": 0}
+    ).to_list(5000)
+    by_name: Dict[str, Dict[str, Any]] = {}
+    for c in catalog:
+        k = (c.get("urunAdi") or "").strip().casefold()
+        if k and k not in by_name:
+            by_name[k] = c
+    if not by_name:
+        return False
+    qty: Dict[str, float] = {}
+    for it in items:
+        k = (it.get("urunAdi") or it.get("sistemTipi") or "").strip().casefold()
+        if k in by_name:
+            qty[k] = qty.get(k, 0.0) + float(it.get("adet") or 0)
+    touched = False
+    for k, q in qty.items():
+        if q <= 0:
+            continue
+        c = by_name[k]
+        await db.catalog.update_one({"id": c["id"], "userId": user["user_id"]}, {"$inc": {"stok": sign * q}})
+        after = await db.catalog.find_one({"id": c["id"], "userId": user["user_id"]}, {"_id": 0}) or c
+        sonraki = float(after.get("stok") or 0)
+        await _log_stock_move(
+            user, after, "satis" if sign < 0 else "iade", sign * q, sonraki - sign * q, sonraki,
+            f"Teklif {quote.get('teklifNo', '')} " + ("onaylandı" if sign < 0 else "onaydan çıkarıldı"),
+            quote.get("id", ""),
+        )
+        touched = True
+    return touched
+
+
+@api_router.post("/catalog/{item_id}/stock", response_model=CatalogItem)
+async def move_catalog_stock(item_id: str, payload: StockMoveCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"], "companyId": payload.companyId}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Ürün bulunamadı")
+    if payload.tip not in ("giris", "cikis", "duzeltme"):
+        raise HTTPException(422, "Geçersiz hareket tipi")
+    onceki = float(doc.get("stok") or 0)
+    if payload.tip == "duzeltme":
+        sonraki = float(payload.miktar)
+        delta = sonraki - onceki
+    else:
+        m = abs(float(payload.miktar))
+        if m <= 0:
+            raise HTTPException(422, "Miktar girin")
+        delta = m if payload.tip == "giris" else -m
+        sonraki = onceki + delta
+    await db.catalog.update_one(
+        {"id": item_id, "userId": user["user_id"]}, {"$set": {"stok": sonraki, "stokTakip": True}}
+    )
+    doc.update({"stok": sonraki, "stokTakip": True})
+    default_note = {"giris": "Stok girişi", "cikis": "Stok çıkışı", "duzeltme": "Sayım düzeltmesi"}[payload.tip]
+    await _log_stock_move(user, doc, payload.tip, delta, onceki, sonraki, payload.aciklama.strip() or default_note)
+    return CatalogItem(**doc)
+
+
+@api_router.get("/stock-moves/{company_id}", response_model=List[StockMove])
+async def list_stock_moves(company_id: str, itemId: Optional[str] = None, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    q: Dict[str, Any] = {"userId": user["user_id"], "companyId": company_id}
+    if itemId:
+        q["itemId"] = itemId
+    docs = await db.stock_moves.find(q, {"_id": 0}).sort("createdAt", -1).to_list(500)
+    return [StockMove(**d) for d in docs]
+
+
+# ============ KUPON / KAMPANYA KODLARI ============
+class Coupon(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    kod: str
+    aciklama: str = ""
+    tip: str = "yuzde"  # yuzde | tutar
+    deger: float = 0.0
+    paraBirimi: str = "TRY"  # tip=tutar için
+    baslangic: str = ""  # YYYY-MM-DD, boşsa hemen
+    bitis: str = ""  # YYYY-MM-DD, boşsa süresiz
+    maxKullanim: int = 0  # 0 = sınırsız
+    kullanim: int = 0
+    aktif: bool = True
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class CouponCreate(BaseModel):
+    companyId: str
+    kod: str
+    aciklama: str = ""
+    tip: str = "yuzde"
+    deger: float = 0.0
+    paraBirimi: str = "TRY"
+    baslangic: str = ""
+    bitis: str = ""
+    maxKullanim: int = 0
+    aktif: bool = True
+
+
+class CouponValidateRequest(BaseModel):
+    companyId: str
+    kod: str
+
+
+def _norm_coupon_code(kod: str) -> str:
+    return re.sub(r"[^A-Z0-9_-]", "", (kod or "").strip().upper().replace("İ", "I"))[:30]
+
+
+def _coupon_clean(payload: CouponCreate) -> Dict[str, Any]:
+    d = payload.dict()
+    d["kod"] = _norm_coupon_code(d["kod"])
+    if len(d["kod"]) < 3:
+        raise HTTPException(422, "Kod en az 3 karakter olmalı (harf, rakam, - veya _)")
+    if d["tip"] not in ("yuzde", "tutar"):
+        raise HTTPException(422, "Geçersiz indirim tipi")
+    if d["deger"] <= 0 or (d["tip"] == "yuzde" and d["deger"] > 100):
+        raise HTTPException(422, "İndirim değeri geçersiz")
+    for f in ("baslangic", "bitis"):
+        if d[f] and not re.match(r"^\d{4}-\d{2}-\d{2}$", d[f]):
+            raise HTTPException(422, "Tarih YYYY-AA-GG biçiminde olmalı")
+    d["aciklama"] = d["aciklama"].strip()[:200]
+    d["maxKullanim"] = max(0, int(d["maxKullanim"] or 0))
+    return d
+
+
+@api_router.get("/coupons/{company_id}", response_model=List[Coupon])
+async def list_coupons(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.coupons.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).sort("createdAt", -1).to_list(1000)
+    return [Coupon(**d) for d in docs]
+
+
+@api_router.post("/coupons", response_model=Coupon)
+async def create_coupon(payload: CouponCreate, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, payload.companyId)
+    d = _coupon_clean(payload)
+    if await db.coupons.find_one({"userId": user["user_id"], "companyId": payload.companyId, "kod": d["kod"]}):
+        raise HTTPException(409, "Bu kod zaten var")
+    obj = Coupon(userId=user["user_id"], **d)
+    await db.coupons.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/coupons/{coupon_id}", response_model=Coupon)
+async def update_coupon(coupon_id: str, payload: CouponCreate, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, payload.companyId)
+    doc = await db.coupons.find_one({"id": coupon_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Kupon bulunamadı")
+    d = _coupon_clean(payload)
+    if d["kod"] != doc["kod"] and await db.coupons.find_one({"userId": user["user_id"], "companyId": payload.companyId, "kod": d["kod"]}):
+        raise HTTPException(409, "Bu kod zaten var")
+    doc.update(d)
+    await db.coupons.replace_one({"id": coupon_id, "userId": user["user_id"]}, doc)
+    return Coupon(**doc)
+
+
+@api_router.delete("/coupons/{coupon_id}")
+async def delete_coupon(coupon_id: str, user=Depends(get_current_user)):
+    _require_owner(user)
+    await db.coupons.delete_one({"id": coupon_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+@api_router.post("/coupons/validate", response_model=Coupon)
+async def validate_coupon(payload: CouponValidateRequest, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    kod = _norm_coupon_code(payload.kod)
+    doc = await db.coupons.find_one({"userId": user["user_id"], "companyId": payload.companyId, "kod": kod}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Kupon bulunamadı")
+    today = _istanbul_today().isoformat()
+    if not doc.get("aktif", True):
+        raise HTTPException(422, "Bu kupon pasif")
+    if doc.get("baslangic") and today < doc["baslangic"]:
+        raise HTTPException(422, "Bu kupon henüz başlamadı")
+    if doc.get("bitis") and today > doc["bitis"]:
+        raise HTTPException(422, "Bu kuponun süresi doldu")
+    if doc.get("maxKullanim") and int(doc.get("kullanim") or 0) >= int(doc["maxKullanim"]):
+        raise HTTPException(422, "Bu kuponun kullanım hakkı doldu")
+    return Coupon(**doc)
+
+
+async def _consume_coupon(user: Dict[str, Any], company_id: str, kod: str) -> None:
+    await db.coupons.update_one(
+        {"userId": user["user_id"], "companyId": company_id, "kod": _norm_coupon_code(kod)},
+        {"$inc": {"kullanim": 1}},
+    )
+
+
+# ============ PERSONEL PRİMİ ============
+# Sadece oranlar saklanır; hesap (onaylanan teklifler x oran) istemcide,
+# zaten yüklü teklif listesi ve kurlar üzerinden yapılır.
+class CommissionRule(BaseModel):
+    memberId: str
+    oran: float = 0.0  # yüzde
+    baz: str = "ciro"  # ciro (KDV hariç) | kar (ciro - maliyet)
+
+
+class CommissionSettings(BaseModel):
+    companyId: str
+    rules: List[CommissionRule] = Field(default_factory=list)
+
+
+@api_router.get("/commission-settings/{company_id}", response_model=CommissionSettings)
+async def get_commission_settings(company_id: str, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, company_id)
+    doc = await db.commission_settings.find_one({"userId": user["user_id"], "companyId": company_id}, {"_id": 0})
+    return CommissionSettings(companyId=company_id, rules=(doc or {}).get("rules", []))
+
+
+@api_router.put("/commission-settings", response_model=CommissionSettings)
+async def put_commission_settings(payload: CommissionSettings, user=Depends(get_current_user)):
+    _require_owner(user)
+    await _own_company(user, payload.companyId)
+    rules = []
+    for r in payload.rules[:200]:
+        if r.baz not in ("ciro", "kar"):
+            r.baz = "ciro"
+        r.oran = max(0.0, min(100.0, float(r.oran or 0)))
+        rules.append(r.dict())
+    await db.commission_settings.update_one(
+        {"userId": user["user_id"], "companyId": payload.companyId},
+        {"$set": {"rules": rules, "updatedAt": utc_now_iso()}},
+        upsert=True,
+    )
+    return CommissionSettings(companyId=payload.companyId, rules=rules)
+
+
+# ============ AI: GOOGLE / TRIPADVISOR YORUM YANITI ============
+REVIEW_REPLY_SYSTEM_PROMPT = (
+    "Bir işletme sahibinin adına, müşterinin herkese açık yorumuna (Google Haritalar, TripAdvisor vb.) "
+    "yazılacak yanıtı hazırlıyorsun. Kurallar: 2-5 cümle, doğal ve insani; kopyala-yapıştır gibi durmasın. "
+    "Müşteriye adıyla (varsa) hitap et. Olumlu yorumda somut bir detaya değinerek teşekkür et ve tekrar bekle. "
+    "Olumsuz yorumda savunmaya geçme, tartışma; özür dile, sorunu kabul et, çözüm için iletişim kanalını "
+    "(telefon/e-posta verilmişse onu) öner. Yapılmamış bir şeyi vaat etme, indirim/para iadesi teklif etme "
+    "(kullanıcı talimatında yoksa). Kişisel veri, sipariş detayı veya iç bilgi paylaşma. Emoji kullanma. "
+    "Sonunu işletme adıyla imzala. SADECE yanıt metnini yaz; başlık, tırnak veya açıklama ekleme."
+)
+
+
+class ReviewReplyRequest(BaseModel):
+    companyId: str
+    yorum: str
+    puan: int = 5
+    musteriAdi: str = ""
+    ton: str = "profesyonel"  # profesyonel | samimi | resmi | ozur
+    talimat: str = ""
+    dil: str = "tr"
+
+
+class ReviewReplyResponse(BaseModel):
+    yanit: str
+
+
+@api_router.post("/ai/review-reply", response_model=ReviewReplyResponse)
+async def ai_review_reply(payload: ReviewReplyRequest, user=Depends(get_current_user)):
+    if not _anthropic_client:
+        raise HTTPException(status_code=503, detail="Yapay zeka henüz yapılandırılmadı")
+    if not payload.yorum.strip():
+        raise HTTPException(422, "Yorum metnini girin")
+    _rate_limit(f"review-ai:user:{user['user_id']}", 80, 24 * 3600)
+    company = await _own_company(user, payload.companyId)
+    ton_map = {
+        "profesyonel": "profesyonel ve sıcak",
+        "samimi": "samimi, içten, esnaf sıcaklığında",
+        "resmi": "resmi ve kurumsal",
+        "ozur": "özür dileyen, çözüm odaklı ve alçakgönüllü",
+    }
+    dil_map = {"tr": "Türkçe", "en": "İngilizce (English)", "it": "İtalyanca (Italiano)"}
+    dil = dil_map.get((payload.dil or "tr").lower(), None)
+    parts = [
+        f"İşletme: {company.get('sirketAdi', '')}",
+        f"İletişim: tel {company.get('telefon', '') or '-'}, e-posta {company.get('email', '') or '-'}",
+        f"Puan: {max(1, min(5, payload.puan))}/5",
+        f"Müşteri adı: {payload.musteriAdi.strip() or '(bilinmiyor)'}",
+        f"Ton: {ton_map.get(payload.ton, ton_map['profesyonel'])}",
+        f"Yanıt dili: {dil or 'yorumun yazıldığı dil'}",
+    ]
+    if payload.talimat.strip():
+        parts.append(f"İşletme sahibinin ek notu: {payload.talimat.strip()[:800]}")
+    parts.append("\nMÜŞTERİ YORUMU:\n" + payload.yorum.strip()[:4000])
+    try:
+        resp = await asyncio.to_thread(
+            _anthropic_client.messages.create,
+            model="claude-sonnet-5",
+            max_tokens=700,
+            system=REVIEW_REPLY_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": "\n".join(parts)}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+    except Exception as e:
+        logger.error(f"Review AI error: {e}")
+        raise HTTPException(status_code=502, detail="Yapay zeka şu anda yanıt veremiyor, lütfen tekrar deneyin")
+    text = text.replace("**", "").strip().strip('"').strip()
+    if not text:
+        raise HTTPException(status_code=502, detail="Yanıt oluşturulamadı")
+    return ReviewReplyResponse(yanit=text)
+
+
+# ============ TAKVİM SENKRONU (.ics) ============
+# Dışa: firmaya özel gizli bir abonelik adresi (webcal) -- Google/Apple/Outlook
+# takvimine bir kez eklenir, hatırlatmalar/servis/bakım/vade günleri orada
+# kendiliğinden görünür. İçe: .ics dosyasındaki etkinlikler hatırlatıcı olur.
+class CalendarFeedOut(BaseModel):
+    url: str
+    webcalUrl: str
+
+
+class CalendarImportRequest(BaseModel):
+    companyId: str
+    ics: str
+
+
+class CalendarImportResult(BaseModel):
+    created: int = 0
+    skipped: int = 0
+
+
+def _public_base(request: Request) -> str:
+    env = os.environ.get("PUBLIC_API_URL", "").rstrip("/")
+    if env:
+        return env
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    if host and not host.startswith(("localhost", "127.0.0.1")):
+        proto = "https"
+    return f"{proto}://{host}"
+
+
+async def _calendar_feed_doc(user: Dict[str, Any], company_id: str, rotate: bool = False) -> Dict[str, Any]:
+    q = {"userId": user["user_id"], "companyId": company_id}
+    doc = await db.calendar_feeds.find_one(q, {"_id": 0})
+    include_finance = not (user.get("is_staff") and user.get("staff_role") != "admin")
+    if doc and not rotate:
+        return doc
+    new = {**q, "token": py_secrets.token_urlsafe(24), "includeFinance": include_finance, "createdAt": utc_now_iso()}
+    await db.calendar_feeds.update_one(q, {"$set": new}, upsert=True)
+    return new
+
+
+def _feed_out(request: Request, token: str) -> CalendarFeedOut:
+    url = f"{_public_base(request)}/api/calendar/feed/{token}.ics"
+    return CalendarFeedOut(url=url, webcalUrl=re.sub(r"^https?://", "webcal://", url))
+
+
+@api_router.get("/calendar/feed-url/{company_id}", response_model=CalendarFeedOut)
+async def get_calendar_feed_url(company_id: str, request: Request, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    doc = await _calendar_feed_doc(user, company_id)
+    return _feed_out(request, doc["token"])
+
+
+@api_router.post("/calendar/feed-url/{company_id}/rotate", response_model=CalendarFeedOut)
+async def rotate_calendar_feed_url(company_id: str, request: Request, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    doc = await _calendar_feed_doc(user, company_id, rotate=True)
+    return _feed_out(request, doc["token"])
+
+
+def _ics_escape(s: str) -> str:
+    return (s or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r", "").replace("\n", "\\n")
+
+
+def _ics_fold(line: str) -> str:
+    out, cur = [], ""
+    for ch in line:
+        if len((cur + ch).encode("utf-8")) > 74:
+            out.append(cur)
+            cur = " " + ch
+        else:
+            cur += ch
+    out.append(cur)
+    return "\r\n".join(out)
+
+
+def _ics_event(uid: str, date_iso: str, summary: str, desc: str = "") -> List[str]:
+    try:
+        d = datetime.strptime(date_iso[:10], "%Y-%m-%d").date()
+    except Exception:
+        return []
+    stamp = _utc().strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:{uid}@anindateklif",
+        f"DTSTAMP:{stamp}",
+        f"DTSTART;VALUE=DATE:{d.strftime('%Y%m%d')}",
+        f"DTEND;VALUE=DATE:{(d + timedelta(days=1)).strftime('%Y%m%d')}",
+        f"SUMMARY:{_ics_escape(summary)}",
+    ]
+    if desc:
+        lines.append(f"DESCRIPTION:{_ics_escape(desc)}")
+    lines.append("END:VEVENT")
+    return lines
+
+
+@api_router.get("/calendar/feed/{token}.ics")
+async def calendar_feed(token: str):
+    feed = await db.calendar_feeds.find_one({"token": token}, {"_id": 0})
+    if not feed:
+        raise HTTPException(404, "Takvim bulunamadı")
+    uid, cid = feed["userId"], feed["companyId"]
+    company = await db.companies.find_one({"id": cid, "userId": uid}, {"_id": 0, "sirketAdi": 1}) or {}
+    since = (_istanbul_today() - timedelta(days=90)).isoformat()
+    ev: List[str] = []
+    async for r in db.manual_reminders.find({"userId": uid, "companyId": cid, "tarih": {"$gte": since}}, {"_id": 0}):
+        mark = "✓ " if r.get("tamamlandi") else ""
+        ev += _ics_event(f"rem-{r['id']}", r["tarih"], mark + r.get("baslik", ""), r.get("notu", ""))
+    async for s in db.services.find({"userId": uid, "companyId": cid}, {"_id": 0}):
+        who = s.get("musFirma") or s.get("musYetkili") or ""
+        info = f"{who} {s.get('musTelefon', '')}".strip()
+        if s.get("servisTarihi", "") >= since:
+            ev += _ics_event(f"srv-{s['id']}", s["servisTarihi"], f"Servis: {s.get('baslik', '')} – {who}", info)
+        if s.get("bakimTarihi", "") >= since:
+            ev += _ics_event(f"bkm-{s['id']}", s["bakimTarihi"], f"Bakım: {s.get('baslik', '')} – {who}", info)
+        if s.get("garantiBitis", "") >= since:
+            ev += _ics_event(f"grn-{s['id']}", s["garantiBitis"], f"Garanti bitiyor: {s.get('baslik', '')} – {who}", info)
+    if feed.get("includeFinance", True):
+        async for t in db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gte": since}}, {"_id": 0}):
+            ev += _ics_event(
+                f"vade-{t['id']}", t["vadeTarihi"],
+                f"Vade: {t.get('musteriAdi', '')} {t.get('tutar', 0):,.2f} {t.get('paraBirimi', 'TRY')}",
+                t.get("notlar", ""),
+            )
+    name = f"{company.get('sirketAdi', 'Anında Teklif')} – Anında Teklif"
+    lines = [
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//AnindaTeklif//TR", "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH", f"X-WR-CALNAME:{_ics_escape(name)}", "X-WR-TIMEZONE:Europe/Istanbul",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT2H", "X-PUBLISHED-TTL:PT2H",
+        *ev, "END:VCALENDAR",
+    ]
+    body = "\r\n".join(_ics_fold(l) for l in lines) + "\r\n"
+    return StreamingResponse(
+        io.BytesIO(body.encode("utf-8")), media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'inline; filename="anindateklif.ics"', "Cache-Control": "no-cache"},
+    )
+
+
+def _ics_unescape(s: str) -> str:
+    return s.replace("\\n", "\n").replace("\\N", "\n").replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\")
+
+
+def _parse_ics_events(text: str) -> List[Dict[str, str]]:
+    raw = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines: List[str] = []
+    for l in raw:
+        if l[:1] in (" ", "\t") and lines:
+            lines[-1] += l[1:]
+        else:
+            lines.append(l)
+    events, cur = [], None
+    for l in lines:
+        if l == "BEGIN:VEVENT":
+            cur = {}
+        elif l == "END:VEVENT":
+            if cur is not None:
+                events.append(cur)
+            cur = None
+        elif cur is not None and ":" in l:
+            k, v = l.split(":", 1)
+            name, _, params = k.partition(";")
+            name = name.upper()
+            if name in ("SUMMARY", "DESCRIPTION", "LOCATION", "UID") and name not in cur:
+                cur[name] = _ics_unescape(v)
+            elif name == "DTSTART" and "DTSTART" not in cur:
+                cur["DTSTART"] = v.strip()
+                cur["TZ"] = params
+    return events
+
+
+def _ics_date(v: str) -> Optional[str]:
+    m = re.match(r"^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?", v or "")
+    if not m:
+        return None
+    y, mo, d, hh, mi, ss, z = m.groups()
+    try:
+        if hh and z:
+            dt = datetime(int(y), int(mo), int(d), int(hh), int(mi), int(ss), tzinfo=timezone.utc) + timedelta(hours=3)
+            return dt.date().isoformat()
+        return datetime(int(y), int(mo), int(d)).date().isoformat()
+    except ValueError:
+        return None
+
+
+@api_router.post("/calendar/import", response_model=CalendarImportResult)
+async def import_calendar(payload: CalendarImportRequest, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    if len(payload.ics) > 3_000_000:
+        raise HTTPException(413, "Dosya çok büyük (en fazla 3 MB)")
+    if "BEGIN:VCALENDAR" not in payload.ics[:5000].upper():
+        raise HTTPException(422, "Geçerli bir .ics takvim dosyası değil")
+    events = _parse_ics_events(payload.ics)
+    since = (_istanbul_today() - timedelta(days=30)).isoformat()
+    existing = {
+        d.get("icsUid") async for d in db.manual_reminders.find(
+            {"userId": user["user_id"], "companyId": payload.companyId, "icsUid": {"$nin": ["", None]}}, {"_id": 0, "icsUid": 1}
+        )
+    }
+    res = CalendarImportResult()
+    docs = []
+    for e in events:
+        tarih = _ics_date(e.get("DTSTART", ""))
+        baslik = (e.get("SUMMARY") or "").strip()
+        uid = (e.get("UID") or f"{tarih}-{baslik}")[:300]
+        if not tarih or not baslik or tarih < since or uid in existing or len(docs) >= 1000:
+            res.skipped += 1
+            continue
+        existing.add(uid)
+        notu = "\n".join(x for x in [(e.get("LOCATION") or "").strip(), (e.get("DESCRIPTION") or "").strip()] if x)[:2000]
+        docs.append(ManualReminder(
+            userId=user["user_id"], companyId=payload.companyId, baslik=baslik[:200], notu=notu,
+            tarih=tarih, icsUid=uid,
+        ).dict())
+    if docs:
+        await db.manual_reminders.insert_many(docs)
+    res.created = len(docs)
+    return res
+
+
+# ============ OTOMATİK E-POSTA HATIRLATMALARI ============
+# Arka planda (bkz. _notify_loop) her gün sabah: vadesi yaklaşan/geçen borçlar,
+# yaklaşan bakımlar ve cevapsız teklifler için MÜŞTERİYE e-posta; firma
+# sahibine de günlük özet. Her gönderim notify_log'a benzersiz anahtarla
+# yazılır, aynı hatırlatma asla iki kez gitmez.
+class NotifySettings(BaseModel):
+    companyId: str
+    aktif: bool = False
+    dil: str = "tr"
+    vadeHatirlat: bool = True
+    vadeGunOnce: int = 3
+    vadeGecikme: bool = True
+    bakimHatirlat: bool = True
+    bakimGunOnce: int = 7
+    teklifTakip: bool = True
+    teklifTakipGun: int = 3
+    gunlukOzet: bool = True
+    ozetEmail: str = ""
+
+
+class NotifyLogOut(BaseModel):
+    key: str
+    tip: str
+    alici: str
+    konu: str
+    durum: str
+    createdAt: str
+
+
+class NotifyTestRequest(BaseModel):
+    companyId: str
+    email: str
+
+
+NOTIFY_TEXT = {
+    "tr": {
+        "vade_s": "Ödeme hatırlatması – {company}",
+        "vade_b": "Sayın {name},<br><br>{company} nezdindeki <b>{amount}</b> tutarındaki ödemenizin vadesi <b>{date}</b> tarihindedir.{extra}<br><br>Ödemenizi yaptıysanız bu e-postayı dikkate almayınız.",
+        "gecik_s": "Vadesi geçen ödeme – {company}",
+        "gecik_b": "Sayın {name},<br><br>{company} nezdindeki <b>{amount}</b> tutarındaki ödemenizin vadesi <b>{date}</b> tarihinde dolmuştur. En kısa sürede ödemenizi rica ederiz.<br><br>Ödemenizi yaptıysanız bu e-postayı dikkate almayınız.",
+        "bakim_s": "Bakım zamanı yaklaşıyor – {company}",
+        "bakim_b": "Sayın {name},<br><br><b>{title}</b> için periyodik bakım tarihiniz <b>{date}</b>. Uygun olduğunuz gün ve saati bize bildirirseniz randevunuzu oluşturalım.",
+        "teklif_s": "Teklifimiz hakkında – {company}",
+        "teklif_b": "Sayın {name},<br><br>{date} tarihinde ilettiğimiz <b>{no}</b> numaralı teklifimizi inceleme fırsatınız oldu mu? Sorularınız veya değişiklik talepleriniz için bize her zaman ulaşabilirsiniz.",
+        "iban": "<br><br>Banka: {bank} – IBAN: <b>{iban}</b>",
+        "contact": "İletişim",
+        "ozet_s": "Bugünün özeti – {company}",
+        "ozet_h": "Günaydın! {date} için özetiniz:",
+        "ozet_rem": "Hatırlatmalar", "ozet_srv": "Servis / bakım", "ozet_due": "Vadesi bugün olan borçlar",
+        "ozet_over": "Vadesi geçmiş borç sayısı", "ozet_sent": "Bugün müşterilere giden otomatik e-postalar",
+        "test_s": "Test e-postası – {company}",
+        "test_b": "Bu bir deneme e-postasıdır. Otomatik hatırlatmalar bu adresten müşterilerinize bu görünümde gidecek.",
+    },
+    "en": {
+        "vade_s": "Payment reminder – {company}",
+        "vade_b": "Dear {name},<br><br>Your payment of <b>{amount}</b> to {company} is due on <b>{date}</b>.{extra}<br><br>If you have already paid, please disregard this email.",
+        "gecik_s": "Overdue payment – {company}",
+        "gecik_b": "Dear {name},<br><br>Your payment of <b>{amount}</b> to {company} was due on <b>{date}</b>. We kindly ask you to settle it as soon as possible.<br><br>If you have already paid, please disregard this email.",
+        "bakim_s": "Maintenance due soon – {company}",
+        "bakim_b": "Dear {name},<br><br>Scheduled maintenance for <b>{title}</b> is due on <b>{date}</b>. Let us know a convenient day and time and we will book your appointment.",
+        "teklif_s": "About our quote – {company}",
+        "teklif_b": "Dear {name},<br><br>Have you had a chance to review quote <b>{no}</b> we sent on {date}? Feel free to contact us with any questions or changes.",
+        "iban": "<br><br>Bank: {bank} – IBAN: <b>{iban}</b>",
+        "contact": "Contact",
+        "ozet_s": "Today's summary – {company}",
+        "ozet_h": "Good morning! Your summary for {date}:",
+        "ozet_rem": "Reminders", "ozet_srv": "Service / maintenance", "ozet_due": "Debts due today",
+        "ozet_over": "Overdue debts", "ozet_sent": "Automatic emails sent to customers today",
+        "test_s": "Test email – {company}",
+        "test_b": "This is a test email. Automatic reminders will reach your customers from this address in this format.",
+    },
+    "it": {
+        "vade_s": "Promemoria di pagamento – {company}",
+        "vade_b": "Gentile {name},<br><br>il pagamento di <b>{amount}</b> a {company} scade il <b>{date}</b>.{extra}<br><br>Se ha già pagato, ignori questa email.",
+        "gecik_s": "Pagamento scaduto – {company}",
+        "gecik_b": "Gentile {name},<br><br>il pagamento di <b>{amount}</b> a {company} è scaduto il <b>{date}</b>. La preghiamo di provvedere al più presto.<br><br>Se ha già pagato, ignori questa email.",
+        "bakim_s": "Manutenzione in scadenza – {company}",
+        "bakim_b": "Gentile {name},<br><br>la manutenzione periodica di <b>{title}</b> è prevista per il <b>{date}</b>. Ci indichi giorno e ora preferiti e fisseremo l'appuntamento.",
+        "teklif_s": "Il nostro preventivo – {company}",
+        "teklif_b": "Gentile {name},<br><br>ha avuto modo di esaminare il preventivo <b>{no}</b> inviato il {date}? Siamo a disposizione per domande o modifiche.",
+        "iban": "<br><br>Banca: {bank} – IBAN: <b>{iban}</b>",
+        "contact": "Contatti",
+        "ozet_s": "Riepilogo di oggi – {company}",
+        "ozet_h": "Buongiorno! Il riepilogo per il {date}:",
+        "ozet_rem": "Promemoria", "ozet_srv": "Assistenza / manutenzione", "ozet_due": "Debiti in scadenza oggi",
+        "ozet_over": "Debiti scaduti", "ozet_sent": "Email automatiche inviate ai clienti oggi",
+        "test_s": "Email di prova – {company}",
+        "test_b": "Questa è un'email di prova. I promemoria automatici arriveranno ai clienti da questo indirizzo con questo aspetto.",
+    },
+}
+
+
+def _fmt_money(v: float, cur: str) -> str:
+    sym = {"TRY": "₺", "USD": "$", "EUR": "€"}.get(cur, cur + " ")
+    s = f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{sym}{s}"
+
+
+def _fmt_date_tr(iso: str) -> str:
+    try:
+        return datetime.strptime(iso[:10], "%Y-%m-%d").strftime("%d.%m.%Y")
+    except Exception:
+        return iso
+
+
+def _email_shell(company: Dict[str, Any], body_html: str, lang: str) -> str:
+    T = NOTIFY_TEXT.get(lang, NOTIFY_TEXT["tr"])
+    contact = " · ".join(esc(x) for x in [company.get("telefon", ""), company.get("email", ""), company.get("website", "")] if x)
+    return (
+        "<div style=\"font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0f172a;font-size:14.5px;line-height:1.55\">"
+        f"<div style=\"font-weight:800;font-size:17px;color:#0369A1;margin-bottom:14px\">{esc(company.get('sirketAdi', ''))}</div>"
+        f"<div>{body_html}</div>"
+        f"<div style=\"margin-top:22px;padding-top:12px;border-top:1px solid #e2e8f0;color:#64748b;font-size:12.5px\">{T['contact']}: {contact or esc(company.get('sirketAdi', ''))}</div>"
+        "</div>"
+    )
+
+
+def _from_address_for(company: Dict[str, Any]) -> str:
+    m = re.search(r"<([^>]+)>", RESEND_FROM_EMAIL)
+    addr = m.group(1) if m else RESEND_FROM_EMAIL.strip()
+    name = re.sub(r"[<>\"\r\n]", "", company.get("sirketAdi", "") or "Anında Teklif")[:60]
+    return f"{name} <{addr}>"
+
+
+async def _send_company_email(company: Dict[str, Any], to: str, subject: str, html_body: str) -> Tuple[bool, str]:
+    if not RESEND_API_KEY:
+        return False, "E-posta servisi yapılandırılmamış"
+    payload: Dict[str, Any] = {"from": _from_address_for(company), "to": [to], "subject": subject[:200], "html": html_body}
+    if company.get("email") and "@" in company["email"]:
+        payload["reply_to"] = company["email"]
+    try:
+        resp = await asyncio.to_thread(
+            requests.post, "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json=payload, timeout=15,
+        )
+        if resp.status_code in (200, 201, 202):
+            return True, ""
+        logger.warning(f"[Notify] resend failed status={resp.status_code} body={resp.text[:300]}")
+        return False, f"HTTP {resp.status_code}"
+    except Exception as e:
+        logger.warning(f"[Notify] resend exception: {e}")
+        return False, "Gönderim hatası"
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+async def _notify_once(uid: str, cid: str, key: str, tip: str, company: Dict[str, Any], to: str, subject: str, body: str) -> bool:
+    """Aynı anahtarla ikinci kez gönderim yapmaz (unique index + önce-yaz)."""
+    to = (to or "").strip()
+    if not _EMAIL_RE.match(to):
+        return False
+    log = {"key": key, "userId": uid, "companyId": cid, "tip": tip, "alici": to, "konu": subject[:200],
+           "durum": "gönderiliyor", "createdAt": utc_now_iso()}
+    try:
+        if await db.notify_log.find_one({"key": key}):
+            return False
+        await db.notify_log.insert_one(log)
+    except DuplicateKeyError:
+        return False
+    ok, err = await _send_company_email(company, to, subject, body)
+    await db.notify_log.update_one({"key": key}, {"$set": {"durum": "gönderildi" if ok else f"hata: {err}"}})
+    return ok
+
+
+async def _customer_email_map(uid: str, cid: str) -> Tuple[Dict[str, str], Dict[str, str]]:
+    by_id, by_name = {}, {}
+    async for c in db.customers.find({"userId": uid, "companyId": cid}, {"_id": 0, "id": 1, "firma": 1, "email": 1}):
+        if c.get("email"):
+            by_id[c["id"]] = c["email"]
+            by_name[(c.get("firma") or "").strip().casefold()] = c["email"]
+    return by_id, by_name
+
+
+async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
+    uid, cid = settings["userId"], settings["companyId"]
+    company = await db.companies.find_one({"id": cid, "userId": uid}, {"_id": 0})
+    if not company:
+        return 0
+    lang = settings.get("dil") if settings.get("dil") in NOTIFY_TEXT else "tr"
+    T = NOTIFY_TEXT[lang]
+    cname = company.get("sirketAdi", "")
+    by_id, by_name = await _customer_email_map(uid, cid)
+    bank = (company.get("banklar") or [{}])[0] if company.get("banklar") else {}
+    sent = 0
+
+    if settings.get("vadeHatirlat", True) or settings.get("vadeGecikme", True):
+        entries = await db.tahsilat.find({"userId": uid, "companyId": cid}, {"_id": 0}).to_list(20000)
+        # Müşteri bazında açık bakiye: tamamı ödenmiş borç için hatırlatma gitmesin.
+        bal: Dict[str, float] = {}
+        for t in entries:
+            k = t.get("customerId") or (t.get("musteriAdi") or "").strip().casefold()
+            sign = 1 if t.get("tur") == "borc" else -1
+            bal[k] = bal.get(k, 0.0) + sign * float(t.get("tutar") or 0)
+        target = (today + timedelta(days=int(settings.get("vadeGunOnce", 3)))).isoformat()
+        yesterday = (today - timedelta(days=1)).isoformat()
+        for t in entries:
+            if t.get("tur") != "borc" or not t.get("vadeTarihi"):
+                continue
+            k = t.get("customerId") or (t.get("musteriAdi") or "").strip().casefold()
+            if bal.get(k, 0) <= 0.009:
+                continue
+            email = by_id.get(t.get("customerId", "")) or by_name.get((t.get("musteriAdi") or "").strip().casefold(), "")
+            fmt = dict(company=esc(cname), name=esc(t.get("musteriAdi", "")), amount=_fmt_money(t.get("tutar", 0), t.get("paraBirimi", "TRY")),
+                       date=_fmt_date_tr(t["vadeTarihi"]), extra="")
+            if bank.get("iban"):
+                fmt["extra"] = T["iban"].format(bank=esc(bank.get("banka", "") or bank.get("bankaAdi", "")), iban=esc(bank["iban"]))
+            if settings.get("vadeHatirlat", True) and t["vadeTarihi"] == target:
+                sent += await _notify_once(uid, cid, f"vade:{t['id']}:{target}", "vade", company, email,
+                                           T["vade_s"].format(company=cname), _email_shell(company, T["vade_b"].format(**fmt), lang))
+            if settings.get("vadeGecikme", True) and t["vadeTarihi"] == yesterday:
+                sent += await _notify_once(uid, cid, f"gecik:{t['id']}", "gecikme", company, email,
+                                           T["gecik_s"].format(company=cname), _email_shell(company, T["gecik_b"].format(**fmt), lang))
+
+    if settings.get("bakimHatirlat", True):
+        target = (today + timedelta(days=int(settings.get("bakimGunOnce", 7)))).isoformat()
+        async for s in db.services.find({"userId": uid, "companyId": cid, "bakimTarihi": target}, {"_id": 0}):
+            if s.get("durum") == "İptal":
+                continue
+            email = by_name.get((s.get("musFirma") or "").strip().casefold(), "")
+            body = T["bakim_b"].format(name=esc(s.get("musYetkili") or s.get("musFirma") or ""), title=esc(s.get("baslik", "")), date=_fmt_date_tr(target))
+            sent += await _notify_once(uid, cid, f"bakim:{s['id']}:{target}", "bakim", company, email,
+                                       T["bakim_s"].format(company=cname), _email_shell(company, body, lang))
+
+    if settings.get("teklifTakip", True):
+        qdate = (today - timedelta(days=int(settings.get("teklifTakipGun", 3)))).isoformat()
+        async for q in db.quotes.find({"userId": uid, "companyId": cid, "durum": "Beklemede", "tarih": qdate, "deletedAt": None}, {"_id": 0}):
+            email = q.get("musEmail") or by_name.get((q.get("musFirma") or "").strip().casefold(), "")
+            body = T["teklif_b"].format(name=esc(q.get("musYetkili") or q.get("musFirma") or ""), no=esc(q.get("teklifNo", "")), date=_fmt_date_tr(qdate))
+            sent += await _notify_once(uid, cid, f"teklif:{q['id']}", "teklif", company, email,
+                                       T["teklif_s"].format(company=cname), _email_shell(company, body, lang))
+
+    if settings.get("gunlukOzet", True):
+        tday = today.isoformat()
+        owner = await db.users.find_one({"user_id": uid}, {"_id": 0, "email": 1})
+        to = settings.get("ozetEmail") or company.get("email") or (owner or {}).get("email", "")
+        rems = await db.manual_reminders.find({"userId": uid, "companyId": cid, "tarih": tday, "tamamlandi": False}, {"_id": 0}).to_list(100)
+        srvs = await db.services.find({"userId": uid, "companyId": cid, "$or": [{"servisTarihi": tday}, {"bakimTarihi": tday}]}, {"_id": 0}).to_list(100)
+        dues = await db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": tday}, {"_id": 0}).to_list(100)
+        over = await db.tahsilat.count_documents({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gt": "", "$lt": tday}})
+        auto = await db.notify_log.count_documents({"userId": uid, "companyId": cid, "createdAt": {"$gte": tday}, "tip": {"$ne": "ozet"}})
+        if rems or srvs or dues:
+            def ul(title, rows):
+                if not rows:
+                    return ""
+                return f"<p style='margin:14px 0 4px'><b>{title}</b></p><ul style='margin:0;padding-left:18px'>" + "".join(f"<li>{r}</li>" for r in rows) + "</ul>"
+            body = f"<p>{T['ozet_h'].format(date=_fmt_date_tr(tday))}</p>"
+            body += ul(T["ozet_rem"], [esc(r.get("baslik", "")) for r in rems])
+            body += ul(T["ozet_srv"], [esc(f"{s.get('baslik', '')} – {s.get('musFirma', '')} {s.get('musTelefon', '')}") for s in srvs])
+            body += ul(T["ozet_due"], [esc(f"{d.get('musteriAdi', '')}: ") + _fmt_money(d.get("tutar", 0), d.get("paraBirimi", "TRY")) for d in dues])
+            if over:
+                body += f"<p>{T['ozet_over']}: <b>{over}</b></p>"
+            if auto:
+                body += f"<p>{T['ozet_sent']}: <b>{auto}</b></p>"
+            await _notify_once(uid, cid, f"ozet:{cid}:{tday}", "ozet", company, to,
+                               T["ozet_s"].format(company=cname), _email_shell(company, body, lang))
+    return sent
+
+
+async def _run_notifications(today=None) -> int:
+    today = today or _istanbul_today()
+    total = 0
+    async for st in db.notify_settings.find({"aktif": True}, {"_id": 0}):
+        try:
+            total += await _run_notifications_for(st, today)
+        except Exception as e:
+            logger.warning(f"[Notify] company {st.get('companyId')} failed: {e}")
+    return total
+
+
+async def _notify_loop():
+    await asyncio.sleep(90)
+    while True:
+        try:
+            try:
+                from zoneinfo import ZoneInfo
+                hour = datetime.now(ZoneInfo("Europe/Istanbul")).hour
+            except Exception:
+                hour = (_utc() + timedelta(hours=3)).hour
+            if 9 <= hour < 21:
+                n = await _run_notifications()
+                if n:
+                    logger.info(f"[Notify] {n} otomatik e-posta gönderildi")
+        except Exception as e:
+            logger.warning(f"[Notify] loop error: {e}")
+        await asyncio.sleep(30 * 60)
+
+
+@api_router.get("/notify-settings/{company_id}", response_model=NotifySettings)
+async def get_notify_settings(company_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    doc = await db.notify_settings.find_one({"userId": user["user_id"], "companyId": company_id}, {"_id": 0})
+    return NotifySettings(**{**(doc or {}), "companyId": company_id})
+
+
+@api_router.put("/notify-settings", response_model=NotifySettings)
+async def put_notify_settings(payload: NotifySettings, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
+    d = payload.dict()
+    for f in ("vadeGunOnce", "bakimGunOnce", "teklifTakipGun"):
+        d[f] = max(0, min(60, int(d[f])))
+    d["dil"] = d["dil"] if d["dil"] in NOTIFY_TEXT else "tr"
+    d["ozetEmail"] = d["ozetEmail"].strip()[:200]
+    if d["ozetEmail"] and not _EMAIL_RE.match(d["ozetEmail"]):
+        raise HTTPException(422, "Özet e-posta adresi geçersiz")
+    await db.notify_settings.update_one(
+        {"userId": user["user_id"], "companyId": payload.companyId},
+        {"$set": {**d, "userId": user["user_id"], "updatedAt": utc_now_iso()}}, upsert=True,
+    )
+    return NotifySettings(**d)
+
+
+@api_router.get("/notify-log/{company_id}", response_model=List[NotifyLogOut])
+async def list_notify_log(company_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    docs = await db.notify_log.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).sort("createdAt", -1).to_list(200)
+    return [NotifyLogOut(**{k: d.get(k, "") for k in NotifyLogOut.model_fields}) for d in docs]
+
+
+@api_router.post("/notify-settings/test")
+async def test_notify_email(payload: NotifyTestRequest, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    _rate_limit(f"notify-test:{user['user_id']}", 10, 3600)
+    company = await _own_company(user, payload.companyId)
+    if not _EMAIL_RE.match(payload.email.strip()):
+        raise HTTPException(422, "E-posta adresi geçersiz")
+    st = await db.notify_settings.find_one({"userId": user["user_id"], "companyId": payload.companyId}, {"_id": 0}) or {}
+    lang = st.get("dil") if st.get("dil") in NOTIFY_TEXT else "tr"
+    T = NOTIFY_TEXT[lang]
+    ok, err = await _send_company_email(company, payload.email.strip(), T["test_s"].format(company=company.get("sirketAdi", "")),
+                                        _email_shell(company, T["test_b"], lang))
+    if not ok:
+        raise HTTPException(502, f"Gönderilemedi: {err}")
+    return {"ok": True}
+
+
+# ============ E-FATURA / E-ARŞİV KESME (Nilvera) ============
+# Onaylanan tekliften fatura: alıcı e-Fatura mükellefiyse /einvoice (TEMEL/
+# TİCARİ), değilse /earchive (EARSIVFATURA). Alan adları Nilvera'nın
+# swagger şemasından (apitest.nilvera.com/{earchive,einvoice,general}/swagger).
+UNIT_CODES = {
+    "adet": "C62", "ad": "C62", "m2": "MTK", "m²": "MTK", "metrekare": "MTK", "m": "MTR", "mt": "MTR", "metre": "MTR",
+    "kg": "KGM", "ton": "TNE", "lt": "LTR", "litre": "LTR", "saat": "HUR", "gün": "DAY", "gun": "DAY",
+    "takım": "SET", "takim": "SET", "set": "SET", "paket": "PA", "m3": "MTQ", "m³": "MTQ", "ay": "MON", "koli": "CS",
+}
+
+
+class InvoiceParty(BaseModel):
+    vergiNo: str
+    unvan: str
+    vergiDairesi: str = ""
+    adres: str = ""
+    il: str = ""
+    ilce: str = ""
+    ulke: str = "Türkiye"
+    email: str = ""
+    telefon: str = ""
+
+
+class InvoiceRequest(BaseModel):
+    companyId: str
+    quoteId: str
+    alici: InvoiceParty
+    notlar: str = ""
+    efaturaProfil: str = "TEMELFATURA"  # TEMELFATURA | TICARIFATURA (sadece e-Fatura mükellefi alıcıda)
+
+
+class Invoice(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    quoteId: str = ""
+    teklifNo: str = ""
+    tur: str  # earsiv | efatura
+    profil: str
+    uuid: str
+    faturaNo: str = ""
+    ortam: str = "test"
+    aliciUnvan: str = ""
+    aliciVergiNo: str = ""
+    aliciEmail: str = ""
+    paraBirimi: str = "TRY"
+    araToplam: float = 0.0
+    kdvTutar: float = 0.0
+    genelToplam: float = 0.0
+    durum: str = "Gönderildi"
+    durumDetay: str = ""
+    createdByEmail: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class TaxpayerCheckRequest(BaseModel):
+    companyId: str
+    vergiNo: str
+
+
+class TaxpayerCheckOut(BaseModel):
+    mukellef: bool
+    alias: str = ""
+    unvan: str = ""
+
+
+class PdfOut(BaseModel):
+    pdfBase64: str
+    fileName: str = "fatura.pdf"
+
+
+class IncomingInvoiceOut(BaseModel):
+    uuid: str
+    faturaNo: str = ""
+    gonderen: str = ""
+    gonderenVkn: str = ""
+    tarih: str = ""
+    paraBirimi: str = "TRY"
+    matrah: float = 0.0
+    kdv: float = 0.0
+    toplam: float = 0.0
+    durum: str = ""
+
+
+async def _nilvera_cfg(user: Dict[str, Any], company_id: str) -> Dict[str, Any]:
+    doc = await db.efatura_configs.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc or not doc.get("apiKey"):
+        raise HTTPException(400, "Önce e-Fatura ekranından Nilvera API anahtarınızı kaydedin")
+    if not doc.get("lastTestOk"):
+        raise HTTPException(400, "Önce e-Fatura ekranında bağlantı testini başarıyla tamamlayın")
+    if not re.fullmatch(r"\d{10,11}", doc.get("firmaVergiNo", "")):
+        raise HTTPException(400, "e-Fatura ayarlarında firmanızın VKN/TCKN bilgisini girin")
+    return doc
+
+
+def _nilvera_err(resp) -> str:
+    try:
+        j = resp.json()
+        if isinstance(j, dict):
+            errs = j.get("Errors") or j.get("errors") or []
+            if isinstance(errs, list) and errs:
+                return "; ".join(str(e.get("Description") or e.get("Detail") or e.get("Code") or e) if isinstance(e, dict) else str(e) for e in errs)[:500]
+            return str(j.get("Message") or j.get("message") or j.get("title") or j)[:500]
+        return str(j)[:500]
+    except Exception:
+        return (resp.text or f"HTTP {resp.status_code}")[:500]
+
+
+async def _nilvera(cfg: Dict[str, Any], method: str, path: str, **kw):
+    base = NILVERA_BASE_URLS.get(cfg.get("ortam", "test"), NILVERA_BASE_URLS["test"])
+    headers = {"Authorization": f"Bearer {cfg['apiKey']}", "Accept": "application/json"}
+    headers.update(kw.pop("headers", {}))
+    try:
+        return await asyncio.to_thread(requests.request, method, f"{base}{path}", headers=headers, timeout=45, **kw)
+    except requests.exceptions.Timeout:
+        raise HTTPException(504, "Nilvera yanıt vermedi (zaman aşımı), tekrar deneyin")
+    except Exception as e:
+        logger.error(f"nilvera {path} error: {e}")
+        raise HTTPException(502, "Nilvera'ya bağlanılamadı")
+
+
+def _pdf_b64_from(resp) -> str:
+    if resp.content[:4] == b"%PDF":
+        return base64.b64encode(resp.content).decode()
+    try:
+        j = resp.json()
+    except Exception:
+        return (resp.text or "").strip().strip('"')
+    if isinstance(j, str):
+        return j
+    if isinstance(j, dict):
+        for v in j.values():
+            if isinstance(v, str) and len(v) > 100:
+                return v
+    return ""
+
+
+async def _check_taxpayer(cfg: Dict[str, Any], vkn: str) -> TaxpayerCheckOut:
+    resp = await _nilvera(cfg, "GET", f"/general/GlobalCompany/Check/TaxNumber/{vkn}", params={"globalUserType": "Invoice"})
+    if resp.status_code == 404:
+        return TaxpayerCheckOut(mukellef=False)
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Mükellef sorgusu başarısız: {_nilvera_err(resp)}")
+    try:
+        rows = resp.json() or []
+    except Exception:
+        rows = []
+    if not isinstance(rows, list) or not rows:
+        return TaxpayerCheckOut(mukellef=False)
+    pk = [r for r in rows if (r.get("Type") or "").upper() == "PK"] or rows
+    alias = next((r.get("Name") for r in pk if "defaultpk" in (r.get("Name") or "")), None) or pk[0].get("Name") or ""
+    return TaxpayerCheckOut(mukellef=True, alias=alias, unvan=pk[0].get("Title") or "")
+
+
+async def _invoice_rate(cur: str) -> Optional[float]:
+    if cur == "TRY":
+        return None
+    try:
+        r = await get_rates()
+        v = float((r.usd_try if cur == "USD" else r.eur_try) or 0)
+        return round(v, 4) if v > 0 else None
+    except Exception:
+        return None
+
+
+def _build_invoice_doc(cfg: Dict[str, Any], company: Dict[str, Any], quote: Dict[str, Any], req: InvoiceRequest,
+                       profile: str, rate: Optional[float], inv_uuid: str) -> Dict[str, Any]:
+    isk = float(quote.get("iskonto") or 0)
+    kdv_p = float(quote.get("kdvOrani") or 0)
+    lines, gross_t, allow_t, kdv_t = [], 0.0, 0.0, 0.0
+    for it in quote.get("items") or []:
+        qty = float(it.get("adet") or 0)
+        price = float(it.get("birimFiyat") or 0)
+        if qty <= 0 or price < 0:
+            continue
+        gross = round(qty * price, 2)
+        allow = round(gross * isk / 100, 2)
+        kdv = round((gross - allow) * kdv_p / 100, 2)
+        gross_t += gross
+        allow_t += allow
+        kdv_t += kdv
+        name = (it.get("urunAdi") or it.get("sistemTipi") or (it.get("aciklama") or "").split("\n")[0] or "Ürün / Hizmet").strip()[:250]
+        desc_parts = [f"{f.get('label', '')}: {f.get('value', '')}" for f in (it.get("sistemFields") or []) if f.get("value")]
+        desc_parts += [f"{f.get('key', '')}: {f.get('value', '')}" for f in (it.get("customFields") or []) if f.get("value")]
+        if it.get("aciklama") and it.get("aciklama").strip()[:250] != name:
+            desc_parts.append(it["aciklama"].strip())
+        unit = UNIT_CODES.get((it.get("birim") or "Adet").strip().casefold(), "C62")
+        lines.append({
+            "Index": str(len(lines) + 1), "Name": name, "Description": " / ".join(desc_parts)[:500] or None,
+            "Quantity": qty, "UnitType": unit, "Price": round(price, 6), "AllowanceTotal": allow,
+            "KDVPercent": kdv_p, "KDVTotal": kdv,
+        })
+    if not lines:
+        raise HTTPException(422, "Teklifte faturalanacak kalem yok")
+    info: Dict[str, Any] = {
+        "UUID": inv_uuid, "InvoiceType": "SATIS", "InvoiceProfile": profile,
+        "IssueDate": (_utc() + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "CurrencyCode": quote.get("paraBirimi") or "TRY",
+        "LineExtensionAmount": round(gross_t, 2), "GeneralAllowanceTotal": round(allow_t, 2),
+        "KdvTotal": round(kdv_t, 2), "PayableAmount": round(gross_t - allow_t + kdv_t, 2),
+        "GeneralKDV1Total": 0, "GeneralKDV8Total": 0, "GeneralKDV10Total": 0, "GeneralKDV18Total": 0, "GeneralKDV20Total": 0,
+    }
+    if int(kdv_p) in (1, 8, 10, 18, 20) and float(int(kdv_p)) == kdv_p:
+        info[f"GeneralKDV{int(kdv_p)}Total"] = round(kdv_t, 2)
+    if rate:
+        info["ExchangeRate"] = rate
+    if cfg.get("sablonId"):
+        info["TemplateUUID"] = cfg["sablonId"]
+    if cfg.get("faturaSerisi"):
+        info["InvoiceSerieOrNumber"] = cfg["faturaSerisi"]
+    a = req.alici
+    if profile == "EARSIVFATURA":
+        info["SalesPlatform"] = "NORMAL"
+        info["SendType"] = "ELEKTRONIK" if a.email.strip() else "KAGIT"
+    company_info = {
+        "TaxNumber": cfg["firmaVergiNo"], "Name": cfg.get("firmaUnvani") or company.get("sirketAdi", ""),
+        "TaxOffice": cfg.get("firmaVergiDairesi") or company.get("vergiDairesi", ""),
+        "Address": cfg.get("firmaAdres") or company.get("adres", ""),
+        "District": cfg.get("firmaIlce") or "Merkez", "City": cfg.get("firmaIl") or "", "Country": "Türkiye",
+        "Phone": company.get("telefon", ""), "Mail": company.get("email", ""), "WebSite": company.get("website", ""),
+    }
+    customer_info = {
+        "TaxNumber": a.vergiNo.strip(), "Name": a.unvan.strip(), "TaxOffice": a.vergiDairesi.strip(),
+        "Address": a.adres.strip(), "District": a.ilce.strip() or "Merkez", "City": a.il.strip(),
+        "Country": a.ulke.strip() or "Türkiye", "Mail": a.email.strip() or None, "Phone": a.telefon.strip() or None,
+    }
+    notes = [n for n in [req.notlar.strip()[:500], f"Teklif No: {quote.get('teklifNo', '')}"] if n]
+    return {"InvoiceInfo": info, "CompanyInfo": company_info, "CustomerInfo": customer_info, "InvoiceLines": lines, "Notes": notes}
+
+
+def _validate_invoice_party(a: InvoiceParty):
+    if not re.fullmatch(r"\d{10}|\d{11}", a.vergiNo.strip()):
+        raise HTTPException(422, "Alıcı VKN (10 hane) veya TCKN (11 hane) girin")
+    if not a.unvan.strip():
+        raise HTTPException(422, "Alıcı unvanı / adı soyadı gerekli")
+    if not a.adres.strip() or not a.il.strip():
+        raise HTTPException(422, "Alıcı adresi ve ili gerekli")
+    if len(a.vergiNo.strip()) == 10 and not a.vergiDairesi.strip():
+        raise HTTPException(422, "Şirket alıcılarda vergi dairesi gerekli")
+
+
+async def _prepare_invoice(req: InvoiceRequest, user: Dict[str, Any]):
+    _require_kasa_access(user)
+    company = await _own_company(user, req.companyId)
+    cfg = await _nilvera_cfg(user, req.companyId)
+    _validate_invoice_party(req.alici)
+    quote = await db.quotes.find_one({"id": req.quoteId, "userId": user["user_id"], "companyId": req.companyId}, {"_id": 0})
+    if not quote:
+        raise HTTPException(404, "Teklif bulunamadı")
+    if quote.get("durum") != "Onaylandı":
+        raise HTTPException(422, "Sadece onaylanan tekliflerden fatura kesilebilir")
+    tp = await _check_taxpayer(cfg, req.alici.vergiNo.strip())
+    if tp.mukellef:
+        tur, profile = "efatura", (req.efaturaProfil if req.efaturaProfil in ("TEMELFATURA", "TICARIFATURA") else "TEMELFATURA")
+    else:
+        tur, profile = "earsiv", "EARSIVFATURA"
+    rate = await _invoice_rate(quote.get("paraBirimi") or "TRY")
+    if (quote.get("paraBirimi") or "TRY") != "TRY" and not rate:
+        raise HTTPException(503, "Döviz kuru alınamadı, biraz sonra tekrar deneyin")
+    inv_uuid = str(uuid.uuid4())
+    body = _build_invoice_doc(cfg, company, quote, req, profile, rate, inv_uuid)
+    payload = {"ArchiveInvoice": body} if tur == "earsiv" else {"EInvoice": body, "CustomerAlias": tp.alias}
+    return company, cfg, quote, tur, profile, inv_uuid, body, payload
+
+
+@api_router.post("/efatura/check-taxpayer", response_model=TaxpayerCheckOut)
+async def efatura_check_taxpayer(payload: TaxpayerCheckRequest, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, payload.companyId)
+    if not re.fullmatch(r"\d{10}|\d{11}", payload.vergiNo.strip()):
+        raise HTTPException(422, "VKN 10, TCKN 11 haneli olmalı")
+    cfg = await _nilvera_cfg(user, payload.companyId)
+    return await _check_taxpayer(cfg, payload.vergiNo.strip())
+
+
+@api_router.post("/efatura/invoices/preview", response_model=PdfOut)
+async def efatura_preview(payload: InvoiceRequest, user=Depends(get_current_user)):
+    _, cfg, quote, tur, _, _, _, body = await _prepare_invoice(payload, user)
+    path = "/earchive/Send/Model/Download/Pdf" if tur == "earsiv" else "/einvoice/Send/Model/Download/Pdf"
+    resp = await _nilvera(cfg, "POST", path, json=body)
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Önizleme alınamadı: {_nilvera_err(resp)}")
+    b64 = _pdf_b64_from(resp)
+    if not b64:
+        raise HTTPException(502, "Önizleme PDF'i boş döndü")
+    return PdfOut(pdfBase64=b64, fileName=f"Onizleme_{quote.get('teklifNo', '')}.pdf")
+
+
+@api_router.post("/efatura/invoices", response_model=Invoice)
+async def efatura_issue(payload: InvoiceRequest, user=Depends(get_current_user)):
+    _rate_limit(f"efatura-issue:{user['user_id']}", 60, 3600)
+    dup = await db.invoices.find_one(
+        {"userId": user["user_id"], "quoteId": payload.quoteId, "durum": {"$nin": ["Hata", "İptal"]}}, {"_id": 0}
+    )
+    if dup:
+        raise HTTPException(409, f"Bu teklif için zaten fatura kesildi ({dup.get('faturaNo') or dup.get('uuid')})")
+    company, cfg, quote, tur, profile, inv_uuid, body, req_body = await _prepare_invoice(payload, user)
+    path = "/earchive/Send/Model" if tur == "earsiv" else "/einvoice/Send/Model"
+    resp = await _nilvera(cfg, "POST", path, json=req_body)
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Fatura gönderilemedi: {_nilvera_err(resp)}")
+    try:
+        rj = resp.json() or {}
+    except Exception:
+        rj = {}
+    info = body["InvoiceInfo"]
+    inv = Invoice(
+        userId=user["user_id"], companyId=payload.companyId, quoteId=payload.quoteId, teklifNo=quote.get("teklifNo", ""),
+        tur=tur, profil=profile, uuid=str(rj.get("UUID") or inv_uuid), faturaNo=rj.get("InvoiceNumber") or "",
+        ortam=cfg.get("ortam", "test"), aliciUnvan=payload.alici.unvan.strip(), aliciVergiNo=payload.alici.vergiNo.strip(),
+        aliciEmail=payload.alici.email.strip(), paraBirimi=info["CurrencyCode"],
+        araToplam=round(info["LineExtensionAmount"] - info["GeneralAllowanceTotal"], 2), kdvTutar=info["KdvTotal"],
+        genelToplam=info["PayableAmount"], createdByEmail=_actor_email(user),
+    )
+    await db.invoices.insert_one(inv.dict())
+    # Alıcının vergi bilgilerini müşteri kartına işle -- bir dahaki faturada hazır gelsin.
+    a = payload.alici
+    patch = {k: v for k, v in {"vergiNo": a.vergiNo.strip(), "vergiDairesi": a.vergiDairesi.strip(), "il": a.il.strip(), "ilce": a.ilce.strip()}.items() if v}
+    if patch and quote.get("musFirma"):
+        await db.customers.update_one({"userId": user["user_id"], "companyId": payload.companyId, "firma": quote["musFirma"]}, {"$set": patch})
+    return inv
+
+
+@api_router.get("/efatura/invoices/{company_id}", response_model=List[Invoice])
+async def efatura_list(company_id: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    docs = await db.invoices.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    return [Invoice(**d) for d in docs]
+
+
+async def _own_invoice(user, invoice_id):
+    _require_kasa_access(user)
+    inv = await db.invoices.find_one({"id": invoice_id, "userId": user["user_id"]}, {"_id": 0})
+    if not inv:
+        raise HTTPException(404, "Fatura bulunamadı")
+    await _own_company(user, inv["companyId"])
+    cfg = await db.efatura_configs.find_one({"companyId": inv["companyId"], "userId": user["user_id"]}, {"_id": 0})
+    if not cfg or not cfg.get("apiKey"):
+        raise HTTPException(400, "Nilvera API anahtarı bulunamadı")
+    # Fatura kesildiği ortamdan sorgulanır (sonradan canlıya geçilmiş olsa bile).
+    return inv, {**cfg, "ortam": inv.get("ortam", cfg.get("ortam", "test"))}
+
+
+@api_router.get("/efatura/invoice/{invoice_id}/pdf", response_model=PdfOut)
+async def efatura_invoice_pdf(invoice_id: str, user=Depends(get_current_user)):
+    inv, cfg = await _own_invoice(user, invoice_id)
+    path = f"/earchive/Invoices/{inv['uuid']}/pdf" if inv["tur"] == "earsiv" else f"/einvoice/Sale/{inv['uuid']}/pdf"
+    resp = await _nilvera(cfg, "GET", path)
+    if resp.status_code != 200:
+        raise HTTPException(502, f"PDF alınamadı: {_nilvera_err(resp)}")
+    return PdfOut(pdfBase64=_pdf_b64_from(resp), fileName=f"Fatura_{inv.get('faturaNo') or inv['uuid'][:8]}.pdf")
+
+
+@api_router.post("/efatura/invoice/{invoice_id}/refresh", response_model=Invoice)
+async def efatura_invoice_refresh(invoice_id: str, user=Depends(get_current_user)):
+    inv, cfg = await _own_invoice(user, invoice_id)
+    path = f"/earchive/Invoices/{inv['uuid']}/Status" if inv["tur"] == "earsiv" else f"/einvoice/Sale/{inv['uuid']}/Status"
+    resp = await _nilvera(cfg, "GET", path)
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Durum alınamadı: {_nilvera_err(resp)}")
+    try:
+        j = resp.json() or {}
+    except Exception:
+        j = {}
+    code = str(j.get("StatusCode") or "")
+    detail = str(j.get("StatusDetail") or "")
+    durum = {"succeed": "Başarılı", "error": "Hata", "waiting": "Bekliyor", "unknown": "Bekliyor"}.get(code.lower(), code or inv["durum"])
+    if j.get("CancelStatus"):
+        durum = "İptal"
+    patch = {"durum": durum, "durumDetay": detail[:300]}
+    await db.invoices.update_one({"id": invoice_id, "userId": user["user_id"]}, {"$set": patch})
+    inv.update(patch)
+    return Invoice(**inv)
+
+
+@api_router.get("/efatura/incoming/{company_id}", response_model=List[IncomingInvoiceOut])
+async def efatura_incoming(company_id: str, page: int = 1, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    cfg = await _nilvera_cfg(user, company_id)
+    resp = await _nilvera(cfg, "GET", "/einvoice/Purchase", params={"Page": max(1, page), "PageSize": 50, "SortColumn": "IssueDate", "SortType": "DESC"})
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Gelen faturalar alınamadı: {_nilvera_err(resp)}")
+    try:
+        content = (resp.json() or {}).get("Content") or []
+    except Exception:
+        content = []
+    out = []
+    for r in content:
+        out.append(IncomingInvoiceOut(
+            uuid=str(r.get("UUID") or ""), faturaNo=r.get("InvoiceNumber") or "", gonderen=r.get("SenderName") or "",
+            gonderenVkn=r.get("SenderTaxNumber") or "", tarih=(r.get("IssueDate") or "")[:10],
+            paraBirimi=r.get("CurrencyCode") or "TRY", matrah=float(r.get("TaxExclusiveAmount") or r.get("LineExtensionAmount") or 0),
+            kdv=float(r.get("TaxTotalAmount") or 0), toplam=float(r.get("PayableAmount") or 0),
+            durum=str(r.get("StatusDetail") or r.get("StatusCode") or ""),
+        ))
+    return out
+
+
+@api_router.get("/efatura/incoming/{company_id}/{inv_uuid}/pdf", response_model=PdfOut)
+async def efatura_incoming_pdf(company_id: str, inv_uuid: str, user=Depends(get_current_user)):
+    _require_kasa_access(user)
+    await _own_company(user, company_id)
+    if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", inv_uuid):
+        raise HTTPException(422, "Geçersiz fatura kimliği")
+    cfg = await _nilvera_cfg(user, company_id)
+    resp = await _nilvera(cfg, "GET", f"/einvoice/Purchase/{inv_uuid}/pdf")
+    if resp.status_code != 200:
+        raise HTTPException(502, f"PDF alınamadı: {_nilvera_err(resp)}")
+    return PdfOut(pdfBase64=_pdf_b64_from(resp), fileName=f"Gelen_Fatura_{inv_uuid[:8]}.pdf")
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -7677,8 +9062,16 @@ async def on_startup():
         await db.customers.create_index([("userId", 1), ("companyId", 1)])
         await db.kasa.create_index([("userId", 1), ("companyId", 1)])
         await db.tahsilat.create_index([("userId", 1), ("companyId", 1)])
+        await db.notify_log.create_index("key", unique=True)
+        await db.stock_moves.create_index([("userId", 1), ("companyId", 1), ("createdAt", -1)])
+        await db.calendar_feeds.create_index("token", unique=True)
+        await db.invoices.create_index([("userId", 1), ("companyId", 1)])
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
+
+    # Otomatik e-posta hatırlatmaları (vade/bakım/teklif takibi/günlük özet).
+    if os.environ.get("NOTIFY_LOOP_DISABLED") != "1":
+        app.state.notify_task = asyncio.create_task(_notify_loop())
 
     try:
         # Albert Genau fiyat listesi: ilk acilista, veritabaninda henuz

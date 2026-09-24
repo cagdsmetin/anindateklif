@@ -16,6 +16,7 @@ import { ManualReminderT } from '@/src/lib/api';
 import { getHolidaysForYears } from '@/src/lib/holidays';
 import { useLanguage, upper } from '@/src/lib/i18n';
 import { MotionScrollView, Reveal, ScreenHero, SoftIcon, themedStyles } from '@/src/components/motion';
+import CalendarSync from '@/src/components/CalendarSync';
 
 const AY_ADLARI = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const GUN_BASLIKLARI = ['Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct', 'Pz'];
@@ -259,6 +260,7 @@ export default function CalendarScreen() {
             { label: 'GARANTİ / BAKIM', value: monthStats.service },
           ]}
         />
+        <CalendarSync />
         <View style={s.monthNav}>
           <TouchableOpacity onPress={goPrevMonth} style={s.monthNavBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.text} />

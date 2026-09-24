@@ -276,7 +276,7 @@ export const api = {
   deleteAdWatchlistItem: (id: string) => req(`/ads-intel/watchlist/${id}`, { method: 'DELETE' }),
   // e-Fatura (Nilvera)
   getEFaturaConfig: (companyId: string): Promise<EFaturaConfigT> => req(`/efatura/config/${companyId}`),
-  updateEFaturaConfig: (data: { companyId: string; apiKey?: string; ortam?: 'test' | 'canli'; firmaVergiNo?: string; firmaUnvani?: string; firmaAdres?: string; faturaSerisi?: string; sablonId?: string }): Promise<EFaturaConfigT> =>
+  updateEFaturaConfig: (data: { companyId: string; apiKey?: string; ortam?: 'test' | 'canli'; firmaVergiNo?: string; firmaUnvani?: string; firmaAdres?: string; firmaVergiDairesi?: string; firmaIl?: string; firmaIlce?: string; faturaSerisi?: string; sablonId?: string }): Promise<EFaturaConfigT> =>
     req('/efatura/config', { method: 'PUT', body: JSON.stringify(data) }),
   testEFaturaConnection: (companyId: string): Promise<{ ok: boolean; message: string }> =>
     req(`/efatura/test/${companyId}`, { method: 'POST' }),
@@ -310,6 +310,52 @@ export const api = {
   deleteKasaRecurring: (id: string) => req(`/kasa-recurring/${id}`, { method: 'DELETE' }),
   bulkImportCustomers: (companyId: string, customers: { firma: string; yetkili: string; telefon: string; email: string; adres: string }[]): Promise<{ created: number; updated: number; skipped: number }> =>
     req('/customers/bulk', { method: 'POST', body: JSON.stringify({ companyId, customers }) }),
+  // Stok
+  moveStock: (itemId: string, data: { companyId: string; tip: 'giris' | 'cikis' | 'duzeltme'; miktar: number; aciklama?: string }): Promise<CatalogItemT> =>
+    req(`/catalog/${itemId}/stock`, { method: 'POST', body: JSON.stringify(data) }),
+  listStockMoves: (companyId: string, itemId?: string): Promise<StockMoveT[]> =>
+    req(`/stock-moves/${companyId}${itemId ? `?itemId=${encodeURIComponent(itemId)}` : ''}`),
+  // Kuponlar
+  listCoupons: (companyId: string): Promise<CouponT[]> => req(`/coupons/${companyId}`),
+  createCoupon: (data: Omit<CouponT, 'id' | 'kullanim' | 'createdAt'>): Promise<CouponT> =>
+    req('/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  updateCoupon: (id: string, data: Omit<CouponT, 'id' | 'kullanim' | 'createdAt'>): Promise<CouponT> =>
+    req(`/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCoupon: (id: string) => req(`/coupons/${id}`, { method: 'DELETE' }),
+  validateCoupon: (companyId: string, kod: string): Promise<CouponT> =>
+    req('/coupons/validate', { method: 'POST', body: JSON.stringify({ companyId, kod }) }),
+  // Personel primi
+  getCommissionSettings: (companyId: string): Promise<{ companyId: string; rules: CommissionRuleT[] }> => req(`/commission-settings/${companyId}`),
+  putCommissionSettings: (companyId: string, rules: CommissionRuleT[]): Promise<{ companyId: string; rules: CommissionRuleT[] }> =>
+    req('/commission-settings', { method: 'PUT', body: JSON.stringify({ companyId, rules }) }),
+  // Yorum yanıtı (AI)
+  aiReviewReply: (data: { companyId: string; yorum: string; puan: number; musteriAdi?: string; ton: string; talimat?: string; dil: string }): Promise<{ yanit: string }> =>
+    req('/ai/review-reply', { method: 'POST', body: JSON.stringify(data) }, 60000),
+  // Takvim senkronu
+  getCalendarFeedUrl: (companyId: string): Promise<{ url: string; webcalUrl: string }> => req(`/calendar/feed-url/${companyId}`),
+  rotateCalendarFeedUrl: (companyId: string): Promise<{ url: string; webcalUrl: string }> =>
+    req(`/calendar/feed-url/${companyId}/rotate`, { method: 'POST' }),
+  importCalendar: (companyId: string, ics: string): Promise<{ created: number; skipped: number }> =>
+    req('/calendar/import', { method: 'POST', body: JSON.stringify({ companyId, ics }) }, 60000),
+  // Otomatik hatırlatmalar
+  getNotifySettings: (companyId: string): Promise<NotifySettingsT> => req(`/notify-settings/${companyId}`),
+  putNotifySettings: (data: NotifySettingsT): Promise<NotifySettingsT> => req('/notify-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  listNotifyLog: (companyId: string): Promise<NotifyLogT[]> => req(`/notify-log/${companyId}`),
+  testNotifyEmail: (companyId: string, email: string) =>
+    req('/notify-settings/test', { method: 'POST', body: JSON.stringify({ companyId, email }) }, 30000),
+  // e-Fatura / e-Arşiv kesme
+  checkTaxpayer: (companyId: string, vergiNo: string): Promise<{ mukellef: boolean; alias: string; unvan: string }> =>
+    req('/efatura/check-taxpayer', { method: 'POST', body: JSON.stringify({ companyId, vergiNo }) }, 30000),
+  previewInvoice: (data: { companyId: string; quoteId: string; alici: InvoicePartyT; notlar?: string; efaturaProfil?: string }): Promise<{ pdfBase64: string; fileName: string }> =>
+    req('/efatura/invoices/preview', { method: 'POST', body: JSON.stringify(data) }, 90000),
+  issueInvoice: (data: { companyId: string; quoteId: string; alici: InvoicePartyT; notlar?: string; efaturaProfil?: string }): Promise<InvoiceT> =>
+    req('/efatura/invoices', { method: 'POST', body: JSON.stringify(data) }, 90000),
+  listInvoices: (companyId: string): Promise<InvoiceT[]> => req(`/efatura/invoices/${companyId}`),
+  invoicePdf: (id: string): Promise<{ pdfBase64: string; fileName: string }> => req(`/efatura/invoice/${id}/pdf`, {}, 60000),
+  refreshInvoice: (id: string): Promise<InvoiceT> => req(`/efatura/invoice/${id}/refresh`, { method: 'POST' }, 60000),
+  listIncomingInvoices: (companyId: string, page = 1): Promise<IncomingInvoiceT[]> => req(`/efatura/incoming/${companyId}?page=${page}`, {}, 60000),
+  incomingInvoicePdf: (companyId: string, uuid: string): Promise<{ pdfBase64: string; fileName: string }> =>
+    req(`/efatura/incoming/${companyId}/${uuid}/pdf`, {}, 60000),
   listContracts: (companyId: string): Promise<ContractT[]> => req(`/contracts/${companyId}`),
   createContract: (data: Partial<ContractT> & { companyId: string; baslik: string }): Promise<ContractT> =>
     req('/contracts', { method: 'POST', body: JSON.stringify(data) }),
@@ -778,6 +824,9 @@ export type EFaturaConfigT = {
   firmaVergiNo: string;
   firmaUnvani: string;
   firmaAdres: string;
+  firmaVergiDairesi?: string;
+  firmaIl?: string;
+  firmaIlce?: string;
   faturaSerisi: string;
   sablonId: string;
   lastTestOk: boolean;
@@ -794,6 +843,91 @@ export type CatalogItemT = {
   birim: string;
   birimFiyat: number;
   paraBirimi: string;
+  stokTakip?: boolean;
+  stok?: number;
+  minStok?: number;
+  stokKodu?: string;
+};
+
+export type StockMoveT = {
+  id: string;
+  itemId: string;
+  urunAdi: string;
+  tip: 'giris' | 'cikis' | 'duzeltme' | 'satis' | 'iade';
+  miktar: number;
+  onceki: number;
+  sonraki: number;
+  aciklama: string;
+  quoteId: string;
+  createdByEmail: string;
+  createdAt: string;
+};
+
+export type CouponT = {
+  id: string;
+  companyId: string;
+  kod: string;
+  aciklama: string;
+  tip: 'yuzde' | 'tutar';
+  deger: number;
+  paraBirimi: string;
+  baslangic: string;
+  bitis: string;
+  maxKullanim: number;
+  kullanim: number;
+  aktif: boolean;
+  createdAt: string;
+};
+
+export type CommissionRuleT = { memberId: string; oran: number; baz: 'ciro' | 'kar' };
+
+export type NotifySettingsT = {
+  companyId: string;
+  aktif: boolean;
+  dil: 'tr' | 'en' | 'it';
+  vadeHatirlat: boolean;
+  vadeGunOnce: number;
+  vadeGecikme: boolean;
+  bakimHatirlat: boolean;
+  bakimGunOnce: number;
+  teklifTakip: boolean;
+  teklifTakipGun: number;
+  gunlukOzet: boolean;
+  ozetEmail: string;
+};
+
+export type NotifyLogT = { key: string; tip: string; alici: string; konu: string; durum: string; createdAt: string };
+
+export type InvoicePartyT = {
+  vergiNo: string; unvan: string; vergiDairesi: string; adres: string; il: string; ilce: string;
+  ulke?: string; email: string; telefon?: string;
+};
+
+export type InvoiceT = {
+  id: string;
+  companyId: string;
+  quoteId: string;
+  teklifNo: string;
+  tur: 'earsiv' | 'efatura';
+  profil: string;
+  uuid: string;
+  faturaNo: string;
+  ortam: 'test' | 'canli';
+  aliciUnvan: string;
+  aliciVergiNo: string;
+  aliciEmail: string;
+  paraBirimi: string;
+  araToplam: number;
+  kdvTutar: number;
+  genelToplam: number;
+  durum: string;
+  durumDetay: string;
+  createdAt: string;
+};
+
+export type IncomingInvoiceT = {
+  uuid: string; faturaNo: string; gonderen: string; gonderenVkn: string; tarih: string;
+  paraBirimi: string; matrah: number; kdv: number; toplam: number; durum: string;
 };
 
 export type CatalogFileT = {
@@ -871,6 +1005,10 @@ export type CustomerT = {
   telefon: string;
   email: string;
   adres: string;
+  vergiNo?: string;
+  vergiDairesi?: string;
+  il?: string;
+  ilce?: string;
 };
 
 export type ServiceT = {
@@ -1010,6 +1148,9 @@ export type QuoteT = {
   createdByUserId?: string;
   createdByEmail?: string;
   createdByName?: string;
+  kuponKodu?: string;
+  approvedAt?: string | null;
+  stokDusuldu?: boolean;
   createdAt: string;
 };
 

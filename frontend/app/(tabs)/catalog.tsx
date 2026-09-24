@@ -5,6 +5,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -26,6 +27,7 @@ import { downloadFileWeb } from '@/src/lib/web-download';
 import * as Sharing from 'expo-sharing';
 import { useLanguage, upper } from '@/src/lib/i18n';
 import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
+import StockModal, { fmtQty, stockLow } from '@/src/components/StockModal';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
   { value: 'text', label: 'Metin', icon: 'text-outline' },
@@ -181,6 +183,9 @@ export default function CatalogScreen() {
   const [editing, setEditing] = useState<CatalogItemT | null>(null);
   const [bulkText, setBulkText] = useState('');
   const [q, setQ] = useState('');
+  const [stockItem, setStockItem] = useState<CatalogItemT | null>(null);
+  const [lowOnly, setLowOnly] = useState(false);
+  const { reloadCatalog } = useApp();
 
   // --- Firma Kataloğu (kendi hazırladıkları hazır PDF/görsel dosyalar) -----
   const [catalogFiles, setCatalogFiles] = useState<CatalogFileT[]>([]);
@@ -409,11 +414,27 @@ export default function CatalogScreen() {
     birim: 'Adet',
     birimFiyat: '',
     paraBirimi: 'USD',
+    stokTakip: false,
+    stok: '',
+    minStok: '',
+    stokKodu: '',
+  });
+  const stockFields = (it?: CatalogItemT) => ({
+    stokTakip: !!it?.stokTakip,
+    stok: it?.stokTakip ? String(it.stok ?? 0) : '',
+    minStok: it?.stokTakip ? String(it.minStok ?? 0) : '',
+    stokKodu: it?.stokKodu || '',
+  });
+  const stockPayload = () => ({
+    stokTakip: f.stokTakip,
+    stok: Number(f.stok.replace(',', '.')) || 0,
+    minStok: Number(f.minStok.replace(',', '.')) || 0,
+    stokKodu: f.stokKodu.trim(),
   });
 
   const openNew = () => {
     setEditing(null);
-    setF({ kategori: 'Genel', urunAdi: '', aciklama: '', birim: 'Adet', birimFiyat: '', paraBirimi: 'USD' });
+    setF({ kategori: 'Genel', urunAdi: '', aciklama: '', birim: 'Adet', birimFiyat: '', paraBirimi: 'USD', ...stockFields() });
     setShowForm(true);
   };
   const openEdit = (it: CatalogItemT) => {
@@ -425,6 +446,7 @@ export default function CatalogScreen() {
       birim: it.birim,
       birimFiyat: String(it.birimFiyat),
       paraBirimi: it.paraBirimi,
+      ...stockFields(it),
     });
     setShowForm(true);
   };
@@ -440,6 +462,8 @@ export default function CatalogScreen() {
       birim: it.birim,
       birimFiyat: String(it.birimFiyat),
       paraBirimi: it.paraBirimi,
+      ...stockFields(it),
+      stok: it.stokTakip ? '0' : '',
     });
     setShowForm(true);
   };
@@ -458,6 +482,7 @@ export default function CatalogScreen() {
           birim: f.birim,
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
+          ...stockPayload(),
         });
         showToast(t('catalog.s016'));
       } else {
@@ -468,6 +493,7 @@ export default function CatalogScreen() {
           birim: f.birim,
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
+          ...stockPayload(),
         });
         showToast(t('catalog.s017'));
       }
@@ -560,13 +586,15 @@ export default function CatalogScreen() {
     }
   };
 
-  const filtered = q
+  const lowCount = catalog.filter(stockLow).length;
+  const filtered = (q
     ? catalog.filter(
         (c) =>
           c.urunAdi.toLowerCase().includes(q.toLowerCase()) ||
-          c.kategori.toLowerCase().includes(q.toLowerCase())
+          c.kategori.toLowerCase().includes(q.toLowerCase()) ||
+          (c.stokKodu || '').toLowerCase().includes(q.toLowerCase())
       )
-    : catalog;
+    : catalog).filter((c) => !lowOnly || stockLow(c));
 
   if (!activeCompany) {
     return (
@@ -901,6 +929,18 @@ export default function CatalogScreen() {
         </TouchableOpacity>
 
         <Text style={[s.sectionH, { marginTop: 20 }]}>{t('catalog.s042')}</Text>
+        {lowCount > 0 && (
+          <TouchableOpacity
+            style={[s.lowBanner, lowOnly && { backgroundColor: theme.colors.red, borderColor: theme.colors.red }]}
+            onPress={() => setLowOnly((v) => !v)}
+            testID="stock-low-filter"
+          >
+            <Ionicons name="warning" size={16} color={lowOnly ? '#fff' : theme.colors.redText} />
+            <Text style={[s.lowBannerT, lowOnly && { color: '#fff' }]}>
+              {t('stock.lowBanner').replace('{n}', String(lowCount))}{lowOnly ? ` · ${t('stock.showAll')}` : ''}
+            </Text>
+          </TouchableOpacity>
+        )}
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="cube-outline" size={30} color={theme.colors.textMuted} />
@@ -914,8 +954,16 @@ export default function CatalogScreen() {
                 <Text style={s.catName} numberOfLines={2}>{c.urunAdi}</Text>
                 {c.aciklama ? <Text style={s.catDesc} numberOfLines={2}>{c.aciklama}</Text> : null}
                 <Text style={s.catPrice}>{fmt(c.birimFiyat, c.paraBirimi)} / {c.birim}</Text>
+                {c.stokTakip ? (
+                  <Text style={[s.stockTag, stockLow(c) && s.stockTagLow]} testID={`stock-tag-${c.id}`}>
+                    {stockLow(c) ? '⚠ ' : ''}{t('stock.inStock')}: {fmtQty(c.stok ?? 0)} {c.birim}{c.stokKodu ? ` · ${c.stokKodu}` : ''}
+                  </Text>
+                ) : null}
               </View>
               <View style={{ gap: 6 }}>
+                <TouchableOpacity onPress={() => setStockItem(c)} testID={`stock-${c.id}`}>
+                  <Ionicons name="cube-outline" size={20} color={c.stokTakip ? theme.colors.modules.katalog : theme.colors.textMuted} />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => duplicateItem(c)} testID={`duplicate-${c.id}`}>
                   <Ionicons name="copy-outline" size={20} color={theme.colors.textMuted} />
                 </TouchableOpacity>
@@ -976,6 +1024,28 @@ export default function CatalogScreen() {
                   ))}
                 </View>
               </FieldGroup>
+              <View style={s.stockBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.stockBoxT}>{t('stock.track')}</Text>
+                    <Text style={s.hintMuted}>{t('stock.trackHint')}</Text>
+                  </View>
+                  <Switch value={f.stokTakip} onValueChange={(v) => setF({ ...f, stokTakip: v, stok: f.stok || '0', minStok: f.minStok || '0' })} testID="cat-stoktakip" />
+                </View>
+                {f.stokTakip && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <FieldGroup label={editing ? t('stock.current') : t('stock.opening')} flex={1}>
+                      <MotionInput style={s.input} keyboardType="numeric" value={f.stok} onChangeText={(v) => setF({ ...f, stok: v })} testID="cat-stok" />
+                    </FieldGroup>
+                    <FieldGroup label={t('stock.min')} flex={1}>
+                      <MotionInput style={s.input} keyboardType="numeric" value={f.minStok} onChangeText={(v) => setF({ ...f, minStok: v })} testID="cat-minstok" />
+                    </FieldGroup>
+                    <FieldGroup label={t('stock.code')} flex={1.2}>
+                      <MotionInput style={s.input} value={f.stokKodu} onChangeText={(v) => setF({ ...f, stokKodu: v })} testID="cat-stokkodu" />
+                    </FieldGroup>
+                  </View>
+                )}
+              </View>
               <TouchableOpacity style={s.btnAccBig} onPress={save} testID="save-catalog-btn">
                 <Ionicons name="checkmark-done" size={18} color="#fff" />
                 <Text style={s.btnAccText}>{editing ? t('catalog.s052') : 'Kaydet'}</Text>
@@ -984,6 +1054,13 @@ export default function CatalogScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <StockModal
+        item={stockItem}
+        companyId={activeCompany.id}
+        onClose={() => setStockItem(null)}
+        onChanged={() => { reloadCatalog().catch(() => {}); }}
+      />
 
       {/* Bulk import modal */}
       <Modal visible={showBulk} transparent animationType="slide">
@@ -1209,6 +1286,12 @@ const s = themedStyles(() => StyleSheet.create({
   catName: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   catDesc: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   catPrice: { fontSize: 12.5, color: theme.colors.textSoft, fontWeight: '700', marginTop: 4 },
+  stockTag: { alignSelf: 'flex-start', marginTop: 6, fontSize: 11, fontWeight: '800', color: theme.colors.greenText, backgroundColor: theme.colors.greenSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, overflow: 'hidden' },
+  stockTagLow: { color: theme.colors.redText, backgroundColor: theme.colors.redSoft },
+  stockBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: theme.colors.surfaceSoft },
+  stockBoxT: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  lowBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: theme.colors.red, backgroundColor: theme.colors.redSoft, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 },
+  lowBannerT: { fontSize: 12.5, fontWeight: '800', color: theme.colors.redText, flex: 1 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(8,11,20,0.58)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: theme.colors.surface,

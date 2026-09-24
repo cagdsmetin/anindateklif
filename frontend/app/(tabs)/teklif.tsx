@@ -38,7 +38,7 @@ import { AttachmentT, mergeAttachmentsIntoPdf } from '@/src/lib/pdf-merge';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import * as DocumentPicker from 'expo-document-picker';
-import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import { fill, useLanguage, statusLabel, upper } from '@/src/lib/i18n';
 import { BorderBeam, BubbleButton, ChoiceChip, CountUp, IconBadge, MotionInput, MotionScrollView, Reveal, SheetEmpty, SheetModal, SheetPick, SheetRow, alpha, readableOn, themedStyles, useViewportProgress } from '@/src/components/motion';
 import Reanimated, { useAnimatedRef, useAnimatedStyle } from 'react-native-reanimated';
 
@@ -105,6 +105,10 @@ export default function EditorScreen() {
   const [mensei, setMensei] = useState(t('teklifPage.s009'));
   const [teslimGun, setTeslimGun] = useState(t('teklifPage.s010'));
   const [iskonto, setIskonto] = useState('0');
+  // Kampanya/kupon kodu: doğrulanınca iskonto alanını doldurur (bkz. applyCoupon).
+  const [kuponKodu, setKuponKodu] = useState('');
+  const [kuponInput, setKuponInput] = useState('');
+  const [kuponBusy, setKuponBusy] = useState(false);
   const [kdvOrani, setKdvOrani] = useState('20');
   const [notlar, setNotlar] = useState('');
   const notlarSelRef = useRef({ start: 0, end: 0 });
@@ -315,6 +319,7 @@ export default function EditorScreen() {
     setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
+    setKuponKodu(q.kuponKodu || ''); setKuponInput(q.kuponKodu || '');
     setNotlar(q.notlar); setItems(q.items); setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
     setDurum(q.durum || 'Beklemede'); setLeavingItemIds(new Set());
   };
@@ -331,6 +336,7 @@ export default function EditorScreen() {
     setMusTelefon(q.musTelefon); setMusEmail(q.musEmail); setMusAdres(q.musAdres); setProjeAdi(q.projeAdi);
     setNakliye(q.nakliye); setParaBirimi(q.paraBirimi); setOdemeSekli(q.odemeSekli); setMensei(q.mensei);
     setTeslimGun(q.teslimGun); setIskonto(String(q.iskonto)); setKdvOrani(String(q.kdvOrani));
+    setKuponKodu(''); setKuponInput('');
     setNotlar(q.notlar);
     setItems((q.items || []).map((it) => ({ ...it, id: newItemId() })));
     setEkler(q.ekler || []); setAttachments([]); setExpandedItemId(null);
@@ -376,7 +382,7 @@ export default function EditorScreen() {
   const resetForm = useCallback(() => {
     setEditingId(undefined); setTeklifNo(buildTeklifNo(countQuotesToday(quotes) + 1)); setTarih(todayIso()); setGecerlilik(plusDaysIso(7));
     setHazirlayanEmail(user?.email || ''); setMusFirma(''); setMusYetkili('');
-    setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20');
+    setMusTelefon(''); setMusEmail(''); setMusAdres(''); setProjeAdi(''); setIskonto('0'); setKdvOrani('20'); setKuponKodu(''); setKuponInput('');
     setNotlar(activeCompany?.ozelNotlar || ''); setItems([]); setEkler([]); setAttachments([]); setExpandedItemId(null); bootedRef.current = null;
     setDurum('Beklemede'); setLeavingItemIds(new Set());
     teklifNoManualRef.current = false;
@@ -490,8 +496,29 @@ export default function EditorScreen() {
   const currentQuote = (): Partial<QuoteT> => ({
     teklifNo, tarih, gecerlilik, hazirlayanEmail, musFirma, musYetkili, musTelefon, musEmail, musAdres,
     projeAdi, nakliye, paraBirimi, odemeSekli, mensei, teslimGun,
-    iskonto: iskontoOr, kdvOrani: kdvOr, notlar, items, ekler, durum: 'Beklemede',
+    iskonto: iskontoOr, kdvOrani: kdvOr, notlar, items, ekler, durum: 'Beklemede', kuponKodu,
   });
+
+  const applyCoupon = async () => {
+    const kod = kuponInput.trim();
+    if (!activeCompany || !kod) return;
+    if (kuponKodu && kod.toUpperCase() === kuponKodu) { setKuponKodu(''); setKuponInput(''); setIskonto('0'); return; }
+    setKuponBusy(true);
+    try {
+      const c = await api.validateCoupon(activeCompany.id, kod);
+      let pct = c.deger;
+      if (c.tip === 'tutar') {
+        if (c.paraBirimi !== paraBirimi) { showToast(fill(t('coupons.curMismatch'), { cur: c.paraBirimi })); return; }
+        if (subtotal <= 0) { showToast(t('coupons.addItemsFirst')); return; }
+        pct = Math.min(100, (c.deger / subtotal) * 100);
+      }
+      setIskonto(String(Math.round(pct * 10000) / 10000));
+      setKuponKodu(c.kod); setKuponInput(c.kod);
+      showToast(fill(t('coupons.applied'), { kod: c.kod }));
+    } catch (e: any) {
+      showToast(e?.message || t('coupons.invalid'));
+    } finally { setKuponBusy(false); }
+  };
 
   const updateItem = (id: string, patch: Partial<QuoteItemT>) => {
     setItems((prev) => prev.map((it) => {
@@ -934,6 +961,28 @@ export default function EditorScreen() {
               <MotionInput style={s.input} value={teslimGun} onChangeText={setTeslimGun} onBlur={() => rememberDefault('teslimGun', teslimGun)} />
             </FGroup>
             <FGroup label={t('teklifPage.s045')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={iskonto} onChangeText={(v) => setIskonto(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
+            <FGroup label={t('coupons.field')} grid>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <MotionInput
+                  style={[s.input, { flex: 1 }, !!kuponKodu && { borderColor: theme.colors.green }]}
+                  value={kuponInput}
+                  autoCapitalize="characters"
+                  placeholder={t('coupons.fieldPh')}
+                  placeholderTextColor="#94a3b8"
+                  onChangeText={(v) => { setKuponInput(v); if (kuponKodu && v.trim().toUpperCase() !== kuponKodu) setKuponKodu(''); }}
+                  onSubmitEditing={applyCoupon}
+                  testID="quote-coupon-input"
+                />
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 12, borderRadius: 12, justifyContent: 'center', backgroundColor: kuponKodu ? theme.colors.green : theme.colors.primary, opacity: kuponBusy ? 0.6 : 1 }}
+                  onPress={applyCoupon}
+                  disabled={kuponBusy || !kuponInput.trim()}
+                  testID="quote-coupon-apply"
+                >
+                  <Ionicons name={kuponKodu ? 'close' : 'pricetag'} size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </FGroup>
             <FGroup label={t('teklifPage.s046')} grid narrow><MotionInput style={s.input} keyboardType="decimal-pad" value={kdvOrani} onChangeText={(v) => setKdvOrani(v.replace(/[^0-9.,]/g, ''))} /></FGroup>
           </View>
 

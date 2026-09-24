@@ -29,6 +29,7 @@ import { downloadFileWeb } from '@/src/lib/web-download';
 import { htmlToPdfObjectUrlWeb } from '@/src/lib/pdf-web';
 import { useLanguage, orderedAmounts, statusLabel, upper } from '@/src/lib/i18n';
 import { IconBadge, MotionScrollView, Reveal, ScreenHero, compactNumber, themedStyles } from '@/src/components/motion';
+import InvoiceModal from '@/src/components/InvoiceModal';
 
 function fmt(n: number, cur: string) {
   const s = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -55,6 +56,9 @@ export default function HistoryScreen() {
   const { t, lang } = useLanguage();
   const { quotes, deleteQuote, updateQuoteStatus, updateQuoteMaliyet, updateQuoteItemMaliyet, updateQuoteEkstraMaliyet, activeCompany, showToast, getQuoteAttachments, editRequests, respondQuoteEditRequest, tahsilat } = useApp();
   const { user: me } = useAuth();
+  const [invoiceQuote, setInvoiceQuote] = useState<QuoteT | null>(null);
+  // e-Fatura Türkiye'ye özgü; kısıtlı personel (Kasa/Tahsilat göremeyen) fatura kesemez.
+  const canInvoice = lang === 'tr' && !(me?.is_staff && me?.staff_role !== 'admin');
   // Teklif sahiplik/onay sistemi: bana (bu tekliflerin gerçek sahibine) gelen,
   // henüz yanıtlanmamış düzenleme onay istekleri -- bkz. teklif.tsx'teki kilit.
   const incomingEditRequests = editRequests.filter((r) => r.status === 'pending' && r.approverUserId === me?.user_id);
@@ -551,6 +555,16 @@ export default function HistoryScreen() {
                     <Text style={[s.actText, { color: theme.colors.modules.sozlesme }]}>{t('contracts.single')}</Text>
                   </TouchableOpacity>
                 )}
+                {quote.durum === 'Onaylandı' && canInvoice && (
+                  <TouchableOpacity
+                    style={[s.actBtn, { backgroundColor: theme.colors.modules.efatura + '18' }]}
+                    onPress={() => setInvoiceQuote(quote)}
+                    testID={`invoice-${quote.id}`}
+                  >
+                    <Ionicons name="receipt-outline" size={14} color={theme.colors.modules.efatura} />
+                    <Text style={[s.actText, { color: theme.colors.modules.efatura }]}>Fatura</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[s.actBtnIcon, { backgroundColor: theme.colors.primary + '14' }]}
                   onPress={() => openDuplicate(quote.id)}
@@ -938,6 +952,7 @@ export default function HistoryScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      <InvoiceModal quote={invoiceQuote} onClose={() => setInvoiceQuote(null)} />
     </SafeAreaView>
   );
 }

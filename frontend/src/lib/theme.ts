@@ -76,6 +76,9 @@ const lightColors = {
     reklam: '#DC2626',
     efatura: '#0F766E',
     sozlesme: '#9333EA',
+    kupon: '#E11D48',
+    prim: '#CA8A04',
+    yorum: '#2563EB',
   },
 };
 
@@ -146,6 +149,9 @@ const darkColors = {
     reklam: '#F87171',
     efatura: '#2DD4BF',
     sozlesme: '#9333EA',
+    kupon: '#FB7185',
+    prim: '#FACC15',
+    yorum: '#60A5FA',
   },
 };
 

@@ -17,6 +17,7 @@ import { CustomerT, ManualReminderT, QuoteT, ServiceT } from '@/src/lib/api';
 import { normalizePhoneForWhatsApp, openWhatsAppChat } from '@/src/lib/whatsapp';
 import { useLanguage, upper } from '@/src/lib/i18n';
 import TopHeader from '@/src/components/TopHeader';
+import AutoReminders from '@/src/components/AutoReminders';
 import { BeamRow, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, TracingBeam, themedStyles } from '@/src/components/motion';
 
 const HIDDEN_KEY = 'hiddenReminders';
@@ -203,6 +204,7 @@ export default function RemindersScreen() {
             { label: t('remindersPage.s012'), value: teklifList.length },
           ]}
         />
+        <AutoReminders />
         {loaded && totalCount === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={28} color={theme.colors.textMuted} />

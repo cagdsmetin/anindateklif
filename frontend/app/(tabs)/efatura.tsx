@@ -12,22 +12,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
-import { api, EFaturaConfigT } from '@/src/lib/api';
+import { api, EFaturaConfigT, IncomingInvoiceT, InvoiceT, QuoteT } from '@/src/lib/api';
+import InvoiceModal from '@/src/components/InvoiceModal';
+import { saveBase64Pdf } from '@/src/lib/pdf-b64';
 import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
 // ============================================================================
-// e-Fatura -- MyDijital OS'teki "E-Fatura" modülünün karşılığı. Sağlayıcı
-// olarak Nilvera (gerçek bir e-fatura/e-arşiv API'si, developer.nilvera.com)
-// kullanılıyor. v1 kapsamı bilerek sınırlı: kimlik bilgisi saklama + GERÇEK
-// bir bağlantı testi (Nilvera'nın doğruladığımız GlobalCompany ucu). Fatura
-// KESME bu sürümde yok -- sahte/çalışmayan bir "fatura kes" özelliği eklemek
-// yerine önce gerçekten çalışan bir bağlantı testiyle başlanıyor.
+// e-Fatura -- sağlayıcı Nilvera (GİB lisanslı özel entegratör; faturalar
+// Nilvera üzerinden GİB'e iletilir). Sekmeler: kesilen faturalar (onaylı
+// tekliften e-Fatura/e-Arşiv, bkz. InvoiceModal), gelen alış faturaları ve
+// bağlantı ayarları. e-Fatura Türkiye'ye özgü -- ekran bilerek Türkçe.
 // ============================================================================
 
 export default function EFaturaScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, showToast } = useApp();
+  const { activeCompany, showToast, quotes, reloadKasa } = useApp();
   const companyId = activeCompany?.id;
 
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,15 @@ export default function EFaturaScreen() {
   const [firmaVergiNo, setFirmaVergiNo] = useState('');
   const [firmaUnvani, setFirmaUnvani] = useState('');
   const [firmaAdres, setFirmaAdres] = useState('');
+  const [firmaVergiDairesi, setFirmaVergiDairesi] = useState('');
+  const [firmaIl, setFirmaIl] = useState('');
+  const [firmaIlce, setFirmaIlce] = useState('');
+  const [tab, setTab] = useState<'faturalar' | 'gelen' | 'ayarlar'>('faturalar');
+  const [invoices, setInvoices] = useState<InvoiceT[]>([]);
+  const [incoming, setIncoming] = useState<IncomingInvoiceT[] | null>(null);
+  const [incomingErr, setIncomingErr] = useState('');
+  const [invoiceQuote, setInvoiceQuote] = useState<QuoteT | null>(null);
+  const [rowBusy, setRowBusy] = useState('');
   const [faturaSerisi, setFaturaSerisi] = useState('');
   const [sablonId, setSablonId] = useState('');
   const [ortam, setOrtam] = useState<'test' | 'canli'>('test');
@@ -53,6 +62,11 @@ export default function EFaturaScreen() {
       setFirmaVergiNo(c.firmaVergiNo || '');
       setFirmaUnvani(c.firmaUnvani || '');
       setFirmaAdres(c.firmaAdres || '');
+      setFirmaVergiDairesi(c.firmaVergiDairesi || '');
+      setFirmaIl(c.firmaIl || '');
+      setFirmaIlce(c.firmaIlce || '');
+      if (!c.lastTestOk) setTab('ayarlar');
+      else api.listInvoices(companyId).then(setInvoices).catch(() => {});
       setFaturaSerisi(c.faturaSerisi || '');
       setSablonId(c.sablonId || '');
       setOrtam(c.ortam || 'test');
@@ -77,6 +91,9 @@ export default function EFaturaScreen() {
         firmaVergiNo,
         firmaUnvani,
         firmaAdres,
+        firmaVergiDairesi,
+        firmaIl,
+        firmaIlce,
         faturaSerisi,
         sablonId,
       };
@@ -121,6 +138,49 @@ export default function EFaturaScreen() {
     await save({ switchToCanli: true });
   };
 
+  const loadIncoming = async () => {
+    if (!companyId) return;
+    setIncoming(null); setIncomingErr('');
+    try { setIncoming(await api.listIncomingInvoices(companyId)); }
+    catch (e: any) { setIncoming([]); setIncomingErr(e?.message || 'Gelen faturalar alınamadı'); }
+  };
+  useEffect(() => {
+    if (tab === 'gelen' && incoming == null) loadIncoming();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const invoicedQuoteIds = new Set(invoices.filter((i) => i.durum !== 'Hata' && i.durum !== 'İptal').map((i) => i.quoteId));
+  const toInvoice = quotes.filter((q) => q.durum === 'Onaylandı' && !q.deletedAt && !invoicedQuoteIds.has(q.id)).slice(0, 30);
+
+  const rowRun = async (key: string, fn: () => Promise<void>) => {
+    if (rowBusy) return;
+    setRowBusy(key);
+    try { await fn(); } catch (e: any) { showToast('Hata: ' + (e?.message || '')); } finally { setRowBusy(''); }
+  };
+  const invPdf = (inv: InvoiceT) => rowRun('pdf' + inv.id, async () => {
+    const r = await api.invoicePdf(inv.id); await saveBase64Pdf(r.pdfBase64, r.fileName);
+  });
+  const invRefresh = (inv: InvoiceT) => rowRun('st' + inv.id, async () => {
+    const u = await api.refreshInvoice(inv.id);
+    setInvoices((l) => l.map((x) => (x.id === u.id ? u : x)));
+    showToast(`Durum: ${u.durum}${u.durumDetay ? ` – ${u.durumDetay}` : ''}`);
+  });
+  const incPdf = (x: IncomingInvoiceT) => rowRun('ipdf' + x.uuid, async () => {
+    const r = await api.incomingInvoicePdf(companyId!, x.uuid); await saveBase64Pdf(r.pdfBase64, r.fileName);
+  });
+  const incToKasa = (x: IncomingInvoiceT) => rowRun('ik' + x.uuid, async () => {
+    const kdvOrani = x.matrah > 0 ? Math.round((x.kdv / x.matrah) * 100) : 0;
+    await api.createKasaEntry({
+      companyId, tur: 'gider', kategori: 'Fatura', tutar: x.toplam, paraBirimi: x.paraBirimi || 'TRY',
+      yontem: 'Havale/EFT', tarih: x.tarih || new Date().toISOString().slice(0, 10), kdvOrani,
+      notlar: `${x.gonderen} – fatura ${x.faturaNo}`,
+    });
+    await reloadKasa().catch(() => {});
+    showToast('Kasa\'ya gider olarak eklendi');
+  });
+  const money = (n: number, cur: string) => `${new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)} ${cur === 'TRY' ? '₺' : cur}`;
+  const durumColor = (d: string) => (d === 'Başarılı' ? theme.colors.green : d === 'Hata' || d === 'İptal' ? theme.colors.red : theme.colors.gold);
+
   if (!activeCompany) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
@@ -157,8 +217,93 @@ export default function EFaturaScreen() {
             color={theme.colors.modules.efatura}
           />
           <Text style={s.helperTinyMuted}>
-            Nilvera hesabınızın API anahtarıyla bağlantı kurun. Bu sürümde bağlantı testi ve kimlik bilgisi kaydı desteklenir; fatura kesme özelliği yakında eklenecek — Nilvera hesabınızdan mevcut yöntemle fatura kesmeye devam edebilirsiniz.
+            Onaylanan tekliflerinizden tek tuşla e-Fatura / e-Arşiv fatura kesin. Faturalar, GİB lisanslı özel entegratör Nilvera üzerinden Gelir İdaresi’ne iletilir; alıcı e-Fatura mükellefiyse e-Fatura, değilse e-Arşiv otomatik seçilir.
           </Text>
+
+          <View style={s.tabs}>
+            {([['faturalar', 'Faturalar'], ['gelen', 'Gelen'], ['ayarlar', 'Ayarlar']] as const).map(([k, l]) => (
+              <TouchableOpacity key={k} style={[s.tab, tab === k && s.tabA]} onPress={() => setTab(k)} testID={`efatura-tab-${k}`}>
+                <Text style={[s.tabT, tab === k && s.tabTA]}>{l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {tab === 'faturalar' && (
+            <View>
+              {!cfg?.lastTestOk && (
+                <TouchableOpacity style={s.notice} onPress={() => setTab('ayarlar')}>
+                  <Ionicons name="alert-circle-outline" size={18} color={theme.colors.gold} />
+                  <Text style={s.noticeT}>Fatura kesmek için önce Ayarlar sekmesinden Nilvera bağlantısını test edin.</Text>
+                </TouchableOpacity>
+              )}
+              {cfg?.ortam === 'test' && cfg?.lastTestOk && (
+                <View style={s.notice}>
+                  <Ionicons name="flask-outline" size={18} color={theme.colors.gold} />
+                  <Text style={s.noticeT}>Test ortamındasınız: kesilen faturalar resmi değildir. Gerçek fatura için Ayarlar’dan Canlı Ortam’a geçin.</Text>
+                </View>
+              )}
+              <Text style={s.sectionTitle}>{upper('Faturalanacak onaylı teklifler')}</Text>
+              {toInvoice.length === 0 ? <Text style={s.helperTinyMuted}>Faturası kesilmemiş onaylı teklif yok.</Text> : toInvoice.map((q) => (
+                <View key={q.id} style={s.row} testID={`to-invoice-${q.id}`}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.rowT} numberOfLines={1}>{q.musFirma || q.musYetkili}</Text>
+                    <Text style={s.rowS}>{q.teklifNo} · {money(q.genelToplam, q.paraBirimi)}</Text>
+                  </View>
+                  <TouchableOpacity style={s.smallBtn} onPress={() => setInvoiceQuote(q)} testID={`invoice-quote-${q.id}`}>
+                    <Ionicons name="receipt-outline" size={14} color="#fff" />
+                    <Text style={s.smallBtnT}>Fatura Kes</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <Text style={[s.sectionTitle, { marginTop: 18 }]}>{upper(`Kesilen faturalar (${invoices.length})`)}</Text>
+              {invoices.length === 0 ? <Text style={s.helperTinyMuted}>Henüz fatura kesilmedi.</Text> : invoices.map((inv) => (
+                <View key={inv.id} style={s.row} testID={`invoice-${inv.id}`}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.rowT} numberOfLines={1}>{inv.aliciUnvan}</Text>
+                    <Text style={s.rowS}>
+                      {inv.faturaNo || inv.uuid.slice(0, 8)} · {inv.tur === 'efatura' ? 'e-Fatura' : 'e-Arşiv'} · {money(inv.genelToplam, inv.paraBirimi)}
+                      {inv.ortam === 'test' ? ' · TEST' : ''}
+                    </Text>
+                    <Text style={[s.rowS, { color: durumColor(inv.durum), fontWeight: '800' }]}>{inv.durum}{inv.durumDetay ? ` – ${inv.durumDetay}` : ''} · {new Date(inv.createdAt).toLocaleDateString('tr-TR')}</Text>
+                  </View>
+                  <TouchableOpacity style={s.iconBtn} onPress={() => invRefresh(inv)} disabled={!!rowBusy}>
+                    {rowBusy === 'st' + inv.id ? <ActivityIndicator size="small" /> : <Ionicons name="refresh" size={18} color={theme.colors.textSoft} />}
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.iconBtn} onPress={() => invPdf(inv)} disabled={!!rowBusy} testID={`invoice-pdf-${inv.id}`}>
+                    {rowBusy === 'pdf' + inv.id ? <ActivityIndicator size="small" /> : <Ionicons name="document-text-outline" size={18} color={theme.colors.modules.efatura} />}
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {tab === 'gelen' && (
+            <View>
+              <Text style={s.helperTinyMuted}>Tedarikçilerinizin size kestiği e-Faturalar. “Kasaya ekle” ile gider olarak işleyebilirsiniz (KDV oranı faturadan hesaplanır).</Text>
+              {incoming == null ? <ActivityIndicator color={theme.colors.primary} /> : incomingErr ? (
+                <Text style={[s.helperTinyMuted, { color: theme.colors.redText }]}>{incomingErr}</Text>
+              ) : incoming.length === 0 ? <Text style={s.helperTinyMuted}>Gelen fatura yok.</Text> : incoming.map((x) => (
+                <View key={x.uuid} style={s.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.rowT} numberOfLines={1}>{x.gonderen}</Text>
+                    <Text style={s.rowS}>{x.faturaNo} · {x.tarih.split('-').reverse().join('.')} · {money(x.toplam, x.paraBirimi)}</Text>
+                    {x.durum ? <Text style={s.rowS}>{x.durum}</Text> : null}
+                  </View>
+                  <TouchableOpacity style={s.iconBtn} onPress={() => incToKasa(x)} disabled={!!rowBusy}>
+                    {rowBusy === 'ik' + x.uuid ? <ActivityIndicator size="small" /> : <Ionicons name="wallet-outline" size={18} color={theme.colors.modules.kasa} />}
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.iconBtn} onPress={() => incPdf(x)} disabled={!!rowBusy}>
+                    {rowBusy === 'ipdf' + x.uuid ? <ActivityIndicator size="small" /> : <Ionicons name="document-text-outline" size={18} color={theme.colors.modules.efatura} />}
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity style={[s.testBtn, { marginTop: 12 }]} onPress={loadIncoming}>
+                <Ionicons name="refresh" size={16} color="#fff" /><Text style={s.testBtnText}>Yenile</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {tab === 'ayarlar' && (<>
 
           <View style={[s.statusCard, cfg?.lastTestOk ? s.statusCardOk : s.statusCardOff]}>
             <Ionicons
@@ -215,14 +360,25 @@ export default function EFaturaScreen() {
           <MotionInput style={s.input} placeholder="Vergi Kimlik No / TCKN" placeholderTextColor="#94a3b8" value={firmaVergiNo} onChangeText={setFirmaVergiNo} testID="efatura-vergino" />
           <MotionInput style={s.input} placeholder="Firma Unvanı" placeholderTextColor="#94a3b8" value={firmaUnvani} onChangeText={setFirmaUnvani} testID="efatura-unvan" />
           <MotionInput style={[s.input, { minHeight: 60, textAlignVertical: 'top' }]} multiline placeholder="Adres" placeholderTextColor="#94a3b8" value={firmaAdres} onChangeText={setFirmaAdres} testID="efatura-adres" />
+          <MotionInput style={s.input} placeholder="Vergi Dairesi" placeholderTextColor="#94a3b8" value={firmaVergiDairesi} onChangeText={setFirmaVergiDairesi} testID="efatura-vd" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <MotionInput style={[s.input, { flex: 1 }]} placeholder="İlçe" placeholderTextColor="#94a3b8" value={firmaIlce} onChangeText={setFirmaIlce} testID="efatura-ilce" />
+            <MotionInput style={[s.input, { flex: 1 }]} placeholder="İl" placeholderTextColor="#94a3b8" value={firmaIl} onChangeText={setFirmaIl} testID="efatura-il" />
+          </View>
           <MotionInput style={s.input} placeholder="Fatura Serisi (opsiyonel)" placeholderTextColor="#94a3b8" value={faturaSerisi} onChangeText={setFaturaSerisi} testID="efatura-seri" />
           <MotionInput style={s.input} placeholder="Şablon ID (opsiyonel)" placeholderTextColor="#94a3b8" value={sablonId} onChangeText={setSablonId} testID="efatura-sablon" />
 
           <TouchableOpacity style={s.saveBtn} onPress={() => save()} disabled={saving} testID="efatura-save-btn">
             <Text style={s.saveBtnText}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
           </TouchableOpacity>
+          </>)}
         </MotionScrollView>
       )}
+      <InvoiceModal
+        quote={invoiceQuote}
+        onClose={() => setInvoiceQuote(null)}
+        onIssued={(inv) => setInvoices((l) => [inv, ...l])}
+      />
     </SafeAreaView>
   );
 }
@@ -252,4 +408,17 @@ const s = themedStyles(() => StyleSheet.create({
   testBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary, borderRadius: 10, height: 46, marginTop: 4 },
   saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  tabs: { flexDirection: 'row', gap: 6, backgroundColor: theme.colors.surfaceSoft, borderRadius: 12, padding: 4, marginBottom: 16 },
+  tab: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 9 },
+  tabA: { backgroundColor: theme.colors.surface, ...theme.shadow.sm },
+  tabT: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textMuted },
+  tabTA: { color: theme.colors.modules.efatura },
+  notice: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: theme.colors.goldSoft || theme.colors.surfaceSoft, marginBottom: 14 },
+  noticeT: { flex: 1, fontSize: 12, fontWeight: '700', color: theme.colors.text },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surface, marginBottom: 8 },
+  rowT: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
+  rowS: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
+  smallBtn: { flexDirection: 'row', gap: 5, alignItems: 'center', backgroundColor: theme.colors.modules.efatura, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 10 },
+  smallBtnT: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  iconBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft },
 }));

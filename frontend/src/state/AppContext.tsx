@@ -669,8 +669,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // yüklemek bu ekranların state'ini bayat bırakıyordu — kullanıcı Tahsilat
     // sekmesine gidince manuel yenilemeden yeni girdiyi göremiyordu. Üçünü de
     // birlikte tazeleyerek her ekranın anında güncel görünmesini sağlıyoruz.
-    await Promise.all([reloadQuotes(), reloadTahsilat(), reloadKasa()]);
-  }, [reloadQuotes, reloadTahsilat, reloadKasa]);
+    // Onay/iptal katalog stoğunu da değiştirir (stok takipli ürünler).
+    await Promise.all([reloadQuotes(), reloadTahsilat(), reloadKasa(), reloadCatalog().catch(() => {})]);
+  }, [reloadQuotes, reloadTahsilat, reloadKasa, reloadCatalog]);
 
   // Teklif verildikten sonra isteğe bağlı olarak girilen maliyet -- zorunlu
   // değil, girilirse teklif tutarından düşülerek kâr hesaplanır (history.tsx).

@@ -75,6 +75,7 @@ const lightColors = {
     lead: '#B45309',
     reklam: '#DC2626',
     efatura: '#0F766E',
+    sozlesme: '#9333EA',
   },
 };
 
@@ -144,6 +145,7 @@ const darkColors = {
     lead: '#FBBF24',
     reklam: '#F87171',
     efatura: '#2DD4BF',
+    sozlesme: '#9333EA',
   },
 };
 

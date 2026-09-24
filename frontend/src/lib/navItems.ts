@@ -17,7 +17,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.hatirlatmalar': 'Hatirlatmalar', 'nav.takvim': 'Takvim', 'nav.kasa': 'Kasa', 'nav.tahsilat': 'Tahsilat',
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
       'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
-      'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura',
+      'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura', 'nav.sozlesmeler': 'Sozlesmeler',
     };
     return fallback[k] || k;
   });
@@ -34,6 +34,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'efatura', title: tt('nav.eFatura'), icon: 'receipt', color: m.efatura },
     { name: 'reminders', title: tt('nav.hatirlatmalar'), icon: 'notifications', color: m.hatirlatma },
     { name: 'calendar', title: tt('nav.takvim'), icon: 'calendar', color: m.hatirlatma },
+    { name: 'contracts', title: tt('nav.sozlesmeler'), icon: 'document-lock', color: m.sozlesme },
     { name: 'reports', title: tt('nav.raporlar'), icon: 'bar-chart', color: m.raporlar },
   ];
   // Kısıtlı personel (staff_role !== 'admin') Kasa/Tahsilat'ı hiç göremesin —

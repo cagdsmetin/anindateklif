@@ -300,6 +300,17 @@ export const api = {
   listKasa: (companyId: string) => req(`/kasa/${companyId}`),
   createKasaEntry: (data: any) => req('/kasa', { method: 'POST', body: JSON.stringify(data) }),
   deleteKasaEntry: (id: string) => req(`/kasa/${id}`, { method: 'DELETE' }),
+  listContracts: (companyId: string): Promise<ContractT[]> => req(`/contracts/${companyId}`),
+  createContract: (data: Partial<ContractT> & { companyId: string; baslik: string }): Promise<ContractT> =>
+    req('/contracts', { method: 'POST', body: JSON.stringify(data) }),
+  updateContract: (id: string, data: Partial<ContractT>): Promise<ContractT> =>
+    req(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteContract: (id: string) => req(`/contracts/${id}`, { method: 'DELETE' }),
+  contractAiDraft: (data: {
+    companyId: string; quoteId?: string; sozlesmeTuru?: string; talimat?: string; mevcutMetin?: string;
+    musFirma?: string; musYetkili?: string; musAdres?: string; tutar?: number; paraBirimi?: string;
+  }): Promise<{ baslik: string; icerik: string }> =>
+    req('/contracts/ai-draft', { method: 'POST', body: JSON.stringify(data) }),
 
   // Tahsilat (Alacak/Borç)
   listTahsilat: (companyId: string) => req(`/tahsilat/${companyId}`),
@@ -902,6 +913,28 @@ export type QuoteEkT = { id: string; baslik: string; icerik: string };
 // Kaleme bağlı olmayan, kullanıcının serbestçe "açıklama + fiyat" olarak
 // ekleyip çıkarabildiği ek maliyet satırı (örn. nakliye, ekstra işçilik).
 export type QuoteEkstraMaliyetT = { id: string; aciklama: string; tutar: number };
+
+export type ContractStatusT = 'Taslak' | 'Gönderildi' | 'İmzalandı' | 'İptal';
+export type ContractT = {
+  id: string;
+  companyId: string;
+  quoteId: string;
+  teklifNo: string;
+  baslik: string;
+  musFirma: string;
+  musYetkili: string;
+  musTelefon: string;
+  musEmail: string;
+  musAdres: string;
+  tutar: number;
+  paraBirimi: string;
+  icerik: string;
+  durum: ContractStatusT;
+  isTemplate: boolean;
+  createdByEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type QuoteT = {
   id: string;

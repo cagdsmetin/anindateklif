@@ -7085,6 +7085,232 @@ async def assistant_chat(payload: AssistantChatRequest, user=Depends(get_current
     return AssistantChatResponse(reply=clean_reply or reply_text, action=action)
 
 
+# ============ SÖZLEŞMELER ============
+# Onaylanan tekliften ya da sıfırdan hazırlanan satış/hizmet sözleşmeleri.
+# Metin düz yazı olarak saklanır ("MADDE 1 - ..." başlıkları); PDF istemcide
+# üretilir. Yapay zeka taslağı Anthropic ile yazılır, kullanıcı düzenleyip kaydeder.
+CONTRACT_STATUSES = ("Taslak", "Gönderildi", "İmzalandı", "İptal")
+
+
+class Contract(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    quoteId: str = ""
+    teklifNo: str = ""
+    baslik: str
+    musFirma: str = ""
+    musYetkili: str = ""
+    musTelefon: str = ""
+    musEmail: str = ""
+    musAdres: str = ""
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    icerik: str = ""
+    durum: str = "Taslak"
+    isTemplate: bool = False
+    createdByEmail: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+    updatedAt: str = Field(default_factory=utc_now_iso)
+
+
+class ContractCreate(BaseModel):
+    companyId: str
+    quoteId: str = ""
+    teklifNo: str = ""
+    baslik: str
+    musFirma: str = ""
+    musYetkili: str = ""
+    musTelefon: str = ""
+    musEmail: str = ""
+    musAdres: str = ""
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    icerik: str = ""
+    durum: str = "Taslak"
+    isTemplate: bool = False
+
+
+class ContractUpdate(BaseModel):
+    baslik: Optional[str] = None
+    musFirma: Optional[str] = None
+    musYetkili: Optional[str] = None
+    musTelefon: Optional[str] = None
+    musEmail: Optional[str] = None
+    musAdres: Optional[str] = None
+    tutar: Optional[float] = None
+    paraBirimi: Optional[str] = None
+    icerik: Optional[str] = None
+    durum: Optional[str] = None
+    isTemplate: Optional[bool] = None
+
+
+class ContractAiRequest(BaseModel):
+    companyId: str
+    quoteId: str = ""
+    sozlesmeTuru: str = ""       # ör. "Satış ve montaj sözleşmesi"
+    talimat: str = ""            # kullanıcının ek istekleri (ödeme planı, garanti süresi...)
+    mevcutMetin: str = ""        # doluysa: bu metni talimata göre düzenle
+    musFirma: str = ""
+    musYetkili: str = ""
+    musAdres: str = ""
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+
+
+class ContractAiResponse(BaseModel):
+    baslik: str
+    icerik: str
+
+
+CONTRACT_SYSTEM_PROMPT = (
+    "Sen Türk hukukuna ve ticari teamüllere hakim, KOBİ'ler için sözleşme hazırlayan bir asistansın. "
+    "Verilen firma (SATICI/YÜKLENİCİ) ve müşteri (ALICI/İŞ SAHİBİ) bilgileri ile teklif kalemlerinden "
+    "anlaşılır, dengeli ve uygulanabilir bir Türkçe sözleşme metni yazarsın.\n"
+    "Kurallar:\n"
+    "- Çıktı SADECE sözleşme metnidir; açıklama, selamlama, markdown (#, **, ```) KULLANMA.\n"
+    "- İlk satır sözleşmenin başlığıdır (ör. SATIŞ VE MONTAJ SÖZLEŞMESİ), büyük harfle.\n"
+    "- Maddeleri 'MADDE 1 - TARAFLAR' biçiminde numaralandır; alt bentleri (a), (b) veya 1.1 şeklinde yaz.\n"
+    "- Tipik maddeler: Taraflar, Sözleşmenin Konusu, Ürün/Hizmet ve Kapsam, Bedel ve Ödeme Koşulları, "
+    "Teslim/Montaj Süresi ve Yeri, Tarafların Yükümlülükleri, Garanti ve Servis, Cayma/Fesih, Mücbir Sebep, "
+    "Kişisel Verilerin Korunması (KVKK), Uyuşmazlıkların Çözümü (yetkili mahkeme/icra daireleri), Yürürlük.\n"
+    "- Teklifte olmayan bilgileri UYDURMA: bilinmeyen tarih, IBAN, kimlik no vb. için '........' boşluk bırak.\n"
+    "- Tutarları teklifteki para birimiyle ve KDV durumunu belirterek yaz.\n"
+    "- Tüketiciye satışsa 6502 sayılı Tüketicinin Korunması Hakkında Kanun'a uygun cayma ve garanti hükümleri ekle.\n"
+    "- Sonda tarih, taraf adları ve imza alanları bulunsun (SATICI / ALICI, Ad Soyad - İmza - Kaşe).\n"
+    "- Kullanıcı mevcut bir metin verip düzenleme istediyse, metnin tamamını düzenlenmiş haliyle geri ver."
+)
+
+
+def _contract_quote_context(company: Dict[str, Any], quote: Optional[Dict[str, Any]]) -> str:
+    lines = [
+        "SATICI / YÜKLENİCİ FİRMA:",
+        f"- Unvan: {company.get('sirketAdi', '')}",
+        f"- Adres: {company.get('adres', '')}",
+        f"- Telefon: {company.get('telefon', '')}  E-posta: {company.get('email', '')}",
+        f"- Vergi Dairesi / No: {company.get('vergiDairesi', '')} / {company.get('vergiNo', '')}",
+    ]
+    if quote:
+        cur = quote.get("paraBirimi") or "TRY"
+        lines += [
+            "",
+            f"TEKLİF No {quote.get('teklifNo', '')} (tarih {quote.get('tarih', '')}, geçerlilik {quote.get('gecerlilik', '')}):",
+            f"- Müşteri: {quote.get('musFirma', '')} / Yetkili: {quote.get('musYetkili', '')}",
+            f"- Müşteri adresi: {quote.get('musAdres', '')}  Tel: {quote.get('musTelefon', '')}  E-posta: {quote.get('musEmail', '')}",
+            f"- Proje: {quote.get('projeAdi', '')}",
+            f"- Ödeme şekli: {quote.get('odemeSekli', '')}",
+            f"- Teslim süresi (gün): {quote.get('teslimGun', '')}  Teslim şekli: {quote.get('nakliye', '')}",
+            "- Kalemler:",
+        ]
+        for i, it in enumerate(quote.get("items") or [], 1):
+            ad = it.get("urunAdi") or it.get("sistemTipi") or "Kalem"
+            fields = ", ".join(f"{f.get('label')}: {f.get('value')}" for f in (it.get("sistemFields") or []) if f.get("value"))
+            desc = (it.get("aciklama") or "").replace("\n", " ")[:300]
+            lines.append(
+                f"  {i}. {ad} — {it.get('adet', 1)} {it.get('birim', 'Adet')} x {it.get('birimFiyat', 0)} {cur}"
+                + (f" ({fields})" if fields else "")
+                + (f" — {desc}" if desc else "")
+            )
+        lines += [
+            f"- Ara toplam: {quote.get('araToplam', 0)} {cur}, iskonto: {quote.get('iskontoTutar', 0)} {cur}",
+            f"- KDV %{quote.get('kdvOrani', 20)}: {quote.get('kdvTutar', 0)} {cur}",
+            f"- GENEL TOPLAM (KDV dahil): {quote.get('genelToplam', 0)} {cur}",
+        ]
+        if quote.get("notlar"):
+            lines.append(f"- Teklif notları: {str(quote.get('notlar'))[:800]}")
+    return "\n".join(lines)
+
+
+@api_router.get("/contracts/{company_id}", response_model=List[Contract])
+async def list_contracts(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.contracts.find(
+        {"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}
+    ).sort("updatedAt", -1).to_list(1000)
+    return [Contract(**d) for d in docs]
+
+
+@api_router.post("/contracts", response_model=Contract)
+async def create_contract(payload: ContractCreate, user=Depends(get_current_user)):
+    await _own_company(user, payload.companyId)
+    data = payload.dict()
+    if data["durum"] not in CONTRACT_STATUSES:
+        data["durum"] = "Taslak"
+    obj = Contract(userId=user["user_id"], createdByEmail=user.get("email", ""), **data)
+    await db.contracts.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/contracts/{contract_id}", response_model=Contract)
+async def update_contract(contract_id: str, payload: ContractUpdate, user=Depends(get_current_user)):
+    doc = await db.contracts.find_one({"id": contract_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Sözleşme bulunamadı")
+    await _own_company(user, doc["companyId"])
+    patch = {k: v for k, v in payload.dict().items() if v is not None}
+    if "durum" in patch and patch["durum"] not in CONTRACT_STATUSES:
+        raise HTTPException(status_code=422, detail="Geçersiz durum")
+    patch["updatedAt"] = utc_now_iso()
+    await db.contracts.update_one({"id": contract_id, "userId": user["user_id"]}, {"$set": patch})
+    doc.update(patch)
+    return Contract(**doc)
+
+
+@api_router.delete("/contracts/{contract_id}")
+async def delete_contract(contract_id: str, user=Depends(get_current_user)):
+    doc = await db.contracts.find_one({"id": contract_id, "userId": user["user_id"]}, {"_id": 0, "companyId": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Sözleşme bulunamadı")
+    await _own_company(user, doc["companyId"])
+    await db.contracts.delete_one({"id": contract_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+@api_router.post("/contracts/ai-draft", response_model=ContractAiResponse)
+async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current_user)):
+    if not _anthropic_client:
+        raise HTTPException(status_code=503, detail="Yapay zeka henüz yapılandırılmadı")
+    _rate_limit(f"contract-ai:user:{user['user_id']}", 30, 24 * 3600)
+    company = await _own_company(user, payload.companyId)
+    quote = None
+    if payload.quoteId:
+        quote = await db.quotes.find_one(
+            {"id": payload.quoteId, "userId": user["user_id"], "companyId": payload.companyId}, {"_id": 0}
+        )
+        if not quote:
+            raise HTTPException(status_code=404, detail="Teklif bulunamadı")
+    parts = [_contract_quote_context(company, quote)]
+    if not quote and (payload.musFirma or payload.musYetkili or payload.tutar):
+        parts.append(
+            f"\nMÜŞTERİ: {payload.musFirma} / Yetkili: {payload.musYetkili} / Adres: {payload.musAdres}\n"
+            f"Sözleşme bedeli: {payload.tutar} {payload.paraBirimi}"
+        )
+    parts.append(f"\nSözleşme türü: {payload.sozlesmeTuru.strip() or 'Satış ve hizmet sözleşmesi'}")
+    parts.append(f"Bugünün tarihi: {_utc().strftime('%d.%m.%Y')}")
+    if payload.talimat.strip():
+        parts.append(f"Kullanıcının ek istekleri: {payload.talimat.strip()[:2000]}")
+    if payload.mevcutMetin.strip():
+        parts.append("\nDÜZENLENECEK MEVCUT METİN:\n" + payload.mevcutMetin.strip()[:20000])
+    try:
+        resp = await asyncio.to_thread(
+            _anthropic_client.messages.create,
+            model="claude-sonnet-5",
+            max_tokens=6000,
+            system=CONTRACT_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": "\n".join(parts)}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+    except Exception as e:
+        logger.error(f"Contract AI error: {e}")
+        raise HTTPException(status_code=502, detail="Yapay zeka şu anda yanıt veremiyor, lütfen tekrar deneyin")
+    text = re.sub(r"^```[a-z]*\n?|\n?```$", "", text).replace("**", "").strip()
+    if not text:
+        raise HTTPException(status_code=502, detail="Sözleşme metni oluşturulamadı")
+    first, _, rest = text.partition("\n")
+    baslik = first.strip().lstrip("#").strip()[:120] or "SÖZLEŞME"
+    return ContractAiResponse(baslik=baslik, icerik=text)
+
+
 app.include_router(api_router)
 
 app.add_middleware(

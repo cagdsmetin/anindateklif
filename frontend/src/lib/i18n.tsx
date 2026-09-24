@@ -134,6 +134,7 @@ const tr: Dict = {
     error: 'Hata',
   },
   nav: {
+    sozlesmeler: 'Sözleşmeler',
     panel: 'Panel',
     teklif: 'Teklif',
     katalog: 'Katalog',
@@ -1393,6 +1394,7 @@ const en: Dict = {
     error: 'Error',
   },
   nav: {
+    sozlesmeler: 'Contracts',
     panel: 'Dashboard',
     teklif: 'Quote',
     katalog: 'Catalog',
@@ -2652,6 +2654,7 @@ const it: Dict = {
     error: 'Errore',
   },
   nav: {
+    sozlesmeler: 'Contratti',
     panel: 'Pannello',
     teklif: 'Preventivo',
     katalog: 'Catalogo',

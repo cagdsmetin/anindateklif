@@ -541,6 +541,16 @@ export default function HistoryScreen() {
                   {waSharingId === quote.id ? <ActivityIndicator size="small" color="#16a34a" /> : <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />}
                   <Text style={[s.actText, { color: theme.colors.greenText }]}>{t('history.s023')}</Text>
                 </TouchableOpacity>
+                {quote.durum === 'Onaylandı' && (
+                  <TouchableOpacity
+                    style={[s.actBtn, { backgroundColor: theme.colors.modules.sozlesme + '18' }]}
+                    onPress={() => router.push({ pathname: '/(tabs)/contracts', params: { quoteId: quote.id } } as any)}
+                    testID={`contract-${quote.id}`}
+                  >
+                    <Ionicons name="document-lock-outline" size={14} color={theme.colors.modules.sozlesme} />
+                    <Text style={[s.actText, { color: theme.colors.modules.sozlesme }]}>Sözleşme</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={[s.actBtnIcon, { backgroundColor: theme.colors.primary + '14' }]}
                   onPress={() => openDuplicate(quote.id)}

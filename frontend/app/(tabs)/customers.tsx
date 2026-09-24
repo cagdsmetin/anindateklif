@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,8 @@ import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, readableOn, themedStyles } from '@/src/components/motion';
 import { useLanguage } from '@/src/lib/i18n';
-import { QuoteT } from '@/src/lib/api';
+import { api, QuoteT } from '@/src/lib/api';
+import { ImportCustomer, pickCustomerFile } from '@/src/lib/customer-import';
 
 const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
 const formatMoney = (n: number) =>
@@ -43,7 +45,35 @@ const rangeCutoff = (range: DateRange): string | null => {
 
 export default function CustomersScreen() {
   const { t } = useLanguage();
-  const { customers, quotes, deleteCustomer, activeCompany } = useApp();
+  const { customers, quotes, deleteCustomer, activeCompany, reloadCustomers, showToast } = useApp();
+  const [importPreview, setImportPreview] = useState<{ fileName: string; customers: ImportCustomer[]; headerFound: boolean } | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+
+  const pickImport = async () => {
+    try {
+      const res = await pickCustomerFile();
+      if (!res) return;
+      if (res.customers.length === 0) { showToast('Dosyada müşteri bulunamadı'); return; }
+      setImportPreview(res);
+    } catch (e: any) {
+      showToast('Dosya okunamadı: ' + (e?.message || ''));
+    }
+  };
+
+  const runImport = async () => {
+    if (!importPreview || !activeCompany || importBusy) return;
+    setImportBusy(true);
+    try {
+      const r = await api.bulkImportCustomers(activeCompany.id, importPreview.customers);
+      await reloadCustomers();
+      setImportPreview(null);
+      showToast(`${r.created} yeni müşteri eklendi${r.updated ? `, ${r.updated} güncellendi` : ''}${r.skipped ? `, ${r.skipped} atlandı` : ''}`);
+    } catch (e: any) {
+      showToast('Aktarım başarısız: ' + (e?.message || ''));
+    } finally {
+      setImportBusy(false);
+    }
+  };
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -117,8 +147,12 @@ export default function CustomersScreen() {
             size="lg"
             onPress={() => router.push('/customer-add')}
             testID="customer-add-btn"
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: 10 }}
           />
+          <TouchableOpacity style={s.importBtn} onPress={pickImport} testID="customer-import-btn">
+            <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.modules.musteri} />
+            <Text style={s.importBtnText}>Excel / CSV’den Müşteri Aktar</Text>
+          </TouchableOpacity>
         </Reveal>
 
         {enriched.length === 0 ? (
@@ -250,11 +284,52 @@ export default function CustomersScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={!!importPreview} transparent animationType="fade" onRequestClose={() => setImportPreview(null)}>
+        <View style={s.importOverlay}>
+          <View style={s.importCard} testID="customer-import-preview">
+            <Text style={s.importTitle}>{importPreview?.customers.length} müşteri bulundu</Text>
+            <Text style={s.importSub}>
+              {importPreview?.fileName}{importPreview && !importPreview.headerFound ? ' · başlık bulunamadı, sütun sırası Firma, Yetkili, Telefon, E-posta, Adres kabul edildi' : ''}
+            </Text>
+            <ScrollView style={{ maxHeight: 260, marginTop: 10 }}>
+              {importPreview?.customers.slice(0, 8).map((c, i) => (
+                <View key={i} style={s.importRow}>
+                  <Text style={s.importFirma} numberOfLines={1}>{c.firma}</Text>
+                  <Text style={s.importMeta} numberOfLines={1}>{[c.yetkili, c.telefon, c.email].filter(Boolean).join(' · ') || '—'}</Text>
+                </View>
+              ))}
+              {(importPreview?.customers.length || 0) > 8 && <Text style={s.importMeta}>… ve {(importPreview?.customers.length || 0) - 8} müşteri daha</Text>}
+            </ScrollView>
+            <Text style={[s.importMeta, { marginTop: 8 }]}>Aynı isimli müşteriler güncellenir; dosyadaki boş hücreler mevcut bilgileri silmez.</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <TouchableOpacity style={[s.importAction, s.importCancel]} onPress={() => setImportPreview(null)}>
+                <Text style={[s.importActionText, { color: theme.colors.text }]}>Vazgeç</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.importAction, { backgroundColor: theme.colors.modules.musteri }]} onPress={runImport} disabled={importBusy} testID="customer-import-confirm">
+                {importBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.importActionText}>Aktar</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const s = themedStyles(() => StyleSheet.create({
+  importBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.modules.musteri, marginBottom: 16, backgroundColor: theme.colors.surface },
+  importBtnText: { fontSize: 13, fontWeight: '800', color: theme.colors.modules.musteri },
+  importOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  importCard: { width: '100%', maxWidth: 460, backgroundColor: theme.colors.surface, borderRadius: 18, padding: 18 },
+  importTitle: { fontSize: 17, fontWeight: '900', color: theme.colors.text },
+  importSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 3 },
+  importRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
+  importFirma: { fontSize: 13.5, fontWeight: '800', color: theme.colors.text },
+  importMeta: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2 },
+  importAction: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12 },
+  importCancel: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line },
+  importActionText: { color: '#fff', fontWeight: '900', fontSize: 14 },
   container: { flex: 1, backgroundColor: theme.colors.surfaceSoft },
   contentWrap: { width: '100%', maxWidth: 760, alignSelf: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },

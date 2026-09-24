@@ -18,6 +18,7 @@ import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
+import { shareReceiptPdf } from '@/src/lib/receipt';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
 import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, hashColor, readableOn, themedStyles } from '@/src/components/motion';
 
@@ -420,6 +421,15 @@ export default function TahsilatScreen() {
                 <Text style={[s.txAmount, { color: tx.tur === 'tahsilat' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>
                   {tx.tur === 'tahsilat' ? '+' : '-'}{fmt(tx.tutar, tx.paraBirimi)}
                 </Text>
+                {tx.tur === 'tahsilat' && activeCompany && (
+                  <TouchableOpacity
+                    onPress={() => shareReceiptPdf(activeCompany, tx).then(() => { if (Platform.OS === 'web') showToast('Makbuz indirildi'); }).catch((e) => showToast('Makbuz oluşturulamadı: ' + (e?.message || '')))}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    testID={`tahsilat-receipt-${tx.id}`}
+                  >
+                    <Ionicons name="receipt-outline" size={18} color={theme.colors.modules.tahsilat} />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`tahsilat-delete-${tx.id}`}>
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
                 </TouchableOpacity>

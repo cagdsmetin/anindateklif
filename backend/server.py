@@ -4960,6 +4960,60 @@ async def create_customer(payload: CustomerCreate, user=Depends(get_current_user
     return obj
 
 
+class CustomerBulkRow(BaseModel):
+    firma: str
+    yetkili: str = ""
+    telefon: str = ""
+    email: str = ""
+    adres: str = ""
+
+
+class CustomerBulkRequest(BaseModel):
+    companyId: str
+    customers: List[CustomerBulkRow]
+
+
+class CustomerBulkResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    skipped: int = 0
+
+
+@api_router.post("/customers/bulk", response_model=CustomerBulkResult)
+async def bulk_import_customers(payload: CustomerBulkRequest, user=Depends(get_current_user)):
+    """Excel/CSV'den müşteri aktarımı. Aynı firma adı varsa günceller; ama
+    dosyadaki BOŞ hücreler mevcut dolu alanları silmez (yalnızca dolu
+    hücreler üzerine yazılır)."""
+    await _own_company(user, payload.companyId)
+    if len(payload.customers) > 3000:
+        raise HTTPException(status_code=413, detail="Tek seferde en fazla 3000 müşteri aktarılabilir")
+    res = CustomerBulkResult()
+    seen = set()
+    for row in payload.customers:
+        firma = (row.firma or "").strip()[:200]
+        key = firma.casefold()
+        if not firma or key in seen:
+            res.skipped += 1
+            continue
+        seen.add(key)
+        fields = {k: (getattr(row, k) or "").strip()[:500] for k in ("yetkili", "telefon", "email", "adres")}
+        existing = await db.customers.find_one(
+            {"companyId": payload.companyId, "firma": firma, "userId": user["user_id"]}, {"_id": 0}
+        )
+        if existing:
+            patch = {k: v for k, v in fields.items() if v}
+            if patch:
+                await db.customers.update_one({"id": existing["id"], "userId": user["user_id"]}, {"$set": patch})
+                res.updated += 1
+            else:
+                res.skipped += 1
+            continue
+        obj = Customer(userId=user["user_id"], companyId=payload.companyId, firma=firma, **fields)
+        await db.customers.insert_one(obj.dict())
+        res.created += 1
+    return res
+
+
 @api_router.put("/customers/{customer_id}", response_model=Customer)
 async def update_customer(customer_id: str, payload: CustomerCreate, user=Depends(get_current_user)):
     await _own_company(user, payload.companyId)

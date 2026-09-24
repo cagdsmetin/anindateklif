@@ -308,6 +308,8 @@ export const api = {
   patchKasaRecurring: (id: string, data: { aktif?: boolean; tutar?: number; bitis?: string }): Promise<KasaRecurringT> =>
     req(`/kasa-recurring/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteKasaRecurring: (id: string) => req(`/kasa-recurring/${id}`, { method: 'DELETE' }),
+  bulkImportCustomers: (companyId: string, customers: { firma: string; yetkili: string; telefon: string; email: string; adres: string }[]): Promise<{ created: number; updated: number; skipped: number }> =>
+    req('/customers/bulk', { method: 'POST', body: JSON.stringify({ companyId, customers }) }),
   listContracts: (companyId: string): Promise<ContractT[]> => req(`/contracts/${companyId}`),
   createContract: (data: Partial<ContractT> & { companyId: string; baslik: string }): Promise<ContractT> =>
     req('/contracts', { method: 'POST', body: JSON.stringify(data) }),

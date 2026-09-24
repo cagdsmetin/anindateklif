@@ -8,6 +8,8 @@ import { api, RatesT, ZipPerdeTableT } from '@/src/lib/api';
 import { useApp } from '@/src/state/AppContext';
 import { convertFromEur, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, varsayilanZipSecim, zipFiyat, zipLookup, zipSecimAciklama, ZipSecimT } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
+import ZipCizim from '@/src/components/zip/ZipCizim';
+import { zipCizimModeli } from '@/src/lib/zip-cizim';
 import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 
@@ -64,6 +66,13 @@ export default function ZipPerdeScreen() {
 
   const hit = useMemo(() => (table && num(en) && num(boy) ? zipLookup(table, num(en), num(boy)) : null), [table, en, boy]);
   const adetN = Math.max(1, num(adet));
+  // Ürün görseli: ölçüler girilince (tablo dışında olsa bile) çizilir.
+  const cizim = useMemo(
+    () => (num(en) >= 50 && num(boy) >= 50
+      ? zipCizimModeli(num(en), num(boy), { motor: secim.motor, kumas: secim.kumas, logo: secim.logo === 'var' })
+      : null),
+    [en, boy, secim]
+  );
   const fiyat = hit?.ok ? zipFiyat(hit.price, num(en), num(boy), secim, num(kar), montajEur ?? 0, adetN) : null;
   const satisEur = fiyat ? fiyat.satis : null;
   const tl = satisEur != null ? convertFromEur(satisEur, 'TRY', rates) : null;
@@ -94,6 +103,8 @@ export default function ZipPerdeScreen() {
       zipEkler: secim,
       zipMontajTl: num(montajTl),
       montajlar: perCur(fiyat.montaj),
+      // Teklif PDF'inde ürün görseli + ölçülü önden görünüş sayfası.
+      agCizim: cizim,
     });
     showToast('Zip Perde kalemi teklife eklendi');
     // router.back() DEĞİL: sekmeli yapıda geri, ilk sekmeye (Panel) döner.
@@ -152,6 +163,12 @@ export default function ZipPerdeScreen() {
             <Text style={[s.sectionLabel, { marginTop: 4 }]}>SEÇENEKLER</Text>
             <ZipSecimSecici secim={secim} onChange={setSecim} />
           </View>
+
+          {cizim && (
+            <View style={{ marginTop: 14 }}>
+              <ZipCizim model={cizim} testID="zip-cizim" />
+            </View>
+          )}
 
           {hit && (
             <View style={[s.card, { marginTop: 14 }]} testID="zip-result">

@@ -51,7 +51,7 @@ export default function CizimEkle({
   onKaydet: (model: CizimModeli) => void;
   onKapat: () => void;
 }) {
-  const [kind, setKind] = useState<Kind>(deger?.kind || 'cephe');
+  const [kind, setKind] = useState<Kind>(deger && deger.kind !== 'zip' ? deger.kind : 'cephe');
 
   // Cam balkon
   const [cepheler, setCepheler] = useState<CepheGirdi[]>(() => {

@@ -1,5 +1,6 @@
 import type { CizimModeli } from '@/src/components/albert/Cizim';
 import type { CompanyT, QuoteT } from './api';
+import { zipDokumSatirlari, zipTeknikSvg } from './zip-cizim';
 
 // ============================================================================
 // Teklif PDF'indeki teknik çizim sayfası
@@ -271,6 +272,12 @@ function giyotinSvg(model: Extract<CizimModeli, { kind: 'giyotin' }>): string {
 // --- döküm tablosu ----------------------------------------------------------
 
 function dokumHtml(model: CizimModeli): string {
+  if (model.kind === 'zip') {
+    const satirlar = zipDokumSatirlari(model)
+      .map(([k, v]) => `<tr><th style="width:38%">${esc(k)}</th><td>${esc(v)}</td></tr>`)
+      .join('');
+    return `<table class="cz-tbl"><tbody>${satirlar}</tbody></table>`;
+  }
   if (model.kind === 'cephe') {
     const satirlar = model.cepheler
       .map((c) => {
@@ -344,6 +351,7 @@ function dokumHtml(model: CizimModeli): string {
 }
 
 function svgFor(model: CizimModeli): string {
+  if (model.kind === 'zip') return zipTeknikSvg(model);
   if (model.kind === 'cephe') return cepheSvg(model);
   if (model.kind === 'modul') return modulSvg(model);
   return giyotinSvg(model);

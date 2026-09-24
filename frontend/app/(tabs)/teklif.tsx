@@ -26,6 +26,7 @@ import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
 import { convertFromEur, extractZipSize, isZipItem, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, zipAciklamaGuncelle, zipSecimOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
+import { zipCizimEsit, zipCizimModeli } from '@/src/lib/zip-cizim';
 import { ZIP_COLOR } from '@/src/components/zip/ZipPriceGrid';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildItemDescription, buildQuoteFileName, buildTeklifNo, countQuotesToday, parseNoteSegments, toggleNoteEmphasis } from '@/src/lib/quote-utils';
@@ -1419,6 +1420,25 @@ function ItemCard({
       montaj: kurYok ? null : convertFromEur(f.montaj, currency, zip.rates),
     };
   }, [zip, item, currency]);
+  // Zip Perde ürün görseli: ölçü/seçenek değiştikçe kalemin çizimi kendiliğinden
+  // güncellenir (PDF'te ürün görseli + ölçülü önden görünüş sayfası olur).
+  // Kalemde başka türde (elle çizilmiş) bir çizim varsa ya da bayi zip
+  // çizimini "Kaldır" ile sildiyse dokunulmaz.
+  const zipCizimKaldirildiRef = useRef(false);
+  const zipOlcu = zip && isZipItem(item) ? extractZipSize(item) : null;
+  const zipSecimNow = zip && isZipItem(item) ? zipSecimOf(item) : null;
+  const zipCizimHedef = zipOlcu && zipSecimNow && zipOlcu.en >= 50 && zipOlcu.boy >= 50
+    ? zipCizimModeli(zipOlcu.en, zipOlcu.boy, { motor: zipSecimNow.motor, kumas: zipSecimNow.kumas, logo: zipSecimNow.logo === 'var' })
+    : null;
+  const zipCizimKey = zipCizimHedef ? JSON.stringify(zipCizimHedef) : '';
+  useEffect(() => {
+    if (!zipCizimHedef || zipCizimKaldirildiRef.current) return;
+    const mevcut = item.agCizim as { kind?: string } | null | undefined;
+    if (mevcut && mevcut.kind !== 'zip') return;
+    if (!zipCizimEsit(mevcut, zipCizimHedef)) onChange({ agCizim: zipCizimHedef });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zipCizimKey]);
+
   const zipAutoRef = useRef<number | null>(null);
   const applyZip = () => {
     if (!zipInfo?.ok || zipInfo.fiyat == null) return;
@@ -1759,7 +1779,10 @@ function ItemCard({
           <View style={{ flex: 1 }} />
           {item.agCizim ? (
             <TouchableOpacity
-              onPress={() => onChange({ agCizim: null })}
+              onPress={() => {
+                if (item.agCizim?.kind === 'zip') zipCizimKaldirildiRef.current = true;
+                onChange({ agCizim: null });
+              }}
               testID={`item-${idx}-cizim-kaldir`}
               accessibilityRole="button"
               accessibilityLabel="Çizimi kaldır"
@@ -1772,6 +1795,7 @@ function ItemCard({
         {item.agCizim ? (
           <>
             <Cizim model={item.agCizim} palet={cizimPaleti} caption="teklife eklenecek" />
+            {item.agCizim.kind !== 'zip' && (
             <TouchableOpacity
               style={itemStyles.cizimBtn}
               onPress={() => setCizimAcik(true)}
@@ -1780,6 +1804,7 @@ function ItemCard({
               <Ionicons name="create-outline" size={14} color={theme.colors.primary} />
               <Text style={itemStyles.cizimBtnYazi}>Çizimi düzenle</Text>
             </TouchableOpacity>
+            )}
           </>
         ) : (
           <TouchableOpacity

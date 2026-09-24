@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import { AG } from './ag-kit';
+import type { ZipCizimModeli } from '@/src/lib/zip-cizim';
+import ZipCizim from '@/src/components/zip/ZipCizim';
 
 // ============================================================================
 // Teknik çizim -- üç ürün ailesi, tek renderer
@@ -120,7 +122,10 @@ export type CizimModeli =
       yukseklikMm: number;
       toplamAlanM2: number;
       uyarilar: string[];
-    };
+    }
+  // Zip Perde: çizim backend'den değil, ölçülerden istemcide üretilir
+  // (bkz. src/lib/zip-cizim.ts); SVG ürün görseli olarak gösterilir.
+  | ZipCizimModeli;
 
 function fmtMm(n: number): string {
   return Math.round(n).toLocaleString('tr-TR');
@@ -376,7 +381,7 @@ export default function Cizim({
 }) {
   const st = useMemo(() => stiller(palet), [palet]);
   const altBilgi = useMemo(() => {
-    if (!model) return undefined;
+    if (!model || model.kind === 'zip') return undefined;
     if (model.kind === 'cephe') {
       const kose = model.koseDikmesi
         ? ` · ${model.koseDikmesi} köşe dikmesi`
@@ -394,6 +399,8 @@ export default function Cizim({
     }
     return `${model.panelSayisi} panel · ${model.hareketGrubu === 2 ? 'çift' : 'tek'} hareket · ${model.toplamAlanM2} m²`;
   }, [model]);
+
+  if (model?.kind === 'zip') return <ZipCizim model={model} />;
 
   const kind = model?.kind ?? kindIpucu;
   const etiket = kind === 'modul' ? 'PLAN' : kind === 'giyotin' ? 'GİYOTİN' : 'CEPHE';

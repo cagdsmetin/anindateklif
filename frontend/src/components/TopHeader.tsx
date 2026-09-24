@@ -6,6 +6,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import { useRouter } from 'expo-router';
 import NavDrawer from '@/src/components/NavDrawer';
+import ProBanner from '@/src/components/ProBanner';
 import { useLanguage } from '@/src/lib/i18n';
 import { themedStyles } from '@/src/components/motion';
 
@@ -82,6 +83,7 @@ export default function TopHeader({ title }: { title?: string }) {
           </TouchableOpacity>
         </View>
       </View>
+      <ProBanner />
 
       {/* Company picker */}
       <Modal visible={pickerVisible} transparent animationType="fade">

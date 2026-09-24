@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { api, RatesT } from '@/src/lib/api';
+import { refreshProBanner } from '@/src/components/ProBanner';
 import { useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
 import { useLanguage, upper } from '@/src/lib/i18n';
@@ -135,6 +136,8 @@ export default function SubscriptionScreen() {
         const res = await api.subscriptionStatus();
         const st = res as StatusT;
         setStatus(st);
+        // Odeme donusu bu ekrana gelir: ustteki abonelik seridi de guncellensin.
+        refreshProBanner();
         if (st.subscription_plan) {
           setSelectedPlan(st.subscription_plan);
         } else if (st.plans && st.plans.length > 0 && !st.plans.some((p) => p.id === 'yearly')) {
@@ -185,6 +188,7 @@ export default function SubscriptionScreen() {
       try {
         const st = await api.subscriptionStatus();
         setStatus(st as StatusT);
+        refreshProBanner();
       } catch {}
     } catch (e: any) {
       let msg = 'Kod uygulanamadı';

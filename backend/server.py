@@ -7565,11 +7565,14 @@ async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current
         resp = await asyncio.to_thread(
             _anthropic_client.messages.create,
             model="claude-sonnet-5",
-            max_tokens=6000,
+            max_tokens=8000,
             system=CONTRACT_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": "\n".join(parts)}],
         )
         text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            logger.warning("Contract AI hit max_tokens; returning truncated text with a note")
+            text += "\n\n[... Metin uzunluk sınırına takıldı; eksik kalan maddeleri 'Düzenle' ile tamamlatabilirsiniz.]"
     except Exception as e:
         logger.error(f"Contract AI error: {e}")
         raise HTTPException(status_code=502, detail="Yapay zeka şu anda yanıt veremiyor, lütfen tekrar deneyin")

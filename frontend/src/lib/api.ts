@@ -320,7 +320,9 @@ export const api = {
     companyId: string; quoteId?: string; sozlesmeTuru?: string; talimat?: string; mevcutMetin?: string; dil?: string;
     musFirma?: string; musYetkili?: string; musAdres?: string; musTelefon?: string; musEmail?: string; tutar?: number; paraBirimi?: string;
   }): Promise<{ baslik: string; icerik: string }> =>
-    req('/contracts/ai-draft', { method: 'POST', body: JSON.stringify(data) }),
+    // Yapay zeka tam bir sozlesmeyi 30-90 sn'de yaziyor; standart 20 sn
+    // zaman asimi istegi yarida kesiyordu (Railway'de 499).
+    req('/contracts/ai-draft', { method: 'POST', body: JSON.stringify(data) }, 180000),
 
   // Tahsilat (Alacak/Borç)
   listTahsilat: (companyId: string) => req(`/tahsilat/${companyId}`),

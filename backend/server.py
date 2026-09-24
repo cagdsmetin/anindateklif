@@ -7405,9 +7405,12 @@ class ContractAiRequest(BaseModel):
     sozlesmeTuru: str = ""       # ör. "Satış ve montaj sözleşmesi"
     talimat: str = ""            # kullanıcının ek istekleri (ödeme planı, garanti süresi...)
     mevcutMetin: str = ""        # doluysa: bu metni talimata göre düzenle
+    dil: str = "tr"             # kullanıcının uygulama dili: tr | en | it
     musFirma: str = ""
     musYetkili: str = ""
     musAdres: str = ""
+    musTelefon: str = ""
+    musEmail: str = ""
     tutar: float = 0.0
     paraBirimi: str = "TRY"
 
@@ -7420,7 +7423,7 @@ class ContractAiResponse(BaseModel):
 CONTRACT_SYSTEM_PROMPT = (
     "Sen Türk hukukuna ve ticari teamüllere hakim, KOBİ'ler için sözleşme hazırlayan bir asistansın. "
     "Verilen firma (SATICI/YÜKLENİCİ) ve müşteri (ALICI/İŞ SAHİBİ) bilgileri ile teklif kalemlerinden "
-    "anlaşılır, dengeli ve uygulanabilir bir Türkçe sözleşme metni yazarsın.\n"
+    "anlaşılır, dengeli ve uygulanabilir bir sözleşme metni yazarsın (varsayılan dil Türkçe; kullanıcı DİL belirtirse metnin tamamı o dilde olur).\n"
     "Kurallar:\n"
     "- Çıktı SADECE sözleşme metnidir; açıklama, selamlama, markdown (#, **, ```) KULLANMA.\n"
     "- İlk satır sözleşmenin başlığıdır (ör. SATIŞ VE MONTAJ SÖZLEŞMESİ), büyük harfle.\n"
@@ -7534,15 +7537,28 @@ async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current
         if not quote:
             raise HTTPException(status_code=404, detail="Teklif bulunamadı")
     parts = [_contract_quote_context(company, quote)]
-    if not quote and (payload.musFirma or payload.musYetkili or payload.tutar):
+    if payload.musFirma or payload.musYetkili or payload.musAdres or payload.musTelefon or payload.musEmail:
+        # Kullanıcının sözleşme ekranında girdiği / müşteri kaydından doldurduğu
+        # güncel bilgiler teklifteki eski/eksik bilgilere göre önceliklidir.
         parts.append(
-            f"\nMÜŞTERİ: {payload.musFirma} / Yetkili: {payload.musYetkili} / Adres: {payload.musAdres}\n"
-            f"Sözleşme bedeli: {payload.tutar} {payload.paraBirimi}"
+            f"\nMÜŞTERİ (güncel, öncelikli): {payload.musFirma} / Yetkili: {payload.musYetkili} / "
+            f"Adres: {payload.musAdres} / Tel: {payload.musTelefon} / E-posta: {payload.musEmail}"
         )
+    if not quote and payload.tutar:
+        parts.append(f"Sözleşme bedeli: {payload.tutar} {payload.paraBirimi}")
     parts.append(f"\nSözleşme türü: {payload.sozlesmeTuru.strip() or 'Satış ve hizmet sözleşmesi'}")
     parts.append(f"Bugünün tarihi: {_utc().strftime('%d.%m.%Y')}")
     if payload.talimat.strip():
         parts.append(f"Kullanıcının ek istekleri: {payload.talimat.strip()[:2000]}")
+    dil = (payload.dil or "tr").lower()
+    if dil in ("en", "it"):
+        dil_adi = "İngilizce (English)" if dil == "en" else "İtalyanca (Italiano)"
+        parts.append(
+            f"DİL: Sözleşmenin TAMAMINI {dil_adi} yaz (başlık, madde başlıkları ve imza alanları dahil; "
+            f"madde başlıklarını {'ARTICLE 1 - PARTIES' if dil == 'en' else 'ARTICOLO 1 - PARTI'} biçiminde yaz). "
+            "Türkiye'ye özgü kanun numaralarına (6502, 6698 vb.) atıf yapma; genel ve uygulanabilir hükümler kullan, "
+            "yetkili mahkeme/yer için '........' bırak."
+        )
     if payload.mevcutMetin.strip():
         parts.append("\nDÜZENLENECEK MEVCUT METİN:\n" + payload.mevcutMetin.strip()[:20000])
     try:

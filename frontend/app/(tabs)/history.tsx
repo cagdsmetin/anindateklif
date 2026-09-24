@@ -548,7 +548,7 @@ export default function HistoryScreen() {
                     testID={`contract-${quote.id}`}
                   >
                     <Ionicons name="document-lock-outline" size={14} color={theme.colors.modules.sozlesme} />
-                    <Text style={[s.actText, { color: theme.colors.modules.sozlesme }]}>Sözleşme</Text>
+                    <Text style={[s.actText, { color: theme.colors.modules.sozlesme }]}>{t('contracts.single')}</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity

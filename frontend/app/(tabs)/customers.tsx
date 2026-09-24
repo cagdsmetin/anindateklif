@@ -16,7 +16,7 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, readableOn, themedStyles } from '@/src/components/motion';
-import { useLanguage } from '@/src/lib/i18n';
+import { fill, useLanguage } from '@/src/lib/i18n';
 import { api, QuoteT } from '@/src/lib/api';
 import { ImportCustomer, pickCustomerFile } from '@/src/lib/customer-import';
 
@@ -53,10 +53,10 @@ export default function CustomersScreen() {
     try {
       const res = await pickCustomerFile();
       if (!res) return;
-      if (res.customers.length === 0) { showToast('Dosyada müşteri bulunamadı'); return; }
+      if (res.customers.length === 0) { showToast(t('custImport.notFound')); return; }
       setImportPreview(res);
     } catch (e: any) {
-      showToast('Dosya okunamadı: ' + (e?.message || ''));
+      showToast(t('custImport.readErr') + (e?.message || ''));
     }
   };
 
@@ -67,9 +67,9 @@ export default function CustomersScreen() {
       const r = await api.bulkImportCustomers(activeCompany.id, importPreview.customers);
       await reloadCustomers();
       setImportPreview(null);
-      showToast(`${r.created} yeni müşteri eklendi${r.updated ? `, ${r.updated} güncellendi` : ''}${r.skipped ? `, ${r.skipped} atlandı` : ''}`);
+      showToast(fill(t('custImport.created'), { n: r.created }) + (r.updated ? fill(t('custImport.updated'), { n: r.updated }) : '') + (r.skipped ? fill(t('custImport.skipped'), { n: r.skipped }) : ''));
     } catch (e: any) {
-      showToast('Aktarım başarısız: ' + (e?.message || ''));
+      showToast(t('custImport.fail') + (e?.message || ''));
     } finally {
       setImportBusy(false);
     }
@@ -151,7 +151,7 @@ export default function CustomersScreen() {
           />
           <TouchableOpacity style={s.importBtn} onPress={pickImport} testID="customer-import-btn">
             <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.modules.musteri} />
-            <Text style={s.importBtnText}>Excel / CSV’den Müşteri Aktar</Text>
+            <Text style={s.importBtnText}>{t('custImport.btn')}</Text>
           </TouchableOpacity>
         </Reveal>
 
@@ -288,9 +288,9 @@ export default function CustomersScreen() {
       <Modal visible={!!importPreview} transparent animationType="fade" onRequestClose={() => setImportPreview(null)}>
         <View style={s.importOverlay}>
           <View style={s.importCard} testID="customer-import-preview">
-            <Text style={s.importTitle}>{importPreview?.customers.length} müşteri bulundu</Text>
+            <Text style={s.importTitle}>{fill(t('custImport.found'), { n: importPreview?.customers.length || 0 })}</Text>
             <Text style={s.importSub}>
-              {importPreview?.fileName}{importPreview && !importPreview.headerFound ? ' · başlık bulunamadı, sütun sırası Firma, Yetkili, Telefon, E-posta, Adres kabul edildi' : ''}
+              {importPreview?.fileName}{importPreview && !importPreview.headerFound ? t('custImport.noHeader') : ''}
             </Text>
             <ScrollView style={{ maxHeight: 260, marginTop: 10 }}>
               {importPreview?.customers.slice(0, 8).map((c, i) => (
@@ -299,15 +299,15 @@ export default function CustomersScreen() {
                   <Text style={s.importMeta} numberOfLines={1}>{[c.yetkili, c.telefon, c.email].filter(Boolean).join(' · ') || '—'}</Text>
                 </View>
               ))}
-              {(importPreview?.customers.length || 0) > 8 && <Text style={s.importMeta}>… ve {(importPreview?.customers.length || 0) - 8} müşteri daha</Text>}
+              {(importPreview?.customers.length || 0) > 8 && <Text style={s.importMeta}>{fill(t('custImport.more'), { n: (importPreview?.customers.length || 0) - 8 })}</Text>}
             </ScrollView>
-            <Text style={[s.importMeta, { marginTop: 8 }]}>Aynı isimli müşteriler güncellenir; dosyadaki boş hücreler mevcut bilgileri silmez.</Text>
+            <Text style={[s.importMeta, { marginTop: 8 }]}>{t('custImport.hint')}</Text>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
               <TouchableOpacity style={[s.importAction, s.importCancel]} onPress={() => setImportPreview(null)}>
-                <Text style={[s.importActionText, { color: theme.colors.text }]}>Vazgeç</Text>
+                <Text style={[s.importActionText, { color: theme.colors.text }]}>{t('custImport.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.importAction, { backgroundColor: theme.colors.modules.musteri }]} onPress={runImport} disabled={importBusy} testID="customer-import-confirm">
-                {importBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.importActionText}>Aktar</Text>}
+                {importBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.importActionText}>{t('custImport.import')}</Text>}
               </TouchableOpacity>
             </View>
           </View>

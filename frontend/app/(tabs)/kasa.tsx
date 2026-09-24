@@ -19,7 +19,7 @@ import KasaRecurring from '@/src/components/kasa/KasaRecurring';
 import KasaRaporlar from '@/src/components/kasa/KasaRaporlar';
 import { buildPeriod, inRange, pctChange, sumTRY } from '@/src/lib/finance';
 import { convertToTRY, currentRateFor } from '@/src/lib/tahsilat-utils';
-import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
+import { useLanguage, statusLabel, translate, upper } from '@/src/lib/i18n';
 import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, themedStyles } from '@/src/components/motion';
 
 const GELIR_KATEGORILER = ['Satış', 'Hizmet', 'Servis Geliri', 'Diğer Gelir'];
@@ -29,10 +29,10 @@ const CURRENCIES = ['TRY', 'USD', 'EUR'];
 const KDV_ORANLARI = [0, 1, 10, 20];
 type KasaTab = 'islemler' | 'tekrarlayan' | 'analiz' | 'raporlar';
 const TABS: { key: KasaTab; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
-  { key: 'islemler', label: 'İşlemler', icon: 'swap-vertical' },
-  { key: 'tekrarlayan', label: 'Tekrarlayan', icon: 'repeat' },
-  { key: 'analiz', label: 'Analiz', icon: 'stats-chart' },
-  { key: 'raporlar', label: 'Raporlar', icon: 'document-text' },
+  { key: 'islemler', label: 'kasaX.tabIslemler', icon: 'swap-vertical' },
+  { key: 'tekrarlayan', label: 'kasaX.tabTekrar', icon: 'repeat' },
+  { key: 'analiz', label: 'kasaX.tabAnaliz', icon: 'stats-chart' },
+  { key: 'raporlar', label: 'kasaX.tabRapor', icon: 'document-text' },
 ];
 
 function fmt(n: number, cur: string) {
@@ -277,10 +277,10 @@ export default function KasaScreen() {
           <View style={s.compareRow} testID="kasa-compare">
             <Ionicons name="trending-up" size={14} color={theme.colors.textMuted} />
             <Text style={s.compareText}>
-              Geçen aya göre:{'  '}
-              <CompareVal label="Gelir" pct={monthCompare.gelir} />{'  ·  '}
-              <CompareVal label="Gider" pct={monthCompare.gider} invert />{'  ·  '}
-              <CompareVal label="Net" pct={monthCompare.net} />
+              {t('kasaX.vsLastMonth')}{'  '}
+              <CompareVal label={t('kasaX.income')} pct={monthCompare.gelir} />{'  ·  '}
+              <CompareVal label={t('kasaX.expense')} pct={monthCompare.gider} invert />{'  ·  '}
+              <CompareVal label={t('kasaX.net')} pct={monthCompare.net} />
             </Text>
           </View>
 
@@ -288,7 +288,7 @@ export default function KasaScreen() {
             {TABS.map((tb) => (
               <TouchableOpacity key={tb.key} style={[s.tabBtn, tab === tb.key && s.tabBtnActive]} onPress={() => setTab(tb.key)} testID={`kasa-tab-${tb.key}`}>
                 <Ionicons name={tb.icon} size={15} color={tab === tb.key ? '#fff' : theme.colors.textMuted} />
-                <Text style={[s.tabText, tab === tb.key && s.tabTextActive]}>{tb.label}</Text>
+                <Text style={[s.tabText, tab === tb.key && s.tabTextActive]} numberOfLines={1}>{t(tb.label)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -328,10 +328,10 @@ export default function KasaScreen() {
                 </TouchableOpacity>
               ))}
               <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('kategori'); setNewName(''); }} testID="kasa-kategori-ekle">
-                <Text style={s.chipAddText}>+ Kategori</Text>
+                <Text style={s.chipAddText}>{t('kasaX.addCategory')}</Text>
               </TouchableOpacity>
             </View>
-            {adding === 'kategori' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={tur === 'gelir' ? 'Yeni gelir kategorisi' : 'Yeni gider kategorisi'} />}
+            {adding === 'kategori' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={tur === 'gelir' ? t('kasaX.newIncomeCat') : t('kasaX.newExpenseCat')} />}
 
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <View style={{ flex: 1.4 }}>
@@ -359,26 +359,26 @@ export default function KasaScreen() {
               ))}
             </View>
 
-            <Text style={[s.label, { marginTop: 12 }]}>HESAP</Text>
+            <Text style={[s.label, { marginTop: 12 }]}>{t('kasaX.account')}</Text>
             <View style={s.chipRow}>
               {hesaplar.map((h) => (
                 <TouchableOpacity key={h} style={[s.chip, hesap === h && s.chipActive]} onPress={() => setHesap(h)} testID={`kasa-hesap-${h}`}>
-                  <Text style={[s.chipText, hesap === h && s.chipTextActive]}>{h}</Text>
+                  <Text style={[s.chipText, hesap === h && s.chipTextActive]}>{statusLabel(lang, h)}</Text>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('hesap'); setNewName(''); }} testID="kasa-hesap-ekle">
-                <Text style={s.chipAddText}>+ Hesap</Text>
+                <Text style={s.chipAddText}>{t('kasaX.addAccount')}</Text>
               </TouchableOpacity>
             </View>
-            {adding === 'hesap' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder="ör. Ziraat Bankası, POS, Kredi Kartı" />}
+            {adding === 'hesap' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={t('kasaX.phAccount')} />}
 
             {tur === 'gider' && (
               <>
-                <Text style={[s.label, { marginTop: 12 }]}>KDV (TUTAR KDV DAHİL)</Text>
+                <Text style={[s.label, { marginTop: 12 }]}>{t('kasaX.vatIncl')}</Text>
                 <View style={s.chipRow}>
                   {KDV_ORANLARI.map((r) => (
                     <TouchableOpacity key={r} style={[s.chip, kdvOrani === r && s.chipActive]} onPress={() => setKdvOrani(r)} testID={`kasa-kdv-${r}`}>
-                      <Text style={[s.chipText, kdvOrani === r && s.chipTextActive]}>{r === 0 ? 'KDV yok' : `%${r}`}</Text>
+                      <Text style={[s.chipText, kdvOrani === r && s.chipTextActive]}>{r === 0 ? t('kasaX.noVat') : `%${r}`}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -428,7 +428,7 @@ export default function KasaScreen() {
             <View style={[s.chipRow, { marginBottom: 8 }]}>
               {[null, ...hesaplar].map((h) => (
                 <TouchableOpacity key={h || 'all'} style={[s.chip, hesapFilter === h && s.chipActive]} onPress={() => setHesapFilter(h)} testID={`kasa-filter-${h || 'tumu'}`}>
-                  <Text style={[s.chipText, hesapFilter === h && s.chipTextActive]}>{h || 'Tümü'}</Text>
+                  <Text style={[s.chipText, hesapFilter === h && s.chipTextActive]}>{h ? statusLabel(lang, h) : t('kasaX.all')}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -456,8 +456,8 @@ export default function KasaScreen() {
                   <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
                     {k.recurringId ? '↻ ' : ''}{statusLabel(lang, k.yontem)} · {k.tarih}
-                    {hesaplar.length > 1 || (k.hesap && k.hesap !== 'Ana Kasa') ? ` · ${k.hesap || 'Ana Kasa'}` : ''}
-                    {k.kdvOrani ? ` · KDV %${k.kdvOrani}` : ''}
+                    {hesaplar.length > 1 || (k.hesap && k.hesap !== 'Ana Kasa') ? ` · ${statusLabel(lang, k.hesap || 'Ana Kasa')}` : ''}
+                    {k.kdvOrani ? ` · ${t('kasaX.vat')} %${k.kdvOrani}` : ''}
                   </Text>
                 </View>
                 <Text style={[s.txAmount, { color: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.tutar, k.paraBirimi)}</Text>
@@ -489,7 +489,7 @@ function AddNameRow({ value, onChange, onSubmit, onCancel, placeholder }: { valu
   return (
     <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
       <MotionInput style={[s.input, { flex: 1 }]} value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#94a3b8" autoFocus onSubmitEditing={onSubmit} testID="kasa-new-name" />
-      <TouchableOpacity style={[s.chip, s.chipActive]} onPress={onSubmit} testID="kasa-new-name-save"><Text style={[s.chipText, s.chipTextActive]}>Ekle</Text></TouchableOpacity>
+      <TouchableOpacity style={[s.chip, s.chipActive]} onPress={onSubmit} testID="kasa-new-name-save"><Text style={[s.chipText, s.chipTextActive]}>{translate('kasaX.add')}</Text></TouchableOpacity>
       <TouchableOpacity onPress={onCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><Ionicons name="close" size={18} color={theme.colors.textMuted} /></TouchableOpacity>
     </View>
   );

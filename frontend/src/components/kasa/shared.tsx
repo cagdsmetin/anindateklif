@@ -3,22 +3,24 @@ import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { theme } from '@/src/lib/theme';
 import { themedStyles } from '@/src/components/motion';
 import type { PeriodKey } from '@/src/lib/finance';
+import { useLanguage } from '@/src/lib/i18n';
 
 // Kasa sekmelerinin (Analiz / Tekrarlayan / Raporlar) ortak parcalari.
 
 export const PERIODS: { key: PeriodKey; label: string }[] = [
-  { key: 'thisMonth', label: 'Bu Ay' },
-  { key: 'lastMonth', label: 'Geçen Ay' },
-  { key: 'thisYear', label: 'Bu Yıl' },
-  { key: 'last12', label: 'Son 12 Ay' },
+  { key: 'thisMonth', label: 'kasaX.pThisMonth' },
+  { key: 'lastMonth', label: 'kasaX.pLastMonth' },
+  { key: 'thisYear', label: 'kasaX.pThisYear' },
+  { key: 'last12', label: 'kasaX.pLast12' },
 ];
 
 export function PeriodChips({ value, onChange }: { value: PeriodKey; onChange: (k: PeriodKey) => void }) {
+  const { t } = useLanguage();
   return (
     <View style={ks.chipRow}>
       {PERIODS.map((p) => (
         <TouchableOpacity key={p.key} style={[ks.chip, value === p.key && ks.chipActive]} onPress={() => onChange(p.key)} testID={`kasa-period-${p.key}`}>
-          <Text style={[ks.chipText, value === p.key && ks.chipTextActive]}>{p.label}</Text>
+          <Text style={[ks.chipText, value === p.key && ks.chipTextActive]}>{t(p.label)}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -26,12 +28,13 @@ export function PeriodChips({ value, onChange }: { value: PeriodKey; onChange: (
 }
 
 export function Delta({ pct, invert }: { pct: number | null; invert?: boolean }) {
-  if (pct == null) return <Text style={ks.deltaMuted}>önceki dönem yok</Text>;
+  const { t } = useLanguage();
+  if (pct == null) return <Text style={ks.deltaMuted}>{t('kasaX.noPrev')}</Text>;
   const up = pct >= 0;
   const good = invert ? !up : up;
   return (
     <Text style={[ks.delta, { color: good ? theme.colors.greenText : theme.colors.redText }]}>
-      {up ? '▲' : '▼'} %{Math.abs(pct).toFixed(1)} <Text style={ks.deltaMuted}>önceki döneme göre</Text>
+      {up ? '▲' : '▼'} %{Math.abs(pct).toFixed(1)} <Text style={ks.deltaMuted}>{t('kasaX.vsPrev')}</Text>
     </Text>
   );
 }

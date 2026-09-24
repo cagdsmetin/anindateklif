@@ -1,5 +1,6 @@
 import type { KasaEntryT, QuoteT, RatesT } from '@/src/lib/api';
 import { convertToTRY } from '@/src/lib/tahsilat-utils';
+import { fill, getLang, statusLabel, translate } from '@/src/lib/i18n';
 
 // Kasa > Analiz / Raporlar ekranlarinin hesaplari. Tum toplamlar TL'dir:
 // dovizli kasa kaydi, kayit anindaki kurla (kurTRY) -- yoksa canli kurla --
@@ -12,9 +13,13 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const lastDay = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
 
-export const MONTHS_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+/** Aktif dilde kisa ay adlari (Oca/Jan/Gen...). */
+export function monthNames(): string[] {
+  return translate('finance.months').split(',');
+}
 
 export function buildPeriod(key: PeriodKey, now = new Date()): Period {
+  const MONTHS_TR = monthNames();
   const y = now.getFullYear();
   const m = now.getMonth();
   if (key === 'lastMonth') {
@@ -38,7 +43,7 @@ export function buildPeriod(key: PeriodKey, now = new Date()): Period {
     const s = new Date(y, m - 11, 1);
     const ps = new Date(y, m - 23, 1);
     const pe = new Date(y, m - 11, 0);
-    return { key, label: 'Son 12 ay', start: iso(s), end: iso(now), prevStart: iso(ps), prevEnd: iso(pe) };
+    return { key, label: translate('finance.last12'), start: iso(s), end: iso(now), prevStart: iso(ps), prevEnd: iso(pe) };
   }
   // thisMonth: onceki donem = gecen ayin ayni gunune kadar
   const py = m === 0 ? y - 1 : y, pm = m === 0 ? 11 : m - 1;
@@ -78,6 +83,7 @@ export function pctChange(cur: number, prev: number): number | null {
 }
 
 export function monthlySeries(kasa: KasaEntryT[], rates: RatesT | null, months = 6, now = new Date()) {
+  const MONTHS_TR = monthNames();
   const out: { key: string; label: string; gelir: number; gider: number }[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -189,13 +195,13 @@ const csvCell = (v: any) => {
 
 /** Excel (TR) uyumlu: noktali virgul ayraci + BOM. */
 export function kasaCsv(list: KasaEntryT[], rates: RatesT | null) {
-  const head = ['Tarih', 'Tür', 'Kategori', 'Hesap', 'Yöntem', 'Tutar', 'Para Birimi', 'TL Karşılığı', 'KDV %', 'Not'];
+  const head = translate('finance.csvHead').split(';');
   const rows = [...list]
     .sort((a, b) => (a.tarih || '').localeCompare(b.tarih || ''))
     .map((k) => {
       const tl = entryTRY(k, rates);
       return [
-        k.tarih, k.tur === 'gelir' ? 'Gelir' : 'Gider', k.kategori, k.hesap || 'Ana Kasa', k.yontem,
+        k.tarih, translate(k.tur === 'gelir' ? 'kasaX.income' : 'kasaX.expense'), statusLabel(getLang(), k.kategori), statusLabel(getLang(), k.hesap || 'Ana Kasa'), statusLabel(getLang(), k.yontem),
         (k.tutar || 0).toFixed(2).replace('.', ','), k.paraBirimi || 'TRY',
         tl == null ? '' : tl.toFixed(2).replace('.', ','), k.kdvOrani || '', k.notlar || '',
       ].map(csvCell).join(';');
@@ -204,7 +210,7 @@ export function kasaCsv(list: KasaEntryT[], rates: RatesT | null) {
 }
 
 export const tl = (n: number) =>
-  '₺' + new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  '₺' + new Intl.NumberFormat(getLang() === 'tr' ? 'tr-TR' : getLang() === 'it' ? 'it-IT' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 
 const escHtml = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -219,9 +225,11 @@ export function financeSummaryHtml(opts: {
   hesaplar: { hesap: string; bakiye: number }[];
 }) {
   const { firma, period, totals, gelirKat, giderKat, profit, kdv, hesaplar } = opts;
+  const T = translate;
+  const lang = getLang();
   const katTable = (title: string, rows: typeof gelirKat) =>
-    `<h3>${title}</h3><table>${rows.length ? rows.map((r) => `<tr><td>${escHtml(r.kategori)}</td><td class="r">${tl(r.toplam)}</td><td class="r m">%${r.pct.toFixed(1)}</td></tr>`).join('') : '<tr><td>Kayıt yok</td></tr>'}</table>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+    `<h3>${title}</h3><table>${rows.length ? rows.map((r) => `<tr><td>${escHtml(statusLabel(lang, r.kategori))}</td><td class="r">${tl(r.toplam)}</td><td class="r m">%${r.pct.toFixed(1)}</td></tr>`).join('') : `<tr><td>${T('finance.noRecords')}</td></tr>`}</table>`;
+  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"/><style>
   @page { size: A4; margin: 16mm; }
   body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; color: #0f172a; font-size: 11.5px; }
   h1 { font-size: 18px; margin: 0; } .sub { color: #64748b; margin: 2px 0 16px; }
@@ -233,30 +241,30 @@ export function financeSummaryHtml(opts: {
   .r { text-align: right; } .m { color: #64748b; width: 60px; }
   .note { color: #64748b; font-size: 10px; margin-top: 18px; }
 </style></head><body>
-  <h1>Finans Özet Raporu</h1>
+  <h1>${T('kasaX.summaryTitle')}</h1>
   <div class="sub">${escHtml(firma)} · ${escHtml(period.label)} (${period.start} – ${period.end})</div>
   <div class="cards">
-    <div class="card" style="background:#DCFCE7">Gelir<b>${tl(totals.gelir)}</b></div>
-    <div class="card" style="background:#FEE2E2">Gider<b>${tl(totals.gider)}</b></div>
-    <div class="card" style="background:#E0E7FF">Net<b>${tl(totals.net)}</b></div>
+    <div class="card" style="background:#DCFCE7">${T('kasaX.income')}<b>${tl(totals.gelir)}</b></div>
+    <div class="card" style="background:#FEE2E2">${T('kasaX.expense')}<b>${tl(totals.gider)}</b></div>
+    <div class="card" style="background:#E0E7FF">${T('kasaX.net')}<b>${tl(totals.net)}</b></div>
   </div>
-  ${katTable('Gelir Kategorileri', gelirKat)}
-  ${katTable('Gider Kategorileri', giderKat)}
-  <h3>Kasa / Hesap Bakiyeleri (tüm zamanlar)</h3>
-  <table>${hesaplar.map((h) => `<tr><td>${escHtml(h.hesap)}</td><td class="r">${tl(h.bakiye)}</td></tr>`).join('')}</table>
-  <h3>Kâr / Zarar — Onaylanan Teklifler (KDV hariç)</h3>
+  ${katTable(T('finance.incomeCats'), gelirKat)}
+  ${katTable(T('finance.expenseCats'), giderKat)}
+  <h3>${T('finance.balances')}</h3>
+  <table>${hesaplar.map((h) => `<tr><td>${escHtml(statusLabel(lang, h.hesap))}</td><td class="r">${tl(h.bakiye)}</td></tr>`).join('')}</table>
+  <h3>${T('finance.profitSec')}</h3>
   <table>
-    <tr><td>Onaylanan teklif</td><td class="r">${profit.teklifSayisi} adet</td></tr>
-    <tr><td>Ciro</td><td class="r">${tl(profit.ciro)}</td></tr>
-    <tr><td>Maliyet (maliyeti girilen ${profit.maliyetliSayi} teklif)</td><td class="r">${tl(profit.maliyet)}</td></tr>
-    <tr><td><b>Brüt kâr</b></td><td class="r"><b>${tl(profit.kar)}</b>${profit.marj != null ? ` (%${profit.marj.toFixed(1)})` : ''}</td></tr>
+    <tr><td>${T('kasaX.approvedCount')}</td><td class="r">${profit.teklifSayisi} ${T('finance.pcs')}</td></tr>
+    <tr><td>${T('finance.revenue')}</td><td class="r">${tl(profit.ciro)}</td></tr>
+    <tr><td>${fill(T('finance.costWithN'), { n: profit.maliyetliSayi })}</td><td class="r">${tl(profit.maliyet)}</td></tr>
+    <tr><td><b>${T('kasaX.grossProfit')}</b></td><td class="r"><b>${tl(profit.kar)}</b>${profit.marj != null ? ` (%${profit.marj.toFixed(1)})` : ''}</td></tr>
   </table>
-  <h3>KDV Özeti (tahmini)</h3>
+  <h3>${T('finance.vatSec')}</h3>
   <table>
-    <tr><td>Hesaplanan KDV (satış)</td><td class="r">${tl(kdv.hesaplanan)}</td></tr>
-    <tr><td>İndirilecek KDV (gider)</td><td class="r">${tl(kdv.indirilecek)}</td></tr>
-    <tr><td><b>Ödenecek KDV</b></td><td class="r"><b>${tl(kdv.odenecek)}</b></td></tr>
+    <tr><td>${T('kasaX.vatOut')}</td><td class="r">${tl(kdv.hesaplanan)}</td></tr>
+    <tr><td>${T('kasaX.vatIn')}</td><td class="r">${tl(kdv.indirilecek)}</td></tr>
+    <tr><td><b>${T('kasaX.vatPay')}</b></td><td class="r"><b>${tl(kdv.odenecek)}</b></td></tr>
   </table>
-  <div class="note">Dövizli tutarlar kayıt anındaki (yoksa güncel) kurla TL'ye çevrilmiştir. KDV özeti bilgi amaçlıdır; beyanname için mali müşavirinize danışın.</div>
+  <div class="note">${T('finance.note')}</div>
 </body></html>`;
 }

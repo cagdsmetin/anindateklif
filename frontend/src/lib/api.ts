@@ -317,8 +317,8 @@ export const api = {
     req(`/contracts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteContract: (id: string) => req(`/contracts/${id}`, { method: 'DELETE' }),
   contractAiDraft: (data: {
-    companyId: string; quoteId?: string; sozlesmeTuru?: string; talimat?: string; mevcutMetin?: string;
-    musFirma?: string; musYetkili?: string; musAdres?: string; tutar?: number; paraBirimi?: string;
+    companyId: string; quoteId?: string; sozlesmeTuru?: string; talimat?: string; mevcutMetin?: string; dil?: string;
+    musFirma?: string; musYetkili?: string; musAdres?: string; musTelefon?: string; musEmail?: string; tutar?: number; paraBirimi?: string;
   }): Promise<{ baslik: string; icerik: string }> =>
     req('/contracts/ai-draft', { method: 'POST', body: JSON.stringify(data) }),
 

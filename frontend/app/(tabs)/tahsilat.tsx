@@ -423,7 +423,7 @@ export default function TahsilatScreen() {
                 </Text>
                 {tx.tur === 'tahsilat' && activeCompany && (
                   <TouchableOpacity
-                    onPress={() => shareReceiptPdf(activeCompany, tx).then(() => { if (Platform.OS === 'web') showToast('Makbuz indirildi'); }).catch((e) => showToast('Makbuz oluşturulamadı: ' + (e?.message || '')))}
+                    onPress={() => shareReceiptPdf(activeCompany, tx).then(() => { if (Platform.OS === 'web') showToast(t('receipt.downloaded')); }).catch((e) => showToast(t('receipt.err') + (e?.message || '')))}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     testID={`tahsilat-receipt-${tx.id}`}
                   >

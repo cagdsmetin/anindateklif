@@ -14,6 +14,7 @@ import {
   profitAnalysis, sumTRY, tl,
 } from '@/src/lib/finance';
 import { PeriodChips, ks } from './shared';
+import { fill, statusLabel, useLanguage } from '@/src/lib/i18n';
 
 type Props = {
   firma: string;
@@ -50,10 +51,12 @@ async function savePdf(html: string, fileName: string) {
 }
 
 export default function KasaRaporlar({ firma, kasa, quotes, rates, hesaplar, showToast }: Props) {
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const [pk, setPk] = useState<PeriodKey>('thisMonth');
   const [busy, setBusy] = useState<string | null>(null);
-  const period = useMemo(() => buildPeriod(pk), [pk]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const period = useMemo(() => buildPeriod(pk), [pk, lang]);
   const entries = useMemo(() => kasa.filter((k) => inRange(k.tarih, period.start, period.end)), [kasa, period]);
   const kdv = useMemo(() => kdvSummary(kasa, quotes, rates, period.start, period.end), [kasa, quotes, rates, period]);
   const balances = useMemo(() => accountBalances(kasa, rates, hesaplar), [kasa, rates, hesaplar]);
@@ -62,16 +65,16 @@ export default function KasaRaporlar({ firma, kasa, quotes, rates, hesaplar, sho
   const run = async (key: string, fn: () => Promise<void>, ok: string) => {
     if (busy) return;
     setBusy(key);
-    try { await fn(); showToast(ok); } catch (e: any) { showToast('Rapor oluşturulamadı: ' + (e?.message || '')); } finally { setBusy(null); }
+    try { await fn(); showToast(ok); } catch (e: any) { showToast(t('kasaX.reportErr') + (e?.message || '')); } finally { setBusy(null); }
   };
 
   const pdfSummary = () => run('pdf', () => savePdf(financeSummaryHtml({
     firma, period, totals: sumTRY(entries, rates),
     gelirKat: categoryBreakdown(entries, rates, 'gelir'), giderKat: categoryBreakdown(entries, rates, 'gider'),
     profit: profitAnalysis(quotes, rates, period.start, period.end), kdv, hesaplar: balances,
-  }), `Finans_Ozet_${stamp}.pdf`), 'Finans özeti hazır');
+  }), `Finans_Ozet_${stamp}.pdf`), t('kasaX.summaryReady'));
 
-  const csvList = () => run('csv', () => saveText(kasaCsv(entries, rates), `Kasa_Islemleri_${stamp}.csv`, 'text/csv'), 'İşlem listesi hazır');
+  const csvList = () => run('csv', () => saveText(kasaCsv(entries, rates), `Kasa_Islemleri_${stamp}.csv`, 'text/csv'), t('kasaX.listReady'));
 
   const Btn = ({ k, icon, label, onPress }: { k: string; icon: any; label: string; onPress: () => void }) => (
     <TouchableOpacity style={[ks.chip, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={onPress} disabled={!!busy} testID={`rapor-${k}`}>
@@ -101,35 +104,35 @@ export default function KasaRaporlar({ firma, kasa, quotes, rates, hesaplar, sho
       <View style={[ks.card, { marginVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.primarySoft, borderColor: theme.colors.primaryBorder }]}>
         <Ionicons name="calendar-outline" size={16} color={theme.colors.primaryDark} />
         <Text style={[ks.rowLabel, { color: theme.colors.primaryDark }]}>{period.start} — {period.end}</Text>
-        <Text style={ks.muted}>{entries.length} işlem</Text>
+        <Text style={ks.muted}>{fill(t('kasaX.txCount'), { n: entries.length })}</Text>
       </View>
 
-      <Card icon="document-text-outline" title="Finans Özet Raporu" sub="Gelir, gider, net, kategori dağılımı, kâr/zarar ve KDV — PDF">
-        <View style={ks.chipRow}><Btn k="pdf" icon="download-outline" label="PDF İndir" onPress={pdfSummary} /></View>
+      <Card icon="document-text-outline" title={t('kasaX.summaryTitle')} sub={t('kasaX.summarySub')}>
+        <View style={ks.chipRow}><Btn k="pdf" icon="download-outline" label={t('kasaX.pdfDl')} onPress={pdfSummary} /></View>
       </Card>
 
-      <Card icon="list-outline" title="İşlem Listesi (Detaylı)" sub="Dönemdeki tüm gelir/gider satırları — Excel uyumlu CSV">
-        <View style={ks.chipRow}><Btn k="csv" icon="grid-outline" label="CSV İndir" onPress={csvList} /></View>
+      <Card icon="list-outline" title={t('kasaX.listTitle')} sub={t('kasaX.listSub')}>
+        <View style={ks.chipRow}><Btn k="csv" icon="grid-outline" label={t('kasaX.csvDl')} onPress={csvList} /></View>
       </Card>
 
-      <Card icon="receipt-outline" title="KDV Özeti (tahmini)" sub="Satış KDV’si: onaylanan teklifler · İndirilecek: KDV oranı girilen giderler">
-        <View style={ks.row}><Text style={ks.rowLabel}>Hesaplanan KDV</Text><Text style={ks.rowValue}>{tl(kdv.hesaplanan)}</Text></View>
-        <View style={ks.row}><Text style={ks.rowLabel}>İndirilecek KDV</Text><Text style={[ks.rowValue, { color: theme.colors.greenText }]}>− {tl(kdv.indirilecek)}</Text></View>
-        <View style={[ks.row, { borderBottomWidth: 0 }]}><Text style={[ks.rowLabel, { fontWeight: '900' }]}>Ödenecek KDV</Text><Text style={[ks.rowValue, { fontSize: 15 }]}>{tl(kdv.odenecek)}</Text></View>
-        <Text style={ks.muted}>Bilgi amaçlıdır; beyan için mali müşavirinize danışın.</Text>
+      <Card icon="receipt-outline" title={t('kasaX.vatTitle')} sub={t('kasaX.vatSub')}>
+        <View style={ks.row}><Text style={ks.rowLabel}>{t('kasaX.vatOut')}</Text><Text style={ks.rowValue}>{tl(kdv.hesaplanan)}</Text></View>
+        <View style={ks.row}><Text style={ks.rowLabel}>{t('kasaX.vatIn')}</Text><Text style={[ks.rowValue, { color: theme.colors.greenText }]}>− {tl(kdv.indirilecek)}</Text></View>
+        <View style={[ks.row, { borderBottomWidth: 0 }]}><Text style={[ks.rowLabel, { fontWeight: '900' }]}>{t('kasaX.vatPay')}</Text><Text style={[ks.rowValue, { fontSize: 15 }]}>{tl(kdv.odenecek)}</Text></View>
+        <Text style={ks.muted}>{t('kasaX.vatNote')}</Text>
       </Card>
 
-      <Card icon="wallet-outline" title="Kasa / Hesap Bakiyeleri" sub="Tüm zamanlar, TL karşılığı">
+      <Card icon="wallet-outline" title={t('kasaX.balTitle')} sub={t('kasaX.balSub')}>
         {balances.map((b) => (
           <View key={b.hesap} style={ks.row}>
-            <Text style={ks.rowLabel}>{b.hesap}</Text>
+            <Text style={ks.rowLabel}>{statusLabel(lang, b.hesap)}</Text>
             <Text style={[ks.rowValue, { color: b.bakiye >= 0 ? theme.colors.text : theme.colors.redText }]}>{tl(b.bakiye)}</Text>
           </View>
         ))}
       </Card>
 
-      <Card icon="people-outline" title="Tahsilat Raporu" sub="Kalan bakiyesi olan müşteriler">
-        <View style={ks.chipRow}><Btn k="borclu" icon="arrow-forward" label="Borçlu Müşteriler" onPress={() => router.push('/borclu-musteriler' as any)} /></View>
+      <Card icon="people-outline" title={t('kasaX.collTitle')} sub={t('kasaX.collSub')}>
+        <View style={ks.chipRow}><Btn k="borclu" icon="arrow-forward" label={t('kasaX.debtors')} onPress={() => router.push('/borclu-musteriler' as any)} /></View>
       </Card>
     </View>
   );

@@ -9048,6 +9048,149 @@ async def efatura_incoming_pdf(company_id: str, inv_uuid: str, user=Depends(get_
         raise HTTPException(502, f"PDF alınamadı: {_nilvera_err(resp)}")
     return PdfOut(pdfBase64=_pdf_b64_from(resp), fileName=f"Gelen_Fatura_{inv_uuid[:8]}.pdf")
 
+# ============ GECELİK VERİTABANI YEDEĞİ ============
+# Her gece (İstanbul 03:00'ten sonra ilk kontrolde) tüm koleksiyonlar tek bir
+# gzip'li JSON-lines dosyasına dökülür ve Railway Storage Bucket'a yüklenir.
+# Satır biçimi: {"c": <koleksiyon>, "d": <belge (extended JSON)>}.
+# Saklama: son BACKUP_KEEP_DAYS günlük + her ayın ilk yedeği (monthly/, 12 ay).
+# Geri yükleme: backend/scripts/restore_backup.py
+BACKUP_KEEP_DAYS = int(os.environ.get("BACKUP_KEEP_DAYS", "14"))
+
+
+def _backup_s3():
+    bucket = os.environ.get("BACKUP_BUCKET", "")
+    if not bucket or not os.environ.get("BACKUP_ACCESS_KEY_ID"):
+        return None, None
+    import boto3
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=os.environ.get("BACKUP_ENDPOINT") or None,
+        aws_access_key_id=os.environ.get("BACKUP_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.environ.get("BACKUP_SECRET_ACCESS_KEY"),
+        region_name=os.environ.get("BACKUP_REGION") or "auto",
+    )
+    return s3, bucket
+
+
+async def _run_backup(day: str) -> Dict[str, Any]:
+    import gzip
+    import tempfile
+    from bson import json_util
+    s3, bucket = _backup_s3()
+    if not s3:
+        raise RuntimeError("BACKUP_BUCKET ayarlı değil")
+    counts: Dict[str, int] = {}
+    fd, path = tempfile.mkstemp(suffix=".jsonl.gz")
+    os.close(fd)
+    try:
+        with gzip.open(path, "wt", encoding="utf-8") as fh:
+            for name in sorted(await db.list_collection_names()):
+                if name.startswith("system.") or name == "backup_log":
+                    continue
+                n = 0
+                async for doc in db[name].find({}).batch_size(500):
+                    fh.write(json_util.dumps({"c": name, "d": doc}, json_options=json_util.CANONICAL_JSON_OPTIONS))
+                    fh.write("\n")
+                    n += 1
+                counts[name] = n
+        size = os.path.getsize(path)
+        key = f"daily/{day}.jsonl.gz"
+        await asyncio.to_thread(s3.upload_file, path, bucket, key)
+        if day.endswith("-01") or not await _backup_has_month(s3, bucket, day[:7]):
+            await asyncio.to_thread(s3.copy_object, Bucket=bucket, Key=f"monthly/{day[:7]}.jsonl.gz",
+                                    CopySource={"Bucket": bucket, "Key": key})
+        await _backup_prune(s3, bucket)
+        return {"key": key, "size": size, "counts": counts}
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+async def _backup_list(s3, bucket, prefix: str) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    token = None
+    while True:
+        kw = {"Bucket": bucket, "Prefix": prefix}
+        if token:
+            kw["ContinuationToken"] = token
+        resp = await asyncio.to_thread(s3.list_objects_v2, **kw)
+        for o in resp.get("Contents", []):
+            out.append({"key": o["Key"], "size": o["Size"], "modified": o["LastModified"].isoformat()})
+        if not resp.get("IsTruncated"):
+            return out
+        token = resp.get("NextContinuationToken")
+
+
+async def _backup_has_month(s3, bucket, month: str) -> bool:
+    return bool(await _backup_list(s3, bucket, f"monthly/{month}"))
+
+
+async def _backup_prune(s3, bucket):
+    daily = sorted(o["key"] for o in await _backup_list(s3, bucket, "daily/"))
+    monthly = sorted(o["key"] for o in await _backup_list(s3, bucket, "monthly/"))
+    for key in daily[:-BACKUP_KEEP_DAYS] + monthly[:-12]:
+        await asyncio.to_thread(s3.delete_object, Bucket=bucket, Key=key)
+
+
+async def _backup_once_today() -> Optional[Dict[str, Any]]:
+    day = _istanbul_today().isoformat()
+    # Aynı gün iki kez (ya da birden fazla replika varsa aynı anda) çalışmasın.
+    try:
+        await db.backup_log.insert_one({"_id": day, "status": "running", "startedAt": utc_now_iso()})
+    except Exception:
+        return None
+    try:
+        res = await _run_backup(day)
+        await db.backup_log.update_one({"_id": day}, {"$set": {"status": "ok", "finishedAt": utc_now_iso(), **res}})
+        logger.info(f"[Backup] {res['key']} yüklendi ({res['size'] // 1024} KB, {sum(res['counts'].values())} belge)")
+        return res
+    except Exception as e:
+        # Kaydı sil ki bir sonraki saatlik kontrolde tekrar denensin.
+        await db.backup_log.delete_one({"_id": day})
+        logger.error(f"[Backup] başarısız: {e}")
+        raise
+
+
+async def _backup_loop():
+    await asyncio.sleep(120)
+    while True:
+        try:
+            try:
+                from zoneinfo import ZoneInfo
+                hour = datetime.now(ZoneInfo("Europe/Istanbul")).hour
+            except Exception:
+                hour = (_utc() + timedelta(hours=3)).hour
+            if hour >= 3:
+                await _backup_once_today()
+        except Exception:
+            pass
+        await asyncio.sleep(60 * 60)
+
+
+@api_router.get("/admin/backups")
+async def admin_list_backups(user=Depends(get_current_user)):
+    _require_admin(user)
+    s3, bucket = _backup_s3()
+    if not s3:
+        return {"configured": False, "backups": [], "log": []}
+    objs = await _backup_list(s3, bucket, "")
+    log = await db.backup_log.find({}, {"counts": 0}).sort("_id", -1).to_list(30)
+    return {"configured": True, "backups": sorted(objs, key=lambda o: o["key"], reverse=True), "log": log}
+
+
+@api_router.post("/admin/backups/run")
+async def admin_run_backup(user=Depends(get_current_user)):
+    _require_admin(user)
+    day = _istanbul_today().isoformat() + "-manual-" + datetime.now(timezone.utc).strftime("%H%M%S")
+    try:
+        res = await _run_backup(day)
+    except Exception as e:
+        raise HTTPException(500, f"Yedek alınamadı: {e}")
+    return {"key": res["key"], "size": res["size"], "documents": sum(res["counts"].values())}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -9168,6 +9311,10 @@ async def on_startup():
     # Otomatik e-posta hatırlatmaları (vade/bakım/teklif takibi/günlük özet).
     if os.environ.get("NOTIFY_LOOP_DISABLED") != "1":
         app.state.notify_task = asyncio.create_task(_notify_loop())
+
+    # Gecelik veritabanı yedeği (BACKUP_BUCKET ayarlıysa).
+    if os.environ.get("BACKUP_BUCKET") and os.environ.get("BACKUP_LOOP_DISABLED") != "1":
+        app.state.backup_task = asyncio.create_task(_backup_loop())
 
     try:
         # Albert Genau fiyat listesi: ilk acilista, veritabaninda henuz

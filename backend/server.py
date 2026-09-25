@@ -8235,6 +8235,64 @@ class NotifySettings(BaseModel):
     teklifTakipGun: int = 3
     gunlukOzet: bool = True
     ozetEmail: str = ""
+    whatsapp: bool = False  # e-postaya ek olarak WhatsApp şablon mesajı da gönder
+    whatsappAvailable: bool = False  # sadece çıktı: sunucuda onaylı şablon var mı
+
+
+# Otomatik WhatsApp (Twilio + Meta onaylı "Utility" şablonları). Şablon SID'leri
+# (HX...) ortam değişkeni olarak girilene kadar tamamen kapalıdır. Değişkenler:
+# vade/gecikme: {1} müşteri, {2} firma, {3} tutar, {4} tarih
+# bakim:         {1} müşteri, {2} firma, {3} iş/ürün, {4} tarih
+# teklif:        {1} müşteri, {2} firma, {3} teklif no, {4} tarih
+WA_TEMPLATES = {
+    k: os.environ.get(f"TWILIO_WA_TPL_{k.upper()}", "").strip()
+    for k in ("vade", "gecikme", "bakim", "teklif")
+}
+WA_DAILY_CAP = int(os.environ.get("WA_DAILY_CAP", "100"))
+
+
+def _wa_available(kind: Optional[str] = None) -> bool:
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM):
+        return False
+    return bool(WA_TEMPLATES.get(kind)) if kind else any(WA_TEMPLATES.values())
+
+
+async def _notify_wa_once(uid: str, cid: str, key: str, kind: str, phone: str, variables: Dict[str, str]) -> bool:
+    if not _wa_available(kind):
+        return False
+    to = _normalize_phone(phone or "")
+    if len(re.sub(r"\D", "", to)) < 10:
+        return False
+    today = _istanbul_today().isoformat()
+    if await db.notify_log.count_documents({"companyId": cid, "kanal": "whatsapp", "createdAt": {"$gte": today}}) >= WA_DAILY_CAP:
+        return False
+    if await db.notify_log.find_one({"key": key}):
+        return False
+    try:
+        await db.notify_log.insert_one({"key": key, "userId": uid, "companyId": cid, "tip": f"wa-{kind}", "kanal": "whatsapp",
+                                        "alici": to, "konu": f"WhatsApp: {kind} – {variables.get('1', '')}",
+                                        "durum": "gönderiliyor", "createdAt": utc_now_iso()})
+    except DuplicateKeyError:
+        return False
+    ok, err = False, ""
+    try:
+        resp = await asyncio.to_thread(
+            requests.post,
+            f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json",
+            auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN),
+            data={"From": TWILIO_WHATSAPP_FROM, "To": f"whatsapp:{to}", "ContentSid": WA_TEMPLATES[kind],
+                  "ContentVariables": json.dumps({k: (v or "-")[:120] for k, v in variables.items()}, ensure_ascii=False)},
+            timeout=15,
+        )
+        ok = resp.status_code < 300
+        if not ok:
+            err = f"HTTP {resp.status_code}"
+            logger.warning(f"[NotifyWA] twilio failed {resp.status_code} {resp.text[:300]}")
+    except Exception as e:
+        err = "Gönderim hatası"
+        logger.warning(f"[NotifyWA] exception: {e}")
+    await db.notify_log.update_one({"key": key}, {"$set": {"durum": "gönderildi" if ok else f"hata: {err}"}})
+    return ok
 
 
 class NotifyLogOut(BaseModel):
@@ -8401,6 +8459,10 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
     T = NOTIFY_TEXT[lang]
     cname = company.get("sirketAdi", "")
     by_id, by_name = await _customer_email_map(uid, cid)
+    phone_by_id, phone_by_name = {}, {}
+    async for c in db.customers.find({"userId": uid, "companyId": cid, "telefon": {"$nin": ["", None]}}, {"_id": 0, "id": 1, "firma": 1, "telefon": 1}):
+        phone_by_id[c["id"]] = c["telefon"]
+        phone_by_name[(c.get("firma") or "").strip().casefold()] = c["telefon"]
     bank = (company.get("banklar") or [{}])[0] if company.get("banklar") else {}
     sent = 0
 
@@ -8425,12 +8487,18 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
                        date=_fmt_date_tr(t["vadeTarihi"]), extra="")
             if bank.get("iban"):
                 fmt["extra"] = T["iban"].format(bank=esc(bank.get("banka", "") or bank.get("bankaAdi", "")), iban=esc(bank["iban"]))
+            wa = settings.get("whatsapp") and (t.get("musteriTelefon") or phone_by_id.get(t.get("customerId", "")) or phone_by_name.get((t.get("musteriAdi") or "").strip().casefold(), ""))
+            wa_vars = {"1": t.get("musteriAdi", ""), "2": cname, "3": _fmt_money(t.get("tutar", 0), t.get("paraBirimi", "TRY")), "4": _fmt_date_tr(t["vadeTarihi"])}
             if settings.get("vadeHatirlat", True) and t["vadeTarihi"] == target:
                 sent += await _notify_once(uid, cid, f"vade:{t['id']}:{target}", "vade", company, email,
                                            T["vade_s"].format(company=cname), _email_shell(company, T["vade_b"].format(**fmt), lang))
+                if wa:
+                    sent += await _notify_wa_once(uid, cid, f"wa:vade:{t['id']}:{target}", "vade", wa, wa_vars)
             if settings.get("vadeGecikme", True) and t["vadeTarihi"] == yesterday:
                 sent += await _notify_once(uid, cid, f"gecik:{t['id']}", "gecikme", company, email,
                                            T["gecik_s"].format(company=cname), _email_shell(company, T["gecik_b"].format(**fmt), lang))
+                if wa:
+                    sent += await _notify_wa_once(uid, cid, f"wa:gecik:{t['id']}", "gecikme", wa, wa_vars)
 
     if settings.get("bakimHatirlat", True):
         target = (today + timedelta(days=int(settings.get("bakimGunOnce", 7)))).isoformat()
@@ -8441,6 +8509,10 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
             body = T["bakim_b"].format(name=esc(s.get("musYetkili") or s.get("musFirma") or ""), title=esc(s.get("baslik", "")), date=_fmt_date_tr(target))
             sent += await _notify_once(uid, cid, f"bakim:{s['id']}:{target}", "bakim", company, email,
                                        T["bakim_s"].format(company=cname), _email_shell(company, body, lang))
+            wa = settings.get("whatsapp") and (s.get("musTelefon") or phone_by_name.get((s.get("musFirma") or "").strip().casefold(), ""))
+            if wa:
+                sent += await _notify_wa_once(uid, cid, f"wa:bakim:{s['id']}:{target}", "bakim", wa, {
+                    "1": s.get("musYetkili") or s.get("musFirma") or "", "2": cname, "3": s.get("baslik", ""), "4": _fmt_date_tr(target)})
 
     if settings.get("teklifTakip", True):
         qdate = (today - timedelta(days=int(settings.get("teklifTakipGun", 3)))).isoformat()
@@ -8449,6 +8521,10 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
             body = T["teklif_b"].format(name=esc(q.get("musYetkili") or q.get("musFirma") or ""), no=esc(q.get("teklifNo", "")), date=_fmt_date_tr(qdate))
             sent += await _notify_once(uid, cid, f"teklif:{q['id']}", "teklif", company, email,
                                        T["teklif_s"].format(company=cname), _email_shell(company, body, lang))
+            wa = settings.get("whatsapp") and (q.get("musTelefon") or phone_by_name.get((q.get("musFirma") or "").strip().casefold(), ""))
+            if wa:
+                sent += await _notify_wa_once(uid, cid, f"wa:teklif:{q['id']}", "teklif", wa, {
+                    "1": q.get("musYetkili") or q.get("musFirma") or "", "2": cname, "3": q.get("teklifNo", ""), "4": _fmt_date_tr(qdate)})
 
     if settings.get("gunlukOzet", True):
         tday = today.isoformat()
@@ -8511,7 +8587,7 @@ async def get_notify_settings(company_id: str, user=Depends(get_current_user)):
     _require_kasa_access(user)
     await _own_company(user, company_id)
     doc = await db.notify_settings.find_one({"userId": user["user_id"], "companyId": company_id}, {"_id": 0})
-    return NotifySettings(**{**(doc or {}), "companyId": company_id})
+    return NotifySettings(**{**(doc or {}), "companyId": company_id, "whatsappAvailable": _wa_available()})
 
 
 @api_router.put("/notify-settings", response_model=NotifySettings)
@@ -8523,13 +8599,16 @@ async def put_notify_settings(payload: NotifySettings, user=Depends(get_current_
         d[f] = max(0, min(60, int(d[f])))
     d["dil"] = d["dil"] if d["dil"] in NOTIFY_TEXT else "tr"
     d["ozetEmail"] = d["ozetEmail"].strip()[:200]
+    d.pop("whatsappAvailable", None)
+    if not _wa_available():
+        d["whatsapp"] = False
     if d["ozetEmail"] and not _EMAIL_RE.match(d["ozetEmail"]):
         raise HTTPException(422, "Özet e-posta adresi geçersiz")
     await db.notify_settings.update_one(
         {"userId": user["user_id"], "companyId": payload.companyId},
         {"$set": {**d, "userId": user["user_id"], "updatedAt": utc_now_iso()}}, upsert=True,
     )
-    return NotifySettings(**d)
+    return NotifySettings(**d, whatsappAvailable=_wa_available())
 
 
 @api_router.get("/notify-log/{company_id}", response_model=List[NotifyLogOut])
@@ -9039,6 +9118,23 @@ async def _unhandled_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def on_startup():
+    # Railway'deki Mongo diski 500 MB; Mongo ise varsayılan olarak indeks
+    # kurmak için 500 MB BOŞ alan istiyor -- bu diskte asla sağlanamaz ve
+    # yeni indeksler hiç oluşmuyordu. Eşiği düşür (mongod her açılışta
+    # varsayılana döndüğü için her başlangıçta tekrar ayarlanır).
+    try:
+        await client.admin.command({"setParameter": 1, "indexBuildMinAvailableDiskSpaceMB": 50})
+    except Exception as e:
+        logger.warning(f"indexBuildMinAvailableDiskSpaceMB ayarlanamadi: {e}")
+    try:
+        sizes = []
+        for name in await db.list_collection_names():
+            st = await db.command("collStats", name)
+            sizes.append((int(st.get("storageSize", 0)) + int(st.get("totalIndexSize", 0)), name, int(st.get("count", 0))))
+        sizes.sort(reverse=True)
+        logger.info("DB boyutlari (KB): " + ", ".join(f"{n}={b // 1024}KB/{c}" for b, n, c in sizes[:15]))
+    except Exception as e:
+        logger.warning(f"DB boyut raporu alinamadi: {e}")
     try:
         await db.users.create_index("email", unique=True)
         await db.users.create_index("user_id", unique=True)

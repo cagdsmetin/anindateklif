@@ -112,6 +112,12 @@ export default function AutoReminders() {
           {row({ k: "bakimHatirlat", label: ta('maint'), dayKey: "bakimGunOnce", dayLabel: ta('daysBefore') })}
           {row({ k: "teklifTakip", label: ta('quote'), dayKey: "teklifTakipGun", dayLabel: ta('daysAfter') })}
           {row({ k: "gunlukOzet", label: ta('digest') })}
+          {st.whatsappAvailable ? (
+            <>
+              {row({ k: "whatsapp", label: ta('waAuto') })}
+              <Text style={s.hint}>{ta('waAutoHint')}</Text>
+            </>
+          ) : null}
           <Text style={s.label}>{ta('digestTo')}</Text>
           <MotionInput
             style={s.input}

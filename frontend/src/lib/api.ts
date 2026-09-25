@@ -894,6 +894,8 @@ export type NotifySettingsT = {
   teklifTakipGun: number;
   gunlukOzet: boolean;
   ozetEmail: string;
+  whatsapp?: boolean;
+  whatsappAvailable?: boolean;
 };
 
 export type NotifyLogT = { key: string; tip: string; alici: string; konu: string; durum: string; createdAt: string };

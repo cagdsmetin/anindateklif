@@ -17,6 +17,7 @@ import { api, AdminCustomerT, DeletedAccountT } from '@/src/lib/api';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
+import SystemStatusCard from '@/src/components/SystemStatusCard';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -245,6 +246,8 @@ export default function AdminCustomersScreen() {
               Buradan seçtiğin firmaya, şifresini görmeden/sormadan geçici (30 dk) bir destek erişimi açılır. Her giriş kayıt altına alınır.
             </Text>
           </View>
+
+          <SystemStatusCard />
 
           {pendingAlbertGenau.length > 0 ? (
             <View style={s.pendingBox}>

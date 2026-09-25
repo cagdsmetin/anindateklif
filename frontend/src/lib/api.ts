@@ -219,6 +219,10 @@ export const api = {
   impersonateCustomer: (userId: string): Promise<{ access_token: string; user: UserT; company_name: string }> =>
     req(`/admin/impersonate/${userId}`, { method: 'POST' }),
   endImpersonation: () => req('/admin/impersonate/end', { method: 'POST' }),
+  // Sistem kapasitesi (disk / e-posta kotası) ve uyarı e-postası testi.
+  adminCapacity: (): Promise<{ now: CapacitySnapT; issues: string[] }> => req('/admin/capacity'),
+  adminCapacityTestAlert: (): Promise<{ sent: boolean; to: string[] }> =>
+    req('/admin/capacity/test-alert', { method: 'POST' }),
   // Albert Genau modülünün hangi firmalarda görüneceğini SADECE admin
   // belirler -- firma sahibi kendi kendine açamaz.
   adminSetAlbertGenauEnabled: (companyId: string, enabled: boolean): Promise<{ ok: boolean; albertGenauEnabled: boolean }> =>
@@ -1626,4 +1630,9 @@ export type QuoteEditRequestT = {
   status: 'pending' | 'approved' | 'denied';
   createdAt: string;
   resolvedAt?: string | null;
+};
+
+export type CapacitySnapT = {
+  dataMB?: number; diskUsedMB?: number; diskTotalMB?: number; diskPct?: number;
+  emailToday: number; emailMonth: number; email429: number; companies: number; users: number;
 };

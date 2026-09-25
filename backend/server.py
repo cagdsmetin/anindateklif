@@ -8399,10 +8399,13 @@ def _from_address_for(company: Dict[str, Any]) -> str:
     return f"{name} <{addr}>"
 
 
-async def _send_company_email(company: Dict[str, Any], to: str, subject: str, html_body: str) -> Tuple[bool, str]:
+async def _send_company_email(company: Dict[str, Any], to: str, subject: str, html_body: str,
+                              headers: Optional[Dict[str, str]] = None) -> Tuple[bool, str]:
     if not RESEND_API_KEY:
         return False, "E-posta servisi yapılandırılmamış"
     payload: Dict[str, Any] = {"from": _from_address_for(company), "to": [to], "subject": subject[:200], "html": html_body}
+    if headers:
+        payload["headers"] = headers
     if company.get("email") and "@" in company["email"]:
         payload["reply_to"] = company["email"]
     try:
@@ -9222,11 +9225,54 @@ def _capacity_issues(snap: Dict[str, Any], backup_err: Optional[str]) -> List[Tu
 
 
 async def _send_admin_email(subject: str, html_body: str) -> bool:
+    # Yüksek öncelik başlıkları: Outlook/Apple Mail'de kırmızı ünlem; Gmail'de
+    # "önemli" işaretlemesine yardımcı olur.
+    prio = {"X-Priority": "1 (Highest)", "X-MSMail-Priority": "High", "Importance": "high"}
     ok_any = False
     for to in sorted(ADMIN_EMAILS):
-        ok, _ = await _send_company_email({"sirketAdi": "Anında Teklif Sistem"}, to, subject, html_body)
+        ok, _ = await _send_company_email({"sirketAdi": "🚨 Anında Teklif Sistem"}, to, subject, html_body, headers=prio)
         ok_any = ok_any or ok
     return ok_any
+
+
+_CAP_META = {
+    "disk": ("💾", "Veritabanı diski doluyor", "Railway'de diski büyüt",
+             "https://railway.com/project/{pid}", "Railway → MongoDB → Settings → Volume → boyutu artır (ör. 10 GB)."),
+    "email": ("✉️", "E-posta kotası doluyor", "Resend planını yükselt",
+              "https://resend.com/settings/billing", "Resend ücretsiz planı: 100/gün, 3000/ay. Pro plan ~20 $/ay (50 bin e-posta)."),
+    "backup": ("🛟", "Gecelik yedek alınamadı", "Railway loglarına bak",
+               "https://railway.com/project/{pid}", "Yedek her saat yeniden denenir; düzelmezse Claude'a bu e-postayı gösterin."),
+}
+
+
+def _capacity_email(due: List[Tuple[str, str]], snap: Dict[str, Any], test: bool = False) -> Tuple[str, str]:
+    pid = os.environ.get("RAILWAY_PROJECT_ID", "")
+    first = _CAP_META.get(due[0][0], ("⚠️", "Kapasite uyarısı"))[1] if due else "Kapasite uyarısı"
+    subject = ("🧪 TEST — " if test else "🚨 İŞLEM GEREKLİ — ") + f"Anında Teklif: {first}" + (f" (+{len(due) - 1})" if len(due) > 1 else "")
+    cards = ""
+    for kind, msg in due:
+        icon, title, cta, url, hint = _CAP_META.get(kind, ("⚠️", "Uyarı", "", "", ""))
+        btn = (f"<a href='{esc(url.format(pid=pid))}' style='display:inline-block;background:#dc2626;color:#fff;"
+               f"text-decoration:none;font-weight:700;padding:10px 18px;border-radius:8px;margin-top:10px'>{esc(cta)} →</a>") if url else ""
+        cards += (f"<div style='border:2px solid #fecaca;background:#fef2f2;border-radius:12px;padding:16px;margin:0 0 14px'>"
+                  f"<div style='font-size:18px;font-weight:800;color:#991b1b'>{icon} {esc(title)}</div>"
+                  f"<div style='font-size:15px;color:#1f2937;margin-top:8px;line-height:1.5'>{esc(msg)}</div>"
+                  f"<div style='font-size:13px;color:#6b7280;margin-top:6px'>{esc(hint)}</div>{btn}</div>")
+    banner = ("🧪 BU BİR TEST E-POSTASIDIR — gerçek uyarılar bu şekilde görünür" if test
+              else "🚨 KAPASİTE UYARISI — İŞLEM GEREKLİ")
+    stat = lambda label, val: (f"<td style='padding:8px 12px;text-align:center'><div style='font-size:20px;font-weight:800;color:#111827'>{esc(str(val))}</div>"
+                               f"<div style='font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px'>{esc(label)}</div></td>")
+    disk = f"%{snap['diskPct']}" if snap.get("diskPct") is not None else "?"
+    html = (f"<div style='font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff'>"
+            f"<div style='background:{'#7c3aed' if test else '#dc2626'};color:#fff;font-size:20px;font-weight:900;padding:22px 20px;"
+            f"text-align:center;border-radius:12px 12px 0 0;letter-spacing:.3px'>{banner}</div>"
+            f"<div style='padding:20px;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px'>{cards}"
+            f"<table style='width:100%;border-collapse:collapse;background:#f9fafb;border-radius:10px;margin-top:6px'><tr>"
+            f"{stat('Disk', disk)}{stat('Firma', snap.get('companies', '?'))}{stat('Kullanıcı', snap.get('users', '?'))}"
+            f"{stat('Bugün e-posta', snap.get('emailToday', 0))}</tr></table>"
+            f"<p style='font-size:12px;color:#9ca3af;margin-top:16px'>Bu e-posta Anında Teklif sunucusu tarafından otomatik gönderildi. "
+            f"Aynı uyarı durum düzelene kadar haftada bir (yedek hatası günde bir) tekrarlanır.</p></div></div>")
+    return subject, html
 
 
 async def _capacity_check(backup_err: Optional[str] = None) -> List[str]:
@@ -9243,14 +9289,27 @@ async def _capacity_check(backup_err: Optional[str] = None) -> List[str]:
         due.append((kind, msg))
     if not due:
         return []
-    rows = "".join(f"<li style='margin-bottom:8px'>{esc(m)}</li>" for _, m in due)
-    body = (f"<p>Anında Teklif kapasite uyarısı:</p><ul>{rows}</ul>"
-            f"<p style='color:#64748b;font-size:12px'>Firma: {snap['companies']} · Kullanıcı: {snap['users']} · "
-            f"Veri: {snap.get('dataMB', '?')} MB · Disk: {snap.get('diskUsedMB', '?')}/{snap.get('diskTotalMB', '?')} MB</p>")
-    if await _send_admin_email("Anında Teklif: kapasite uyarısı", body):
+    subject, body = _capacity_email(due, snap)
+    if await _send_admin_email(subject, body):
         for kind, _ in due:
             await db.capacity_alerts.update_one({"_id": kind}, {"$set": {"sentAt": utc_now_iso()}}, upsert=True)
     return [k for k, _ in due]
+
+
+@api_router.post("/admin/capacity/test-alert")
+async def admin_capacity_test_alert(user=Depends(get_current_user)):
+    _require_admin(user)
+    _rate_limit(f"cap-test:{user.get('user_id')}", 3, 3600)
+    snap = await _capacity_snapshot()
+    sample = [("disk", f"MongoDB diski %{snap.get('diskPct', '?')} dolu ({snap.get('diskUsedMB', '?')} / {snap.get('diskTotalMB', '?')} MB). "
+                       "Örnek: %70'i geçince bu uyarı gelir."),
+              ("email", "Örnek: otomatik e-postalar günde 80 veya ayda 2400'ü geçince bu uyarı gelir."),
+              ("backup", "Örnek: gecelik yedek alınamazsa bu uyarı gelir.")]
+    subject, body = _capacity_email(sample, snap, test=True)
+    ok = await _send_admin_email(subject, body)
+    if not ok:
+        raise HTTPException(502, "Test e-postası gönderilemedi")
+    return {"sent": True, "to": sorted(ADMIN_EMAILS)}
 
 
 @api_router.get("/admin/capacity")

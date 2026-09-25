@@ -9370,6 +9370,11 @@ async def on_startup():
     except Exception as e:
         logger.warning(f"DB boyut raporu alinamadi: {e}")
     try:
+        snap = await _capacity_snapshot()
+        logger.info("[Kapasite] " + ", ".join(f"{k}={v}" for k, v in snap.items()))
+    except Exception as e:
+        logger.warning(f"Kapasite olcumu alinamadi: {e}")
+    try:
         await db.users.create_index("email", unique=True)
         await db.users.create_index("user_id", unique=True)
         await db.users.create_index("phone_normalized", unique=True, sparse=True)

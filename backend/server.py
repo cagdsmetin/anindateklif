@@ -9163,11 +9163,102 @@ async def _backup_loop():
             except Exception:
                 hour = (_utc() + timedelta(hours=3)).hour
             if hour >= 3:
-                await _backup_once_today()
-        except Exception:
-            pass
+                # Yedek + kapasite kontrolü günde bir kez; yedek hata verirse
+                # her saat yeniden denenir ve (günde bir) admin'e bildirilir.
+                try:
+                    done = await _backup_once_today()
+                    err = None
+                except Exception as e:
+                    done, err = None, str(e)
+                if done or err:
+                    await _capacity_check(err)
+        except Exception as e:
+            logger.warning(f"[Backup] döngü hatası: {e}")
         await asyncio.sleep(60 * 60)
 
+
+# ============ KAPASİTE UYARISI ============
+# Günde bir kez (yedekle birlikte) disk / e-posta kotası / yedek durumunu
+# ölçer; eşik aşılırsa ADMIN_EMAILS'e e-posta atar. Aynı uyarı 7 günde bir
+# tekrarlanır (durum düzelmediyse). Eşikler env ile değiştirilebilir.
+CAP_DISK_PCT = float(os.environ.get("CAP_DISK_PCT", "70"))
+CAP_EMAIL_DAY = int(os.environ.get("CAP_EMAIL_DAY", "80"))        # Resend ücretsiz: 100/gün
+CAP_EMAIL_MONTH = int(os.environ.get("CAP_EMAIL_MONTH", "2400"))  # Resend ücretsiz: 3000/ay
+
+
+async def _capacity_snapshot() -> Dict[str, Any]:
+    snap: Dict[str, Any] = {}
+    try:
+        st = await db.command({"dbStats": 1, "freeStorage": 1})
+        used, total = float(st.get("fsUsedSize") or 0), float(st.get("fsTotalSize") or 0)
+        snap["dataMB"] = round((float(st.get("storageSize", 0)) + float(st.get("indexSize", 0))) / 1048576, 1)
+        if total:
+            snap["diskUsedMB"], snap["diskTotalMB"] = round(used / 1048576), round(total / 1048576)
+            snap["diskPct"] = round(used * 100 / total, 1)
+    except Exception as e:
+        snap["diskErr"] = str(e)[:200]
+    today = _istanbul_today().isoformat()
+    sent = {"durum": "gönderildi", "kanal": {"$ne": "whatsapp"}}
+    snap["emailToday"] = await db.notify_log.count_documents({**sent, "createdAt": {"$gte": today}})
+    snap["emailMonth"] = await db.notify_log.count_documents({**sent, "createdAt": {"$gte": today[:7]}})
+    snap["email429"] = await db.notify_log.count_documents({"durum": {"$regex": "429"}, "createdAt": {"$gte": today[:7]}})
+    snap["companies"] = await db.companies.count_documents({})
+    snap["users"] = await db.users.count_documents({})
+    return snap
+
+
+def _capacity_issues(snap: Dict[str, Any], backup_err: Optional[str]) -> List[Tuple[str, str]]:
+    out: List[Tuple[str, str]] = []
+    if snap.get("diskPct", 0) >= CAP_DISK_PCT:
+        out.append(("disk", f"MongoDB diski %{snap['diskPct']} dolu ({snap['diskUsedMB']} / {snap['diskTotalMB']} MB). "
+                            "Railway → MongoDB → Volume → Resize ile büyütme zamanı."))
+    if snap.get("emailToday", 0) >= CAP_EMAIL_DAY or snap.get("emailMonth", 0) >= CAP_EMAIL_MONTH or snap.get("email429", 0):
+        out.append(("email", f"Otomatik e-posta: bugün {snap['emailToday']}, bu ay {snap['emailMonth']} gönderim"
+                             f"{', ' + str(snap['email429']) + ' kota (429) hatası' if snap.get('email429') else ''}. "
+                             "Resend ücretsiz plan sınırı 100/gün, 3000/ay — ücretli plana geçme zamanı."))
+    if backup_err:
+        out.append(("backup", f"Gecelik yedek alınamadı: {backup_err[:300]}"))
+    return out
+
+
+async def _send_admin_email(subject: str, html_body: str) -> bool:
+    ok_any = False
+    for to in sorted(ADMIN_EMAILS):
+        ok, _ = await _send_company_email({"sirketAdi": "Anında Teklif Sistem"}, to, subject, html_body)
+        ok_any = ok_any or ok
+    return ok_any
+
+
+async def _capacity_check(backup_err: Optional[str] = None) -> List[str]:
+    snap = await _capacity_snapshot()
+    await db.capacity_log.update_one({"_id": _istanbul_today().isoformat()}, {"$set": {**snap, "at": utc_now_iso()}}, upsert=True)
+    logger.info("[Kapasite] " + ", ".join(f"{k}={v}" for k, v in snap.items()))
+    due: List[Tuple[str, str]] = []
+    for kind, msg in _capacity_issues(snap, backup_err):
+        # Yedek hatası günde bir, diğerleri haftada bir hatırlatılır.
+        since = (datetime.now(timezone.utc) - timedelta(days=1 if kind == "backup" else 7)).isoformat()
+        last = await db.capacity_alerts.find_one({"_id": kind})
+        if last and last.get("sentAt", "") > since:
+            continue
+        due.append((kind, msg))
+    if not due:
+        return []
+    rows = "".join(f"<li style='margin-bottom:8px'>{esc(m)}</li>" for _, m in due)
+    body = (f"<p>Anında Teklif kapasite uyarısı:</p><ul>{rows}</ul>"
+            f"<p style='color:#64748b;font-size:12px'>Firma: {snap['companies']} · Kullanıcı: {snap['users']} · "
+            f"Veri: {snap.get('dataMB', '?')} MB · Disk: {snap.get('diskUsedMB', '?')}/{snap.get('diskTotalMB', '?')} MB</p>")
+    if await _send_admin_email("Anında Teklif: kapasite uyarısı", body):
+        for kind, _ in due:
+            await db.capacity_alerts.update_one({"_id": kind}, {"$set": {"sentAt": utc_now_iso()}}, upsert=True)
+    return [k for k, _ in due]
+
+
+@api_router.get("/admin/capacity")
+async def admin_capacity(user=Depends(get_current_user)):
+    _require_admin(user)
+    snap = await _capacity_snapshot()
+    history = await db.capacity_log.find({}).sort("_id", -1).to_list(60)
+    return {"now": snap, "issues": [m for _, m in _capacity_issues(snap, None)], "history": history}
 
 @api_router.get("/admin/backups")
 async def admin_list_backups(user=Depends(get_current_user)):

@@ -79,6 +79,7 @@ const lightColors = {
     kupon: '#E11D48',
     prim: '#CA8A04',
     yorum: '#2563EB',
+    bildirim: '#2563EB',
   },
 };
 
@@ -152,6 +153,7 @@ const darkColors = {
     kupon: '#FB7185',
     prim: '#FACC15',
     yorum: '#60A5FA',
+    bildirim: '#60A5FA',
   },
 };
 

@@ -9,6 +9,7 @@ import NavDrawer from '@/src/components/NavDrawer';
 import ProBanner from '@/src/components/ProBanner';
 import { useLanguage } from '@/src/lib/i18n';
 import { themedStyles } from '@/src/components/motion';
+import { useUnreadCount } from '@/src/lib/notifStore';
 
 export default function TopHeader({ title }: { title?: string }) {
   const { t } = useLanguage();
@@ -23,6 +24,7 @@ export default function TopHeader({ title }: { title?: string }) {
   // on wide web windows, so the hamburger/drawer is only needed everywhere else
   // (native mobile app + narrow mobile web).
   const showHamburger = !(Platform.OS === 'web' && width >= 900);
+  const unread = useUnreadCount(!!user);
 
   return (
     <>
@@ -60,6 +62,19 @@ export default function TopHeader({ title }: { title?: string }) {
           </View>
         </TouchableOpacity>
         <View style={s.rightActions}>
+          <TouchableOpacity
+            testID="notif-bell-btn"
+            style={s.bellBtn}
+            onPress={() => router.push('/bildirimler' as any)}
+            accessibilityLabel={t('notif.title')}
+          >
+            <Ionicons name={unread ? 'notifications' : 'notifications-outline'} size={19} color={unread ? theme.colors.modules.bildirim : theme.colors.text} />
+            {unread > 0 && (
+              <View style={s.bellBadge} testID="notif-bell-badge">
+                <Text style={s.bellBadgeT}>{unread > 99 ? '99+' : unread}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           {!user?.is_staff && (
             <TouchableOpacity
               testID="company-picker-btn"
@@ -240,6 +255,12 @@ const s = themedStyles(() => StyleSheet.create({
     borderColor: theme.colors.primaryBorder,
     gap: 3,
   },
+  bellBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  bellBadge: {
+    position: 'absolute', top: 1, right: 0, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: theme.colors.surface,
+  },
+  bellBadgeT: { color: '#fff', fontSize: 9.5, fontWeight: '900' },
   avatarBtn: {
     width: 36,
     height: 36,

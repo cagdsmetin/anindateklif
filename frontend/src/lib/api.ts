@@ -219,6 +219,22 @@ export const api = {
   impersonateCustomer: (userId: string): Promise<{ access_token: string; user: UserT; company_name: string }> =>
     req(`/admin/impersonate/${userId}`, { method: 'POST' }),
   endImpersonation: () => req('/admin/impersonate/end', { method: 'POST' }),
+  adminBroadcast: (data: { baslik: string; mesaj: string; link?: string; push?: boolean }): Promise<{ ok: boolean; recipients: number }> =>
+    req('/admin/notifications/broadcast', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Uygulama içi bildirim kutusu + push kaydı
+  listNotifications: (lang?: string, before?: string): Promise<{ items: UserNotificationT[]; unread: number }> =>
+    req(`/notifications?limit=50${lang ? `&lang=${lang}` : ''}${before ? `&before=${encodeURIComponent(before)}` : ''}`),
+  unreadNotifications: (): Promise<{ unread: number }> => req('/notifications/unread-count'),
+  readNotification: (id: string) => req(`/notifications/${id}/read`, { method: 'POST' }),
+  readAllNotifications: () => req('/notifications/read-all', { method: 'POST' }),
+  getNotifPrefs: (): Promise<NotifPrefsT> => req('/notifications/prefs'),
+  putNotifPrefs: (p: NotifPrefsT): Promise<NotifPrefsT> => req('/notifications/prefs', { method: 'PUT', body: JSON.stringify(p) }),
+  pushConfig: (): Promise<{ vapidPublicKey: string }> => req('/push/config'),
+  pushRegister: (data: { kind: 'expo' | 'web'; token?: string; subscription?: any; platform?: string }) =>
+    req('/push/register', { method: 'POST', body: JSON.stringify(data) }),
+  pushUnregister: (data: { kind: 'expo' | 'web'; token?: string; subscription?: any }) =>
+    req('/push/unregister', { method: 'POST', body: JSON.stringify(data) }),
   // Sistem kapasitesi (disk / e-posta kotası) ve uyarı e-postası testi.
   adminCapacity: (): Promise<{ now: CapacitySnapT; issues: string[] }> => req('/admin/capacity'),
   adminCapacityTestAlert: (): Promise<{ sent: boolean; to: string[] }> =>
@@ -1636,3 +1652,9 @@ export type CapacitySnapT = {
   dataMB?: number; diskUsedMB?: number; diskTotalMB?: number; diskPct?: number;
   emailToday: number; emailMonth: number; email429: number; companies: number; users: number;
 };
+
+export type UserNotificationT = {
+  id: string; tip: 'olay' | 'akilli' | 'ipucu' | 'duyuru' | string;
+  baslik: string; mesaj: string; link?: string; createdAt: string; readAt?: string | null;
+};
+export type NotifPrefsT = { ipucu: boolean; akilli: boolean; push: boolean; lang?: string };

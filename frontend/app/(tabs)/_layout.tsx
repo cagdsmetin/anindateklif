@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,10 @@ import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
 import FloatingTabBar from '@/src/components/FloatingTabBar';
 import { themedStyles } from '@/src/components/motion';
+import { api } from '@/src/lib/api';
+import { syncPush } from '@/src/lib/push';
+import { useNativeNotificationTaps } from '@/src/lib/nativePush';
+import { refreshUnread } from '@/src/lib/notifStore';
 
 function tabIcon(name: string, color: string) {
   return ({ focused }: { focused: boolean }) => (
@@ -192,6 +196,23 @@ export default function TabsLayout() {
   const { t: tNav } = useLanguage();
   const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin, t: tNav });
 
+  // Bildirimler: izin verilmişse push aboneliğini eşitle; bildirime dokunulunca
+  // (telefon) ya da web push'tan ?nid= ile gelince okundu say ve ekrana git.
+  const router = useRouter();
+  useEffect(() => {
+    if (!user) return;
+    syncPush();
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const nid = new URLSearchParams(window.location.search).get('nid');
+      if (nid) api.readNotification(nid).then(refreshUnread).catch(() => {});
+    }
+  }, [user]);
+  const onNotifTap = useCallback((link: string, id: string) => {
+    if (id) api.readNotification(id).then(refreshUnread).catch(() => {});
+    router.push((link || '/bildirimler') as any);
+  }, [router]);
+  useNativeNotificationTaps(onNotifTap);
+
   const tabs = (
     <Tabs
       initialRouteName="index"
@@ -235,6 +256,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="efatura" options={{ href: null }} />
       <Tabs.Screen name="contracts" options={{ href: null }} />
       <Tabs.Screen name="kuponlar" options={{ href: null }} />
+      <Tabs.Screen name="bildirimler" options={{ href: null }} />
       <Tabs.Screen name="prim" options={{ href: null }} />
       <Tabs.Screen name="yorumlar" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />

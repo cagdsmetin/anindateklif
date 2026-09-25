@@ -5226,6 +5226,7 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     await db.quotes.insert_one(obj.dict())
     if obj.kuponKodu:
         await _consume_coupon(user, obj.companyId, obj.kuponKodu)
+    _event_quote_created(user, obj.dict())
     # upsert customer
     if obj.musFirma:
         existing = await db.customers.find_one(
@@ -5377,6 +5378,8 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
         await _apply_quote_stock(user, doc, +1)
         doc["stokDusuldu"] = False
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, doc)
+    if payload.durum == "Onaylandı" and previous_durum != "Onaylandı":
+        _event_quote_approved(user, doc)
 
     # Teklif "Onaylandı" durumuna ilk kez geçtiğinde, müşteri için otomatik bir
     # tahsilat borcu oluştur — kullanıcı bunu manuel eklemek zorunda kalmasın.
@@ -6864,6 +6867,8 @@ async def admin_bulk_add_leads(payload: LeadBulkAddRequest, user=Depends(get_cur
         )
         await db.leads.insert_one(obj.model_dump())
         created.append(obj)
+    if created:
+        _event_leads_ready(target_company["userId"], len(created), str(uuid.uuid4())[:8])
     return created
 
 
@@ -9341,6 +9346,491 @@ async def admin_run_backup(user=Depends(get_current_user)):
     return {"key": res["key"], "size": res["size"], "documents": sum(res["counts"].values())}
 
 
+
+# ============ UYGULAMA İÇİ BİLDİRİMLER + PUSH ============
+# Her kullanıcının (gerçek kişi, _self_id) bir bildirim kutusu vardır:
+#  - olay: ekibinden biri teklif hazırladı/onayladı, lead listesi hazır...
+#  - akilli: bekleyen teklif, bugünkü işler, düşük stok, abonelik bitiyor...
+#  - ipucu: uygulamayı daha iyi kullanmak için günlük kısa öneri
+#  - duyuru: admin'in tüm kullanıcılara gönderdiği kampanya/yenilik
+# Her bildirim uygulama içinde listelenir; kullanıcı izin verdiyse telefona
+# (Expo push, Android/iOS) ve tarayıcıya (Web Push, VAPID) da gönderilir.
+# Günlük motor (_engage_loop) firma sahiplerine sabah bir "bugün" özeti ve
+# akşam bir akıllı hatırlatma ya da ipucu gönderir; aynı gün ikinci kez
+# göndermez (unique key). Kullanıcı ipucu/akıllı/push'u ayrı ayrı kapatabilir.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:destek@anindateklif.co")
+NOTIF_TIPS = ("olay", "akilli", "ipucu", "duyuru")
+
+
+class UserNotificationOut(BaseModel):
+    id: str
+    tip: str
+    baslik: str
+    mesaj: str
+    link: str = ""
+    createdAt: str
+    readAt: Optional[str] = None
+
+
+class NotifPrefs(BaseModel):
+    ipucu: bool = True
+    akilli: bool = True
+    push: bool = True
+    lang: str = "tr"
+
+
+class PushRegisterIn(BaseModel):
+    kind: str  # "expo" | "web"
+    token: str = ""
+    subscription: Optional[Dict[str, Any]] = None
+    platform: str = ""
+
+
+class BroadcastIn(BaseModel):
+    baslik: str
+    mesaj: str
+    link: str = ""
+    push: bool = True
+
+
+def _bg(coro):
+    """İsteği bekletmeden arka planda çalıştır; hatayı yut ama logla."""
+    async def runner():
+        try:
+            await coro
+        except Exception as e:
+            logger.warning(f"[Bildirim] arka plan hatası: {e}")
+    try:
+        return asyncio.get_running_loop().create_task(runner())
+    except RuntimeError:
+        return None
+
+
+async def _notif_prefs(uid: str) -> Dict[str, Any]:
+    doc = await db.notif_prefs.find_one({"_id": uid}) or {}
+    return NotifPrefs(**{k: v for k, v in doc.items() if k != "_id"}).model_dump()
+
+
+async def _notify_user(uid: str, key: str, tip: str, baslik: str, mesaj: str, link: str = "",
+                       push: bool = True, kind: str = "") -> bool:
+    """Bildirimi kutuya yazar (aynı key ile ikinci kez yazmaz) ve push'lar."""
+    doc = {"id": str(uuid.uuid4()), "userId": uid, "key": key, "tip": tip, "kind": kind or tip,
+           "baslik": baslik[:120], "mesaj": mesaj[:400], "link": link, "createdAt": utc_now_iso(), "readAt": None}
+    try:
+        await db.user_notifications.insert_one(doc)
+    except DuplicateKeyError:
+        return False
+    if push and (await _notif_prefs(uid)).get("push", True):
+        await _push_send(uid, doc)
+    return True
+
+
+async def _push_send(uid: str, doc: Dict[str, Any]) -> int:
+    subs = await db.push_subs.find({"userId": uid}, {"_id": 0}).to_list(20)
+    if not subs:
+        return 0
+    unread = await db.user_notifications.count_documents({"userId": uid, "readAt": None})
+    data = {"id": doc["id"], "link": doc.get("link", "")}
+    sent = 0
+    expo = [s for s in subs if s.get("kind") == "expo" and s.get("token")]
+    if expo:
+        msgs = [{"to": s["token"], "title": doc["baslik"], "body": doc["mesaj"], "data": data,
+                 "sound": "default", "badge": unread, "channelId": "default"} for s in expo]
+        try:
+            resp = await asyncio.to_thread(
+                requests.post, "https://exp.host/--/api/v2/push/send", json=msgs, timeout=15,
+                headers={"Accept": "application/json", "Content-Type": "application/json"},
+            )
+            for s, r in zip(expo, (resp.json() or {}).get("data", []) if resp.status_code == 200 else []):
+                if r.get("status") == "ok":
+                    sent += 1
+                elif (r.get("details") or {}).get("error") == "DeviceNotRegistered":
+                    await db.push_subs.delete_one({"id": s["id"]})
+        except Exception as e:
+            logger.warning(f"[Push] expo hatası: {e}")
+    web = [s for s in subs if s.get("kind") == "web" and s.get("subscription")]
+    if web and VAPID_PRIVATE_KEY:
+        from pywebpush import webpush, WebPushException
+        payload = json.dumps({"title": doc["baslik"], "body": doc["mesaj"], "badge": unread, **data}, ensure_ascii=False)
+        for s in web:
+            try:
+                await asyncio.to_thread(webpush, subscription_info=s["subscription"], data=payload,
+                                        vapid_private_key=VAPID_PRIVATE_KEY, vapid_claims={"sub": VAPID_SUBJECT}, ttl=86400)
+                sent += 1
+            except WebPushException as e:
+                code = getattr(getattr(e, "response", None), "status_code", 0)
+                if code in (404, 410):
+                    await db.push_subs.delete_one({"id": s["id"]})
+                else:
+                    logger.warning(f"[Push] web hatası {code}: {str(e)[:200]}")
+            except Exception as e:
+                logger.warning(f"[Push] web hatası: {e}")
+    return sent
+
+
+@api_router.get("/notifications")
+async def list_user_notifications(limit: int = 50, before: str = "", lang: str = "", user=Depends(get_current_user)):
+    uid = _self_id(user)
+    if lang in ("tr", "en", "it"):
+        await db.notif_prefs.update_one({"_id": uid}, {"$set": {"lang": lang}}, upsert=True)
+    q: Dict[str, Any] = {"userId": uid}
+    if before:
+        q["createdAt"] = {"$lt": before}
+    docs = await db.user_notifications.find(q, {"_id": 0}).sort("createdAt", -1).to_list(max(1, min(limit, 100)))
+    unread = await db.user_notifications.count_documents({"userId": uid, "readAt": None})
+    return {"items": [UserNotificationOut(**d).model_dump() for d in docs], "unread": unread}
+
+
+@api_router.get("/notifications/unread-count")
+async def unread_user_notifications(user=Depends(get_current_user)):
+    return {"unread": await db.user_notifications.count_documents({"userId": _self_id(user), "readAt": None})}
+
+
+@api_router.post("/notifications/read-all")
+async def read_all_user_notifications(user=Depends(get_current_user)):
+    r = await db.user_notifications.update_many({"userId": _self_id(user), "readAt": None}, {"$set": {"readAt": utc_now_iso()}})
+    return {"ok": True, "updated": r.modified_count}
+
+
+@api_router.post("/notifications/{notif_id}/read")
+async def read_user_notification(notif_id: str, user=Depends(get_current_user)):
+    await db.user_notifications.update_one({"id": notif_id, "userId": _self_id(user), "readAt": None}, {"$set": {"readAt": utc_now_iso()}})
+    return {"ok": True}
+
+
+@api_router.get("/notifications/prefs", response_model=NotifPrefs)
+async def get_notif_prefs(user=Depends(get_current_user)):
+    return NotifPrefs(**await _notif_prefs(_self_id(user)))
+
+
+@api_router.put("/notifications/prefs", response_model=NotifPrefs)
+async def put_notif_prefs(payload: NotifPrefs, user=Depends(get_current_user)):
+    data = payload.model_dump()
+    if data["lang"] not in ("tr", "en", "it"):
+        data["lang"] = "tr"
+    await db.notif_prefs.update_one({"_id": _self_id(user)}, {"$set": data}, upsert=True)
+    return NotifPrefs(**data)
+
+
+@api_router.get("/push/config")
+async def push_config():
+    return {"vapidPublicKey": VAPID_PUBLIC_KEY}
+
+
+@api_router.post("/push/register")
+async def push_register(payload: PushRegisterIn, user=Depends(get_current_user)):
+    uid = _self_id(user)
+    if payload.kind == "expo":
+        if not re.fullmatch(r"(Exponent|Expo)PushToken\[[A-Za-z0-9_\-]+\]", payload.token or ""):
+            raise HTTPException(422, "Geçersiz push anahtarı")
+        ident = payload.token
+    elif payload.kind == "web":
+        sub = payload.subscription or {}
+        ep = str(sub.get("endpoint") or "")
+        keys = sub.get("keys") or {}
+        if not ep.startswith("https://") or not keys.get("p256dh") or not keys.get("auth") or len(ep) > 1000:
+            raise HTTPException(422, "Geçersiz tarayıcı aboneliği")
+        ident = ep
+    else:
+        raise HTTPException(422, "Geçersiz tür")
+    # Aynı cihaz başka hesapla giriş yaptıysa eski hesaptan kopar.
+    await db.push_subs.delete_many({"ident": ident, "userId": {"$ne": uid}})
+    await db.push_subs.update_one(
+        {"ident": ident},
+        {"$set": {"userId": uid, "kind": payload.kind, "token": payload.token if payload.kind == "expo" else "",
+                  "subscription": payload.subscription if payload.kind == "web" else None,
+                  "platform": payload.platform[:20], "updatedAt": utc_now_iso()},
+         "$setOnInsert": {"id": str(uuid.uuid4()), "ident": ident, "createdAt": utc_now_iso()}},
+        upsert=True,
+    )
+    if await db.push_subs.count_documents({"userId": uid}) > 10:
+        old = await db.push_subs.find({"userId": uid}, {"_id": 0, "id": 1}).sort("updatedAt", 1).to_list(5)
+        await db.push_subs.delete_many({"id": {"$in": [o["id"] for o in old]}})
+    return {"ok": True}
+
+
+@api_router.post("/push/unregister")
+async def push_unregister(payload: PushRegisterIn, user=Depends(get_current_user)):
+    ident = payload.token if payload.kind == "expo" else str((payload.subscription or {}).get("endpoint") or "")
+    await db.push_subs.delete_many({"ident": ident, "userId": _self_id(user)})
+    return {"ok": True}
+
+
+# ---- Olay bildirimleri (diğer uçlardan çağrılır) ----
+def _event_quote_created(user: Dict[str, Any], q: Dict[str, Any]):
+    if not user.get("is_staff"):
+        return
+    who = _actor_name(user) or "Ekip üyeniz"
+    _bg(_notify_user(user["user_id"], f"q-new:{q['id']}", "olay", f"📝 {who} yeni teklif hazırladı",
+                     f"{q.get('teklifNo', '')} · {q.get('musFirma', '')} — {_fmt_money(q.get('genelToplam', 0), q.get('paraBirimi', 'TRY'))}",
+                     "/history", kind="ekip-teklif"))
+
+
+def _event_quote_approved(user: Dict[str, Any], q: Dict[str, Any]):
+    who = _actor_name(user) if user.get("is_staff") else ""
+    msg = f"{q.get('teklifNo', '')} numaralı {q.get('musFirma', '')} teklifi onaylandı" + (f" ({who})" if who else "") + \
+          f" — {_fmt_money(q.get('genelToplam', 0), q.get('paraBirimi', 'TRY'))}. Tahsilat kaydı otomatik oluşturuldu."
+    # Onaylayan kişiye push atmaya gerek yok; firma sahibine (personel onayladıysa) push'la.
+    _bg(_notify_user(user["user_id"], f"q-ok:{q['id']}", "olay", "🎉 Müjde! Teklif onaylandı", msg, "/tahsilat",
+                     push=bool(user.get("is_staff")), kind="teklif-onay"))
+
+
+def _event_leads_ready(owner_uid: str, n: int, batch: str):
+    _bg(_notify_user(owner_uid, f"leads:{batch}", "olay", f"🎯 {n} yeni potansiyel müşteri hazır",
+                     "İstediğiniz firma listesi eklendi. Hemen arayıp teklif verin.", "/leads", kind="lead"))
+
+
+# ---- Günlük motor ----
+TIPS: Dict[str, List[Tuple[str, str, str]]] = {
+    "tr": [
+        ("İlk teklifinizi 1 dakikada hazırlayın ⚡", "Müşteriyi seçin, kalemleri ekleyin, PDF hazır. Hemen deneyin.", "/teklif"),
+        ("Kataloğunuz hız kazandırır 📦", "Sık sattığınız ürünleri fiyatlarıyla kataloğa ekleyin, teklifte tek dokunuşla seçin.", "/catalog"),
+        ("Teklifinize logonuzu ekleyin 🏷️", "Firma bilgileriniz ve logonuz her PDF'te görünür; teklifiniz kurumsal durur.", "/company"),
+        ("WhatsApp'tan tek dokunuşla gönderin 💬", "Hazırladığınız teklifi PDF olarak müşterinize anında iletin.", "/history"),
+        ("Bekleyen teklifler unutulmasın ⏳", "Teklif geçmişinde yanıt bekleyenleri görün, müşterinizi bir kez daha arayın.", "/history"),
+        ("Müşteri kartı = tüm geçmiş tek yerde 📇", "Müşterinin teklifleri, ödemeleri ve notları tek ekranda.", "/customers"),
+        ("Excel'deki müşterilerinizi taşıyın 📥", "Müşteri listenizi Excel'den tek seferde içe aktarın, baştan yazmayın.", "/customers"),
+        ("Tahsilatı takip edin, para içeride kalmasın 💰", "Onaylanan teklifler otomatik borç olarak düşer; ödeme gelince işaretleyin.", "/tahsilat"),
+        ("Vadesi geçen alacak var mı? 🔔", "Borçlu müşteriler listesiyle kimden ne kadar alacağınız olduğunu görün.", "/borclu-musteriler"),
+        ("Kasanız cebinizde 🧾", "Gelir ve giderleri girin, ay sonunda kâr-zararınızı tek bakışta görün.", "/kasa"),
+        ("Hatırlatmaları sisteme bırakın ⏰", "Vade, bakım ve teklif takibi e-postalarını otomatik gönderin.", "/reminders"),
+        ("Takviminizi telefonunuza bağlayın 📅", "Randevu ve hatırlatmalarınız Google/Apple takvimde de görünsün.", "/calendar"),
+        ("Sözleşmeyi yapay zekâ yazsın 🤖", "Teklifinizden birkaç saniyede sözleşme taslağı oluşturun.", "/contracts"),
+        ("e-Faturayı teklif ekranından kesin 🧾", "Onaylanan teklifi tek tuşla e-Fatura/e-Arşiv'e dönüştürün.", "/efatura"),
+        ("Stok takibi açık mı? 📊", "Stoklu ürünler onaylanan tekliflerle otomatik düşer; azalınca uyarır.", "/catalog"),
+        ("İndirim kuponu ile müşteri kazanın 🎟️", "Kampanya kuponu oluşturun, teklifte kodu girince indirim otomatik uygulansın.", "/kuponlar"),
+        ("Ekibinizi ekleyin 👥", "Personeliniz kendi hesabıyla teklif hazırlasın, siz her şeyi görün.", "/personel"),
+        ("Personel primini hesaplayın 🏆", "Onaylanan tekliflerden ciro veya kâr üzerinden prim otomatik hesaplanır.", "/prim"),
+        ("Google yorumlarına saniyede yanıt ✍️", "Yapay zekâ, müşteri yorumuna kibar ve profesyonel yanıt hazırlasın.", "/yorumlar"),
+        ("Yeni müşteri mi arıyorsunuz? 🎯", "Bölgenizdeki potansiyel firmaları listeleyin, sırayla arayın.", "/leads"),
+        ("Servis ve bakım kayıtlarınız düzenli olsun 🔧", "Yapılan işleri ve bir sonraki bakım tarihini kaydedin.", "/services"),
+        ("Raporlarla işinizi ölçün 📈", "Hangi ay kaç teklif verdiniz, kaçı onaylandı? Raporlarda görün.", "/reports"),
+        ("Dövizle teklif verin 💱", "USD veya EUR teklif hazırlayın; güncel kurla TL karşılığı otomatik hesaplanır.", "/teklif"),
+        ("Hızlı dönen teklif işi kazandırır 🏁", "Müşteri genellikle ilk yanıt verenle çalışır; teklifi bugün gönderin.", "/teklif"),
+        ("Yazılı teklif, sonradan tartışmayı önler 🤝", "Kalemler, fiyat ve KDV net olsun; iş bitince sürpriz yaşamayın.", "/teklif"),
+        ("Bugün kaç teklif verdiniz? 🤔", "Günde bir teklif bile ay sonunda fark yaratır.", "/teklif"),
+        ("Maliyeti girin, kârınızı görün 💡", "Teklife maliyet eklerseniz kâr marjınız raporlarda görünür.", "/teklif"),
+        ("Eski teklifi kopyalayıp yenisini yapın 📋", "Benzer işler için geçmiş teklifi çoğaltın, sadece farkları değiştirin.", "/history"),
+        ("Ekip içi mesajlaşma 💬", "Personelinizle iş konuşmalarını uygulama içinden yapın.", "/team-chat"),
+        ("Akşam eve iş götürmeyin 🏠", "Sahada ölçüyü alın, teklifi oradan gönderin; akşam size kalsın.", "/teklif"),
+    ],
+    "en": [
+        ("Create a quote in one minute ⚡", "Pick the customer, add items, your PDF is ready.", "/teklif"),
+        ("Your catalog saves time 📦", "Save your frequent products with prices and pick them in one tap.", "/catalog"),
+        ("Add your logo to quotes 🏷️", "Your company details and logo appear on every PDF.", "/company"),
+        ("Send via WhatsApp in one tap 💬", "Share the quote PDF with your customer instantly.", "/history"),
+        ("Don't forget pending quotes ⏳", "See quotes awaiting an answer and follow up today.", "/history"),
+        ("Track your collections 💰", "Approved quotes become receivables automatically.", "/tahsilat"),
+        ("Let reminders run themselves ⏰", "Send due-date, maintenance and follow-up e-mails automatically.", "/reminders"),
+        ("Sync your calendar 📅", "See reminders in Google/Apple Calendar too.", "/calendar"),
+        ("Let AI draft the contract 🤖", "Turn a quote into a contract draft in seconds.", "/contracts"),
+        ("Add your team 👥", "Staff prepare quotes with their own login, you see everything.", "/personel"),
+        ("Fast quotes win jobs 🏁", "Customers usually go with whoever answers first.", "/teklif"),
+        ("How many quotes today? 🤔", "One quote a day makes a big difference by month end.", "/teklif"),
+    ],
+    "it": [
+        ("Crea un preventivo in un minuto ⚡", "Scegli il cliente, aggiungi le voci e il PDF è pronto.", "/teklif"),
+        ("Il catalogo ti fa risparmiare tempo 📦", "Salva i prodotti più venduti con i prezzi e selezionali con un tocco.", "/catalog"),
+        ("Aggiungi il tuo logo 🏷️", "I dati aziendali e il logo compaiono su ogni PDF.", "/company"),
+        ("Invia con WhatsApp in un tocco 💬", "Condividi subito il PDF del preventivo con il cliente.", "/history"),
+        ("Non dimenticare i preventivi in attesa ⏳", "Vedi quelli senza risposta e richiama oggi il cliente.", "/history"),
+        ("Tieni traccia degli incassi 💰", "I preventivi approvati diventano crediti automaticamente.", "/tahsilat"),
+        ("Promemoria automatici ⏰", "Invia in automatico e-mail di scadenza, manutenzione e follow-up.", "/reminders"),
+        ("Sincronizza il calendario 📅", "Vedi i promemoria anche su Google/Apple Calendar.", "/calendar"),
+        ("Il contratto lo scrive l'IA 🤖", "Trasforma un preventivo in una bozza di contratto in pochi secondi.", "/contracts"),
+        ("Aggiungi il tuo team 👥", "Il personale prepara preventivi con il proprio accesso, tu vedi tutto.", "/personel"),
+        ("Chi risponde prima vince 🏁", "Il cliente sceglie spesso chi risponde per primo.", "/teklif"),
+        ("Quanti preventivi oggi? 🤔", "Un preventivo al giorno fa la differenza a fine mese.", "/teklif"),
+    ],
+}
+
+ENGAGE_TEXT = {
+    "tr": {
+        "morning_t": "☀️ Bugün sizi bekleyenler",
+        "rem": "{n} hatırlatma", "srv": "{n} servis/bakım", "due": "{n} vadesi gelen tahsilat",
+        "morning_m": "{items}. Günü planlamak için dokunun.",
+        "sub_t": "⏰ Aboneliğiniz {d} gün içinde bitiyor", "sub_m": "Tekliflerinize kesintisiz devam etmek için aboneliğinizi yenileyin.",
+        "pending_t": "📨 {n} teklif yanıt bekliyor", "pending_m": "3 günden eski bekleyen teklifleriniz var. Müşterinizi arayıp durumu sorun.",
+        "stock_t": "📉 {n} üründe stok azaldı", "stock_m": "Minimum seviyenin altına düşen ürünler var: {names}.",
+        "idle_t": "👋 Bir süredir teklif hazırlamadınız", "idle_m": "Elinizdeki işi hemen teklife dönüştürün, müşteriniz beklemesin.",
+        "week_t": "📊 Geçen hafta: {n} teklif, {a} onay", "week_m": "Onaylanan tutar {sum}. Bu hafta bir adım öteye!",
+        "week_zero_m": "Bu hafta hedef koyun: her gün en az bir teklif.",
+    },
+    "en": {
+        "morning_t": "☀️ What's waiting for you today",
+        "rem": "{n} reminder(s)", "srv": "{n} service visit(s)", "due": "{n} payment(s) due",
+        "morning_m": "{items}. Tap to plan your day.",
+        "sub_t": "⏰ Your subscription ends in {d} day(s)", "sub_m": "Renew to keep sending quotes without interruption.",
+        "pending_t": "📨 {n} quote(s) awaiting reply", "pending_m": "Some quotes are older than 3 days. Give your customer a call.",
+        "stock_t": "📉 Low stock on {n} item(s)", "stock_m": "Below minimum: {names}.",
+        "idle_t": "👋 No quotes lately", "idle_m": "Turn the job at hand into a quote now.",
+        "week_t": "📊 Last week: {n} quotes, {a} approved", "week_m": "Approved total {sum}. Keep it going!",
+        "week_zero_m": "Set a goal this week: at least one quote a day.",
+    },
+    "it": {
+        "morning_t": "☀️ Cosa ti aspetta oggi",
+        "rem": "{n} promemoria", "srv": "{n} interventi", "due": "{n} incassi in scadenza",
+        "morning_m": "{items}. Tocca per pianificare la giornata.",
+        "sub_t": "⏰ L'abbonamento scade tra {d} giorni", "sub_m": "Rinnova per continuare senza interruzioni.",
+        "pending_t": "📨 {n} preventivi in attesa", "pending_m": "Alcuni hanno più di 3 giorni. Chiama il cliente.",
+        "stock_t": "📉 Scorte basse su {n} articoli", "stock_m": "Sotto il minimo: {names}.",
+        "idle_t": "👋 Nessun preventivo di recente", "idle_m": "Trasforma subito il lavoro in un preventivo.",
+        "week_t": "📊 Settimana scorsa: {n} preventivi, {a} approvati", "week_m": "Totale approvato {sum}. Avanti così!",
+        "week_zero_m": "Obiettivo della settimana: almeno un preventivo al giorno.",
+    },
+}
+
+
+def _slot_minute(uid: str, day: str, start: int, span: int) -> int:
+    """Kullanıcıya özgü, güne göre değişen gönderim dakikası (hepsi aynı anda gitmesin)."""
+    import hashlib
+    h = int(hashlib.sha1(f"{uid}:{day}:{start}".encode()).hexdigest()[:8], 16)
+    return start + h % span
+
+
+async def _last_kind_at(uid: str, kind: str) -> str:
+    d = await db.user_notifications.find_one({"userId": uid, "kind": kind}, {"_id": 0, "createdAt": 1}, sort=[("createdAt", -1)])
+    return (d or {}).get("createdAt", "")
+
+
+async def _engage_morning(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bool:
+    uid, tday = u["user_id"], today.isoformat()
+    T = ENGAGE_TEXT.get(prefs.get("lang"), ENGAGE_TEXT["tr"])
+    if not prefs.get("akilli", True):
+        return False
+    days = _renewal_days_left(u)
+    if days is not None and days <= 3 and (u.get("email") or "").lower() not in FREE_ACCESS_EMAILS:
+        exp_key = str(u.get("subscription_expires_at"))[:10]
+        if await _notify_user(uid, f"sub:{uid}:{exp_key}", "akilli", T["sub_t"].format(d=max(days, 1)), T["sub_m"], "/subscription", kind="abonelik"):
+            return True
+    rems = await db.manual_reminders.count_documents({"userId": uid, "tarih": tday, "tamamlandi": False})
+    srvs = await db.services.count_documents({"userId": uid, "$or": [{"servisTarihi": tday}, {"bakimTarihi": tday}], "durum": {"$ne": "İptal"}})
+    dues = await db.tahsilat.count_documents({"userId": uid, "tur": "borc", "vadeTarihi": tday})
+    parts = [T[k].format(n=n) for k, n in (("rem", rems), ("srv", srvs), ("due", dues)) if n]
+    if not parts:
+        return False
+    link = "/reminders" if rems else ("/services" if srvs else "/tahsilat")
+    return await _notify_user(uid, f"sabah:{uid}:{tday}", "akilli", T["morning_t"], T["morning_m"].format(items=", ".join(parts)), link, kind="sabah")
+
+
+async def _engage_evening(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bool:
+    uid, tday = u["user_id"], today.isoformat()
+    lang = prefs.get("lang") if prefs.get("lang") in TIPS else "tr"
+    T = ENGAGE_TEXT[lang]
+    key = f"aksam:{uid}:{tday}"
+    if await db.user_notifications.find_one({"key": key}, {"_id": 1}):
+        return False
+    now = datetime.now(timezone.utc)
+    ago = lambda d: (now - timedelta(days=d)).isoformat()
+    if prefs.get("akilli", True):
+        # Pazartesi: geçen haftanın özeti
+        if today.weekday() == 0:
+            start, end = (today - timedelta(days=7)).isoformat(), tday
+            qs = await db.quotes.find({"userId": uid, "deletedAt": None, "tarih": {"$gte": start, "$lt": end}},
+                                      {"_id": 0, "durum": 1, "genelToplam": 1, "paraBirimi": 1}).to_list(5000)
+            if await db.quotes.count_documents({"userId": uid}) > 0:
+                ok = [q for q in qs if q.get("durum") == "Onaylandı"]
+                cur = (ok[0].get("paraBirimi") if ok else "TRY") or "TRY"
+                total = sum(float(q.get("genelToplam") or 0) for q in ok if (q.get("paraBirimi") or "TRY") == cur)
+                msg = T["week_m"].format(sum=_fmt_money(total, cur)) if ok else T["week_zero_m"]
+                return await _notify_user(uid, key, "akilli", T["week_t"].format(n=len(qs), a=len(ok)), msg, "/reports", kind="haftalik")
+        old = (today - timedelta(days=3)).isoformat()
+        pend = await db.quotes.count_documents({"userId": uid, "durum": "Beklemede", "deletedAt": None, "tarih": {"$lte": old, "$gte": (today - timedelta(days=30)).isoformat()}})
+        if pend and await _last_kind_at(uid, "bekleyen") < ago(3):
+            return await _notify_user(uid, key, "akilli", T["pending_t"].format(n=pend), T["pending_m"], "/history", kind="bekleyen")
+        low = await db.catalog.find({"userId": uid, "stokTakip": True, "$expr": {"$lte": ["$stok", "$minStok"]}, "minStok": {"$gt": 0}},
+                                    {"_id": 0, "urunAdi": 1}).to_list(50)
+        if low and await _last_kind_at(uid, "stok") < ago(7):
+            names = ", ".join(x.get("urunAdi", "") for x in low[:3]) + ("…" if len(low) > 3 else "")
+            return await _notify_user(uid, key, "akilli", T["stock_t"].format(n=len(low)), T["stock_m"].format(names=names), "/catalog", kind="stok")
+        last_q = await db.quotes.find_one({"userId": uid}, {"_id": 0, "createdAt": 1}, sort=[("createdAt", -1)])
+        if last_q and (last_q.get("createdAt") or "") < ago(5) and await _last_kind_at(uid, "pasif") < ago(5):
+            return await _notify_user(uid, key, "akilli", T["idle_t"], T["idle_m"], "/teklif", kind="pasif")
+    if prefs.get("ipucu", True):
+        pool = TIPS[lang]
+        st = await db.notif_prefs.find_one_and_update({"_id": uid}, {"$inc": {"tipIdx": 1}}, upsert=True, return_document=True)
+        title, msg, link = pool[((st or {}).get("tipIdx", 1) - 1) % len(pool)]
+        return await _notify_user(uid, key, "ipucu", title, msg, link, kind="ipucu")
+    return False
+
+
+async def _engage_mark(key: str) -> bool:
+    """Bu kullanıcı/gün/dilim için ilk kez mi? (Her dilim günde bir kez değerlendirilir.)"""
+    try:
+        await db.engage_marks.insert_one({"_id": key, "at": utc_now_iso()})
+        return True
+    except DuplicateKeyError:
+        return False
+
+
+async def _engage_tick(now_ist: Optional[datetime] = None) -> int:
+    if now_ist is None:
+        try:
+            from zoneinfo import ZoneInfo
+            now_ist = datetime.now(ZoneInfo("Europe/Istanbul"))
+        except Exception:
+            now_ist = _utc() + timedelta(hours=3)
+    today = now_ist.date()
+    tday = today.isoformat()
+    minute = now_ist.hour * 60 + now_ist.minute
+    in_morning, in_evening = 9 * 60 <= minute < 11 * 60, 19 * 60 <= minute < 22 * 60
+    if not (in_morning or in_evening):
+        return 0
+    sent = 0
+    async for u in db.users.find({"staff_owner_user_id": {"$in": [None, ""]}, "deleted_at": {"$in": [None, ""]}},
+                                 {"_id": 0, "user_id": 1, "email": 1, "subscription_expires_at": 1}):
+        uid = u.get("user_id")
+        if not uid:
+            continue
+        try:
+            if in_morning and minute >= _slot_minute(uid, tday, 9 * 60, 60):
+                if await _engage_mark(f"sabah:{uid}:{tday}"):
+                    sent += int(await _engage_morning(u, await _notif_prefs(uid), today))
+            if in_evening and minute >= _slot_minute(uid, tday, 19 * 60 + 30, 120):
+                # Hiç şirketi olmayan (kaydı yarım kalmış) hesaplara gönderme.
+                if await _engage_mark(f"aksam:{uid}:{tday}") and await db.companies.find_one({"userId": uid}, {"_id": 1}):
+                    sent += int(await _engage_evening(u, await _notif_prefs(uid), today))
+        except Exception as e:
+            logger.warning(f"[Engage] {uid}: {e}")
+    return sent
+
+
+async def _engage_loop():
+    await asyncio.sleep(150)
+    while True:
+        try:
+            n = await _engage_tick()
+            if n:
+                logger.info(f"[Engage] {n} bildirim gönderildi")
+        except Exception as e:
+            logger.warning(f"[Engage] döngü hatası: {e}")
+        await asyncio.sleep(10 * 60)
+
+
+@api_router.post("/admin/notifications/broadcast")
+async def admin_broadcast(payload: BroadcastIn, user=Depends(get_current_user)):
+    _require_admin(user)
+    baslik, mesaj = payload.baslik.strip(), payload.mesaj.strip()
+    if not baslik or not mesaj:
+        raise HTTPException(422, "Başlık ve mesaj gerekli")
+    if payload.link and not re.fullmatch(r"/[a-z0-9\-/]*", payload.link):
+        raise HTTPException(422, "Bağlantı uygulama içi bir yol olmalı (ör. /teklif)")
+    batch = str(uuid.uuid4())[:8]
+    ids = [u["user_id"] async for u in db.users.find({"deleted_at": {"$in": [None, ""]}}, {"_id": 0, "user_id": 1}) if u.get("user_id")]
+
+    async def run():
+        n = 0
+        for i in range(0, len(ids), 20):
+            res = await asyncio.gather(*[_notify_user(uid, f"duyuru:{batch}:{uid}", "duyuru", baslik, mesaj, payload.link,
+                                                      push=payload.push, kind="duyuru") for uid in ids[i:i + 20]], return_exceptions=True)
+            n += sum(1 for r in res if r is True)
+        logger.info(f"[Duyuru] {batch}: {n}/{len(ids)} kullanıcıya gönderildi")
+    _bg(run())
+    return {"ok": True, "recipients": len(ids), "batch": batch}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -9460,12 +9950,21 @@ async def on_startup():
         await db.stock_moves.create_index([("userId", 1), ("companyId", 1), ("createdAt", -1)])
         await db.calendar_feeds.create_index("token", unique=True)
         await db.invoices.create_index([("userId", 1), ("companyId", 1)])
+        await db.user_notifications.create_index("key", unique=True)
+        await db.user_notifications.create_index([("userId", 1), ("createdAt", -1)])
+        await db.user_notifications.create_index([("userId", 1), ("readAt", 1)])
+        await db.push_subs.create_index("ident", unique=True)
+        await db.push_subs.create_index("userId")
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 
     # Otomatik e-posta hatırlatmaları (vade/bakım/teklif takibi/günlük özet).
     if os.environ.get("NOTIFY_LOOP_DISABLED") != "1":
         app.state.notify_task = asyncio.create_task(_notify_loop())
+
+    # Kullanıcı bildirimleri: sabah özeti + akşam akıllı hatırlatma/ipucu.
+    if os.environ.get("ENGAGE_LOOP_DISABLED") != "1":
+        app.state.engage_task = asyncio.create_task(_engage_loop())
 
     # Gecelik veritabanı yedeği (BACKUP_BUCKET ayarlıysa).
     if os.environ.get("BACKUP_BUCKET") and os.environ.get("BACKUP_LOOP_DISABLED") != "1":

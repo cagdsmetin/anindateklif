@@ -17,6 +17,23 @@ import { theme } from '@/src/lib/theme';
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
 
+// Web: "Ana Ekrana Ekle" ile uygulama gibi açılabilsin (iPhone'da web push
+// için şart). Web çıktısı "single" olduğu için +html.tsx kullanılmıyor;
+// etiketleri açılışta ekliyoruz.
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.querySelector('link[rel="manifest"]')) {
+  const add = (tag: string, attrs: Record<string, string>) => {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    document.head.appendChild(el);
+  };
+  add('link', { rel: 'manifest', href: '/manifest.json' });
+  add('link', { rel: 'apple-touch-icon', href: '/icon-192.png' });
+  add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+  add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+  add('meta', { name: 'apple-mobile-web-app-title', content: 'Anında Teklif' });
+  add('meta', { name: 'theme-color', content: '#2563EB' });
+}
+
 function RouteGuard({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
   const router = useRouter();

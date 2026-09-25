@@ -18,6 +18,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
 import SystemStatusCard from '@/src/components/SystemStatusCard';
+import BroadcastCard from '@/src/components/BroadcastCard';
 
 function fmtDate(iso?: string | null): string {
   if (!iso) return '';
@@ -248,6 +249,7 @@ export default function AdminCustomersScreen() {
           </View>
 
           <SystemStatusCard />
+          <BroadcastCard />
 
           {pendingAlbertGenau.length > 0 ? (
             <View style={s.pendingBox}>

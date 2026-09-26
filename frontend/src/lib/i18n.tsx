@@ -148,6 +148,7 @@ const tr: Dict = {
     saving: 'Kaydediliyor…',
   },
   coupons: {
+    usedTag: 'Kupon',
     field: 'Kupon kodu',
     fieldPh: 'ör. YAZ25',
     applied: '{kod} uygulandı, iskonto güncellendi',
@@ -1818,6 +1819,7 @@ const en: Dict = {
     saving: 'Saving…',
   },
   coupons: {
+    usedTag: 'Coupon',
     field: 'Coupon code',
     fieldPh: 'e.g. SUMMER25',
     applied: '{kod} applied, discount updated',
@@ -3488,6 +3490,7 @@ const it: Dict = {
     saving: 'Salvataggio…',
   },
   coupons: {
+    usedTag: 'Coupon',
     field: 'Codice coupon',
     fieldPh: 'es. ESTATE25',
     applied: '{kod} applicato, sconto aggiornato',

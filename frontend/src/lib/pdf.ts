@@ -53,6 +53,16 @@ const contactLink = (kind: 'email' | 'web', value: string, extraStyle: string = 
   return `<a href="${esc(href)}" style="color:inherit;text-decoration:underline;text-underline-offset:2.5px;font-size:0.94em;${extraStyle}">${esc(v)}</a>`;
 };
 
+// İndirim satırının başlığı: kupon kullanıldıysa "İskonto" yerine kupon kodu
+// (kurla çevrilmiş kuponlarda yüzde küsuratlı çıkar, müşteriye anlamsız
+// görünür); kupon yoksa "İskonto (%x)" (en fazla 2 hane).
+const iskontoEtiket = (quote: QuoteT, upperCase = false) => {
+  const label = quote.kuponKodu
+    ? `${upperCase ? 'KUPON KODU' : 'Kupon Kodu'}: ${esc(quote.kuponKodu)}`
+    : `${upperCase ? 'İSKONTO' : 'İskonto'} (%${Number(quote.iskonto || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 })})`;
+  return label;
+};
+
 const trDate = (iso: string) => {
   if (!iso) return '';
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -131,7 +141,17 @@ export function buildQuotePdfHtml(company: CompanyT, quote: QuoteT, template: Pd
     : template === 'kurumsal' ? buildKurumsalHtml(company, quote)
     : template === 'renkli' ? buildRenkliHtml(company, quote)
     : buildClassicHtml(company, quote);
-  return withCizimPages(company, quote, govde);
+  return withCizimPages(company, quote, withPrintBreaks(govde));
+}
+
+// Telefonda (expo-print, gerçek yazdırma motoru) tablo satırı/toplam satırı
+// sayfa sonunda ikiye bölünmesin, tablo başlığı her sayfada tekrarlansın.
+// Web'deki PDF (pdf-web.ts) de break-inside:avoid öğeleri bölünmez sayar.
+const PRINT_BREAK_CSS = 'tr, img, .tot-row, .totals-row { break-inside: avoid; page-break-inside: avoid; } thead { display: table-header-group; }';
+function withPrintBreaks(html: string): string {
+  return html.includes('</head>')
+    ? html.replace('</head>', `<style>${PRINT_BREAK_CSS}</style></head>`)
+    : `<style>${PRINT_BREAK_CSS}</style>` + html;
 }
 
 // Teknik çizim sayfaları beş şablonun da SONUNA eklenir. Her şablonu tek tek
@@ -395,7 +415,7 @@ function buildClassicHtml(company: CompanyT, quote: QuoteT): string {
     </div>
     <div class="bt-right">
       <div class="tot-row"><div class="l">ARA TOPLAM</div><div class="v">${fmt(araToplamRaw, cur)}</div></div>
-      ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">İSKONTO (%${quote.iskonto})</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+      ${quote.iskonto > 0 ? `<div class="tot-row"><div class="l">${iskontoEtiket(quote, true)}</div><div class="v" style="color:#dc2626">-${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
       ${quote.kdvOrani > 0 ? `<div class="tot-row"><div class="l">KDV (%${quote.kdvOrani})</div><div class="v">${fmt(quote.kdvTutar || 0, cur)}</div></div>` : ''}
       <div class="tot-row grand"><div class="l">GENEL TOPLAM${quote.kdvOrani > 0 ? ' (KDV DAHİL)' : ''}</div><div class="v">${fmt(quote.genelToplam || 0, cur)}</div></div>
       <div class="sign-box">Onay / İmza :${company.imzaMetni ? `\n${esc(company.imzaMetni)}` : ''}</div>
@@ -650,7 +670,7 @@ function buildModernHtml(company: CompanyT, quote: QuoteT): string {
       </div>
       <div class="totals-card">
         <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
-        ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+        ${showIskonto ? `<div class="totals-row"><div class="totals-k">${iskontoEtiket(quote)}</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
         ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
         <div class="totals-div"></div>
         <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
@@ -904,7 +924,7 @@ function buildMinimalHtml(company: CompanyT, quote: QuoteT): string {
     </div>
     <div class="totals-col">
       <div class="totals-row"><div class="totals-k">Ara Toplam</div><div class="totals-v">${fmt(araToplamRaw, cur)}</div></div>
-      ${showIskonto ? `<div class="totals-row"><div class="totals-k">İskonto (%${esc(String(quote.iskonto))})</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
+      ${showIskonto ? `<div class="totals-row"><div class="totals-k">${iskontoEtiket(quote)}</div><div class="totals-v">- ${fmt(quote.iskontoTutar, cur)}</div></div>` : ''}
       ${showKdv ? `<div class="totals-row"><div class="totals-k">KDV (%${esc(String(quote.kdvOrani))})</div><div class="totals-v">${fmt(quote.kdvTutar, cur)}</div></div>` : ''}
       <div class="grand-wrap">
         <div class="grand-label">Genel Toplam${showKdv ? ' (KDV Dahil)' : ''}</div>
@@ -1115,7 +1135,7 @@ function buildKurumsalHtml(company: CompanyT, quote: QuoteT): string {
         </div>
         <div class="totals-card">
           <div class="totals-row"><span>Ara Toplam</span><span>${fmt(araToplamRaw, cur)}</span></div>
-          ${showIskonto ? `<div class="totals-row"><span>İskonto (%${esc(String(quote.iskonto))})</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
+          ${showIskonto ? `<div class="totals-row"><span>${iskontoEtiket(quote)}</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
           ${showKdv ? `<div class="totals-row"><span>KDV (%${esc(String(quote.kdvOrani))})</span><span>${fmt(quote.kdvTutar, cur)}</span></div>` : ''}
           <div class="totals-grand"><span class="l">Genel Toplam</span><span class="v">${fmt(quote.genelToplam, cur)}</span></div>
           ${showKdv ? `<div class="kdv-note">KDV Dahil</div>` : ''}
@@ -1288,7 +1308,7 @@ function buildRenkliHtml(company: CompanyT, quote: QuoteT): string {
       <div class="totals-wrap">
         <div class="totals-inner">
           <div class="totals-row"><span>Ara Toplam</span><span>${fmt(araToplamRaw, cur)}</span></div>
-          ${showIskonto ? `<div class="totals-row"><span>İskonto (%${esc(String(quote.iskonto))})</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
+          ${showIskonto ? `<div class="totals-row"><span>${iskontoEtiket(quote)}</span><span>- ${fmt(quote.iskontoTutar, cur)}</span></div>` : ''}
           ${showKdv ? `<div class="totals-row"><span>KDV (%${esc(String(quote.kdvOrani))})</span><span>${fmt(quote.kdvTutar, cur)}</span></div>` : ''}
           <div class="grand-badge"><span class="l">Genel Toplam</span><span class="v">${fmt(quote.genelToplam, cur)}</span></div>
           ${showKdv ? `<div class="kdv-note">KDV Dahil</div>` : ''}

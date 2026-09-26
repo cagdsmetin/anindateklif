@@ -466,6 +466,12 @@ export default function HistoryScreen() {
                     <Ionicons name="layers-outline" size={11} color={theme.colors.textMuted} />
                     <Text style={s.hDate} numberOfLines={1}>{quote.items.length} kalem</Text>
                   </View>
+                  {quote.kuponKodu ? (
+                    <View style={s.kuponTag} testID={`history-kupon-${quote.id}`}>
+                      <Ionicons name="pricetag" size={10} color={theme.colors.greenText} />
+                      <Text style={s.kuponTagText} numberOfLines={1}>{t('coupons.usedTag')}: {quote.kuponKodu}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={s.amountCol}>
                   <Text style={s.hAmount} numberOfLines={1}>{fmt(quote.genelToplam, quote.paraBirimi)}</Text>
@@ -1005,6 +1011,8 @@ const s = themedStyles(() => StyleSheet.create({
   hNo: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, letterSpacing: 0.3 },
   hFirma: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
   hProje: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 1 },
+  kuponTag: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 5, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: theme.colors.green + '1F' },
+  kuponTagText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.greenText },
   hDate: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 4 },
   hAmount: { fontSize: 15, fontWeight: '900', color: theme.colors.primary, letterSpacing: -0.3 },
   hAmountEquiv: { fontSize: 9.5, color: theme.colors.textMuted, marginTop: 1 },

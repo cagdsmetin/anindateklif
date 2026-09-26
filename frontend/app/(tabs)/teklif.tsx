@@ -24,6 +24,7 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
+import { convertBetween, currentRateFor } from '@/src/lib/tahsilat-utils';
 import { convertFromEur, extractZipSize, isZipItem, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, zipAciklamaGuncelle, zipSecimOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
 import { zipCizimEsit, zipCizimModeli } from '@/src/lib/zip-cizim';
@@ -507,14 +508,26 @@ export default function EditorScreen() {
     try {
       const c = await api.validateCoupon(activeCompany.id, kod);
       let pct = c.deger;
+      let note = '';
       if (c.tip === 'tutar') {
-        if (c.paraBirimi !== paraBirimi) { showToast(fill(t('coupons.curMismatch'), { cur: c.paraBirimi })); return; }
         if (subtotal <= 0) { showToast(t('coupons.addItemsFirst')); return; }
-        pct = Math.min(100, (c.deger / subtotal) * 100);
+        let tutar = c.deger;
+        // Kupon teklifle farklı para birimindeyse uygulamanın güncel kuruyla
+        // (Kasa/Tahsilat'taki aynı kur servisi) teklifin para birimine çevir.
+        if (c.paraBirimi !== paraBirimi) {
+          const rates = await api.rates().catch(() => null);
+          const converted = convertBetween(c.deger, c.paraBirimi, paraBirimi, rates);
+          if (converted == null) { showToast(fill(t('coupons.noRate'), { cur: c.paraBirimi })); return; }
+          tutar = converted;
+          const kurlar = [c.paraBirimi, paraBirimi].filter((x) => x !== 'TRY' && x !== 'TL')
+            .map((x) => `1 ${x} = ₺${currentRateFor(x, rates).toLocaleString('tr-TR', { maximumFractionDigits: 4 })}`).join(', ');
+          note = ` (${fmt(c.deger, c.paraBirimi)} = ${fmt(tutar, paraBirimi)}; ${kurlar})`;
+        }
+        pct = Math.min(100, (tutar / subtotal) * 100);
       }
       setIskonto(String(Math.round(pct * 10000) / 10000));
       setKuponKodu(c.kod); setKuponInput(c.kod);
-      showToast(fill(t('coupons.applied'), { kod: c.kod }));
+      showToast(fill(t('coupons.applied'), { kod: c.kod }) + note);
     } catch (e: any) {
       showToast(e?.message || t('coupons.invalid'));
     } finally { setKuponBusy(false); }

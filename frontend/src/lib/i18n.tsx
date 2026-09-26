@@ -259,7 +259,7 @@ const tr: Dict = {
     saveErr: 'Kaydedilemedi',
     note: 'Teklifi oluşturan kişiye yazılır, onay tarihine göre döneme girer. Ciro KDV hariç, iskonto sonrasıdır; dövizli teklifler güncel kurla TL’ye çevrilir.',
     noRates: 'Kurlar alınamadı; dövizli teklifler hesaba katılmadı.',
-    ownerOnly: 'Bu ekranı sadece firma sahibi görebilir.',
+    ownerOnly: 'Bu ekranı sadece yöneticiler görebilir.',
   },
   notif: {
     title: 'Bildirimler',
@@ -385,6 +385,11 @@ const tr: Dict = {
     sign: 'Ad Soyad / İmza',
   },
   kasaX: {
+    staffNote: 'Burada yalnız kendi girdiğiniz gelir/giderler ve müşterilerinizden alınan tahsilatlar görünür. Kayıt silme yetkisi yöneticilerdedir.',
+    tahsilatStaffNote: 'Burada yalnız sizin müşterilerinizin hesap hareketleri görünür. Kayıt silme yetkisi yöneticilerdedir.',
+    customerOpt: 'Müşteri (opsiyonel)',
+    phCustomer: 'Harcama bir müşteriyle ilgiliyse müşteri adı',
+    adsManagersOnly: 'Reklam İstihbaratı\'nı sadece yöneticiler görebilir.',
     tabIslemler: 'İşlemler',
     tabTekrar: 'Tekrarlayan',
     tabAnaliz: 'Analiz',
@@ -1923,7 +1928,7 @@ const en: Dict = {
     saveErr: 'Could not save',
     note: 'Credited to whoever created the quote, by approval date. Revenue excludes VAT, after discount; foreign-currency quotes are converted at the current rate.',
     noRates: 'Exchange rates unavailable; foreign-currency quotes excluded.',
-    ownerOnly: 'Only the company owner can view this screen.',
+    ownerOnly: 'Only managers can view this screen.',
   },
   notif: {
     title: 'Notifications',
@@ -2049,6 +2054,11 @@ const en: Dict = {
     sign: 'Name / Signature',
   },
   kasaX: {
+    staffNote: 'You only see income/expenses you entered and payments collected from your own customers. Only managers can delete records.',
+    tahsilatStaffNote: 'Only your own customers\' account activity is shown here. Only managers can delete records.',
+    customerOpt: 'Customer (optional)',
+    phCustomer: 'Customer name if the expense is for a customer',
+    adsManagersOnly: 'Only managers can view Ad Intelligence.',
     tabIslemler: 'Transactions',
     tabTekrar: 'Recurring',
     tabAnaliz: 'Analysis',
@@ -3587,7 +3597,7 @@ const it: Dict = {
     saveErr: 'Impossibile salvare',
     note: 'Attribuita a chi ha creato il preventivo, in base alla data di approvazione. Fatturato IVA esclusa e al netto dello sconto; le valute estere sono convertite al cambio attuale.',
     noRates: 'Cambi non disponibili; preventivi in valuta esclusi.',
-    ownerOnly: 'Solo il titolare può vedere questa schermata.',
+    ownerOnly: 'Solo i responsabili possono vedere questa schermata.',
   },
   notif: {
     title: 'Notifiche',
@@ -3713,6 +3723,11 @@ const it: Dict = {
     sign: 'Nome / Firma',
   },
   kasaX: {
+    staffNote: 'Qui vedi solo le entrate/uscite che hai inserito e gli incassi dei tuoi clienti. Solo i responsabili possono eliminare i record.',
+    tahsilatStaffNote: 'Qui vedi solo i movimenti dei tuoi clienti. Solo i responsabili possono eliminare i record.',
+    customerOpt: 'Cliente (opzionale)',
+    phCustomer: 'Nome del cliente se la spesa riguarda un cliente',
+    adsManagersOnly: 'Solo i responsabili possono vedere Ad Intelligence.',
     tabIslemler: 'Movimenti',
     tabTekrar: 'Ricorrenti',
     tabAnaliz: 'Analisi',

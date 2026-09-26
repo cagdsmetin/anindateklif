@@ -33,19 +33,21 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     { name: 'kuponlar', title: tt('nav.kuponlar'), icon: 'pricetags', color: m.kupon },
     { name: 'yorumlar', title: tt('nav.yorumlar'), icon: 'star', color: m.yorum },
     { name: 'leads', title: tt('nav.musteriAvcisi'), icon: 'search', color: m.lead },
-    { name: 'ads-intel', title: tt('nav.reklamIstihbarati'), icon: 'megaphone', color: m.reklam },
     { name: 'efatura', title: tt('nav.eFatura'), icon: 'receipt', color: m.efatura },
     { name: 'reminders', title: tt('nav.hatirlatmalar'), icon: 'notifications', color: m.hatirlatma },
     { name: 'calendar', title: tt('nav.takvim'), icon: 'calendar', color: m.hatirlatma },
     { name: 'contracts', title: tt('nav.sozlesmeler'), icon: 'document-lock', color: m.sozlesme },
     { name: 'reports', title: tt('nav.raporlar'), icon: 'bar-chart', color: m.raporlar },
   ];
-  // Kısıtlı personel (staff_role !== 'admin') Kasa/Tahsilat'ı hiç göremesin —
-  // gerçek erişim engeli backend'de (403), bu sadece o sekmeleri gizliyor.
+  // Reklam İstihbaratı sadece yöneticilere (firma sahibi + admin rollü
+  // personel) gösterilir; gerçek engel backend'de (403).
   if (!opts?.restricted) {
-    items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
-    items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
+    items.splice(items.findIndex((i) => i.name === 'efatura'), 0, { name: 'ads-intel', title: tt('nav.reklamIstihbarati'), icon: 'megaphone', color: m.reklam });
   }
+  // Kasa/Tahsilat herkese açık: kısıtlı personel backend'den yalnız kendi
+  // müşterilerinin hareketlerini ve kendi harcamalarını alır, silemez.
+  items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
+  items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
   items.push({ name: 'company', title: tt('nav.firma'), icon: 'business', color: m.firma });
   // AI Asistan artık sol menüde ayrı bir madde olarak gösterilmiyor (kullanıcı
   // isteğiyle kaldırıldı) — sayfaya route hâlâ var (app/(tabs)/assistant),
@@ -60,6 +62,9 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
     // teklifleri (durum dağılımı + fiyat detayları) izleyebilsin diye --
     // personel ekranıyla aynı şekilde sadece firma sahibine gösterilir.
     items.push({ name: 'personel-teklifleri', title: tt('nav.personelTeklifleri'), icon: 'pie-chart', color: theme.colors.modules.raporlar });
+  }
+  // Personel Primi: yöneticiler (firma sahibi + admin rollü personel).
+  if (!opts?.restricted) {
     items.push({ name: 'prim', title: tt('nav.prim'), icon: 'trophy', color: theme.colors.modules.prim });
   }
   // Hediye kodu üretme ekranı sadece uygulamayı işleten admin hesabına gösterilir.

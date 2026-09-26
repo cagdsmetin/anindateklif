@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import { YONTEMLER, customerKey, convertBetween, singleDebtCurrency } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
@@ -33,6 +34,9 @@ export default function CustomerLedgerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, showToast } = useApp();
+  const { user: me } = useAuth();
+  // Kayıt silme yöneticilerde (backend de 403 döner).
+  const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
   const params = useLocalSearchParams<{ customerId?: string; musteriAdi?: string; musteriTelefon?: string }>();
 
   const customerId = typeof params.customerId === 'string' ? params.customerId : '';
@@ -287,9 +291,9 @@ export default function CustomerLedgerScreen() {
                   <Text style={[s.entryAmount, { color: tx.tur === 'borc' ? '#DC2626' : '#059669' }]}>
                     {tx.tur === 'borc' ? '+' : '-'}{fmt(tx.tutar, tx.paraBirimi)}
                   </Text>
-                  <TouchableOpacity style={s.deleteBtn} onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  {!restricted && <TouchableOpacity style={s.deleteBtn} onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name="trash-outline" size={15} color={theme.colors.textMuted} />
-                  </TouchableOpacity>
+                  </TouchableOpacity>}
                 </View>
                 </Reveal>
               ))}

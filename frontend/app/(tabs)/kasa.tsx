@@ -12,6 +12,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, KasaSettingsT, RatesT } from '@/src/lib/api';
 import KasaAnaliz from '@/src/components/kasa/KasaAnaliz';
@@ -45,8 +46,13 @@ function monthKey(d: string) { return (d || '').slice(0, 7); }
 
 export default function KasaScreen() {
   const { t, lang } = useLanguage();
-  const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast, quotes, reloadKasa } = useApp();
+  const { kasa, addKasaEntry, deleteKasaEntry, activeCompany, showToast, quotes, reloadKasa, tahsilat } = useApp();
+  const { user: me } = useAuth();
+  // Kısıtlı personel: yalnız kendi gelir/giderlerini girer, kendi
+  // kayıtlarını görür, silemez; kategori/hesap/tekrarlayan/analiz yöneticide.
+  const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
   const [tab, setTab] = useState<KasaTab>('islemler');
+  const [musteriAdi, setMusteriAdi] = useState('');
   const [settings, setSettings] = useState<KasaSettingsT | null>(null);
   const [hesap, setHesap] = useState('Ana Kasa');
   const [hesapFilter, setHesapFilter] = useState<string | null>(null);
@@ -59,7 +65,15 @@ export default function KasaScreen() {
   // form dogrudan gider kaydinda acilir.
   const kasaParams = useLocalSearchParams<{ tur?: string }>();
   const [tur, setTur] = useState<'gelir' | 'gider'>(kasaParams.tur === 'gider' ? 'gider' : 'gelir');
-  const [kategori, setKategori] = useState(GELIR_KATEGORILER[0]);
+  const [kategori, setKategori] = useState(kasaParams.tur === 'gider' ? GIDER_KATEGORILER[0] : GELIR_KATEGORILER[0]);
+  // Müşteri önerileri: personel yalnız kendi müşterilerini (Tahsilat'ta
+  // görebildikleri) görür; yönetici tüm Tahsilat müşterilerini.
+  const musteriOnerileri = useMemo(() => {
+    const qq = musteriAdi.trim().toLowerCase();
+    if (!qq) return [];
+    const names = Array.from(new Set(tahsilat.map((x) => x.musteriAdi).filter(Boolean)));
+    return names.filter((n) => n.toLowerCase().includes(qq) && n !== musteriAdi.trim()).slice(0, 5);
+  }, [musteriAdi, tahsilat]);
   const [tutar, setTutar] = useState('');
   const [paraBirimi, setParaBirimi] = useState('TRY');
   const [yontem, setYontem] = useState('Nakit');
@@ -208,10 +222,11 @@ export default function KasaScreen() {
     if (isDiger && !notlar.trim()) { showToast(t('kasa.s007')); return; }
     setSaving(true);
     try {
-      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates), hesap, kdvOrani: tur === 'gider' ? kdvOrani : 0 });
+      await addKasaEntry({ tur, kategori, tutar: Number(tutar), paraBirimi, yontem, notlar, tarih: todayIso(), kurTRY: currentRateFor(paraBirimi, rates), hesap, kdvOrani: tur === 'gider' ? kdvOrani : 0, musteriAdi: tur === 'gider' ? musteriAdi.trim() : '' });
       showToast(tur === 'gelir' ? t('kasa.s033') : t('kasa.s034'));
       setTutar('');
       setNotlar('');
+      setMusteriAdi('');
     } catch (e: any) {
       showToast(t('common.errorPrefix') + (e?.message || ''));
     } finally {
@@ -274,7 +289,14 @@ export default function KasaScreen() {
             ]}
           />
 
-          <View style={s.compareRow} testID="kasa-compare">
+          {restricted && (
+            <View style={s.staffNote} testID="kasa-staff-note">
+              <Ionicons name="lock-closed-outline" size={14} color={theme.colors.textMuted} />
+              <Text style={s.staffNoteText}>{t('kasaX.staffNote')}</Text>
+            </View>
+          )}
+
+          {!restricted && <View style={s.compareRow} testID="kasa-compare">
             <Ionicons name="trending-up" size={14} color={theme.colors.textMuted} />
             <Text style={s.compareText}>
               {t('kasaX.vsLastMonth')}{'  '}
@@ -282,16 +304,16 @@ export default function KasaScreen() {
               <CompareVal label={t('kasaX.expense')} pct={monthCompare.gider} invert />{'  ·  '}
               <CompareVal label={t('kasaX.net')} pct={monthCompare.net} />
             </Text>
-          </View>
+          </View>}
 
-          <View style={s.tabBar}>
+          {!restricted && <View style={s.tabBar}>
             {TABS.map((tb) => (
               <TouchableOpacity key={tb.key} style={[s.tabBtn, tab === tb.key && s.tabBtnActive]} onPress={() => setTab(tb.key)} testID={`kasa-tab-${tb.key}`}>
                 <Ionicons name={tb.icon} size={15} color={tab === tb.key ? '#fff' : theme.colors.textMuted} />
                 <Text style={[s.tabText, tab === tb.key && s.tabTextActive]} numberOfLines={1}>{t(tb.label)}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </View>}
 
           {tab === 'tekrarlayan' && (
             <KasaRecurring
@@ -327,9 +349,9 @@ export default function KasaScreen() {
                   <Text style={[s.chipText, kategori === k && s.chipTextActive]}>{statusLabel(lang, k)}</Text>
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('kategori'); setNewName(''); }} testID="kasa-kategori-ekle">
+              {!restricted && <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('kategori'); setNewName(''); }} testID="kasa-kategori-ekle">
                 <Text style={s.chipAddText}>{t('kasaX.addCategory')}</Text>
-              </TouchableOpacity>
+              </TouchableOpacity>}
             </View>
             {adding === 'kategori' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={tur === 'gelir' ? t('kasaX.newIncomeCat') : t('kasaX.newExpenseCat')} />}
 
@@ -366,9 +388,9 @@ export default function KasaScreen() {
                   <Text style={[s.chipText, hesap === h && s.chipTextActive]}>{statusLabel(lang, h)}</Text>
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('hesap'); setNewName(''); }} testID="kasa-hesap-ekle">
+              {!restricted && <TouchableOpacity style={[s.chip, s.chipAdd]} onPress={() => { setAdding('hesap'); setNewName(''); }} testID="kasa-hesap-ekle">
                 <Text style={s.chipAddText}>{t('kasaX.addAccount')}</Text>
-              </TouchableOpacity>
+              </TouchableOpacity>}
             </View>
             {adding === 'hesap' && <AddNameRow value={newName} onChange={setNewName} onSubmit={addName} onCancel={() => setAdding(null)} placeholder={t('kasaX.phAccount')} />}
 
@@ -382,6 +404,17 @@ export default function KasaScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
+                <Text style={[s.label, { marginTop: 12 }]}>{upper(t('kasaX.customerOpt'))}</Text>
+                <MotionInput style={s.input} value={musteriAdi} onChangeText={setMusteriAdi} placeholder={t('kasaX.phCustomer')} placeholderTextColor="#94a3b8" testID="kasa-musteri-input" />
+                {musteriOnerileri.length > 0 && (
+                  <View style={[s.chipRow, { marginTop: 6 }]}>
+                    {musteriOnerileri.map((n) => (
+                      <TouchableOpacity key={n} style={s.chip} onPress={() => setMusteriAdi(n)}>
+                        <Text style={s.chipText} numberOfLines={1}>{n}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </>
             )}
 
@@ -453,7 +486,7 @@ export default function KasaScreen() {
                   iconSize={16}
                 />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
+                  <Text style={s.txKat} numberOfLines={1}>{statusLabel(lang, k.kategori)}{k.musteriAdi && k.kategori !== 'Tahsilat' ? ` · ${k.musteriAdi}` : ''}{k.notlar ? ` · ${k.notlar}` : ''}</Text>
                   <Text style={s.txMeta}>
                     {k.recurringId ? '↻ ' : ''}{statusLabel(lang, k.yontem)} · {k.tarih}
                     {hesaplar.length > 1 || (k.hesap && k.hesap !== 'Ana Kasa') ? ` · ${statusLabel(lang, k.hesap || 'Ana Kasa')}` : ''}
@@ -461,9 +494,9 @@ export default function KasaScreen() {
                   </Text>
                 </View>
                 <Text style={[s.txAmount, { color: k.tur === 'gelir' ? theme.colors.green : theme.colors.red }]} numberOfLines={1}>{k.tur === 'gelir' ? '+' : '-'}{fmt(k.tutar, k.paraBirimi)}</Text>
-                <TouchableOpacity onPress={() => remove(k.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`kasa-delete-${k.id}`}>
+                {!restricted && <TouchableOpacity onPress={() => remove(k.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`kasa-delete-${k.id}`}>
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                </TouchableOpacity>
+                </TouchableOpacity>}
               </View>
               </Reveal>
             ))
@@ -506,6 +539,8 @@ const s = themedStyles(() => StyleSheet.create({
   chipAdd: { borderStyle: 'dashed', borderColor: theme.colors.modules.kasa },
   chipAddText: { fontSize: 12, fontWeight: '800', color: theme.colors.modules.kasa },
   container: { flex: 1, backgroundColor: theme.colors.bg },
+  staffNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line },
+  staffNoteText: { flex: 1, fontSize: 11.5, lineHeight: 16, color: theme.colors.textMuted },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },

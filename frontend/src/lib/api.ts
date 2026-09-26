@@ -976,6 +976,9 @@ export type KasaEntryT = {
   hesap?: string; // kasa/banka hesabı (varsayılan 'Ana Kasa')
   kdvOrani?: number; // >0 ise tutar KDV dahil
   recurringId?: string | null; // tekrarlayan kuraldan üretildiyse
+  personelId?: string; // kaydı giren personel (boşsa yönetici)
+  customerId?: string; // harcama bir müşteriyle ilgiliyse
+  musteriAdi?: string;
 };
 
 export type KasaSettingsT = {
@@ -1017,6 +1020,7 @@ export type TahsilatEntryT = {
   tarih: string;
   quoteId?: string; // dolu ise: teklif "Onaylandı" durumuna geçtiğinde otomatik oluşturuldu
   kurTRY?: number; // paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (referans)
+  personelId?: string; // müşteriden sorumlu personel (boşsa teklif/müşteri üzerinden çözülür)
 };
 
 export type CustomerT = {

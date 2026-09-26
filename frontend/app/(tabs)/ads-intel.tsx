@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { upper } from '@/src/lib/i18n';
+import { upper, useLanguage } from '@/src/lib/i18n';
 import {
   ActivityIndicator,
   Linking,
@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import { api, AdRecordT, AdWatchItemT } from '@/src/lib/api';
 import { MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
@@ -44,7 +45,11 @@ export default function AdsIntelScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { activeCompany, showToast } = useApp();
-  const companyId = activeCompany?.id;
+  const { user: me } = useAuth();
+  const { t } = useLanguage();
+  // Sadece yöneticiler (firma sahibi + admin rollü personel); backend de 403 döner.
+  const isManager = !me?.is_staff || me?.staff_role === 'admin';
+  const companyId = isManager ? activeCompany?.id : undefined;
 
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState<AdRecordT[]>([]);
@@ -251,7 +256,7 @@ export default function AdsIntelScreen() {
     }
   };
 
-  if (!activeCompany) {
+  if (!activeCompany || !isManager) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
         <View style={s.header}>
@@ -261,7 +266,7 @@ export default function AdsIntelScreen() {
           <Text style={s.headerTitle}>Reklam İstihbaratı</Text>
           <View style={s.headerBtn} />
         </View>
-        <View style={s.empty}><Text style={s.emptyText}>Önce bir firma seçin.</Text></View>
+        <View style={s.empty}><Text style={s.emptyText}>{isManager ? 'Önce bir firma seçin.' : t('kasaX.adsManagersOnly')}</Text></View>
       </SafeAreaView>
     );
   }

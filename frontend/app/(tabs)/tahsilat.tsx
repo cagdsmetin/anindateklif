@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
@@ -34,6 +35,10 @@ function todayIso() { return new Date().toISOString().split('T')[0]; }
 export default function TahsilatScreen() {
   const { t, lang } = useLanguage();
   const { tahsilat, addTahsilatEntry, deleteTahsilatEntry, customers, activeCompany, showToast, reloadTahsilat } = useApp();
+  const { user: me } = useAuth();
+  // Kısıtlı personel: backend yalnız kendi müşterilerinin hareketlerini
+  // döndürür; silme yöneticilerde, öneriler de kendi müşterileriyle sınırlı.
+  const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
@@ -73,8 +78,14 @@ export default function TahsilatScreen() {
   const suggestions = useMemo(() => {
     const query = musteriAdi.trim().toLowerCase();
     if (!query) return [];
-    return customers.filter((c) => c.firma.toLowerCase().includes(query)).slice(0, 6);
-  }, [musteriAdi, customers]);
+    let pool = customers;
+    if (restricted) {
+      const ids = new Set(tahsilat.map((x) => x.customerId).filter(Boolean));
+      const names = new Set(tahsilat.map((x) => (x.musteriAdi || '').trim().toLowerCase()));
+      pool = customers.filter((c) => ids.has(c.id) || names.has(c.firma.trim().toLowerCase()));
+    }
+    return pool.filter((c) => c.firma.toLowerCase().includes(query)).slice(0, 6);
+  }, [musteriAdi, customers, restricted, tahsilat]);
 
   const pickCustomer = (c: CustomerT) => {
     setMusteriAdi(c.firma);
@@ -247,6 +258,13 @@ export default function TahsilatScreen() {
               </TouchableOpacity>
             }
           />
+
+          {restricted && (
+            <View style={s.staffNote} testID="tahsilat-staff-note">
+              <Ionicons name="lock-closed-outline" size={14} color={theme.colors.textMuted} />
+              <Text style={s.staffNoteText}>{t('kasaX.tahsilatStaffNote')}</Text>
+            </View>
+          )}
 
           <Text style={s.sectionH}>{t('tahsilat.s014')}</Text>
           <View style={s.card}>
@@ -430,9 +448,9 @@ export default function TahsilatScreen() {
                     <Ionicons name="receipt-outline" size={18} color={theme.colors.modules.tahsilat} />
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`tahsilat-delete-${tx.id}`}>
+                {!restricted && <TouchableOpacity onPress={() => remove(tx.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`tahsilat-delete-${tx.id}`}>
                   <Ionicons name="trash-outline" size={18} color={theme.colors.red} />
-                </TouchableOpacity>
+                </TouchableOpacity>}
               </View>
               </Reveal>
             ))
@@ -445,6 +463,8 @@ export default function TahsilatScreen() {
 
 const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bg },
+  staffNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line },
+  staffNoteText: { flex: 1, fontSize: 11.5, lineHeight: 16, color: theme.colors.textMuted },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { color: theme.colors.textMuted },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },

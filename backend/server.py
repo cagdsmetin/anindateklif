@@ -1472,6 +1472,13 @@ class KasaEntry(BaseModel):
     hesap: str = "Ana Kasa"  # hangi kasa/banka hesabı (Kasa ayarlarından tanımlanır)
     kdvOrani: float = 0.0  # >0 ise tutar KDV dahildir; KDV özetinde indirilecek/hesaplanan KDV'ye girer
     recurringId: Optional[str] = None  # tekrarlayan bir kuraldan otomatik oluşturulduysa kuralın id'si
+    # Kaydı giren/sahiplenen personelin gerçek user_id'si (bkz. _self_id);
+    # boşsa firma sahibi/yönetici kaydıdır. Kısıtlı personel Kasa'da yalnız
+    # kendi kayıtlarını görür (bkz. list_kasa).
+    personelId: str = ""
+    # Harcama bir müşteriyle ilgiliyse (nakliye, montaj malzemesi vb.).
+    customerId: str = ""
+    musteriAdi: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1487,6 +1494,8 @@ class KasaEntryCreate(BaseModel):
     kurTRY: float = 0.0
     hesap: str = "Ana Kasa"
     kdvOrani: float = 0.0
+    customerId: str = ""
+    musteriAdi: str = ""
 
 
 class TahsilatEntry(BaseModel):
@@ -1505,6 +1514,9 @@ class TahsilatEntry(BaseModel):
     tarih: str  # YYYY-MM-DD
     quoteId: str = ""  # dolu ise: bu borç bir teklifin "Onaylandı" durumuna geçmesiyle otomatik oluşturuldu
     kurTRY: float = 0.0  # paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (bilgi amaçlı, referans)
+    # Müşteriden sorumlu personelin gerçek user_id'si; boşsa sahiplik teklif
+    # ve müşteri üzerinden çözülür (bkz. _tahsilat_owners).
+    personelId: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1538,6 +1550,9 @@ class Customer(BaseModel):
     vergiDairesi: str = ""
     il: str = ""
     ilce: str = ""
+    # Müşteriyi ekleyen kişinin gerçek user_id'si (bkz. _self_id); kısıtlı
+    # personel yalnız kendi müşterilerini görür (bkz. _visible_customers).
+    createdByUserId: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -2655,6 +2670,7 @@ class AdWatchItemCreate(BaseModel):
 
 @api_router.get("/ads-intel/records/{company_id}")
 async def list_ad_records(company_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
     await _own_company(user, company_id)
     docs = await db.ad_records.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
     return [_ad_record_out(d) for d in docs]
@@ -2662,6 +2678,7 @@ async def list_ad_records(company_id: str, user=Depends(get_current_user)):
 
 @api_router.post("/ads-intel/records")
 async def create_ad_record(payload: AdRecordCreate, user=Depends(get_current_user)):
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     obj = AdRecord(
         userId=user["user_id"],
@@ -2681,6 +2698,7 @@ async def create_ad_record(payload: AdRecordCreate, user=Depends(get_current_use
 
 @api_router.post("/ads-intel/records/import")
 async def import_ad_records(payload: AdBulkImportRequest, user=Depends(get_current_user)):
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     if len(payload.items) > 500:
         raise HTTPException(400, "Tek seferde en fazla 500 kayıt içe aktarılabilir")
@@ -2706,6 +2724,7 @@ async def import_ad_records(payload: AdBulkImportRequest, user=Depends(get_curre
 
 @api_router.patch("/ads-intel/records/{record_id}")
 async def update_ad_record(record_id: str, payload: AdRecordUpdate, user=Depends(get_current_user)):
+    _require_manager(user)
     doc = await db.ad_records.find_one({"id": record_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Kayıt bulunamadı")
@@ -2740,12 +2759,14 @@ async def update_ad_record(record_id: str, payload: AdRecordUpdate, user=Depends
 
 @api_router.delete("/ads-intel/records/{record_id}")
 async def delete_ad_record(record_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
     await db.ad_records.delete_one({"id": record_id, "userId": user["user_id"]})
     return {"ok": True}
 
 
 @api_router.get("/ads-intel/watchlist/{company_id}", response_model=List[AdWatchItem])
 async def list_ad_watchlist(company_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
     await _own_company(user, company_id)
     docs = await db.ad_watchlist.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(200)
     return [AdWatchItem(**d) for d in docs]
@@ -2753,6 +2774,7 @@ async def list_ad_watchlist(company_id: str, user=Depends(get_current_user)):
 
 @api_router.post("/ads-intel/watchlist", response_model=AdWatchItem)
 async def create_ad_watchlist_item(payload: AdWatchItemCreate, user=Depends(get_current_user)):
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     existing = await db.ad_watchlist.count_documents({"companyId": payload.companyId, "userId": user["user_id"]})
     if existing >= 100:
@@ -2764,6 +2786,7 @@ async def create_ad_watchlist_item(payload: AdWatchItemCreate, user=Depends(get_
 
 @api_router.delete("/ads-intel/watchlist/{item_id}")
 async def delete_ad_watchlist_item(item_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
     await db.ad_watchlist.delete_one({"id": item_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -4713,35 +4736,138 @@ async def share_catalog_file_email(file_id: str, payload: CatalogFileEmailShareR
     return {"ok": True}
 
 
-def _require_kasa_access(user: Dict[str, Any]):
-    """Restricted staff (role 'staff', not 'admin') never see Kasa/Tahsilat —
-    enforced here server-side, not just by hiding the tabs in the app."""
-    if user.get("is_staff") and user.get("staff_role") != "admin":
-        raise HTTPException(status_code=403, detail="Bu bölüme erişim izniniz yok")
+def _is_manager(user: Dict[str, Any]) -> bool:
+    """Yönetici = firma sahibi ya da 'admin' rollü personel."""
+    return not user.get("is_staff") or user.get("staff_role") == "admin"
+
+
+def _require_manager(user: Dict[str, Any]):
+    if not _is_manager(user):
+        raise HTTPException(status_code=403, detail="Bu işlemi sadece yöneticiler yapabilir")
+
+
+def _cust_keys(d: Dict[str, Any]) -> List[str]:
+    """Bir tahsilat/kasa kaydının müşteri anahtarları: müşteri id'si ve
+    (büyük/küçük harf duyarsız) müşteri adı -- biri boş olabilir."""
+    keys = []
+    if (d.get("customerId") or "").strip():
+        keys.append("id:" + d["customerId"].strip())
+    name = (d.get("musteriAdi") or "").strip().lower()
+    if name:
+        keys.append("ad:" + name)
+    return keys
+
+
+async def _tahsilat_owners(user: Dict[str, Any], company_id: str, entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Her tahsilat kaydının sorumlu personelini çözer.
+
+    Sıra: kayıttaki personelId -> bağlı teklifi oluşturan kişi -> aynı
+    müşterinin (id ya da ad) tek bir sahibi varsa o. Sahibi çözülemeyen
+    kayıtları yalnız yöneticiler görür. Dönen sözlük:
+    {"by_id": {entry_id: owner}, "by_key": {cust_key: set(owner)}}."""
+    uid = user["user_id"]
+    quote_ids = list({e["quoteId"] for e in entries if e.get("quoteId")})
+    quote_owner: Dict[str, str] = {}
+    if quote_ids:
+        async for q in db.quotes.find({"userId": uid, "companyId": company_id, "id": {"$in": quote_ids}}, {"_id": 0, "id": 1, "createdByUserId": 1}):
+            # Sahiplik kaydı olmayan eski teklifler firma sahibinindir.
+            quote_owner[q["id"]] = q.get("createdByUserId") or uid
+    by_id: Dict[str, str] = {}
+    by_key: Dict[str, set] = {}
+    for e in entries:
+        owner = e.get("personelId") or (quote_owner.get(e["quoteId"], "") if e.get("quoteId") else "")
+        if owner:
+            by_id[e["id"]] = owner
+            for k in _cust_keys(e):
+                by_key.setdefault(k, set()).add(owner)
+    for e in entries:
+        if e["id"] in by_id:
+            continue
+        owners = set()
+        for k in _cust_keys(e):
+            owners |= by_key.get(k, set())
+        if len(owners) == 1:
+            by_id[e["id"]] = next(iter(owners))
+    return {"by_id": by_id, "by_key": by_key}
+
+
+async def _staff_visible_tahsilat(user: Dict[str, Any], company_id: str) -> List[Dict[str, Any]]:
+    entries = await db.tahsilat.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+    if _is_manager(user):
+        return entries
+    me = _self_id(user)
+    by_id = (await _tahsilat_owners(user, company_id, entries))["by_id"]
+    return [e for e in entries if by_id.get(e["id"]) == me]
+
+
+def _can_see_quote(user: Dict[str, Any], doc: Dict[str, Any]) -> bool:
+    """Kısıtlı personel yalnız kendi hazırladığı teklifleri görür; sahiplik
+    kaydı olmayan eski teklifler firma sahibinindir."""
+    return _is_manager(user) or (doc.get("createdByUserId") or user["user_id"]) == _self_id(user)
+
+
+async def _require_quote_access(user: Dict[str, Any], quote_id: str):
+    doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0, "createdByUserId": 1})
+    if doc and not _can_see_quote(user, doc):
+        raise HTTPException(status_code=404, detail="Teklif bulunamadı")
+
+
+async def _visible_customers(user: Dict[str, Any], company_id: str, docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Kısıtlı personelin müşterileri: kendi eklediği, kendi teklif verdiği
+    (firma adı ya da telefon eşleşmesi) ya da Tahsilat'ta ona ait olanlar."""
+    if _is_manager(user):
+        return docs
+    me = _self_id(user)
+    names, phones, ids = set(), set(), set()
+    async for q in db.quotes.find({"userId": user["user_id"], "companyId": company_id, "createdByUserId": me}, {"_id": 0, "musFirma": 1, "musTelefon": 1}):
+        if (q.get("musFirma") or "").strip():
+            names.add(q["musFirma"].strip().lower())
+        if (q.get("musTelefon") or "").strip():
+            phones.add(q["musTelefon"].strip())
+    for t in await _staff_visible_tahsilat(user, company_id):
+        if t.get("customerId"):
+            ids.add(t["customerId"])
+        if (t.get("musteriAdi") or "").strip():
+            names.add(t["musteriAdi"].strip().lower())
+    return [
+        c for c in docs
+        if c.get("createdByUserId") == me or c.get("id") in ids
+        or (c.get("firma") or "").strip().lower() in names
+        or ((c.get("telefon") or "").strip() and c["telefon"].strip() in phones)
+    ]
+
+
+async def _require_customer_access(user: Dict[str, Any], doc: Dict[str, Any]):
+    if not await _visible_customers(user, doc.get("companyId", ""), [doc]):
+        raise HTTPException(status_code=404, detail="Customer not found")
 
 
 # ============ KASA (GELİR/GİDER) ROUTES ============
 @api_router.get("/kasa/{company_id}", response_model=List[KasaEntry])
 async def list_kasa(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
     await _own_company(user, company_id)
     await _materialize_recurring(user["user_id"], company_id)
     docs = await db.kasa.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+    if not _is_manager(user):
+        # Kısıtlı personel firmanın kasasını görmez: yalnız kendi girdiği
+        # gelir/giderler + kendi müşterilerinden yapılan tahsilatların gelirleri.
+        me = _self_id(user)
+        mine = {t["id"] for t in await _staff_visible_tahsilat(user, company_id)}
+        docs = [d for d in docs if d.get("personelId") == me or (d.get("tahsilatId") and d["tahsilatId"] in mine)]
     return [KasaEntry(**d) for d in docs]
 
 
 @api_router.post("/kasa", response_model=KasaEntry)
 async def create_kasa_entry(payload: KasaEntryCreate, user=Depends(get_current_user)):
-    _require_kasa_access(user)
     await _own_company(user, payload.companyId)
-    obj = KasaEntry(userId=user["user_id"], **payload.dict())
+    obj = KasaEntry(userId=user["user_id"], personelId="" if _is_manager(user) else _self_id(user), **payload.dict())
     await db.kasa.insert_one(obj.dict())
     return obj
 
 
 @api_router.delete("/kasa/{entry_id}")
 async def delete_kasa_entry(entry_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await db.kasa.delete_one({"id": entry_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -4771,7 +4897,6 @@ def _clean_names(items: List[str], limit: int = 50) -> List[str]:
 
 @api_router.get("/kasa-settings/{company_id}", response_model=KasaSettings)
 async def get_kasa_settings(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
     await _own_company(user, company_id)
     doc = await db.kasa_settings.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0, "userId": 0})
     return KasaSettings(**(doc or {"companyId": company_id}))
@@ -4779,7 +4904,7 @@ async def get_kasa_settings(company_id: str, user=Depends(get_current_user)):
 
 @api_router.put("/kasa-settings", response_model=KasaSettings)
 async def put_kasa_settings(payload: KasaSettings, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     obj = KasaSettings(
         companyId=payload.companyId,
@@ -4897,7 +5022,7 @@ async def _materialize_recurring(user_id: str, company_id: str) -> int:
 
 @api_router.get("/kasa-recurring/{company_id}", response_model=List[KasaRecurring])
 async def list_kasa_recurring(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     docs = await db.kasa_recurring.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(200)
     return [KasaRecurring(**d) for d in docs]
@@ -4905,7 +5030,7 @@ async def list_kasa_recurring(company_id: str, user=Depends(get_current_user)):
 
 @api_router.post("/kasa-recurring", response_model=KasaRecurring)
 async def create_kasa_recurring(payload: KasaRecurringCreate, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     if payload.tur not in ("gelir", "gider"):
         raise HTTPException(status_code=422, detail="Tür gelir veya gider olmalı")
@@ -4922,7 +5047,7 @@ async def create_kasa_recurring(payload: KasaRecurringCreate, user=Depends(get_c
 
 @api_router.patch("/kasa-recurring/{rule_id}", response_model=KasaRecurring)
 async def patch_kasa_recurring(rule_id: str, payload: KasaRecurringPatch, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     doc = await db.kasa_recurring.find_one({"id": rule_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Kural bulunamadı")
@@ -4934,7 +5059,7 @@ async def patch_kasa_recurring(rule_id: str, payload: KasaRecurringPatch, user=D
 
 @api_router.delete("/kasa-recurring/{rule_id}")
 async def delete_kasa_recurring(rule_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     # Kural silinir; geçmişte oluşturduğu Kasa kayıtları yerinde kalır.
     await db.kasa_recurring.delete_one({"id": rule_id, "userId": user["user_id"]})
     return {"ok": True}
@@ -4943,17 +5068,27 @@ async def delete_kasa_recurring(rule_id: str, user=Depends(get_current_user)):
 # ============ TAHSILAT (ALACAK/BORÇ) ROUTES ============
 @api_router.get("/tahsilat/{company_id}", response_model=List[TahsilatEntry])
 async def list_tahsilat(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
     await _own_company(user, company_id)
-    docs = await db.tahsilat.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
-    return [TahsilatEntry(**d) for d in docs]
+    return [TahsilatEntry(**d) for d in await _staff_visible_tahsilat(user, company_id)]
 
 
 @api_router.post("/tahsilat", response_model=TahsilatEntry)
 async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_current_user)):
-    _require_kasa_access(user)
     await _own_company(user, payload.companyId)
-    obj = TahsilatEntry(userId=user["user_id"], **payload.dict())
+    personel_id = ""
+    if not _is_manager(user):
+        # Personel yalnız kendi müşterisine (ya da henüz kimsenin olmayan yeni
+        # bir müşteriye) kayıt girebilir; başka personelin müşterisine değil.
+        me = _self_id(user)
+        entries = await db.tahsilat.find({"companyId": payload.companyId, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+        by_key = (await _tahsilat_owners(user, payload.companyId, entries))["by_key"]
+        owners = set()
+        for k in _cust_keys(payload.dict()):
+            owners |= by_key.get(k, set())
+        if owners and me not in owners:
+            raise HTTPException(status_code=403, detail="Bu müşteri size atanmamış; kaydı bir yönetici girebilir")
+        personel_id = me
+    obj = TahsilatEntry(userId=user["user_id"], personelId=personel_id, **payload.dict())
     await db.tahsilat.insert_one(obj.dict())
 
     # Müşteriden gerçekten para geldiğinde ("tahsilat" kaydı) bu tutar Kasa'ya
@@ -4973,6 +5108,9 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
             tarih=obj.tarih,
             tahsilatId=obj.id,
             kurTRY=obj.kurTRY,
+            personelId=obj.personelId,
+            customerId=obj.customerId,
+            musteriAdi=obj.musteriAdi,
         )
         await db.kasa.insert_one(kasa_doc.dict())
 
@@ -4981,7 +5119,7 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
 
 @api_router.delete("/tahsilat/{entry_id}")
 async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     # Bu tahsilat kaydından otomatik oluşturulmuş bir Kasa geliri varsa, kaydı
     # silerken onu da temizle (yanlış girilen bir tahsilat Kasa'da asılı kalmasın).
     await db.kasa.delete_many({"userId": user["user_id"], "tahsilatId": entry_id})
@@ -4994,7 +5132,7 @@ async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
 async def list_customers(company_id: str, user=Depends(get_current_user)):
     await _own_company(user, company_id)
     docs = await db.customers.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(2000)
-    return [Customer(**d) for d in docs]
+    return [Customer(**d) for d in await _visible_customers(user, company_id, docs)]
 
 
 @api_router.post("/customers", response_model=Customer)
@@ -5004,10 +5142,12 @@ async def create_customer(payload: CustomerCreate, user=Depends(get_current_user
         {"companyId": payload.companyId, "firma": payload.firma, "userId": user["user_id"]}, {"_id": 0}
     )
     if existing:
+        if not await _visible_customers(user, payload.companyId, [existing]):
+            raise HTTPException(status_code=409, detail="Bu isimde bir müşteri başka bir personelde kayıtlı; yöneticinize başvurun")
         updated = {**existing, **payload.dict(exclude_none=True)}
         await db.customers.replace_one({"id": existing["id"], "userId": user["user_id"]}, updated)
         return Customer(**updated)
-    obj = Customer(userId=user["user_id"], **payload.dict(exclude_none=True))
+    obj = Customer(userId=user["user_id"], createdByUserId=_self_id(user), **payload.dict(exclude_none=True))
     await db.customers.insert_one(obj.dict())
     return obj
 
@@ -5053,6 +5193,9 @@ async def bulk_import_customers(payload: CustomerBulkRequest, user=Depends(get_c
             {"companyId": payload.companyId, "firma": firma, "userId": user["user_id"]}, {"_id": 0}
         )
         if existing:
+            if not await _visible_customers(user, payload.companyId, [existing]):
+                res.skipped += 1
+                continue
             patch = {k: v for k, v in fields.items() if v}
             if patch:
                 await db.customers.update_one({"id": existing["id"], "userId": user["user_id"]}, {"$set": patch})
@@ -5060,7 +5203,7 @@ async def bulk_import_customers(payload: CustomerBulkRequest, user=Depends(get_c
             else:
                 res.skipped += 1
             continue
-        obj = Customer(userId=user["user_id"], companyId=payload.companyId, firma=firma, **fields)
+        obj = Customer(userId=user["user_id"], companyId=payload.companyId, firma=firma, createdByUserId=_self_id(user), **fields)
         await db.customers.insert_one(obj.dict())
         res.created += 1
     return res
@@ -5072,6 +5215,7 @@ async def update_customer(customer_id: str, payload: CustomerCreate, user=Depend
     existing = await db.customers.find_one({"id": customer_id, "userId": user["user_id"]}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Customer not found")
+    await _require_customer_access(user, existing)
     updated = {**existing, **payload.dict(exclude_none=True)}
     await db.customers.replace_one({"id": customer_id, "userId": user["user_id"]}, updated)
     return Customer(**updated)
@@ -5079,6 +5223,9 @@ async def update_customer(customer_id: str, payload: CustomerCreate, user=Depend
 
 @api_router.delete("/customers/{customer_id}")
 async def delete_customer(customer_id: str, user=Depends(get_current_user)):
+    doc = await db.customers.find_one({"id": customer_id, "userId": user["user_id"]}, {"_id": 0})
+    if doc:
+        await _require_customer_access(user, doc)
     await db.customers.delete_one({"id": customer_id, "userId": user["user_id"]})
     return {"ok": True}
 
@@ -5203,7 +5350,7 @@ async def list_quotes(company_id: str, user=Depends(get_current_user)):
     docs = await db.quotes.find(
         {"companyId": company_id, "userId": user["user_id"], "deletedAt": None}, {"_id": 0}
     ).sort("createdAt", -1).to_list(2000)
-    return [Quote(**d) for d in docs]
+    return [Quote(**d) for d in docs if _can_see_quote(user, d)]
 
 
 @api_router.post("/quotes", response_model=Quote)
@@ -5244,7 +5391,7 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
         if existing:
             await db.customers.update_one({"id": existing["id"]}, {"$set": payload_c})
         else:
-            new_c = Customer(**payload_c)
+            new_c = Customer(createdByUserId=_self_id(user), **payload_c)
             await db.customers.insert_one(new_c.dict())
     return obj
 
@@ -5265,6 +5412,7 @@ async def list_quote_edit_requests(user=Depends(get_current_user)):
 
 @api_router.post("/quotes/{quote_id}/edit-requests", response_model=QuoteEditRequest)
 async def create_quote_edit_request(quote_id: str, user=Depends(get_current_user)):
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"], "deletedAt": None}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -5311,6 +5459,7 @@ async def respond_quote_edit_request(request_id: str, payload: QuoteEditRequestR
 
 @api_router.put("/quotes/{quote_id}", response_model=Quote)
 async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_current_user)):
+    await _require_quote_access(user, quote_id)
     await _own_company(user, payload.companyId)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
@@ -5357,6 +5506,7 @@ async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_cur
 
 @api_router.patch("/quotes/{quote_id}/status", response_model=Quote)
 async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=Depends(get_current_user)):
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -5435,6 +5585,8 @@ async def update_quote_status(quote_id: str, payload: QuoteStatusUpdate, user=De
                 tarih=utc_now_iso()[:10],
                 quoteId=quote_id,
                 kurTRY=entry_kur,
+                # Müşteri, teklifi hazırlayan personelin (yoksa onaylayanın).
+                personelId=doc.get("createdByUserId") or _self_id(user),
             )
             await db.tahsilat.insert_one(tahsilat_doc.model_dump())
         # NOT: Onay anında Kasa'ya gelir YAZILMAZ — teklif tutarı henüz tahsil
@@ -5494,6 +5646,7 @@ def _recompute_quote_maliyet(doc: Dict[str, Any]) -> None:
 async def update_quote_maliyet(quote_id: str, payload: QuoteMaliyetUpdate, user=Depends(get_current_user)):
     """Teklif verildikten sonra girilen isteğe bağlı maliyet -- kar hesabı için.
     Zorunlu değil: null gönderilirse maliyet temizlenmiş sayılır."""
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -5510,6 +5663,7 @@ async def update_quote_item_maliyet(quote_id: str, payload: QuoteItemMaliyetUpda
     üstteki Quote.maliyet toplamını, en az bir kalemde değer varsa
     kalemlerin toplamı olacak şekilde otomatik yeniden hesaplar (eski
     tek-kutulu update_quote_maliyet ile de hâlâ elle geçersiz kılınabilir)."""
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -5537,6 +5691,7 @@ async def update_quote_ekstra_maliyet(quote_id: str, payload: QuoteEkstraMaliyet
     (update_quote_item_maliyet) yerine değil yanına eklenir -- her ikisi de
     _recompute_quote_maliyet ile toplama dahil edilir. İstek her seferinde
     güncel listenin tamamını gönderir, biz de olduğu gibi yerine yazarız."""
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Quote not found")
@@ -5560,6 +5715,7 @@ async def delete_quote(quote_id: str, user=Depends(get_current_user)):
     "borc" entry (if any, and not yet paid) is just an unpaid receivable with
     no real money moved yet, so it's safe to clean up automatically here.
     """
+    await _require_quote_access(user, quote_id)
     has_real_payment = await db.tahsilat.find_one(
         {"userId": user["user_id"], "quoteId": quote_id, "tur": "tahsilat"}
     )
@@ -5609,11 +5765,12 @@ async def list_trashed_quotes(company_id: str, user=Depends(get_current_user)):
     docs = await db.quotes.find(
         {"companyId": company_id, "userId": user["user_id"], "deletedAt": {"$exists": True, "$ne": None}}, {"_id": 0}
     ).sort("deletedAt", -1).to_list(2000)
-    return [Quote(**d) for d in docs]
+    return [Quote(**d) for d in docs if _can_see_quote(user, d)]
 
 
 @api_router.post("/quotes/{quote_id}/restore", response_model=Quote)
 async def restore_quote(quote_id: str, user=Depends(get_current_user)):
+    await _require_quote_access(user, quote_id)
     result = await db.quotes.update_one(
         {"id": quote_id, "userId": user["user_id"], "deletedAt": {"$exists": True, "$ne": None}},
         {"$unset": {"deletedAt": ""}},
@@ -5968,6 +6125,7 @@ def build_quote_xlsx(company: Dict[str, Any], quote: Dict[str, Any]) -> bytes:
 
 @api_router.get("/quotes/{quote_id}/export-excel")
 async def export_quote_excel(quote_id: str, user=Depends(get_current_user)):
+    await _require_quote_access(user, quote_id)
     doc = await db.quotes.find_one({"id": quote_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Quote not found")
@@ -7606,6 +7764,8 @@ async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current
         quote = await db.quotes.find_one(
             {"id": payload.quoteId, "userId": user["user_id"], "companyId": payload.companyId}, {"_id": 0}
         )
+        if quote and not _can_see_quote(user, quote):
+            quote = None
         if not quote:
             raise HTTPException(status_code=404, detail="Teklif bulunamadı")
     parts = [_contract_quote_context(company, quote)]
@@ -7908,7 +8068,7 @@ class CommissionSettings(BaseModel):
 
 @api_router.get("/commission-settings/{company_id}", response_model=CommissionSettings)
 async def get_commission_settings(company_id: str, user=Depends(get_current_user)):
-    _require_owner(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     doc = await db.commission_settings.find_one({"userId": user["user_id"], "companyId": company_id}, {"_id": 0})
     return CommissionSettings(companyId=company_id, rules=(doc or {}).get("rules", []))
@@ -7916,7 +8076,7 @@ async def get_commission_settings(company_id: str, user=Depends(get_current_user
 
 @api_router.put("/commission-settings", response_model=CommissionSettings)
 async def put_commission_settings(payload: CommissionSettings, user=Depends(get_current_user)):
-    _require_owner(user)
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     rules = []
     for r in payload.rules[:200]:
@@ -8034,13 +8194,17 @@ def _public_base(request: Request) -> str:
 
 
 async def _calendar_feed_doc(user: Dict[str, Any], company_id: str, rotate: bool = False) -> Dict[str, Any]:
+    # Yöneticiler firmanın ortak takvimini paylaşır (mevcut abonelik linkleri
+    # bozulmasın diye eski kayıt biçimi korunuyor); kısıtlı personelin kendi
+    # takvimi olur ve vade kayıtlarında yalnız kendi müşterileri çıkar.
+    person = "" if _is_manager(user) else _self_id(user)
     q = {"userId": user["user_id"], "companyId": company_id}
-    doc = await db.calendar_feeds.find_one(q, {"_id": 0})
-    include_finance = not (user.get("is_staff") and user.get("staff_role") != "admin")
+    find_q = {**q, "personId": person} if person else {**q, "personId": {"$in": [None, ""]}}
+    doc = await db.calendar_feeds.find_one(find_q, {"_id": 0})
     if doc and not rotate:
         return doc
-    new = {**q, "token": py_secrets.token_urlsafe(24), "includeFinance": include_finance, "createdAt": utc_now_iso()}
-    await db.calendar_feeds.update_one(q, {"$set": new}, upsert=True)
+    new = {**q, "personId": person, "token": py_secrets.token_urlsafe(24), "includeFinance": True, "createdAt": utc_now_iso()}
+    await db.calendar_feeds.update_one(find_q, {"$set": new}, upsert=True)
     return new
 
 
@@ -8121,7 +8285,11 @@ async def calendar_feed(token: str):
         if s.get("garantiBitis", "") >= since:
             ev += _ics_event(f"grn-{s['id']}", s["garantiBitis"], f"Garanti bitiyor: {s.get('baslik', '')} – {who}", info)
     if feed.get("includeFinance", True):
-        async for t in db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gte": since}}, {"_id": 0}):
+        dues = await db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gte": since}}, {"_id": 0}).to_list(5000)
+        if feed.get("personId"):
+            owners = (await _tahsilat_owners({"user_id": uid}, cid, await db.tahsilat.find({"userId": uid, "companyId": cid}, {"_id": 0}).to_list(5000)))["by_id"]
+            dues = [t for t in dues if owners.get(t["id"]) == feed["personId"]]
+        for t in dues:
             ev += _ics_event(
                 f"vade-{t['id']}", t["vadeTarihi"],
                 f"Vade: {t.get('musteriAdi', '')} {t.get('tutar', 0):,.2f} {t.get('paraBirimi', 'TRY')}",
@@ -8592,7 +8760,7 @@ async def _notify_loop():
 
 @api_router.get("/notify-settings/{company_id}", response_model=NotifySettings)
 async def get_notify_settings(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     doc = await db.notify_settings.find_one({"userId": user["user_id"], "companyId": company_id}, {"_id": 0})
     return NotifySettings(**{**(doc or {}), "companyId": company_id, "whatsappAvailable": _wa_available()})
@@ -8600,7 +8768,7 @@ async def get_notify_settings(company_id: str, user=Depends(get_current_user)):
 
 @api_router.put("/notify-settings", response_model=NotifySettings)
 async def put_notify_settings(payload: NotifySettings, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     d = payload.dict()
     for f in ("vadeGunOnce", "bakimGunOnce", "teklifTakipGun"):
@@ -8621,7 +8789,7 @@ async def put_notify_settings(payload: NotifySettings, user=Depends(get_current_
 
 @api_router.get("/notify-log/{company_id}", response_model=List[NotifyLogOut])
 async def list_notify_log(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     docs = await db.notify_log.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).sort("createdAt", -1).to_list(200)
     return [NotifyLogOut(**{k: d.get(k, "") for k in NotifyLogOut.model_fields}) for d in docs]
@@ -8629,7 +8797,7 @@ async def list_notify_log(company_id: str, user=Depends(get_current_user)):
 
 @api_router.post("/notify-settings/test")
 async def test_notify_email(payload: NotifyTestRequest, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     _rate_limit(f"notify-test:{user['user_id']}", 10, 3600)
     company = await _own_company(user, payload.companyId)
     if not _EMAIL_RE.match(payload.email.strip()):
@@ -8886,7 +9054,7 @@ def _validate_invoice_party(a: InvoiceParty):
 
 
 async def _prepare_invoice(req: InvoiceRequest, user: Dict[str, Any]):
-    _require_kasa_access(user)
+    _require_manager(user)
     company = await _own_company(user, req.companyId)
     cfg = await _nilvera_cfg(user, req.companyId)
     _validate_invoice_party(req.alici)
@@ -8911,7 +9079,7 @@ async def _prepare_invoice(req: InvoiceRequest, user: Dict[str, Any]):
 
 @api_router.post("/efatura/check-taxpayer", response_model=TaxpayerCheckOut)
 async def efatura_check_taxpayer(payload: TaxpayerCheckRequest, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, payload.companyId)
     if not re.fullmatch(r"\d{10}|\d{11}", payload.vergiNo.strip()):
         raise HTTPException(422, "VKN 10, TCKN 11 haneli olmalı")
@@ -8969,14 +9137,14 @@ async def efatura_issue(payload: InvoiceRequest, user=Depends(get_current_user))
 
 @api_router.get("/efatura/invoices/{company_id}", response_model=List[Invoice])
 async def efatura_list(company_id: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     docs = await db.invoices.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
     return [Invoice(**d) for d in docs]
 
 
 async def _own_invoice(user, invoice_id):
-    _require_kasa_access(user)
+    _require_manager(user)
     inv = await db.invoices.find_one({"id": invoice_id, "userId": user["user_id"]}, {"_id": 0})
     if not inv:
         raise HTTPException(404, "Fatura bulunamadı")
@@ -9022,7 +9190,7 @@ async def efatura_invoice_refresh(invoice_id: str, user=Depends(get_current_user
 
 @api_router.get("/efatura/incoming/{company_id}", response_model=List[IncomingInvoiceOut])
 async def efatura_incoming(company_id: str, page: int = 1, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     cfg = await _nilvera_cfg(user, company_id)
     resp = await _nilvera(cfg, "GET", "/einvoice/Purchase", params={"Page": max(1, page), "PageSize": 50, "SortColumn": "IssueDate", "SortType": "DESC"})
@@ -9046,7 +9214,7 @@ async def efatura_incoming(company_id: str, page: int = 1, user=Depends(get_curr
 
 @api_router.get("/efatura/incoming/{company_id}/{inv_uuid}/pdf", response_model=PdfOut)
 async def efatura_incoming_pdf(company_id: str, inv_uuid: str, user=Depends(get_current_user)):
-    _require_kasa_access(user)
+    _require_manager(user)
     await _own_company(user, company_id)
     if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", inv_uuid):
         raise HTTPException(422, "Geçersiz fatura kimliği")

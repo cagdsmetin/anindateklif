@@ -411,6 +411,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       kurTRY: Number(data.kurTRY) || 0,
       hesap: data.hesap || 'Ana Kasa',
       kdvOrani: Number(data.kdvOrani) || 0,
+      customerId: data.customerId || '',
+      musteriAdi: data.musteriAdi || '',
     });
     await reloadKasa();
   }, [activeCompanyId, reloadKasa]);

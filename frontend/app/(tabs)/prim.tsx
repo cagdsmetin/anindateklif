@@ -6,7 +6,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, CommissionRuleT, QuoteT, RatesT, StaffMemberT } from '@/src/lib/api';
+import { api, CommissionRuleT, QuoteT, RatesT, TeamDirectoryMemberT } from '@/src/lib/api';
 import { BubbleButton, MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 import { PeriodChips } from '@/src/components/kasa/shared';
 import { PeriodKey, buildPeriod, inRange, tl } from '@/src/lib/finance';
@@ -28,7 +28,7 @@ export default function CommissionScreen() {
   const insets = useSafeAreaInsets();
   const { activeCompany, quotes, showToast } = useApp();
   const { user: me } = useAuth();
-  const [staff, setStaff] = useState<StaffMemberT[] | null>(null);
+  const [staff, setStaff] = useState<TeamDirectoryMemberT[] | null>(null);
   const [rules, setRules] = useState<Record<string, CommissionRuleT>>({});
   const [rates, setRates] = useState<RatesT | null>(null);
   const [pk, setPk] = useState<PeriodKey>('thisMonth');
@@ -36,22 +36,24 @@ export default function CommissionScreen() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
 
+  // Yönetici = firma sahibi ya da admin rollü personel (backend'de de aynı kural).
+  const isManager = !me?.is_staff || me?.staff_role === 'admin';
+
   useEffect(() => {
-    if (!activeCompany) return;
-    api.listStaff(activeCompany.id).then(setStaff).catch(() => setStaff([]));
+    if (!activeCompany || !isManager) return;
+    // Ekip rehberi hem sahip hem admin personel için açık (üye listesi sadece sahibe).
+    api.teamDirectory(activeCompany.id).then(setStaff).catch(() => setStaff([]));
     api.getCommissionSettings(activeCompany.id).then((r) => setRules(Object.fromEntries(r.rules.map((x) => [x.memberId, x])))).catch(() => {});
     api.rates().then(setRates).catch(() => {});
-  }, [activeCompany]);
+  }, [activeCompany, isManager]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const period = useMemo(() => buildPeriod(pk), [pk, lang]);
 
-  const people: Person[] = useMemo(() => {
-    const list: Person[] = [];
-    if (me) list.push({ id: me.user_id, name: me.name || me.email, email: me.email, owner: true });
-    (staff || []).filter((m) => m.type === 'active').forEach((m) => list.push({ id: m.id, name: m.name || m.email, email: m.email }));
-    return list;
-  }, [me, staff]);
+  const people: Person[] = useMemo(
+    () => (staff || []).map((m) => ({ id: m.userId, name: m.name || m.email, email: m.email, owner: m.role === 'owner' })),
+    [staff],
+  );
 
   const rows = useMemo(() => people.map((p) => {
     const rule = rules[p.id] || { memberId: p.id, oran: 0, baz: 'ciro' as const };
@@ -71,7 +73,7 @@ export default function CommissionScreen() {
 
   const total = rows.reduce((a, r) => a + r.prim, 0);
 
-  if (!activeCompany || me?.is_staff) {
+  if (!activeCompany || !isManager) {
     return <SafeAreaView style={s.container} edges={['top']}><TopHeader title={tp('title')} /><Text style={[s.muted, { padding: 20 }]}>{tp('ownerOnly')}</Text></SafeAreaView>;
   }
 
@@ -107,7 +109,7 @@ export default function CommissionScreen() {
             <TouchableOpacity style={s.head} onPress={() => setOpen(open === r.p.id ? null : r.p.id)} activeOpacity={0.85}>
               <View style={s.avatar}><Text style={s.avatarT}>{(r.p.name || '?').slice(0, 1).toUpperCase()}</Text></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.name} numberOfLines={1}>{r.p.name}{r.p.owner ? ` (${tp('you')})` : ''}</Text>
+                <Text style={s.name} numberOfLines={1}>{r.p.name}{r.p.id === me?.user_id ? ` (${tp('you')})` : ''}</Text>
                 <Text style={s.muted}>{fill(tp('summary'), { n: r.count, ciro: tl(r.ciro) })}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>

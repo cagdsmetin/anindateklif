@@ -578,6 +578,9 @@ class RegisterRequest(BaseModel):
     password: str
     name: str
     phone: str
+    # Instagram "hediye" sayfasından gelen kampanya kodu (bkz. CAMPAIGN_PROMO_CODES):
+    # kayıtla birlikte hediye Pro süresi tanımlanır.
+    campaign: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -960,6 +963,14 @@ async def register(payload: RegisterRequest, request: Request):
         raise HTTPException(status_code=409, detail="Bu bilgilerle zaten bir hesap mevcut")
     if not email_verified:
         await _issue_email_verification(user_id, email)
+    campaign = (payload.campaign or "").strip().upper().replace("İ", "I")
+    if campaign in CAMPAIGN_PROMO_CODES:
+        try:
+            await _redeem_campaign_code(user, campaign, CAMPAIGN_PROMO_CODES[campaign])
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0}) or user
+        except HTTPException as e:
+            # Kontenjan dolmuş olabilir; kayıt yine de tamamlanır.
+            logger.info(f"Kampanya kodu kayitta uygulanamadi ({campaign}): {e.detail}")
     access = _make_access_token(user)
     return AuthResponse(access_token=access, user=_user_out(user))
 
@@ -7414,14 +7425,74 @@ class PromoRedeemRequest(BaseModel):
     code: str
 
 
+# Herkese açık kampanya kodları: tek kullanımlık hediye kodlarından farklı
+# olarak aynı kodu birçok firma kullanabilir, ama her firma sahibi bir kez.
+# Instagram'da "yoruma TEKLİF yaz" kampanyasında Business Suite'in otomatik
+# mesajı bu kodu gönderiyor. Kullanımlar promo_redemptions'ta (code+user_id
+# tekil index) tutulur; max_uses dolunca kod kapanır.
+CAMPAIGN_PROMO_CODES: Dict[str, Dict[str, Any]] = {
+    "TEKLIF30": {"duration_days": 30, "max_uses": 1000},
+}
+
+
+async def _apply_promo_days(user: Dict[str, Any], code: str, duration_days: int) -> datetime:
+    # Zaten aktif bir aboneliği varsa süresini kısaltmamak için mevcut bitiş
+    # tarihinden, yoksa şu andan itibaren ekliyoruz (checkout'taki mantıkla aynı).
+    base = utc_now()
+    current_expiry_raw = user.get("subscription_expires_at")
+    if current_expiry_raw:
+        try:
+            existing = datetime.fromisoformat(current_expiry_raw)
+            if existing.tzinfo is None:
+                existing = existing.replace(tzinfo=timezone.utc)
+            if existing > base:
+                base = existing
+        except Exception:
+            pass
+    new_expiry = base + timedelta(days=duration_days)
+    update: Dict[str, Any] = {
+        "subscription_status": "active",
+        "subscription_expires_at": new_expiry.isoformat(),
+    }
+    # Ücretli planı hâlâ süren birinin plan adını "promo"ya çevirmeyelim; yalnız süre uzar.
+    if not (_is_subscription_active(user) and user.get("subscription_plan") in SUBSCRIPTION_PLANS):
+        update.update({
+            "subscription_plan": "promo",
+            "promo_code": code,
+            "promo_days_total": duration_days,
+            "promo_redeemed_at": utc_now_iso(),
+        })
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": update})
+    return new_expiry
+
+
+async def _redeem_campaign_code(user: Dict[str, Any], code: str, cfg: Dict[str, Any]):
+    if await db.promo_redemptions.count_documents({"code": code}) >= cfg["max_uses"]:
+        raise HTTPException(status_code=400, detail="Bu kampanyanın kontenjanı doldu")
+    try:
+        await db.promo_redemptions.insert_one({
+            "code": code,
+            "user_id": user["user_id"],
+            "email": user.get("email"),
+            "used_at": utc_now_iso(),
+        })
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="Bu kodu daha önce kullandınız")
+    duration_days = cfg["duration_days"]
+    new_expiry = await _apply_promo_days(user, code, duration_days)
+    return {"ok": True, "subscription_expires_at": new_expiry.isoformat(), "duration_days": duration_days}
+
+
 @api_router.post("/promo/redeem")
 async def redeem_promo_code(payload: PromoRedeemRequest, user=Depends(get_current_user)):
     _rate_limit(f"promo-redeem:user:{user['user_id']}", 10, 3600)
     if user.get("is_staff"):
         raise HTTPException(status_code=403, detail="Hediye kodunu sadece firma sahibi kullanabilir")
-    code = (payload.code or "").strip().upper()
+    code = (payload.code or "").strip().upper().replace("İ", "I")
     if not code:
         raise HTTPException(status_code=400, detail="Kod giriniz")
+    if code in CAMPAIGN_PROMO_CODES:
+        return await _redeem_campaign_code(user, code, CAMPAIGN_PROMO_CODES[code])
     doc = await db.promo_codes.find_one({"code": code})
     if not doc:
         raise HTTPException(status_code=404, detail="Kod geçersiz")
@@ -10123,6 +10194,7 @@ async def on_startup():
         await db.user_notifications.create_index([("userId", 1), ("readAt", 1)])
         await db.push_subs.create_index("ident", unique=True)
         await db.push_subs.create_index("userId")
+        await db.promo_redemptions.create_index([("code", 1), ("user_id", 1)], unique=True)
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 

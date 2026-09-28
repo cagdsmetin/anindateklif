@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,7 +17,8 @@ import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
-import { useAuth } from '@/src/state/AuthContext';
+import { CAMPAIGN_STORAGE_KEY, useAuth } from '@/src/state/AuthContext';
+import { storage } from '@/src/utils/storage';
 import { ApiError } from '@/src/lib/api';
 import {
   evaluatePassword,
@@ -48,6 +49,11 @@ export default function RegisterScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // /hediye sayfasından gelindiyse kayıtla birlikte 1 ay Pro tanımlanacağını göster.
+  const [campaign, setCampaign] = useState('');
+  useEffect(() => {
+    storage.getItem<string>(CAMPAIGN_STORAGE_KEY, '').then((c) => setCampaign(c || ''));
+  }, []);
 
   const pwStatus = useMemo(() => evaluatePassword(password), [password]);
   const pwValid = useMemo(() => isPasswordValid(password), [password]);
@@ -138,6 +144,12 @@ export default function RegisterScreen() {
             </View>
             <Text style={s.title}>{t('register.s010')}</Text>
             <Text style={s.subtitle}>{t('register.s011')}</Text>
+            {!!campaign && (
+              <View style={s.giftBanner}>
+                <Ionicons name="gift" size={16} color="#fff" />
+                <Text style={s.giftText}>Üye olunca 1 ay Pro hediyeniz hesabınıza tanımlanacak</Text>
+              </View>
+            )}
 
             {error ? (
               <View style={s.errorBox}>
@@ -333,4 +345,6 @@ const s = themedStyles(() => StyleSheet.create({
   footer: { marginTop: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerText: { color: authTheme.textMuted, fontSize: 13 },
   footerLink: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
+  giftBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: authTheme.gold, borderRadius: authRadius.md, paddingHorizontal: 14, paddingVertical: 10, marginTop: authSpacing.md, marginBottom: authSpacing.md },
+  giftText: { color: '#fff', fontWeight: '700', fontSize: 13, flex: 1 },
 }));

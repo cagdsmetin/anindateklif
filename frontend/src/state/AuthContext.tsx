@@ -5,6 +5,9 @@ import { storage } from '@/src/utils/storage';
 type LoginArgs = { email: string; password: string };
 type RegisterArgs = { email: string; password: string; name: string; phone: string };
 const LANG_STORAGE_KEY = 'app_language';
+// /hediye sayfasından gelen kampanya kodu: kayıtta sunucuya gider, mevcut
+// üye giriş yaparsa girişten hemen sonra kullanılır (bkz. app/hediye.tsx).
+export const CAMPAIGN_STORAGE_KEY = 'pending_campaign';
 
 type AuthState = {
   loading: boolean;
@@ -80,7 +83,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line no-console
       console.warn('[auth] token storage failed, using in-memory session', e);
     }
-    setUser(res.user);
+    let loggedIn = res.user;
+    const campaign = await storage.getItem<string>(CAMPAIGN_STORAGE_KEY, '');
+    if (campaign) {
+      try {
+        await api.redeemPromoCode(campaign);
+        loggedIn = await api.me();
+      } catch {}
+      await storage.removeItem(CAMPAIGN_STORAGE_KEY);
+    }
+    setUser(loggedIn);
   }, []);
 
   const register = useCallback(async ({ email, password, name, phone }: RegisterArgs) => {
@@ -89,7 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[auth] register attempt', { email });
     let guestLang = 'tr';
     try { guestLang = (await storage.getItem<string>(LANG_STORAGE_KEY, '')) || 'tr'; } catch {}
-    const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone, language: guestLang });
+    const campaign = (await storage.getItem<string>(CAMPAIGN_STORAGE_KEY, '')) || undefined;
+    const res: { access_token: string; user: UserT } = await api.register({ email, password, name, phone, language: guestLang, campaign });
+    if (campaign) await storage.removeItem(CAMPAIGN_STORAGE_KEY);
     try {
       await setSessionToken(res.access_token);
     } catch (e) {

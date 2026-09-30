@@ -2153,6 +2153,8 @@ async def accept_staff_invite(token: str, payload: StaffAcceptRequest, request: 
     await db.company_invites.update_one(
         {"id": invite["id"]}, {"$set": {"status": "accepted", "acceptedByUserId": user_id}}
     )
+    # Koltuk sayısı değişti: otomatik abonelik yeni kademeye taşınsın.
+    _schedule_tier_check(invite["ownerUserId"])
     access = _make_access_token(new_user)
     return AuthResponse(access_token=access, user=_user_out(new_user))
 
@@ -2193,6 +2195,7 @@ async def remove_staff_member(company_id: str, member_user_id: str, user=Depends
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
+    _schedule_tier_check(user["user_id"])
     return {"ok": True}
 
 
@@ -6386,6 +6389,8 @@ class SubscriptionStatus(BaseModel):
     renewal_due_soon: bool = False
     # iyzico aboneliği: kart her dönem otomatik tahsil ediliyor mu?
     auto_renew: bool = False
+    # Personel sayısı kademe değiştirdiyse: "bir sonraki yenilemede 6–10 kişi fiyatı".
+    next_renewal_tier: Optional[str] = None
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
     plans: List[PlanOut] = []
     seat_count: int = 1
@@ -6435,6 +6440,7 @@ async def subscription_status(user=Depends(get_current_user)):
         promo_code=user.get("promo_code") if plan_id == "promo" else None,
         renewal_due_soon=state["subscription_active"] and not user.get("auto_renew") and _renewal_due_soon(user, days_left),
         auto_renew=bool(user.get("auto_renew")),
+        next_renewal_tier=(user.get("iyzico_sub_tier_change") or {}).get("label") if user.get("auto_renew") else None,
         plan_price_try=plans[DEFAULT_SUBSCRIPTION_PLAN]["price_try"],
         plans=_plans_out(plans),
         seat_count=seats,
@@ -6733,10 +6739,15 @@ async def _sync_recurring_subscription(user_id: str) -> Optional[Dict[str, Any]]
     status = (detail.get("subscriptionStatus") or "").upper()
     updates: Dict[str, Any] = {
         "iyzico_sub_status": status,
-        "auto_renew": status == "ACTIVE",
+        # UPGRADED: kademe değişikliğiyle yeni plana taşındı, iptal değil.
+        "auto_renew": status in ("ACTIVE", "UPGRADED"),
         "iyzico_sub_synced_at": utc_now_iso(),
     }
     paid_until = _recurring_paid_until(detail)
+    change = u.get("iyzico_sub_tier_change") or {}
+    if change.get("at") and paid_until and paid_until.isoformat() > change["at"]:
+        # Yeni kademe fiyatıyla yenileme tahsil edildi; bekleyen not kalksın.
+        updates["iyzico_sub_tier_change"] = None
     if paid_until:
         # Abonelik başlarken hesapta kalan süre (tek seferlik ödeme/hediye)
         # kaybolmasın diye başlangıçta kaydedilen fark her döneme eklenir.
@@ -6753,6 +6764,71 @@ async def _sync_recurring_subscription(user_id: str) -> Optional[Dict[str, Any]]
             updates["subscription_status"] = "active"
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
     return {**u, **updates}
+
+
+def _seat_tier_label(tier: Dict[str, Any]) -> str:
+    idx = SEAT_TIERS.index(tier)
+    low = SEAT_TIERS[idx - 1]["max_seats"] + 1 if idx else 1
+    return f"{low}+ kişi" if tier["max_seats"] is None else f"{low}–{tier['max_seats']} kişi"
+
+
+async def _ensure_recurring_tier(owner_id: str) -> None:
+    """Personel sayısı kademe sınırını aşınca (ya da altına inince) iyzico
+    aboneliğini yeni kademenin fiyat planına taşır. Değişiklik bir sonraki
+    yenilemede geçerli olur (NEXT_PERIOD): ödenmiş dönem için ek ücret ya da
+    iade yoktur. Tekrar çağrılması güvenlidir; plan zaten doğruysa bir şey
+    yapmaz. Personel ekleme/çıkarma ve periyodik mutabakat bunu çağırır."""
+    u = await db.users.find_one({"user_id": owner_id}, {"_id": 0})
+    if not u or not u.get("auto_renew") or not u.get("iyzico_sub_ref") or not u.get("iyzico_sub_pricing_ref"):
+        return
+    tier = _seat_tier(await _seat_count(owner_id))
+    currency = u.get("iyzico_sub_currency") or "TRY"
+    plan_id = u.get("subscription_plan") or DEFAULT_SUBSCRIPTION_PLAN
+    want = _iyzico_sub_plan_ref(plan_id, tier, currency)
+    if not want:
+        logger.error(f"[subscription] {plan_id}/{_seat_tier_label(tier)}/{currency} için IYZICO_SUB_PLANS'ta plan yok; "
+                     f"{owner_id} eski kademeden ücretlendirilmeye devam ediyor")
+        return
+    if want == u["iyzico_sub_pricing_ref"]:
+        return
+    import iyzipay
+    try:
+        resp = await _iyzico_json(iyzipay.Subscription().upgrade, {
+            "locale": "tr",
+            "subscriptionReferenceCode": u["iyzico_sub_ref"],
+            "newPricingPlanReferenceCode": want,
+            "upgradePeriod": "NEXT_PERIOD",
+            "useTrial": False,
+            "resetRecurrenceCount": False,
+        })
+    except Exception:
+        logger.exception(f"[subscription] kademe değişikliği isteği başarısız {owner_id}")
+        return
+    if resp.get("status") != "success":
+        logger.error(f"[subscription] kademe değişikliği reddedildi {owner_id}: {resp.get('errorMessage')}")
+        return
+    upd: Dict[str, Any] = {
+        "iyzico_sub_pricing_ref": want,
+        "iyzico_sub_tier_change": {"label": _seat_tier_label(tier), "at": u.get("subscription_expires_at") or utc_now_iso()},
+    }
+    push: Dict[str, Any] = {}
+    new_ref = (resp.get("data") or {}).get("referenceCode")
+    if new_ref and new_ref != u["iyzico_sub_ref"]:
+        # iyzico plan değişikliğinde yeni bir abonelik kodu verebiliyor; eski
+        # koddan gelecek webhook'lar da tanınsın diye eskisi saklanır.
+        upd["iyzico_sub_ref"] = new_ref
+        push = {"$addToSet": {"iyzico_sub_prev_refs": u["iyzico_sub_ref"]}}
+    await db.users.update_one({"user_id": owner_id}, {"$set": upd, **push})
+    logger.info(f"[subscription] {owner_id} bir sonraki yenilemede {_seat_tier_label(tier)} kademesine geçecek")
+
+
+def _schedule_tier_check(owner_id: str) -> None:
+    async def run():
+        try:
+            await _ensure_recurring_tier(owner_id)
+        except Exception:
+            logger.exception(f"[subscription] kademe kontrolü başarısız {owner_id}")
+    asyncio.create_task(run())
 
 
 async def _start_recurring_checkout(user, payload, plan_id: str, pricing_ref: str,
@@ -6877,6 +6953,9 @@ async def recurring_subscription_callback(token: str = Form(...)):
         "iyzico_sub_customer_ref": data.get("customerReferenceCode", ""),
         "iyzico_sub_status": "ACTIVE",
         "iyzico_sub_offset_s": offset_s,
+        "iyzico_sub_pricing_ref": pending.get("pricing_plan_ref", ""),
+        "iyzico_sub_currency": pending.get("currency") or "TRY",
+        "iyzico_sub_tier_change": None,
         "auto_renew": True,
         "subscription_plan": pending.get("plan") or DEFAULT_SUBSCRIPTION_PLAN,
     }})
@@ -6924,7 +7003,8 @@ async def recurring_subscription_webhook(request: Request):
     sub_ref = str(body.get("subscriptionReferenceCode") or "")
     if not sub_ref:
         return {"ok": True}
-    u = await db.users.find_one({"iyzico_sub_ref": sub_ref}, {"_id": 0, "user_id": 1})
+    u = await db.users.find_one({"$or": [{"iyzico_sub_ref": sub_ref}, {"iyzico_sub_prev_refs": sub_ref}]},
+                                {"_id": 0, "user_id": 1})
     if u:
         try:
             await _sync_recurring_subscription(u["user_id"])
@@ -6964,6 +7044,7 @@ async def _recurring_reconcile_all() -> None:
     async for u in db.users.find({"auto_renew": True, "iyzico_sub_ref": {"$nin": ["", None]}}, {"_id": 0, "user_id": 1}):
         try:
             await _sync_recurring_subscription(u["user_id"])
+            await _ensure_recurring_tier(u["user_id"])
         except Exception:
             logger.exception(f"[subscription] mutabakat başarısız {u['user_id']}")
         await asyncio.sleep(0.5)
@@ -11393,6 +11474,7 @@ async def on_startup():
         await db.push_subs.create_index("userId")
         await db.promo_redemptions.create_index([("code", 1), ("user_id", 1)], unique=True)
         await db.users.create_index("iyzico_sub_ref", sparse=True)
+        await db.users.create_index("iyzico_sub_prev_refs", sparse=True)
         await db.users.create_index("google_sub", unique=True, sparse=True)
         await db.oauth_login_codes.create_index("code_hash", unique=True)
         await db.google_connections.create_index([("userId", 1), ("companyId", 1), ("purpose", 1), ("personId", 1)], unique=True)

@@ -45,6 +45,7 @@ type StatusT = {
   promo_code?: string | null;
   renewal_due_soon?: boolean;
   auto_renew?: boolean;
+  next_renewal_tier?: string | null;
   plan_price_try: number;
   plans: PlanT[];
   seat_count?: number;
@@ -466,6 +467,14 @@ export default function SubscriptionScreen() {
                     Aboneliğiniz her dönem otomatik yenilenir. İstediğiniz zaman kapatabilirsiniz.
                   </Text>
                 </View>
+                {status?.next_renewal_tier ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingBottom: 12 }} testID="sub-next-tier">
+                    <Ionicons name="people-outline" size={18} color={theme.colors.primary} />
+                    <Text style={{ flex: 1, fontSize: 13, color: theme.colors.textSoft }}>
+                      Ekibinizin büyüklüğü değişti: bir sonraki yenilemede {status.next_renewal_tier} fiyatı uygulanacak.
+                    </Text>
+                  </View>
+                ) : null}
                 <TouchableOpacity
                   onPress={onCancelAutoRenew}
                   disabled={cancelBusy}

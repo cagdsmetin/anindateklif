@@ -163,6 +163,41 @@ class TestRecurring:
         u = run(env.users.find_one({"user_id": "user_a"}))
         assert u["auto_renew"] is False and u["iyzico_sub_status"] == "CANCELED"
 
+    def test_seat_tier_change_moves_plan_next_period_both_ways(self, env, monkeypatch):
+        monkeypatch.setattr(server, "IYZICO_SUB_PLANS", {
+            "yearly:5:TRY": "P5", "yearly:10:TRY": "P10", "yearly:30:TRY": "P30"})
+        run(_mk_user(env, iyzico_sub_ref="SUB1", auto_renew=True, iyzico_sub_status="ACTIVE",
+                     subscription_plan="yearly", iyzico_sub_pricing_ref="P5", iyzico_sub_currency="TRY",
+                     subscription_expires_at="2027-01-01T00:00:00+00:00"))
+        calls = []
+
+        async def fake_json(fn, req):
+            calls.append(req)
+            return {"status": "success", "data": {"referenceCode": f"SUB{len(calls) + 1}"}}
+
+        monkeypatch.setattr(server, "_iyzico_json", fake_json)
+
+        async def set_staff(n):
+            await env.users.delete_many({"staff_owner_user_id": "user_a"})
+            for i in range(n):
+                await env.users.insert_one({"user_id": f"st{i}", "email": f"st{i}@x.com", "staff_owner_user_id": "user_a"})
+            await server._ensure_recurring_tier("user_a")
+
+        run(set_staff(4))  # 5 kişi: kademe aynı, istek yok
+        assert calls == []
+        run(set_staff(10))  # 11 kişi: 11–30 kademesi
+        assert calls[-1]["newPricingPlanReferenceCode"] == "P30" and calls[-1]["upgradePeriod"] == "NEXT_PERIOD"
+        u = run(env.users.find_one({"user_id": "user_a"}))
+        assert u["iyzico_sub_pricing_ref"] == "P30" and u["iyzico_sub_ref"] == "SUB2"
+        assert u["iyzico_sub_prev_refs"] == ["SUB1"]
+        st = TestClient(server.app).get("/api/subscription/status", headers=_auth()).json()
+        assert st["next_renewal_tier"] == "11–30 kişi"
+        run(set_staff(10))  # tekrar çağrı: plan zaten doğru
+        assert len(calls) == 1
+        run(set_staff(3))  # 4 kişi: alt kademeye iner
+        assert calls[-1]["newPricingPlanReferenceCode"] == "P5"
+        assert run(env.users.find_one({"user_id": "user_a"}))["iyzico_sub_tier_change"]["label"] == "1–5 kişi"
+
 
 # ------------------------------------------------------------------ Google login
 def _id_token(sub="g-1", email="new.user@gmail.com", verified=True, aud="cid.apps.googleusercontent.com"):

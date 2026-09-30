@@ -22,6 +22,7 @@ const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';
 
 // Public: expose the resolved base for diagnostic banners / debug screens.
 export const RESOLVED_BACKEND_URL = RESOLVED_BASE;
+export const API_BASE_URL = API_BASE;
 export const BACKEND_URL_MISSING = RAW_BASE.length === 0;
 
 export const SESSION_TOKEN_KEY = 'session_token_v1';
@@ -357,6 +358,24 @@ export const api = {
     req(`/calendar/feed-url/${companyId}/rotate`, { method: 'POST' }),
   importCalendar: (companyId: string, ics: string): Promise<{ created: number; skipped: number }> =>
     req('/calendar/import', { method: 'POST', body: JSON.stringify({ companyId, ics }) }, 60000),
+  // Google (giriş / Takvim / İşletme Profili)
+  googleConfig: (): Promise<GoogleConfigT> => req('/google/config'),
+  googleExchange: (code: string): Promise<{ access_token: string; user: UserT }> =>
+    req('/auth/google/exchange', { method: 'POST', body: JSON.stringify({ code }) }),
+  googleConnectStart: (data: { purpose: 'calendar' | 'business'; companyId: string; redirect: string }): Promise<{ url: string }> =>
+    req('/google/connect/start', { method: 'POST', body: JSON.stringify(data) }),
+  googleConnections: (companyId: string): Promise<GoogleConnectionT[]> => req(`/google/connections/${companyId}`),
+  googleDisconnect: (purpose: 'calendar' | 'business', companyId: string) =>
+    req(`/google/connections/${purpose}/${companyId}`, { method: 'DELETE' }),
+  googleCalendarSync: (companyId: string): Promise<Record<string, number>> =>
+    req(`/google/calendar/sync/${companyId}`, { method: 'POST' }, 120000),
+  gbpLocations: (companyId: string): Promise<GbpLocationT[]> => req(`/google/business/locations/${companyId}`, {}, 45000),
+  gbpSelectLocation: (companyId: string, name: string, title: string): Promise<GoogleConnectionT> =>
+    req('/google/business/location', { method: 'PUT', body: JSON.stringify({ companyId, name, title }) }),
+  gbpReviews: (companyId: string, pageToken = ''): Promise<GbpReviewsT> =>
+    req(`/google/business/reviews/${companyId}${pageToken ? `?pageToken=${encodeURIComponent(pageToken)}` : ''}`, {}, 45000),
+  gbpReply: (companyId: string, reviewName: string, comment: string): Promise<GbpReviewT> =>
+    req('/google/business/reviews/reply', { method: 'POST', body: JSON.stringify({ companyId, reviewName, comment }) }, 45000),
   // Otomatik hatırlatmalar
   getNotifySettings: (companyId: string): Promise<NotifySettingsT> => req(`/notify-settings/${companyId}`),
   putNotifySettings: (data: NotifySettingsT): Promise<NotifySettingsT> => req('/notify-settings', { method: 'PUT', body: JSON.stringify(data) }),
@@ -450,6 +469,7 @@ export const api = {
 
   // Subscription / quota
   subscriptionStatus: () => req('/subscription/status'),
+  subscriptionCancel: () => req('/subscription/cancel', { method: 'POST' }),
   rates: (): Promise<RatesT> => req('/rates'),
   sendPhoneCode: (phone: string) => req('/auth/phone/send-code', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyPhoneCode: (phone: string, code: string) => req('/auth/phone/verify-code', { method: 'POST', body: JSON.stringify({ phone, code }) }),
@@ -1662,3 +1682,28 @@ export type UserNotificationT = {
   baslik: string; mesaj: string; link?: string; createdAt: string; readAt?: string | null;
 };
 export type NotifPrefsT = { ipucu: boolean; akilli: boolean; push: boolean; lang?: string };
+
+export type GoogleConfigT = { login: boolean; calendar: boolean; business: boolean };
+export type GoogleConnectionT = {
+  purpose: 'calendar' | 'business';
+  connected: boolean;
+  status: string;
+  email: string;
+  lastSyncAt: string;
+  lastError: string;
+  calendarName: string;
+  locationName: string;
+  locationTitle: string;
+};
+export type GbpLocationT = { name: string; title: string; address: string };
+export type GbpReviewT = {
+  name: string;
+  reviewer: string;
+  reviewerPhoto: string;
+  stars: number;
+  comment: string;
+  createTime: string;
+  reply: string;
+  replyTime: string;
+};
+export type GbpReviewsT = { reviews: GbpReviewT[]; averageRating: number | null; totalReviewCount: number; nextPageToken: string };

@@ -67,3 +67,21 @@ Layout matches SKYART Teklif_2026-260806.pdf:
 - Kalem eklerken alttaki `Kalem Ekle` butonuna basınca modal sheet açılır: **Sistem/Teknik**, **Manuel Bilgi**, **Genel Ürün** üç seçenek.
 - Teknik modda sistem tipi, motor ve aydınlatma dropdown'ları firmanın kendi listelerinden gelir.
 - Her teknik/manuel kartın altında "PDF ÖNİZLEME" satırı canlı gösterilir.
+
+## Entegrasyonlar (anahtar girilince açılır)
+Hepsi Railway ortam değişkenleriyle açılır; değişken yoksa özellik görünmez/kapalı kalır.
+
+### iyzico otomatik yenilenen abonelik
+- iyzico paneli › Abonelik: bir ürün + her plan/koltuk kademesi/para birimi için fiyat planı (WEEKLY/YEARLY).
+- `IYZICO_SUB_PLANS` = JSON, anahtar `<plan>:<kademe>:<para birimi>` (kademe 5/10/30 ya da `max`):
+  `{"weekly:5:TRY":"<ref>","yearly:5:TRY":"<ref>", ...}`. Eşleşme yoksa eski tek seferlik ödeme kullanılır.
+- Bildirim (webhook) adresi: `{BACKEND_BASE_URL}/api/subscription/recurring/webhook`.
+- Uçlar: `/subscription/checkout` (plan tanımlıysa abonelik formu), `/subscription/recurring/callback`, `/subscription/cancel`. 6 saatte bir mutabakat.
+- Mobil uygulamada satın alma gizli (mağaza kuralları); satın alma yalnız web'de.
+
+### Google (giriş, Takvim, İşletme yorumları)
+- Google Cloud › OAuth istemcisi (Web application), yönlendirme adresi `{BACKEND_BASE_URL}/api/google/oauth/callback`.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` → Google ile giriş + Google Takvim senkronu açılır ("Google Calendar API" etkinleştirilmeli).
+- Business Profile API erişimi Google'dan onaylanınca `GOOGLE_BUSINESS_ENABLED=true` → Yorum Yanıtla ekranında yorum listesi + Google'a gönder.
+- Opsiyonel: `GOOGLE_TOKEN_KEY` (yenileme anahtarlarını şifreleme anahtarı; yoksa JWT_SECRET'tan türetilir), `GCAL_SYNC_MINUTES` (varsayılan 30).
+- Takvim: uygulama kayıtları Google'da ayrı "Anında Teklif" takvimine yazılır; ana takvim etkinlikleri hatırlatıcı olarak gelir; düzenleme/silme iki yönlü.

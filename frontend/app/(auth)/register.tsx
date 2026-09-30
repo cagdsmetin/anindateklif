@@ -18,6 +18,7 @@ import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { CAMPAIGN_STORAGE_KEY, useAuth } from '@/src/state/AuthContext';
+import GoogleSignInButton from '@/src/components/GoogleSignInButton';
 import { storage } from '@/src/utils/storage';
 import { ApiError } from '@/src/lib/api';
 import {
@@ -217,6 +218,8 @@ export default function RegisterScreen() {
             >
               {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('register.s020')}</Text>}
             </TouchableOpacity>
+
+            <GoogleSignInButton onError={setError} />
 
             <View style={s.footer}>
               <Text style={s.footerText}>{t('register.s021')}</Text>

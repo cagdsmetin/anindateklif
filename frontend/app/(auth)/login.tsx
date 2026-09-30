@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
+import GoogleSignInButton from '@/src/components/GoogleSignInButton';
+import { googleErrorMessage } from '@/src/lib/google';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
 import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
@@ -32,7 +34,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const params = useLocalSearchParams<{ google_error?: string }>();
+  const [error, setError] = useState<string | null>(
+    params.google_error ? googleErrorMessage(String(params.google_error)) : null,
+  );
 
   const onSubmit = async () => {
     if (busy) return;
@@ -147,6 +152,8 @@ export default function LoginScreen() {
                 <Text style={s.ctaText}>{t('login.s012')}</Text>
               )}
             </TouchableOpacity>
+
+            <GoogleSignInButton onError={setError} />
 
             <View style={s.footer}>
               <Text style={s.footerText}>{t('login.s013')}</Text>

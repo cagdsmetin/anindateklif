@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
@@ -124,13 +124,16 @@ export default function ProBanner() {
     <View style={[s.bar, { backgroundColor: c.bg }]} testID="pro-banner">
       <Ionicons name={v.icon} size={17} color={c.fg} />
       <Text style={[s.text, { color: c.fg }]} numberOfLines={2}>{v.text}</Text>
-      <TouchableOpacity
-        style={[s.cta, { backgroundColor: c.btn }]}
-        onPress={() => router.push('/subscription' as any)}
-        testID="pro-banner-cta"
-      >
-        <Text style={s.ctaText}>{v.cta}</Text>
-      </TouchableOpacity>
+      {/* Mobil uygulamada abonelik satın alınmadığı için satın alma butonu yok. */}
+      {Platform.OS === 'web' && (
+        <TouchableOpacity
+          style={[s.cta, { backgroundColor: c.btn }]}
+          onPress={() => router.push('/subscription' as any)}
+          testID="pro-banner-cta"
+        >
+          <Text style={s.ctaText}>{v.cta}</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={dismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID="pro-banner-close">
         <Ionicons name="close" size={18} color={c.fg} />
       </TouchableOpacity>

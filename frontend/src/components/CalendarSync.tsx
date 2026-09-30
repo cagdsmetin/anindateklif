@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Modal, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { theme } from '@/src/lib/theme';
-import { api } from '@/src/lib/api';
+import { api, GoogleConnectionT } from '@/src/lib/api';
+import { appReturnUrl, googleErrorMessage, runGoogleFlow, useGoogleConfig } from '@/src/lib/google';
 import { useApp } from '@/src/state/AppContext';
 import { themedStyles } from '@/src/components/motion';
 import { fill, useLanguage } from '@/src/lib/i18n';
 
 // Takvim senkronu: firmaya özel abonelik adresi (Google/Apple/Outlook
 // takvimine bir kez eklenir, hatırlatma/servis/bakım/vade günleri orada
-// kendiliğinden görünür) + başka takvimden .ics içe aktarma.
+// kendiliğinden görünür) + başka takvimden .ics içe aktarma + (sunucuda
+// yapılandırıldıysa) Google Takvim ile iki yönlü senkron.
 
 export default function CalendarSync() {
   const { t } = useLanguage();
@@ -21,9 +24,76 @@ export default function CalendarSync() {
   const [feed, setFeed] = useState<{ url: string; webcalUrl: string } | null>(null);
   const [busy, setBusy] = useState('');
   const [copied, setCopied] = useState(false);
+  const gcfg = useGoogleConfig();
+  const [gconn, setGconn] = useState<GoogleConnectionT | null>(null);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ google_connected?: string; google_error?: string }>();
+  const cidOrEmpty = activeCompany?.id || '';
+
+  const loadGoogle = useCallback(async () => {
+    if (!cidOrEmpty || !gcfg?.calendar) return;
+    try {
+      const list = await api.googleConnections(cidOrEmpty);
+      setGconn(list.find((c) => c.purpose === 'calendar') || null);
+    } catch {}
+  }, [cidOrEmpty, gcfg?.calendar]);
+
+  useEffect(() => { loadGoogle(); }, [loadGoogle]);
+
+  // Web'de Google onayından bu ekrana ?google_connected=calendar ile dönülür.
+  useEffect(() => {
+    if (params.google_connected === 'calendar') {
+      showToast(tc('gConnected'));
+      setOpen(true);
+      loadGoogle();
+      setTimeout(() => { reloadReminders().catch(() => {}); loadGoogle(); }, 4000);
+      router.setParams({ google_connected: undefined } as any);
+    } else if (params.google_error) {
+      showToast(googleErrorMessage(String(params.google_error)));
+      router.setParams({ google_error: undefined } as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.google_connected, params.google_error]);
 
   if (!activeCompany) return null;
   const cid = activeCompany.id;
+
+  const connectGoogle = async () => {
+    setBusy('gconnect');
+    try {
+      const returnUrl = appReturnUrl('calendar');
+      const { url } = await api.googleConnectStart({ purpose: 'calendar', companyId: cid, redirect: returnUrl });
+      const res = await runGoogleFlow(url, returnUrl);
+      if (res?.google_connected) {
+        showToast(tc('gConnected'));
+        await loadGoogle();
+        setTimeout(() => { reloadReminders().catch(() => {}); loadGoogle(); }, 4000);
+      } else if (res?.google_error) {
+        showToast(googleErrorMessage(res.google_error));
+      }
+    } catch (e: any) { showToast(e?.message || tc('err')); } finally { setBusy(''); }
+  };
+
+  const syncGoogle = async () => {
+    setBusy('gsync');
+    try {
+      const r = await api.googleCalendarSync(cid);
+      await reloadReminders().catch(() => {});
+      await loadGoogle();
+      showToast(fill(tc('gSynced'), { i: (r.imported || 0) + (r.updated || 0) + (r.updatedFromGoogle || 0), o: r.pushed || 0 }));
+    } catch (e: any) { showToast(e?.message || tc('err')); } finally { setBusy(''); }
+  };
+
+  const disconnectGoogle = async () => {
+    const run = async () => {
+      setBusy('gdisconnect');
+      try { await api.googleDisconnect('calendar', cid); setGconn(null); } catch (e: any) { showToast(e?.message || tc('err')); } finally { setBusy(''); }
+    };
+    if (Platform.OS === 'web') { if (window.confirm(tc('gDisconnectConfirm'))) run(); return; }
+    Alert.alert(tc('gDisconnect'), tc('gDisconnectConfirm'), [{ text: t('common.cancel'), style: 'cancel' }, { text: tc('gDisconnect'), style: 'destructive', onPress: run }]);
+  };
+
+  const gLastSync = gconn?.lastSyncAt ? new Date(gconn.lastSyncAt).toLocaleString() : '';
 
   const openModal = async () => {
     setOpen(true);
@@ -72,7 +142,7 @@ export default function CalendarSync() {
         <View style={s.icon}><Ionicons name="sync" size={18} color={theme.colors.modules.hatirlatma} /></View>
         <View style={{ flex: 1 }}>
           <Text style={s.cardT}>{tc('title')}</Text>
-          <Text style={s.cardS}>{tc('sub')}</Text>
+          <Text style={s.cardS}>{gconn?.connected ? fill(tc('gCardConnected'), { e: gconn.email }) : tc('sub')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
       </TouchableOpacity>
@@ -85,6 +155,39 @@ export default function CalendarSync() {
               <TouchableOpacity onPress={() => setOpen(false)} testID="calendar-sync-close"><Ionicons name="close" size={22} color={theme.colors.text} /></TouchableOpacity>
             </View>
             <ScrollView>
+              {gcfg?.calendar ? (
+                <View style={s.gBox}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Ionicons name="logo-google" size={16} color="#EA4335" />
+                    <Text style={[s.h, { marginBottom: 0 }]}>{tc('gTitle')}</Text>
+                  </View>
+                  {gconn?.connected ? (
+                    <>
+                      <Text style={s.p}>{fill(tc('gConnectedP'), { e: gconn.email, c: gconn.calendarName || 'Anında Teklif' })}</Text>
+                      {gLastSync ? <Text style={s.small}>{fill(tc('gLastSync'), { d: gLastSync })}</Text> : null}
+                      {gconn.lastError ? <Text style={[s.small, { color: theme.colors.redText }]}>{gconn.lastError}</Text> : null}
+                      <View style={s.btnRow}>
+                        <TouchableOpacity style={[s.gBtn, busy === 'gsync' && { opacity: 0.6 }]} onPress={syncGoogle} disabled={!!busy} testID="gcal-sync">
+                          {busy === 'gsync' ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="sync" size={15} color="#fff" />}
+                          <Text style={s.importBtnT}>{tc('gSyncNow')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.btn} onPress={disconnectGoogle} disabled={!!busy} testID="gcal-disconnect">
+                          <Text style={[s.btnT, { color: theme.colors.redText }]}>{tc('gDisconnect')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={s.p}>{gconn?.status === 'revoked' ? tc('gRevoked') : tc('gP')}</Text>
+                      <TouchableOpacity style={[s.gBtn, busy === 'gconnect' && { opacity: 0.6 }]} onPress={connectGoogle} disabled={!!busy} testID="gcal-connect">
+                        {busy === 'gconnect' ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="logo-google" size={15} color="#fff" />}
+                        <Text style={s.importBtnT}>{tc('gConnect')}</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              ) : null}
+
               <Text style={s.h}>{tc('exportH')}</Text>
               <Text style={s.p}>{tc('exportP')}</Text>
               {!feed ? <ActivityIndicator color={theme.colors.modules.hatirlatma} /> : (
@@ -143,4 +246,6 @@ const s = themedStyles(() => StyleSheet.create({
   link: { fontSize: 12, fontWeight: '800', color: theme.colors.redText },
   importBtn: { flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', height: 46, borderRadius: 12, backgroundColor: theme.colors.navy },
   importBtnT: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
+  gBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 14, padding: 12, marginBottom: 18, backgroundColor: theme.colors.surfaceSoft },
+  gBtn: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', height: 44, borderRadius: 12, backgroundColor: theme.colors.modules.hatirlatma },
 }));

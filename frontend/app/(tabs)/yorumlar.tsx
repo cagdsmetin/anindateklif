@@ -5,14 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api } from '@/src/lib/api';
+import { api, GbpReviewT } from '@/src/lib/api';
+import GoogleReviewsPanel from '@/src/components/GoogleReviewsPanel';
 import { BubbleButton, MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 import { useLanguage } from '@/src/lib/i18n';
 
 // Google Haritalar / TripAdvisor yorumuna yapay zekayla yanıt: yorum
 // yapıştırılır, puan ve ton seçilir, yanıt kopyalanıp platformda paylaşılır.
-// (Google İşletme Profili'ne doğrudan gönderim Google'ın onaylı API
-// erişimi ister; bu yüzden kopyala-yapıştır akışı.)
+// Google İşletme Profili bağlıysa (bkz. GoogleReviewsPanel) yorum listeden
+// seçilir ve yanıt doğrudan Google'a gönderilir.
 
 const TONES = ['profesyonel', 'samimi', 'resmi', 'ozur'] as const;
 
@@ -30,6 +31,9 @@ export default function ReviewReplyScreen() {
   const [yanit, setYanit] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [gReview, setGReview] = useState<GbpReviewT | null>(null);
+  const [gRefresh, setGRefresh] = useState(0);
+  const [sending, setSending] = useState(false);
 
   if (!activeCompany) return <SafeAreaView style={s.container} edges={['top']}><TopHeader title={ty('title')} /></SafeAreaView>;
 
@@ -51,11 +55,41 @@ export default function ReviewReplyScreen() {
 
   const openGoogle = () => Linking.openURL('https://business.google.com/reviews');
 
+  const pickGoogleReview = (r: GbpReviewT) => {
+    setGReview(r);
+    setYorum(r.comment || '');
+    setPuan(r.stars || 5);
+    setAd(r.reviewer || '');
+    setYanit(r.reply || '');
+  };
+
+  const sendToGoogle = async () => {
+    if (!gReview || !yanit.trim()) return;
+    setSending(true);
+    try {
+      await api.gbpReply(activeCompany.id, gReview.name, yanit.trim());
+      showToast(ty('sentGoogle'));
+      setGReview(null);
+      setYanit('');
+      setYorum('');
+      setGRefresh((n) => n + 1);
+    } catch (e: any) { showToast(e?.message || ty('err')); } finally { setSending(false); }
+  };
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={ty('title')} />
       <MotionScrollView contentContainerStyle={[s.page, { paddingBottom: insets.bottom + 60 }]} keyboardShouldPersistTaps="handled">
         <ScreenHero icon="star" title={ty('title')} subtitle={ty('subtitle')} color={theme.colors.modules.yorum} />
+
+        <GoogleReviewsPanel onPick={pickGoogleReview} refreshKey={gRefresh} />
+        {gReview ? (
+          <View style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+            <Ionicons name="logo-google" size={15} color="#EA4335" />
+            <Text style={[s.muted, { flex: 1 }]}>{ty('fromGoogle')} {gReview.reviewer}</Text>
+            <TouchableOpacity onPress={() => setGReview(null)}><Ionicons name="close" size={18} color={theme.colors.textMuted} /></TouchableOpacity>
+          </View>
+        ) : null}
 
         <View style={s.card}>
           <Text style={s.label}>{ty('rating')}</Text>
@@ -99,7 +133,11 @@ export default function ReviewReplyScreen() {
             <MotionInput style={[s.input, { minHeight: 130, textAlignVertical: 'top' }]} multiline value={yanit} onChangeText={setYanit} testID="review-reply" />
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
               <View style={{ flex: 1 }}><BubbleButton icon={copied ? 'checkmark' : 'copy-outline'} label={copied ? ty('copied') : ty('copy')} color={theme.colors.navy} onPress={copy} /></View>
-              <View style={{ flex: 1 }}><BubbleButton icon="logo-google" label={ty('openGoogle')} color={theme.colors.modules.yorum} onPress={openGoogle} /></View>
+              {gReview ? (
+                <View style={{ flex: 1 }}><BubbleButton icon="send" label={sending ? ty('sending') : ty('sendGoogle')} color={theme.colors.modules.yorum} loading={sending} onPress={sendToGoogle} testID="review-send-google" /></View>
+              ) : (
+                <View style={{ flex: 1 }}><BubbleButton icon="logo-google" label={ty('openGoogle')} color={theme.colors.modules.yorum} onPress={openGoogle} /></View>
+              )}
             </View>
           </View>
         )}

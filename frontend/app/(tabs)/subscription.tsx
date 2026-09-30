@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -43,6 +44,7 @@ type StatusT = {
   promo_days_total?: number | null;
   promo_code?: string | null;
   renewal_due_soon?: boolean;
+  auto_renew?: boolean;
   plan_price_try: number;
   plans: PlanT[];
   seat_count?: number;
@@ -53,6 +55,11 @@ type StatusT = {
 };
 
 const BILLING_INFO_KEY = 'sub_billing_info_v1';
+
+// Android/iOS uygulamasında abonelik satın alınmaz (mağazalar dijital
+// abonelikte kendi ödeme sistemlerini şart koşuyor); burada yalnız durum,
+// hediye kodu ve otomatik yenilemeyi kapatma gösterilir. Satın alma web'de.
+const PURCHASE_ENABLED = Platform.OS === 'web';
 
 const FALLBACK_PLANS: PlanT[] = [
   { id: 'weekly', label: 'Haftalık Abonelik', price_try: 50, price_usd: 10, price_eur: 10, duration_days: 7 },
@@ -250,6 +257,30 @@ export default function SubscriptionScreen() {
     }
   };
 
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const autoRenew = !!(status?.subscription_active && status?.auto_renew);
+  const onCancelAutoRenew = () => {
+    const run = async () => {
+      setCancelBusy(true);
+      try {
+        await api.subscriptionCancel();
+        const st = await api.subscriptionStatus();
+        setStatus(st as StatusT);
+        refreshProBanner();
+      } catch (e: any) {
+        setError(e?.message || 'Otomatik yenileme kapatılamadı');
+      } finally {
+        setCancelBusy(false);
+      }
+    };
+    const msg = 'Otomatik yenileme kapatılacak. Ödenmiş dönemin sonuna kadar Pro kullanmaya devam edersiniz. Onaylıyor musunuz?';
+    if (Platform.OS === 'web') { if (window.confirm(msg)) run(); return; }
+    Alert.alert('Otomatik yenilemeyi kapat', msg, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Kapat', style: 'destructive', onPress: run },
+    ]);
+  };
+
   const remaining = status?.subscription_active ? null : status?.remaining_free ?? 0;
   const usedUp = !status?.subscription_active && (status?.remaining_free ?? 0) <= 0;
   const dueSoon = !!(status?.subscription_active && status?.renewal_due_soon);
@@ -270,7 +301,8 @@ export default function SubscriptionScreen() {
     const d = new Date(raw);
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
   })();
-  const showPlanSection = !status?.subscription_active || dueSoon;
+  const wantsPlanSection = !status?.subscription_active || dueSoon;
+  const showPlanSection = wantsPlanSection && PURCHASE_ENABLED;
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -348,11 +380,17 @@ export default function SubscriptionScreen() {
                 ) : null}
                 <Text style={s.subHeroText}>
                   {status?.subscription_active
-                    ? dueSoon
-                      ? 'Otomatik çekim yapılmaz — kesintisiz devam etmek için aşağıdan yenileyin.'
-                      : 'Sınırsız teklif oluşturabilirsiniz.'
+                    ? autoRenew
+                      ? `Otomatik yenileme açık${expiryLabel ? ` — ${expiryLabel} tarihinde kartınızdan tahsil edilir.` : '.'}`
+                      : dueSoon
+                        ? PURCHASE_ENABLED
+                          ? 'Otomatik çekim yapılmaz — kesintisiz devam etmek için aşağıdan yenileyin.'
+                          : 'Otomatik çekim yapılmaz.'
+                        : 'Sınırsız teklif oluşturabilirsiniz.'
                     : usedUp
-                      ? 'Devam etmek için bir plan seçin; teklifleriniz ve müşterileriniz olduğu gibi kalır.'
+                      ? PURCHASE_ENABLED
+                        ? 'Devam etmek için bir plan seçin; teklifleriniz ve müşterileriniz olduğu gibi kalır.'
+                        : 'Teklifleriniz ve müşterileriniz olduğu gibi kalır.'
                       : `Bu ay ${status?.quotes_used_this_month ?? 0} / ${status?.free_limit ?? 5} ücretsiz teklif kullandınız.`}
                 </Text>
                 {!status?.subscription_active && (
@@ -417,6 +455,39 @@ export default function SubscriptionScreen() {
                 </View>
                 {promoError ? <Text style={s.errorText}>{promoError}</Text> : null}
                 {promoSuccess ? <Text style={s.promoSuccess}>{promoSuccess}</Text> : null}
+              </View>
+            )}
+
+            {autoRenew && (
+              <View style={s.card} testID="sub-auto-renew">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
+                  <Ionicons name="repeat" size={18} color={theme.colors.green} />
+                  <Text style={{ flex: 1, fontSize: 13.5, color: theme.colors.textSoft }}>
+                    Aboneliğiniz her dönem otomatik yenilenir. İstediğiniz zaman kapatabilirsiniz.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={onCancelAutoRenew}
+                  disabled={cancelBusy}
+                  style={{ paddingHorizontal: 14, paddingBottom: 14 }}
+                  testID="sub-cancel-auto-renew"
+                >
+                  {cancelBusy ? (
+                    <ActivityIndicator color={theme.colors.redText} />
+                  ) : (
+                    <Text style={{ color: theme.colors.redText, fontWeight: '800', fontSize: 13 }}>Otomatik yenilemeyi kapat</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+            {autoRenew && error ? <Text style={s.errorText}>{error}</Text> : null}
+
+            {wantsPlanSection && !PURCHASE_ENABLED && (
+              <View style={[s.card, { flexDirection: 'row', gap: 10, padding: 14, alignItems: 'center' }]} testID="sub-native-note">
+                <Ionicons name="information-circle-outline" size={18} color={theme.colors.textMuted} />
+                <Text style={{ flex: 1, fontSize: 13, color: theme.colors.textSoft }}>
+                  Bu uygulamada abonelik satın alınamaz. Mevcut aboneliğiniz ve hediye kodlarınız bu ekranda görünür.
+                </Text>
               </View>
             )}
 

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, getSessionToken, setSessionToken, getAdminReturnToken, setAdminReturnToken, UserT } from '@/src/lib/api';
 import { storage } from '@/src/utils/storage';
+import { exchangeGoogleCode } from '@/src/lib/google';
 
 type LoginArgs = { email: string; password: string };
 type RegisterArgs = { email: string; password: string; name: string; phone: string };
@@ -13,6 +14,7 @@ type AuthState = {
   loading: boolean;
   user: UserT | null;
   login: (args: LoginArgs) => Promise<void>;
+  loginWithGoogleCode: (code: string) => Promise<void>;
   register: (args: RegisterArgs) => Promise<void>;
   acceptInvite: (token: string, name: string, password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -73,10 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrap();
   }, [bootstrap]);
 
-  const login = useCallback(async ({ email, password }: LoginArgs) => {
-    // eslint-disable-next-line no-console
-    console.log('[auth] login attempt', { email });
-    const res: { access_token: string; user: UserT } = await api.login({ email, password });
+  // Şifreyle ya da Google ile girişten sonra ortak adımlar: token'ı sakla,
+  // /hediye sayfasından kalan kampanya kodunu kullan, kullanıcıyı yükle.
+  const finishLogin = useCallback(async (res: { access_token: string; user: UserT }) => {
     try {
       await setSessionToken(res.access_token);
     } catch (e) {
@@ -94,6 +95,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(loggedIn);
   }, []);
+
+  const login = useCallback(async ({ email, password }: LoginArgs) => {
+    // eslint-disable-next-line no-console
+    console.log('[auth] login attempt', { email });
+    const res: { access_token: string; user: UserT } = await api.login({ email, password });
+    await finishLogin(res);
+  }, [finishLogin]);
+
+  const loginWithGoogleCode = useCallback(async (code: string) => {
+    await finishLogin(await exchangeGoogleCode(code));
+  }, [finishLogin]);
 
   const register = useCallback(async ({ email, password, name, phone }: RegisterArgs) => {
     // Debug hook: `adb logcat *:S ReactNativeJS:V` shows this on Android APK.
@@ -190,10 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({
-      loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut,
+      loading, user, login, loginWithGoogleCode, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut,
       enterAsCustomer, returnToOwnAccount,
     }),
-    [loading, user, login, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut, enterAsCustomer, returnToOwnAccount]
+    [loading, user, login, loginWithGoogleCode, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut, enterAsCustomer, returnToOwnAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -83,9 +83,9 @@ Hepsi Railway ortam değişkenleriyle açılır; değişken yoksa özellik gör�
 - Google Cloud › OAuth istemcisi (Web application), yönlendirme adresi `{BACKEND_BASE_URL}/api/google/oauth/callback`.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` → Google ile giriş + Google Takvim senkronu açılır ("Google Calendar API" etkinleştirilmeli).
 - Business Profile API erişimi Google'dan onaylanınca `GOOGLE_BUSINESS_ENABLED=true` → Yorum Yanıtla ekranında yorum listesi + Google'a gönder.
+- Opsiyonel: `GOOGLE_TOKEN_KEY` (yenileme anahtarlarını şifreleme anahtarı; yoksa JWT_SECRET'tan türetilir), `GCAL_SYNC_MINUTES` (varsayılan 30).
+- Takvim: uygulama kayıtları Google'da ayrı "Anında Teklif" takvimine yazılır; ana takvim etkinlikleri hatırlatıcı olarak gelir; düzenleme/silme iki yönlü.
 
 ### Apple ile giriş (iOS)
 - App Store kuralı 4.8 gereği: Google girişi olduğu için iPhone'da "Apple ile devam et" butonu da var (`POST /api/auth/apple`, Apple identityToken imzası Apple anahtarlarıyla doğrulanır).
 - Ek anahtar gerekmez; Apple Developer'da App ID (com.anindateklif.app) için "Sign in with Apple" yeteneği EAS build sırasında otomatik açılır. Farklı paket kimliği kullanılırsa `APPLE_BUNDLE_IDS` (virgülle) ayarlanır.
-- Opsiyonel: `GOOGLE_TOKEN_KEY` (yenileme anahtarlarını şifreleme anahtarı; yoksa JWT_SECRET'tan türetilir), `GCAL_SYNC_MINUTES` (varsayılan 30).
-- Takvim: uygulama kayıtları Google'da ayrı "Anında Teklif" takvimine yazılır; ana takvim etkinlikleri hatırlatıcı olarak gelir; düzenleme/silme iki yönlü.

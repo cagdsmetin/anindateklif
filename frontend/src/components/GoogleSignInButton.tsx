@@ -7,16 +7,19 @@ import { useLanguage } from '@/src/lib/i18n';
 import { storage } from '@/src/utils/storage';
 import { appReturnUrl, googleErrorMessage, googleLoginUrl, runGoogleFlow, useGoogleConfig } from '@/src/lib/google';
 import { themedStyles } from '@/src/components/motion';
+import AppleSignInButton, { useAppleSignInAvailable } from '@/src/components/AppleSignInButton';
 
-// Giriş ve kayıt ekranlarındaki "Google ile devam et" butonu. Sunucuda
-// Google yapılandırılmamışsa hiç görünmez.
+// Giriş ve kayıt ekranlarındaki "Google ile devam et" butonu (iPhone'da
+// altında "Apple ile devam et"). Sunucuda Google yapılandırılmamışsa Google
+// butonu görünmez.
 export default function GoogleSignInButton({ onError }: { onError: (msg: string | null) => void }) {
   const { t } = useLanguage();
   const cfg = useGoogleConfig();
   const { loginWithGoogleCode } = useAuth();
   const [busy, setBusy] = useState(false);
+  const apple = useAppleSignInAvailable();
 
-  if (!cfg?.login) return null;
+  if (!cfg?.login && !apple) return null;
 
   const onPress = async () => {
     if (busy) return;
@@ -47,14 +50,15 @@ export default function GoogleSignInButton({ onError }: { onError: (msg: string 
         <Text style={s.orText}>{t('gAuth.or')}</Text>
         <View style={s.orLine} />
       </View>
-      <TouchableOpacity style={[s.btn, busy && { opacity: 0.7 }]} onPress={onPress} disabled={busy} activeOpacity={0.9} testID="google-signin">
+      {cfg?.login ? <TouchableOpacity style={[s.btn, busy && { opacity: 0.7 }]} onPress={onPress} disabled={busy} activeOpacity={0.9} testID="google-signin">
         {busy ? <ActivityIndicator color="#1f2937" /> : (
           <>
             <Ionicons name="logo-google" size={18} color="#EA4335" />
             <Text style={s.btnText}>{t('gAuth.continue')}</Text>
           </>
         )}
-      </TouchableOpacity>
+      </TouchableOpacity> : null}
+      {apple ? <AppleSignInButton onError={onError} /> : null}
     </View>
   );
 }

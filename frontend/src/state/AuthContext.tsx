@@ -15,6 +15,7 @@ type AuthState = {
   user: UserT | null;
   login: (args: LoginArgs) => Promise<void>;
   loginWithGoogleCode: (code: string) => Promise<void>;
+  loginWithApple: (identityToken: string, fullName?: string) => Promise<void>;
   register: (args: RegisterArgs) => Promise<void>;
   acceptInvite: (token: string, name: string, password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -105,6 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogleCode = useCallback(async (code: string) => {
     await finishLogin(await exchangeGoogleCode(code));
+  }, [finishLogin]);
+
+  const loginWithApple = useCallback(async (identityToken: string, fullName?: string) => {
+    await finishLogin(await api.appleLogin({ identityToken, fullName }));
   }, [finishLogin]);
 
   const register = useCallback(async ({ email, password, name, phone }: RegisterArgs) => {
@@ -202,10 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({
-      loading, user, login, loginWithGoogleCode, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut,
+      loading, user, login, loginWithGoogleCode, loginWithApple, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut,
       enterAsCustomer, returnToOwnAccount,
     }),
-    [loading, user, login, loginWithGoogleCode, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut, enterAsCustomer, returnToOwnAccount]
+    [loading, user, login, loginWithGoogleCode, loginWithApple, register, acceptInvite, forgotPassword, resetPassword, updateUser, refreshUser, signOut, enterAsCustomer, returnToOwnAccount]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

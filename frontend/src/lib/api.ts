@@ -362,6 +362,8 @@ export const api = {
   googleConfig: (): Promise<GoogleConfigT> => req('/google/config'),
   googleExchange: (code: string): Promise<{ access_token: string; user: UserT }> =>
     req('/auth/google/exchange', { method: 'POST', body: JSON.stringify({ code }) }),
+  appleLogin: (data: { identityToken: string; fullName?: string }): Promise<{ access_token: string; user: UserT }> =>
+    req('/auth/apple', { method: 'POST', body: JSON.stringify(data) }),
   googleConnectStart: (data: { purpose: 'calendar' | 'business'; companyId: string; redirect: string }): Promise<{ url: string }> =>
     req('/google/connect/start', { method: 'POST', body: JSON.stringify(data) }),
   googleConnections: (companyId: string): Promise<GoogleConnectionT[]> => req(`/google/connections/${companyId}`),

@@ -22,7 +22,8 @@
         "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi",
         "NSCameraUsageDescription": "Şirket logosu veya belge fotoğrafı çekmek için kamera erişimi",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -54,7 +55,8 @@
         {
           "color": "#2563EB"
         }
-      ]
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

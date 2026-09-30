@@ -9124,7 +9124,20 @@ async def _google_login_user(claims: Dict[str, Any], campaign: str = "") -> Dict
     sub = str(claims.get("sub") or "")
     if not email or not sub or not claims.get("email_verified"):
         raise HTTPException(400, "Google hesabınızın e-posta adresi doğrulanmamış")
-    u = await db.users.find_one({"google_sub": sub}, {"_id": 0})
+    return await _social_login_user(
+        "google_sub", sub, email, (claims.get("name") or "").strip(),
+        claims.get("picture") or "", campaign, "Google",
+    )
+
+
+async def _social_login_user(sub_field: str, sub: str, email: str, name: str,
+                             picture: str, campaign: str, provider: str) -> Dict[str, Any]:
+    """Google/Apple girişinde ortak kullanıcı bul-bağla-oluştur akışı.
+    email boş olabilir (Apple ikinci girişte e-posta göndermeyebilir); o
+    durumda yalnızca daha önce bağlanmış hesap bulunabilir."""
+    u = await db.users.find_one({sub_field: sub}, {"_id": 0})
+    if not u and not email:
+        raise HTTPException(400, f"{provider} hesabınızdan e-posta adresi alınamadı")
     if not u:
         u = await db.users.find_one({"email": email}, {"_id": 0})
     if not u and email.split("@")[-1] in _ALIAS_INSENSITIVE_DOMAINS:
@@ -9134,11 +9147,11 @@ async def _google_login_user(claims: Dict[str, Any], campaign: str = "") -> Dict
     if u:
         if u.get("deleted_at"):
             raise HTTPException(403, "Bu hesap kapatıldı. Destek ile iletişime geçin.")
-        if u.get("google_sub") and u["google_sub"] != sub:
-            raise HTTPException(409, "Bu hesap başka bir Google hesabına bağlı")
-        upd: Dict[str, Any] = {"google_sub": sub, "email_verified": True}
-        if not u.get("picture") and claims.get("picture"):
-            upd["picture"] = claims["picture"]
+        if u.get(sub_field) and u[sub_field] != sub:
+            raise HTTPException(409, f"Bu hesap başka bir {provider} hesabına bağlı")
+        upd: Dict[str, Any] = {sub_field: sub, "email_verified": True}
+        if not u.get("picture") and picture:
+            upd["picture"] = picture
         await db.users.update_one({"user_id": u["user_id"]}, {"$set": upd})
         return {**u, **upd}
 
@@ -9154,10 +9167,10 @@ async def _google_login_user(claims: Dict[str, Any], campaign: str = "") -> Dict
         # ile sonradan şifre belirlenebilir. Telefon alanı bilerek hiç
         # yazılmıyor (phone_normalized benzersiz ve seyrek indeksli).
         "hashed_password": "",
-        "google_sub": sub,
-        "name": (claims.get("name") or "").strip(),
+        sub_field: sub,
+        "name": name,
         "phone": "",
-        "picture": claims.get("picture") or "",
+        "picture": picture,
         "country": "",
         "currency": "",
         "tax_label": "",
@@ -9175,7 +9188,7 @@ async def _google_login_user(claims: Dict[str, Any], campaign: str = "") -> Dict
         try:
             await _redeem_campaign_code(user, campaign, CAMPAIGN_PROMO_CODES[campaign])
         except HTTPException as e:
-            logger.info(f"Kampanya kodu Google kaydında uygulanamadı ({campaign}): {e.detail}")
+            logger.info(f"Kampanya kodu {provider} kaydında uygulanamadı ({campaign}): {e.detail}")
     return user
 
 
@@ -9192,6 +9205,67 @@ async def google_login_exchange(payload: GoogleExchangeRequest, request: Request
     u = await db.users.find_one({"user_id": doc["user_id"]}, {"_id": 0})
     if not u or u.get("deleted_at"):
         raise HTTPException(401, "Hesap bulunamadı")
+    return AuthResponse(access_token=_make_access_token(u), user=_user_out(u))
+
+
+# ---- Apple ile giriş ----
+# App Store kuralı 4.8: üçüncü taraf girişi (Google) sunan iOS uygulaması
+# "Apple ile Giriş" de sunmalı. iPhone'daki yerel Apple penceresi bir
+# identityToken (Apple'ın imzaladığı JWT) döndürür; imzayı Apple'ın açık
+# anahtarlarıyla, aud'u uygulamanın paket kimliğiyle doğruluyoruz.
+APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_AUDIENCES = [a.strip() for a in os.environ.get("APPLE_BUNDLE_IDS", "com.anindateklif.app").split(",") if a.strip()]
+_apple_keys_cache: Dict[str, Any] = {"at": 0.0, "keys": {}}
+
+
+async def _apple_public_key(kid: str):
+    fresh = _time.time() - _apple_keys_cache["at"] < 3600
+    if not fresh or kid not in _apple_keys_cache["keys"]:
+        resp = await asyncio.to_thread(requests.get, APPLE_KEYS_URL, timeout=10)
+        if resp.status_code != 200:
+            raise HTTPException(502, "Apple anahtarları alınamadı, lütfen tekrar deneyin")
+        _apple_keys_cache["keys"] = {k["kid"]: k for k in resp.json().get("keys", [])}
+        _apple_keys_cache["at"] = _time.time()
+    jwk = _apple_keys_cache["keys"].get(kid)
+    if not jwk:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    return jwt.PyJWK(jwk).key
+
+
+async def _apple_claims(identity_token: str) -> Dict[str, Any]:
+    try:
+        kid = jwt.get_unverified_header(identity_token).get("kid", "")
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    key = await _apple_public_key(kid)
+    try:
+        return jwt.decode(identity_token, key, algorithms=["RS256"],
+                          audience=APPLE_AUDIENCES, issuer=APPLE_ISSUER)
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+
+
+class AppleLoginRequest(BaseModel):
+    identityToken: str
+    # Apple adı yalnızca ilk girişte ve token dışında verir.
+    fullName: str = ""
+    campaign: str = ""
+
+
+@api_router.post("/auth/apple", response_model=AuthResponse)
+async def apple_login(payload: AppleLoginRequest, request: Request):
+    _rate_limit(f"apple-login:ip:{_client_ip(request)}", 30, 600)
+    claims = await _apple_claims(payload.identityToken)
+    sub = str(claims.get("sub") or "")
+    if not sub:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    verified = claims.get("email_verified") in (True, "true")
+    email = _normalize_email(claims.get("email", "")) if verified else ""
+    u = await _social_login_user(
+        "apple_sub", sub, email, (payload.fullName or "").strip()[:120], "",
+        (payload.campaign or "")[:40], "Apple",
+    )
     return AuthResponse(access_token=_make_access_token(u), user=_user_out(u))
 
 
@@ -11476,6 +11550,7 @@ async def on_startup():
         await db.users.create_index("iyzico_sub_ref", sparse=True)
         await db.users.create_index("iyzico_sub_prev_refs", sparse=True)
         await db.users.create_index("google_sub", unique=True, sparse=True)
+        await db.users.create_index("apple_sub", unique=True, sparse=True)
         await db.oauth_login_codes.create_index("code_hash", unique=True)
         await db.google_connections.create_index([("userId", 1), ("companyId", 1), ("purpose", 1), ("personId", 1)], unique=True)
         await db.google_connections.create_index("id", unique=True)

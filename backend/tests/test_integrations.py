@@ -388,3 +388,47 @@ class TestBusinessReviews:
             "companyId": "c1", "reviewName": "accounts/1/locations/2/reviews/r1", "comment": "Teşekkürler"})
         assert ok.status_code == 200, ok.text
         assert calls[-1][0] == "PUT" and calls[-1][1].endswith("/accounts/1/locations/2/reviews/r1/reply")
+
+
+# ------------------------------------------------------------------ Apple
+class TestAppleLogin:
+    @pytest.fixture()
+    def apple(self, env, monkeypatch):
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        jwk = jwt.PyJWK.from_json(jwt.algorithms.RSAAlgorithm.to_jwk(key.public_key()))
+
+        async def fake_key(kid):
+            if kid != "k1":
+                raise server.HTTPException(401, "bad kid")
+            return jwk.key
+        monkeypatch.setattr(server, "_apple_public_key", fake_key)
+
+        def token(aud="com.anindateklif.app", **claims):
+            now = int(datetime.now(timezone.utc).timestamp())
+            body = {"iss": server.APPLE_ISSUER, "aud": aud, "iat": now, "exp": now + 600, "sub": "apl-1", **claims}
+            return jwt.encode(body, key, algorithm="RS256", headers={"kid": "k1"})
+        return token
+
+    def test_creates_links_and_rejects(self, env, apple):
+        c = TestClient(server.app)
+        # İlk giriş: e-posta + ad geliyor → yeni hesap
+        r = c.post("/api/auth/apple", json={"identityToken": apple(email="x@privaterelay.appleid.com", email_verified="true"),
+                                            "fullName": "Ayşe Yılmaz"})
+        assert r.status_code == 200, r.text
+        uid = r.json()["user"]["user_id"]
+        u = run(env.users.find_one({"user_id": uid}))
+        assert u["apple_sub"] == "apl-1" and u["name"] == "Ayşe Yılmaz" and u["email_verified"]
+        # Sonraki giriş: e-posta yok, sub ile aynı hesap bulunur
+        r = c.post("/api/auth/apple", json={"identityToken": apple()})
+        assert r.status_code == 200 and r.json()["user"]["user_id"] == uid
+        # Tanınmayan sub + e-posta yok → hesap açılamaz
+        r = c.post("/api/auth/apple", json={"identityToken": apple(sub="apl-2")})
+        assert r.status_code == 400
+        # Mevcut e-posta hesabına bağlanır
+        run(_mk_user(env, "user_b"))
+        r = c.post("/api/auth/apple", json={"identityToken": apple(sub="apl-3", email="user_b@example.com", email_verified=True)})
+        assert r.status_code == 200 and r.json()["user"]["user_id"] == "user_b"
+        # Yanlış aud / imza reddedilir
+        assert c.post("/api/auth/apple", json={"identityToken": apple(aud="com.baska.app")}).status_code == 401
+        assert c.post("/api/auth/apple", json={"identityToken": "bozuk"}).status_code == 401

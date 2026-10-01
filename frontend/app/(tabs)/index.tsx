@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated as RNAnimated, Platform, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Animated as RNAnimated, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -41,7 +41,7 @@ import {
   useScrollScene,
   useViewportProgress,
 } from '@/src/components/motion';
-import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
+import { api, QuoteT, RatesT, ServiceT, StaffMemberT } from '@/src/lib/api';
 import { sumToTRY, RatesLike, computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage, orderedAmounts, statusLabel, Lang, upper } from '@/src/lib/i18n';
 
@@ -395,6 +395,64 @@ export default function PanelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quotes, rates, lang]);
 
+  // Ekip özeti (hero'da kaydırmalı sayfalar): sadece yöneticiler -- firma
+  // sahibi ve "Yönetici" (admin) rolündeki personel. Düz personel görmez.
+  const isManager = !!user && (!user.is_staff || user.staff_role === 'admin');
+  const [members, setMembers] = useState<StaffMemberT[]>([]);
+  useEffect(() => {
+    if (!isManager || !activeCompany) { setMembers([]); return; }
+    let alive = true;
+    api.listStaff(activeCompany.id)
+      .then((res) => { if (alive) setMembers((res || []).filter((m) => m.type === 'active')); })
+      .catch(() => { if (alive) setMembers([]); });
+    return () => { alive = false; };
+  }, [isManager, activeCompany?.id]);
+
+  const team = useMemo<TeamPerson[]>(() => {
+    if (!isManager) return [];
+    const me = (user?.email || '').toLowerCase();
+    const people: { email: string; name: string; role: string }[] = [];
+    if (!user?.is_staff && me) people.push({ email: me, name: user?.name || me, role: 'owner' });
+    members.forEach((m) => {
+      const email = (m.email || '').toLowerCase();
+      if (!email || people.some((p) => p.email === email)) return;
+      people.push({ email, name: m.name || m.email, role: m.role });
+    });
+    // Ekipte firma sahibinden başka kimse yoksa özet sayfası anlamsız.
+    if (people.length < 2) return [];
+    // hazirlayanEmail'i boş eski teklifler firma sahibine sayılır.
+    const ownerEmail = people.find((p) => p.role === 'owner')?.email || '';
+    const canConvert = !!(rates && rates.usd_try && rates.eur_try);
+    const toTRY = (list: QuoteT[]) =>
+      canConvert ? sumToTRY(list.map((q) => ({ paraBirimi: q.paraBirimi || 'USD', tutar: q.genelToplam || 0 })), rates as RatesLike) : null;
+    return people.map((p) => {
+      const mine = quotes.filter((q) => {
+        const e = (q.hazirlayanEmail || '').toLowerCase();
+        return e ? e === p.email : p.email === ownerEmail;
+      });
+      const month = mine.filter((q) => (q.tarih || '').slice(0, 7) === thisMonthKey);
+      const series: { key: string; label: string; value: number }[] = [];
+      for (let k = 5; k >= 0; k--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const inMonth = mine.filter((q) => (q.tarih || '').slice(0, 7) === key);
+        series.push({ key, label: monthsShort[d.getMonth()] || '', value: canConvert ? toTRY(inMonth) || 0 : inMonth.length });
+      }
+      return {
+        email: p.email,
+        name: p.name,
+        role: p.role,
+        isMe: p.email === me,
+        monthCount: month.length,
+        monthVolume: toTRY(month),
+        monthSales: toTRY(month.filter((q) => q.durum === 'Onaylandı')),
+        pending: mine.filter((q) => q.durum === 'Beklemede' || q.durum === 'Görüldü').length,
+        monthly: series,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isManager, user, members, quotes, rates, thisMonthKey, lang]);
+
   const s = styles();
 
   if (!activeCompany) {
@@ -545,6 +603,23 @@ export default function PanelScreen() {
             t={t}
             onVolume={() => router.push('/(tabs)/history')}
             onPending={() => router.push({ pathname: '/(tabs)/history', params: { filter: 'bekleyen' } } as any)}
+            width={W}
+            extraPages={
+              team.length > 0
+                ? (go) => [
+                    <TeamSummaryPage key="team" team={team} isWide={isWide} t={t} onPick={(i) => go(i + 2)} />,
+                    ...team.map((p) => (
+                      <PersonPage
+                        key={p.email}
+                        person={p}
+                        isWide={isWide}
+                        t={t}
+                        onOpen={() => router.push({ pathname: '/(tabs)/personel-teklifleri', params: { email: p.email } } as any)}
+                      />
+                    )),
+                  ]
+                : undefined
+            }
           />
 
           {rates && (rates.usd_try || rates.btc_try) ? (
@@ -691,7 +766,11 @@ function PanelHero({
   t,
   onVolume,
   onPending,
+  width,
+  extraPages,
 }: {
+  width: number;
+  extraPages?: (go: (i: number) => void) => React.ReactNode[];
   isWide: boolean;
   greeting: string;
   dateLine: string;
@@ -724,7 +803,9 @@ function PanelHero({
     <View style={s.heroShadow}>
       <BorderBeam radius={26} width={1.5} background={HERO_BASE} baseBorder="rgba(148,163,184,0.18)">
         <Aurora colors={['#6366F1', '#A855F7', '#22D3EE']} base={[HERO_BASE, '#141C3C']}>
-          <Animated.View style={[s.heroInner, isWide && s.heroInnerWide, drift]}>
+          <Animated.View style={drift}>
+            <HeroPager width={width} extraPages={extraPages}>
+          <View style={[s.heroInner, isWide && s.heroInnerWide]}>
             <View style={isWide ? s.heroMain : undefined}>
               <Text style={s.heroGreeting} numberOfLines={1}>
                 {greeting}
@@ -770,9 +851,242 @@ function PanelHero({
               <Text style={s.heroChartTitle}>{t('panel.last6Months')}</Text>
               <MiniBars data={monthly} height={isWide ? 104 : 62} />
             </View>
+          </View>
+            </HeroPager>
           </Animated.View>
         </Aurora>
       </BorderBeam>
+    </View>
+  );
+}
+
+type TeamPerson = {
+  email: string;
+  name: string;
+  role: string;
+  isMe: boolean;
+  monthCount: number;
+  monthVolume: number | null;
+  monthSales: number | null;
+  pending: number;
+  monthly: { key: string; label: string; value: number }[];
+};
+
+function roleLabel(p: TeamPerson, t: (k: string) => string): string {
+  const r = p.role === 'owner' ? t('panel.teamOwner') : p.role === 'admin' ? t('panel.teamManager') : t('panel.teamStaff');
+  return p.isMe ? `${r} · ${t('panel.teamMe')}` : r;
+}
+
+// Hero'yu yatay sayfalara böler: 1. sayfa firma geneli, sonra ekip özeti ve
+// her personel için ayrı bir sayfa. Kaydırarak (dokunmatik) ya da alttaki
+// oklar/noktalarla (masaüstü) gezilir. Ek sayfa yoksa olduğu gibi çizer.
+function HeroPager({
+  width,
+  extraPages,
+  children,
+}: {
+  width: number;
+  extraPages?: (go: (i: number) => void) => React.ReactNode[];
+  children: React.ReactNode;
+}) {
+  const s = styles();
+  const ref = useRef<ScrollView>(null);
+  const [idx, setIdx] = useState(0);
+  const go = (i: number) => {
+    const n = Math.max(0, Math.min(i, total - 1));
+    ref.current?.scrollTo({ x: n * width, animated: true });
+    setIdx(n);
+  };
+  const pages = extraPages ? [children, ...extraPages(go)] : [children];
+  const total = pages.length;
+
+  // Genişlik değişince (ekran döndürme / pencere boyutu) aynı sayfada kal.
+  useEffect(() => {
+    ref.current?.scrollTo({ x: idx * width, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width]);
+  useEffect(() => {
+    if (idx > total - 1) go(total - 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
+
+  if (total === 1 || !width) return <>{children}</>;
+
+  return (
+    <View>
+      <ScrollView
+        ref={ref}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const i = Math.round(e.nativeEvent.contentOffset.x / width);
+          if (i !== idx && i >= 0 && i < total) setIdx(i);
+        }}
+      >
+        {pages.map((p, i) => (
+          <View key={i} style={{ width }}>
+            {p}
+          </View>
+        ))}
+      </ScrollView>
+      <View style={s.pagerBar}>
+        <Pressable onPress={() => go(idx - 1)} disabled={idx === 0} style={[s.pagerBtn, idx === 0 && s.pagerBtnOff]} hitSlop={8} testID="hero-prev">
+          <Ionicons name="chevron-back" size={15} color="#E0E7FF" />
+        </Pressable>
+        {total <= 9 ? (
+          <View style={s.pagerDots}>
+            {pages.map((_, i) => (
+              <Pressable key={i} onPress={() => go(i)} hitSlop={6}>
+                <View style={[s.pagerDot, i === idx && s.pagerDotOn]} />
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text style={s.pagerCount}>
+            {idx + 1} / {total}
+          </Text>
+        )}
+        <Pressable onPress={() => go(idx + 1)} disabled={idx === total - 1} style={[s.pagerBtn, idx === total - 1 && s.pagerBtnOff]} hitSlop={8} testID="hero-next">
+          <Ionicons name="chevron-forward" size={15} color="#E0E7FF" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// Ekip özeti: herkesin bu ayki satışı (onaylanan), teklif adedi ve yanıt
+// bekleyen teklif sayısı tek tabloda. Satıra dokununca o kişinin sayfasına geçer.
+function TeamSummaryPage({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide: boolean; t: (k: string) => string; onPick: (i: number) => void }) {
+  const s = styles();
+  const money = (n: number | null) => (n == null ? '—' : fmtCompactTRY(n, t));
+  const sum = (f: (p: TeamPerson) => number | null) => {
+    let missing = false;
+    const v = team.reduce((a, p) => {
+      const x = f(p);
+      if (x == null) missing = true;
+      return a + (x || 0);
+    }, 0);
+    return missing ? null : v;
+  };
+  const totSales = sum((p) => p.monthSales);
+  const totCount = team.reduce((a, p) => a + p.monthCount, 0);
+  const totPending = team.reduce((a, p) => a + p.pending, 0);
+  const rows = [...team.map((p, i) => ({ p, i }))].sort(
+    (a, b) => (b.p.monthSales || 0) - (a.p.monthSales || 0) || b.p.monthCount - a.p.monthCount
+  );
+
+  return (
+    <View style={[s.heroInner, isWide && { padding: 24 }]}>
+      <Text style={s.heroLabel}>{t('panel.teamTitle')}</Text>
+      <Text style={s.heroDate} numberOfLines={1}>
+        {t('panel.teamSub')}
+      </Text>
+
+      <View style={s.teamTotals}>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamSales')}</Text>
+          <Text style={s.teamTotalValue} numberOfLines={1} adjustsFontSizeToFit>
+            {money(totSales)}
+          </Text>
+        </View>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamCount')}</Text>
+          <Text style={s.teamTotalValue}>{totCount}</Text>
+        </View>
+        <View style={[s.teamTotal, s.teamTotalWarn]}>
+          <Text style={[s.teamTotalLabel, { color: '#FDE68A' }]}>{t('panel.teamPending')}</Text>
+          <Text style={s.teamTotalValue}>{totPending}</Text>
+        </View>
+      </View>
+
+      <View style={s.teamHead}>
+        <Text style={[s.teamHeadText, { flex: 1 }]}>{t('panel.teamPerson')}</Text>
+        <Text style={[s.teamHeadText, s.teamColMoney]}>{t('panel.teamSales')}</Text>
+        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamCount')}</Text>
+        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamPending')}</Text>
+      </View>
+      {rows.map(({ p, i }) => (
+        <Pressable key={p.email} style={({ pressed }) => [s.teamRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(i)} testID={`hero-team-row-${p.email}`}>
+          <View style={s.teamAvatar}>
+            <Text style={s.teamAvatarText}>{initials(p.name)}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.teamName} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={s.teamRole} numberOfLines={1}>
+              {roleLabel(p, t)}
+            </Text>
+          </View>
+          <Text style={[s.teamCell, s.teamColMoney]} numberOfLines={1}>
+            {money(p.monthSales)}
+          </Text>
+          <Text style={[s.teamCell, s.teamCol]}>{p.monthCount}</Text>
+          <Text style={[s.teamCell, s.teamCol, p.pending > 0 && { color: '#FDE68A' }]}>{p.pending}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+// Tek bir personelin bu ayki satışı, teklif hacmi, bekleyenleri ve son 6 ayı.
+function PersonPage({ person: p, isWide, t, onOpen }: { person: TeamPerson; isWide: boolean; t: (k: string) => string; onOpen: () => void }) {
+  const s = styles();
+  return (
+    <View style={[s.heroInner, isWide && s.heroInnerWide]}>
+      <View style={isWide ? s.heroMain : undefined}>
+        <View style={s.personHead}>
+          <View style={[s.teamAvatar, s.personAvatar]}>
+            <Text style={[s.teamAvatarText, { fontSize: 14 }]}>{initials(p.name)}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.heroGreeting} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={s.heroDate} numberOfLines={1}>
+              {roleLabel(p, t)}  ·  {p.email}
+            </Text>
+          </View>
+        </View>
+
+        <AnimatedPressable style={s.heroKpi} onPress={onOpen} scaleTo={0.98}>
+          <Text style={s.heroLabel}>{t('panel.teamSalesLabel')}</Text>
+          {p.monthSales == null ? (
+            <Text style={[s.heroValue, isWide && s.heroValueWide]}>—</Text>
+          ) : (
+            <CountUp value={p.monthSales} format={(n) => fmt(n, 'TRY')} style={[s.heroValue, isWide && s.heroValueWide]} numberOfLines={1} adjustsFontSizeToFit />
+          )}
+          <Text style={s.heroSecondary} numberOfLines={1}>
+            {t('panel.teamVolumeLine')}: {p.monthVolume == null ? '—' : fmt(p.monthVolume, 'TRY')}
+          </Text>
+        </AnimatedPressable>
+
+        <View style={s.heroChips}>
+          <AnimatedPressable style={s.chipWarn} onPress={onOpen} scaleTo={0.96}>
+            <LiveDot color={GOLD} />
+            <Text style={s.chipWarnLabel}>{t('panel.s042')}</Text>
+            <Text style={s.chipWarnValue}>{p.pending}</Text>
+          </AnimatedPressable>
+          <View style={s.chip}>
+            <Ionicons name="document-text-outline" size={13} color="#C7D2FE" />
+            <Text style={s.chipLabel}>{t('panel.thisMonth')}</Text>
+            <Text style={s.chipValue}>
+              {p.monthCount} {t('panel.teklifUnit')}
+            </Text>
+          </View>
+          <AnimatedPressable style={s.chip} onPress={onOpen} scaleTo={0.96} testID={`hero-person-open-${p.email}`}>
+            <Text style={s.chipValue}>{t('panel.teamAllQuotes')}</Text>
+            <Ionicons name="chevron-forward" size={13} color="#C7D2FE" />
+          </AnimatedPressable>
+        </View>
+      </View>
+
+      <View style={[s.heroChart, isWide && s.heroChartWide]}>
+        <Text style={s.heroChartTitle}>{t('panel.last6Months')}</Text>
+        <MiniBars data={p.monthly} height={isWide ? 104 : 62} />
+      </View>
     </View>
   );
 }
@@ -1424,6 +1738,72 @@ const styles = themedSheet(() => {
     barCurrent: { backgroundColor: 'transparent' },
     barLabel: { color: 'rgba(148,163,184,0.85)', fontSize: 9.5, fontWeight: '800', marginTop: 6 },
     barLabelCurrent: { color: '#E9D5FF' },
+
+    // Hero sayfaları (ekip özeti / personel)
+    pagerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 12, paddingTop: 2 },
+    pagerBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.14)',
+    },
+    pagerBtnOff: { opacity: 0.3 },
+    pagerDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    pagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)' },
+    pagerDotOn: { width: 18, backgroundColor: '#A5B4FC' },
+    pagerCount: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
+    teamTotals: { flexDirection: 'row', gap: 8, marginTop: 14 },
+    teamTotal: {
+      flex: 1,
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      borderColor: 'rgba(255,255,255,0.12)',
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    teamTotalWarn: { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.3)' },
+    teamTotalLabel: { color: '#A5B4FC', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
+    teamTotalValue: { color: '#FFFFFF', fontSize: 17, fontWeight: '900', marginTop: 2 },
+    teamHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 14,
+      paddingBottom: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    teamHeadText: { color: 'rgba(148,163,184,0.9)', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
+    teamCol: { width: 52, textAlign: 'right' },
+    teamColMoney: { width: 78, textAlign: 'right' },
+    teamRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.06)',
+    },
+    teamAvatar: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(99,102,241,0.35)',
+      borderWidth: 1,
+      borderColor: 'rgba(165,180,252,0.4)',
+    },
+    teamAvatarText: { color: '#E0E7FF', fontSize: 11, fontWeight: '900' },
+    teamName: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+    teamRole: { color: 'rgba(148,163,184,0.95)', fontSize: 10.5, fontWeight: '700', marginTop: 1 },
+    teamCell: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '900' },
+    personHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    personAvatar: { width: 40, height: 40, borderRadius: 20 },
 
     // CANLI PİYASA
     marketBlock: { marginBottom: 14 },

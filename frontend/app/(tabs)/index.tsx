@@ -430,7 +430,6 @@ export default function PanelScreen() {
         const e = (q.hazirlayanEmail || '').toLowerCase();
         return e ? e === p.email : p.email === ownerEmail;
       });
-      const month = mine.filter((q) => (q.tarih || '').slice(0, 7) === thisMonthKey);
       const series: { key: string; label: string; value: number }[] = [];
       for (let k = 5; k >= 0; k--) {
         const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
@@ -443,10 +442,7 @@ export default function PanelScreen() {
         name: p.name,
         role: p.role,
         isMe: p.email === me,
-        monthCount: month.length,
-        monthVolume: toTRY(month),
-        monthSales: toTRY(month.filter((q) => q.durum === 'Onaylandı')),
-        pending: mine.filter((q) => q.durum === 'Beklemede' || q.durum === 'Görüldü').length,
+        quotes: mine,
         monthly: series,
       };
     });
@@ -610,6 +606,7 @@ export default function PanelScreen() {
                     <TeamPage
                       key="team"
                       team={team}
+                      rates={rates}
                       isWide={isWide}
                       t={t}
                       onOpenPerson={(p) => router.push({ pathname: '/(tabs)/personel-teklifleri', params: { email: p.email } } as any)}
@@ -862,10 +859,7 @@ type TeamPerson = {
   name: string;
   role: string;
   isMe: boolean;
-  monthCount: number;
-  monthVolume: number | null;
-  monthSales: number | null;
-  pending: number;
+  quotes: QuoteT[];
   monthly: { key: string; label: string; value: number }[];
 };
 
@@ -907,11 +901,25 @@ function HeroPager({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
+  // Kart yüksekliği o an görünen sayfaya göre ayarlanır (kısa ana sayfa,
+  // uzun ekip sayfasının boyuna uzayıp boş kalmasın); geçişte yumuşakça akar.
+  const [heights, setHeights] = useState<Record<number, number>>({});
+  const reduced = useReducedMotion();
+  const boxH = useSharedValue(0);
+  const target = heights[idx] || 0;
+  useEffect(() => {
+    if (!target) return;
+    boxH.value = boxH.value === 0 || reduced ? target : withTiming(target, { duration: 320, easing: Easing.out(Easing.cubic) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, reduced]);
+  const boxStyle = useAnimatedStyle(() => (boxH.value > 0 ? { height: boxH.value, overflow: 'hidden' } : {}));
+
   if (total === 1 || !width) return <>{children}</>;
 
   return (
-    <View>
+    <Animated.View style={boxStyle}>
       <ScrollView
+        contentContainerStyle={{ alignItems: 'flex-start' }}
         ref={ref}
         horizontal
         pagingEnabled
@@ -923,7 +931,14 @@ function HeroPager({
         }}
       >
         {pages.map((p, i) => (
-          <View key={i} style={{ width }}>
+          <View
+            key={i}
+            style={{ width, paddingBottom: PAGER_H }}
+            onLayout={(e) => {
+              const h = Math.ceil(e.nativeEvent.layout.height);
+              setHeights((prev) => (prev[i] === h ? prev : { ...prev, [i]: h }));
+            }}
+          >
             {p}
           </View>
         ))}
@@ -949,57 +964,212 @@ function HeroPager({
           <Ionicons name="chevron-forward" size={15} color="#E0E7FF" />
         </Pressable>
       </View>
+    </Animated.View>
+  );
+}
+
+// ============================================================================
+// Ekip sayfası -- "darkroom editorial" görünüm: sıcak koyu zemin (walnut),
+// krem büyük harf tipografi, kesikli ince ayraçlar, hap düğmeler, gölgesiz.
+// Üstte dönem seçimi (Bu ay / Geçen ay / 3 ay / Bu yıl) ve aramalı personel
+// seçici; "Tüm ekip" görünümünde ölçüt sekmeli, animasyonlu sıralama listesi,
+// bir kişi seçilince aynı kartta o kişinin ayrıntısı (önceki/sonraki ile
+// kişiler arasında hızlı geçiş). Kalabalık ekipte liste ilk TEAM_TOP kişiyi
+// gösterir, gerisi "Tümünü göster" ile açılır.
+// ============================================================================
+const TEAM_TOP = 8;
+// Hero sayfalarının altındaki ok/nokta çubuğunun yüksekliği (sayfaların
+// üzerine biner; sayfalar bu kadar alt boşluk bırakır).
+const PAGER_H = 46;
+const WARM = {
+  bg: '#100904',
+  bg2: '#1A100A',
+  surface: '#382416',
+  line: '#40372E',
+  muted: '#6C5F51',
+  soft: 'rgba(255,237,215,0.62)',
+  cream: '#FFEDD7',
+  ember: '#DC5000',
+};
+type TeamMetric = 'sales' | 'volume' | 'count' | 'rate' | 'pending';
+type TeamPeriod = 'month' | 'prev' | 'q3' | 'year';
+type TeamStat = {
+  sales: number | null;
+  volume: number | null;
+  count: number;
+  approved: number;
+  rate: number | null;
+  pending: number;
+  status: Record<string, number>;
+};
+
+function periodMatch(tarih: string, period: TeamPeriod): boolean {
+  const key = (tarih || '').slice(0, 7);
+  if (!key) return false;
+  const now = new Date();
+  const mk = (k: number) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  if (period === 'month') return key === mk(0);
+  if (period === 'prev') return key === mk(1);
+  if (period === 'q3') return key === mk(0) || key === mk(1) || key === mk(2);
+  return key.slice(0, 4) === String(now.getFullYear());
+}
+
+function teamStat(p: TeamPerson, period: TeamPeriod, rates: RatesT | null): TeamStat {
+  const canConvert = !!(rates && rates.usd_try && rates.eur_try);
+  const toTRY = (list: QuoteT[]) =>
+    canConvert ? sumToTRY(list.map((q) => ({ paraBirimi: q.paraBirimi || 'USD', tutar: q.genelToplam || 0 })), rates as RatesLike) : null;
+  const inP = p.quotes.filter((q) => periodMatch(q.tarih, period));
+  const ok = inP.filter((q) => q.durum === 'Onaylandı');
+  const status: Record<string, number> = {};
+  inP.forEach((q) => {
+    status[q.durum] = (status[q.durum] || 0) + 1;
+  });
+  return {
+    sales: toTRY(ok),
+    volume: toTRY(inP),
+    count: inP.length,
+    approved: ok.length,
+    rate: inP.length ? Math.round((ok.length / inP.length) * 100) : null,
+    pending: p.quotes.filter((q) => q.durum === 'Beklemede' || q.durum === 'Görüldü').length,
+    status,
+  };
+}
+
+// Kesikli ince ayraç -- RN'de tek kenar kesikli çizgi her platformda
+// çizilmediği için tam kenarlıklı 1px'lik kutunun yarısı kırpılarak çizilir.
+function Dashed({ color = WARM.line, style }: { color?: string; style?: any }) {
+  return (
+    <View style={[{ height: 1, overflow: 'hidden' }, style]}>
+      <View style={{ height: 2, borderWidth: 1, borderColor: color, borderStyle: 'dashed' }} />
     </View>
   );
 }
 
-// Ekip sayfası: üstte aramalı personel seçici. "Tüm ekip" seçiliyken kişi
-// bazlı yatay çubuk grafik (Satış / Hacim / Teklif / Bekleyen) ve özet tablo;
-// bir kişi seçilince o kişinin ayrıntısı aynı kartta açılır. Ekip kalabalık
-// olabilir diye grafik ilk TEAM_TOP kişiyi gösterip kalanları "Diğer"de
-// toplar, tablo da ilk TEAM_TOP satırdan sonra "Tümünü göster" ile açılır.
-const TEAM_TOP = 8;
-type TeamMetric = 'sales' | 'volume' | 'count' | 'pending';
+// İçerik değişince (ölçüt/dönem/kişi) yumuşakça aşağıdan belirir.
+function Appear({ delay = 0, children, style }: { delay?: number; children: React.ReactNode; style?: any }) {
+  const reduced = useReducedMotion();
+  const v = useSharedValue(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) return;
+    v.value = withDelay(delay, withTiming(1, { duration: 460, easing: Easing.out(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const a = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ translateY: (1 - v.value) * 12 }] }));
+  return <Animated.View style={[style, a]}>{children}</Animated.View>;
+}
+
+// Oranı değiştikçe yeni uzunluğuna akan çubuk.
+function GrowBar({ ratio, delay = 0, color = WARM.cream, height = 6 }: { ratio: number; delay?: number; color?: string; height?: number }) {
+  const reduced = useReducedMotion();
+  const w = useSharedValue(reduced ? ratio : 0);
+  useEffect(() => {
+    if (reduced) {
+      w.value = ratio;
+      return;
+    }
+    w.value = withDelay(delay, withTiming(ratio, { duration: 750, easing: Easing.out(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratio, reduced]);
+  const a = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(1, w.value)) * 100}%` }));
+  return (
+    <View style={{ height, borderRadius: height, backgroundColor: WARM.line, overflow: 'hidden' }}>
+      <Animated.View style={[{ height: '100%', borderRadius: height, backgroundColor: color }, a]} />
+    </View>
+  );
+}
 
 function TeamPage({
   team,
+  rates,
   isWide,
   t,
   onOpenPerson,
 }: {
   team: TeamPerson[];
+  rates: RatesT | null;
   isWide: boolean;
   t: (k: string) => string;
   onOpenPerson: (p: TeamPerson) => void;
 }) {
   const s = styles();
   const [selected, setSelected] = useState<string | null>(null);
+  const [period, setPeriod] = useState<TeamPeriod>('month');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const person = selected ? team.find((p) => p.email === selected) || null : null;
+  const stats = useMemo(() => {
+    const m: Record<string, TeamStat> = {};
+    team.forEach((p) => {
+      m[p.email] = teamStat(p, period, rates);
+    });
+    return m;
+  }, [team, period, rates]);
+  const idx = selected ? team.findIndex((p) => p.email === selected) : -1;
+  const person = idx >= 0 ? team[idx] : null;
+  const periods: { k: TeamPeriod; label: string }[] = [
+    { k: 'month', label: t('panel.teamPMonth') },
+    { k: 'prev', label: t('panel.teamPPrev') },
+    { k: 'q3', label: t('panel.teamPQ3') },
+    { k: 'year', label: t('panel.teamPYear') },
+  ];
+  const step = (d: number) => {
+    if (idx < 0) return;
+    setSelected(team[(idx + d + team.length) % team.length].email);
+  };
 
   return (
-    <View style={[s.heroInner, isWide && { padding: 24 }]}>
-      <View style={s.teamTopRow}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={s.heroLabel}>{t('panel.teamTitle')}</Text>
-          <Text style={s.heroDate} numberOfLines={1}>
-            {team.length} {t('panel.teamPeople')}
-          </Text>
+    <View style={s.wPage}>
+      <LinearGradient colors={[WARM.bg2, WARM.bg]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={[StyleSheet.absoluteFill, { bottom: -PAGER_H }]} />
+      <View style={[s.wInner, isWide && { padding: 28 }]}>
+        <View style={s.wTop}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.wEyebrow}>
+              {upper(t('panel.teamWord'))} · {team.length} {upper(t('panel.teamPeople'))}
+            </Text>
+            <Text style={[s.wDisplay, isWide && { fontSize: 44, lineHeight: 54 }]} numberOfLines={2}>
+              {person ? upper(person.name) : upper(t('panel.teamHeadline'))}
+            </Text>
+          </View>
+          <Pressable style={({ pressed }) => [s.wGhost, pressed && { opacity: 0.7 }]} onPress={() => setPickerOpen(true)} testID="hero-team-picker">
+            <Text style={s.wGhostText} numberOfLines={1}>
+              {person ? upper(t('panel.teamChange')) : upper(t('panel.teamPick'))}
+            </Text>
+            <Ionicons name="chevron-down" size={13} color={WARM.cream} />
+          </Pressable>
         </View>
-        <Pressable style={({ pressed }) => [s.teamPickBtn, pressed && { opacity: 0.75 }]} onPress={() => setPickerOpen(true)} testID="hero-team-picker">
-          <Ionicons name={person ? 'person' : 'people'} size={14} color="#E0E7FF" />
-          <Text style={s.teamPickText} numberOfLines={1}>
-            {person ? person.name : t('panel.teamAll')}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color="#C7D2FE" />
-        </Pressable>
-      </View>
 
-      {person ? (
-        <PersonBody person={person} isWide={isWide} t={t} onOpen={() => onOpenPerson(person)} onBack={() => setSelected(null)} />
-      ) : (
-        <TeamOverview team={team} isWide={isWide} t={t} onPick={(email) => setSelected(email)} />
-      )}
+        <View style={s.wPeriods}>
+          {periods.map((x) => {
+            const on = period === x.k;
+            return (
+              <Pressable key={x.k} onPress={() => setPeriod(x.k)} hitSlop={6} testID={`hero-team-period-${x.k}`}>
+                <Text style={[s.wPeriod, on && s.wPeriodOn]}>{upper(x.label)}</Text>
+                {on ? <Dashed color={WARM.cream} style={{ marginTop: 4 }} /> : <View style={{ height: 5 }} />}
+              </Pressable>
+            );
+          })}
+        </View>
+        <Dashed style={{ marginTop: 10 }} />
+
+        {person ? (
+          <Appear key={`${person.email}-${period}`}>
+            <PersonBody
+              person={person}
+              stat={stats[person.email]}
+              isWide={isWide}
+              t={t}
+              onOpen={() => onOpenPerson(person)}
+              onBack={() => setSelected(null)}
+              onPrev={() => step(-1)}
+              onNext={() => step(1)}
+              pos={`${idx + 1} / ${team.length}`}
+            />
+          </Appear>
+        ) : (
+          <TeamOverview team={team} stats={stats} period={period} isWide={isWide} t={t} onPick={(email) => setSelected(email)} />
+        )}
+      </View>
 
       <TeamPicker
         visible={pickerOpen}
@@ -1042,24 +1212,22 @@ function TeamPicker({
     .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
     .filter((p) => !needle || p.name.toLocaleLowerCase('tr-TR').includes(needle) || p.email.includes(needle));
 
-  const Row = ({ email, title, sub, icon }: { email: string | null; title: string; sub?: string; icon: IconName }) => {
+  const row = (email: string | null, title: string, sub: string) => {
     const on = selected === email;
     return (
-      <Pressable style={({ pressed }) => [s.pickRow, on && s.pickRowOn, pressed && { opacity: 0.7 }]} onPress={() => onSelect(email)}>
+      <Pressable key={email || '__all__'} style={({ pressed }) => [s.pickRow, on && s.pickRowOn, pressed && { opacity: 0.7 }]} onPress={() => onSelect(email)}>
         <View style={s.pickIcon}>
-          <Ionicons name={icon} size={15} color={theme.colors.primary} />
+          <Text style={s.pickIconText}>{email ? initials(title) : '∗'}</Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={s.pickTitle} numberOfLines={1}>
-            {title}
+            {upper(title)}
           </Text>
-          {sub ? (
-            <Text style={s.pickSub} numberOfLines={1}>
-              {sub}
-            </Text>
-          ) : null}
+          <Text style={s.pickSub} numberOfLines={1}>
+            {sub}
+          </Text>
         </View>
-        {on ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} /> : null}
+        {on ? <Ionicons name="checkmark" size={18} color={WARM.cream} /> : null}
       </Pressable>
     );
   };
@@ -1069,29 +1237,28 @@ function TeamPicker({
       <Pressable style={s.pickBackdrop} onPress={onClose}>
         <Pressable style={s.pickSheet} onPress={() => {}}>
           <View style={s.pickHead}>
-            <Text style={s.pickHeadText}>{t('panel.teamPick')}</Text>
+            <Text style={s.pickHeadText}>{upper(t('panel.teamPick'))}</Text>
             <Pressable onPress={onClose} hitSlop={10}>
-              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
+              <Ionicons name="close" size={20} color={WARM.soft} />
             </Pressable>
           </View>
           {team.length > 6 ? (
             <View style={s.pickSearch}>
-              <Ionicons name="search" size={15} color={theme.colors.textMuted} />
+              <Ionicons name="search" size={15} color={WARM.muted} />
               <TextInput
                 value={q}
                 onChangeText={setQ}
                 placeholder={t('panel.teamSearch')}
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={WARM.muted}
                 style={s.pickSearchInput}
                 autoCorrect={false}
               />
             </View>
           ) : null}
+          <Dashed style={{ marginBottom: 6 }} />
           <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
-            {!needle ? <Row email={null} title={t('panel.teamAll')} sub={`${team.length} ${t('panel.teamPeople')}`} icon="people" /> : null}
-            {list.map((p) => (
-              <Row key={p.email} email={p.email} title={p.name} sub={roleLabel(p, t)} icon="person" />
-            ))}
+            {!needle ? row(null, t('panel.teamAll'), `${team.length} ${t('panel.teamPeople')}`) : null}
+            {list.map((p) => row(p.email, p.name, roleLabel(p, t)))}
             {list.length === 0 ? <Text style={s.pickEmpty}>{t('panel.teamNoMatch')}</Text> : null}
           </ScrollView>
         </Pressable>
@@ -1100,127 +1267,120 @@ function TeamPicker({
   );
 }
 
-function TeamOverview({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide: boolean; t: (k: string) => string; onPick: (email: string) => void }) {
+function TeamOverview({
+  team,
+  stats,
+  period,
+  isWide,
+  t,
+  onPick,
+}: {
+  team: TeamPerson[];
+  stats: Record<string, TeamStat>;
+  period: TeamPeriod;
+  isWide: boolean;
+  t: (k: string) => string;
+  onPick: (email: string) => void;
+}) {
   const s = styles();
   const [metric, setMetric] = useState<TeamMetric>('sales');
   const [showAll, setShowAll] = useState(false);
-  const money = (n: number | null) => (n == null ? '—' : fmtCompactTRY(n, t));
-  const sum = (f: (p: TeamPerson) => number | null) => {
+  const all = team.map((p) => stats[p.email]);
+  const sumOf = (f: (x: TeamStat) => number | null) => {
     let missing = false;
-    const v = team.reduce((a, p) => {
-      const x = f(p);
-      if (x == null) missing = true;
-      return a + (x || 0);
+    const v = all.reduce((a, x) => {
+      const n = f(x);
+      if (n == null) missing = true;
+      return a + (n || 0);
     }, 0);
     return missing ? null : v;
   };
-  const totSales = sum((p) => p.monthSales);
-  const totCount = team.reduce((a, p) => a + p.monthCount, 0);
-  const totPending = team.reduce((a, p) => a + p.pending, 0);
+  const totSales = sumOf((x) => x.sales);
+  const totCount = all.reduce((a, x) => a + x.count, 0);
+  const totApproved = all.reduce((a, x) => a + x.approved, 0);
+  const totPending = all.reduce((a, x) => a + x.pending, 0);
+  const totRate = totCount ? Math.round((totApproved / totCount) * 100) : null;
 
-  const metricOf = (p: TeamPerson): number | null =>
-    metric === 'sales' ? p.monthSales : metric === 'volume' ? p.monthVolume : metric === 'count' ? p.monthCount : p.pending;
-  const isMoney = metric === 'sales' || metric === 'volume';
-  const fmtMetric = (n: number | null) => (n == null ? '—' : isMoney ? fmtCompactTRY(n, t) : String(n));
+  const val = (x: TeamStat): number | null =>
+    metric === 'sales' ? x.sales : metric === 'volume' ? x.volume : metric === 'count' ? x.count : metric === 'rate' ? x.rate : x.pending;
+  const fmtVal = (n: number | null) =>
+    n == null ? '—' : metric === 'sales' || metric === 'volume' ? fmtCompactTRY(n, t) : metric === 'rate' ? `%${n}` : String(n);
 
-  const ranked = [...team].sort((a, b) => (metricOf(b) || 0) - (metricOf(a) || 0) || a.name.localeCompare(b.name, 'tr'));
-  const top = ranked.slice(0, TEAM_TOP);
-  const rest = ranked.slice(TEAM_TOP);
-  const restVal = rest.length ? rest.reduce((a, p) => a + (metricOf(p) || 0), 0) : 0;
-  const bars: { key: string; label: string; value: number | null; email?: string }[] = top.map((p) => ({
-    key: p.email,
-    label: p.name,
-    value: metricOf(p),
-    email: p.email,
-  }));
-  if (rest.length) bars.push({ key: '__rest__', label: `${t('panel.teamOthers')} (${rest.length})`, value: restVal });
-  const max = Math.max(1, ...bars.map((b) => b.value || 0));
+  const ranked = [...team].sort(
+    (a, b) => (val(stats[b.email]) || 0) - (val(stats[a.email]) || 0) || a.name.localeCompare(b.name, 'tr')
+  );
+  const shown = showAll ? ranked : ranked.slice(0, TEAM_TOP);
+  const max = metric === 'rate' ? 100 : Math.max(1, ...ranked.map((p) => val(stats[p.email]) || 0));
+  const allZero = ranked.every((p) => !val(stats[p.email]));
 
   const tabs: { k: TeamMetric; label: string }[] = [
     { k: 'sales', label: t('panel.teamSales') },
     { k: 'volume', label: t('panel.teamVolumeShort') },
     { k: 'count', label: t('panel.teamCount') },
+    { k: 'rate', label: t('panel.teamRate') },
     { k: 'pending', label: t('panel.teamPending') },
   ];
 
-  const tableRows = [...team].sort(
-    (a, b) => (b.monthSales || 0) - (a.monthSales || 0) || b.monthCount - a.monthCount
-  );
-  const shownRows = showAll ? tableRows : tableRows.slice(0, TEAM_TOP);
+  const kpis: { label: string; node: React.ReactNode }[] = [
+    {
+      label: t('panel.teamSales'),
+      node: totSales == null ? <Text style={s.wKpiValue}>—</Text> : <CountUp value={totSales} format={(n) => fmtCompactTRY(n, t)} style={s.wKpiValue} />,
+    },
+    { label: t('panel.teamCount'), node: <CountUp value={totCount} style={s.wKpiValue} /> },
+    { label: t('panel.teamRate'), node: totRate == null ? <Text style={s.wKpiValue}>—</Text> : <CountUp value={totRate} format={(n) => `%${Math.round(n)}`} style={s.wKpiValue} /> },
+    { label: t('panel.teamPending'), node: <CountUp value={totPending} style={[s.wKpiValue, totPending > 0 && { color: WARM.ember }]} /> },
+  ];
 
-  const chart = (
+  const board = (
     <View>
-      <View style={s.metricTabs}>
-        {tabs.map((x) => (
-          <Pressable key={x.k} onPress={() => setMetric(x.k)} style={[s.metricTab, metric === x.k && s.metricTabOn]} testID={`hero-team-metric-${x.k}`}>
-            <Text style={[s.metricTabText, metric === x.k && s.metricTabTextOn]} numberOfLines={1}>
-              {x.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={{ marginTop: 10, gap: 7 }}>
-        {bars.map((b) => {
-          const ratio = (b.value || 0) / max;
-          const body = (
-            <>
-              <Text style={s.tbarName} numberOfLines={1}>
-                {b.label}
+      <View style={s.wTabs}>
+        {tabs.map((x) => {
+          const on = metric === x.k;
+          return (
+            <Pressable key={x.k} onPress={() => setMetric(x.k)} style={({ pressed }) => [s.wTab, on && s.wTabOn, pressed && { opacity: 0.75 }]} testID={`hero-team-metric-${x.k}`}>
+              <Text style={[s.wTabText, on && s.wTabTextOn]} numberOfLines={1}>
+                {upper(x.label)}
               </Text>
-              <View style={s.tbarTrack}>
-                <View style={[s.tbarFill, { width: `${Math.max(ratio * 100, b.value ? 2 : 0)}%` as `${number}%` }, !b.email && s.tbarFillRest]} />
-              </View>
-              <Text style={s.tbarValue} numberOfLines={1}>
-                {fmtMetric(b.value)}
-              </Text>
-            </>
-          );
-          return b.email ? (
-            <Pressable key={b.key} style={({ pressed }) => [s.tbarRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(b.email as string)}>
-              {body}
             </Pressable>
-          ) : (
-            <View key={b.key} style={s.tbarRow}>
-              {body}
-            </View>
           );
         })}
       </View>
-    </View>
-  );
-
-  const table = (
-    <View>
-      <View style={s.teamHead}>
-        <Text style={[s.teamHeadText, { flex: 1 }]}>{t('panel.teamPerson')}</Text>
-        <Text style={[s.teamHeadText, s.teamColMoney]}>{t('panel.teamSales')}</Text>
-        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamCount')}</Text>
-        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamPending')}</Text>
+      {allZero ? <Text style={s.wEmpty}>{t('panel.teamNoData')}</Text> : null}
+      <View key={`${metric}-${period}`} style={{ marginTop: 6 }}>
+        {shown.map((p, i) => {
+          const st = stats[p.email];
+          const v = val(st);
+          const lead = i === 0 && !!v;
+          return (
+            <Appear key={p.email} delay={Math.min(i, 10) * 55}>
+              <Pressable style={({ pressed }) => [s.wRow, pressed && { opacity: 0.65 }]} onPress={() => onPick(p.email)} testID={`hero-team-row-${p.email}`}>
+                <Text style={[s.wRank, lead && { color: WARM.ember }]}>{String(i + 1).padStart(2, '0')}</Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={s.wRowTop}>
+                    <Text style={s.wName} numberOfLines={1}>
+                      {upper(p.name)}
+                      {p.isMe ? <Text style={s.wMe}>  · {upper(t('panel.teamMe'))}</Text> : null}
+                    </Text>
+                    <Text style={s.wVal} numberOfLines={1}>
+                      {fmtVal(v)}
+                    </Text>
+                  </View>
+                  <GrowBar ratio={(v || 0) / max} delay={120 + Math.min(i, 10) * 55} color={lead ? WARM.cream : 'rgba(255,237,215,0.55)'} />
+                  <Text style={s.wMeta} numberOfLines={1}>
+                    {st.count} {t('panel.teklifUnit')}  ·  {st.approved} {t('panel.teamApprovedShort')}  ·  {st.pending} {t('panel.teamPendingShort')}
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward" size={14} color={WARM.muted} />
+              </Pressable>
+              <Dashed />
+            </Appear>
+          );
+        })}
       </View>
-      {shownRows.map((p) => (
-        <Pressable key={p.email} style={({ pressed }) => [s.teamRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(p.email)} testID={`hero-team-row-${p.email}`}>
-          <View style={s.teamAvatar}>
-            <Text style={s.teamAvatarText}>{initials(p.name)}</Text>
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.teamName} numberOfLines={1}>
-              {p.name}
-            </Text>
-            <Text style={s.teamRole} numberOfLines={1}>
-              {roleLabel(p, t)}
-            </Text>
-          </View>
-          <Text style={[s.teamCell, s.teamColMoney]} numberOfLines={1}>
-            {money(p.monthSales)}
-          </Text>
-          <Text style={[s.teamCell, s.teamCol]}>{p.monthCount}</Text>
-          <Text style={[s.teamCell, s.teamCol, p.pending > 0 && { color: '#FDE68A' }]}>{p.pending}</Text>
-        </Pressable>
-      ))}
-      {tableRows.length > TEAM_TOP ? (
-        <Pressable onPress={() => setShowAll((v) => !v)} style={s.teamMore} hitSlop={6}>
-          <Text style={s.teamMoreText}>{showAll ? t('panel.teamShowLess') : `${t('panel.teamShowAll')} (${tableRows.length})`}</Text>
-          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={13} color="#C7D2FE" />
+      {ranked.length > TEAM_TOP ? (
+        <Pressable onPress={() => setShowAll((v) => !v)} style={s.wMore} hitSlop={6}>
+          <Text style={s.wMoreText}>{showAll ? upper(t('panel.teamShowLess')) : `${upper(t('panel.teamShowAll'))} (${ranked.length})`}</Text>
+          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={13} color={WARM.cream} />
         </Pressable>
       ) : null}
     </View>
@@ -1228,111 +1388,159 @@ function TeamOverview({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide:
 
   return (
     <View>
-      <View style={s.teamTotals}>
-        <View style={s.teamTotal}>
-          <Text style={s.teamTotalLabel}>{t('panel.teamSales')}</Text>
-          <Text style={s.teamTotalValue} numberOfLines={1} adjustsFontSizeToFit>
-            {money(totSales)}
-          </Text>
-        </View>
-        <View style={s.teamTotal}>
-          <Text style={s.teamTotalLabel}>{t('panel.teamCount')}</Text>
-          <Text style={s.teamTotalValue}>{totCount}</Text>
-        </View>
-        <View style={[s.teamTotal, s.teamTotalWarn]}>
-          <Text style={[s.teamTotalLabel, { color: '#FDE68A' }]}>{t('panel.teamPending')}</Text>
-          <Text style={s.teamTotalValue}>{totPending}</Text>
-        </View>
+      <View style={[s.wKpis, isWide && { marginBottom: 6 }]}>
+        {kpis.map((k, i) => (
+          <View key={k.label} style={[s.wKpi, (isWide ? i > 0 : i % 2 === 1) && s.wKpiSep, !isWide && { minWidth: '45%' }]}>
+            <Text style={s.wKpiLabel}>{upper(k.label)}</Text>
+            {k.node}
+          </View>
+        ))}
       </View>
-      {isWide ? (
-        <View style={{ flexDirection: 'row', gap: 24, marginTop: 14 }}>
-          <View style={{ flex: 1 }}>{chart}</View>
-          <View style={{ flex: 1 }}>{table}</View>
-        </View>
-      ) : (
-        <View style={{ marginTop: 14 }}>
-          {chart}
-          <View style={{ marginTop: 6 }}>{table}</View>
-        </View>
-      )}
+      <Dashed style={{ marginBottom: 14 }} />
+      {board}
     </View>
   );
 }
 
-// Seçilen personelin bu ayki satışı, teklif hacmi, bekleyenleri ve son 6 ayı.
+const STATUS_WARM: { k: string; color: string }[] = [
+  { k: 'Onaylandı', color: WARM.cream },
+  { k: 'Görüldü', color: '#C9A27A' },
+  { k: 'Beklemede', color: WARM.muted },
+  { k: 'Reddedildi', color: WARM.ember },
+];
+
+// Seçilen personelin dönem özeti, durum dağılımı ve son 6 ayı.
 function PersonBody({
   person: p,
+  stat,
   isWide,
   t,
   onOpen,
   onBack,
+  onPrev,
+  onNext,
+  pos,
 }: {
   person: TeamPerson;
+  stat: TeamStat;
   isWide: boolean;
   t: (k: string) => string;
   onOpen: () => void;
   onBack: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  pos: string;
 }) {
   const s = styles();
+  const { lang } = useLanguage();
+  const statusTotal = STATUS_WARM.reduce((a, x) => a + (stat.status[x.k] || 0), 0);
+  const nums: { label: string; node: React.ReactNode }[] = [
+    {
+      label: t('panel.teamVolumeShort'),
+      node: stat.volume == null ? <Text style={s.wKpiValue}>—</Text> : <CountUp value={stat.volume} format={(n) => fmtCompactTRY(n, t)} style={s.wKpiValue} />,
+    },
+    { label: t('panel.teamCount'), node: <CountUp value={stat.count} style={s.wKpiValue} /> },
+    { label: t('panel.teamRate'), node: stat.rate == null ? <Text style={s.wKpiValue}>—</Text> : <CountUp value={stat.rate} format={(n) => `%${Math.round(n)}`} style={s.wKpiValue} /> },
+    { label: t('panel.teamPending'), node: <CountUp value={stat.pending} style={[s.wKpiValue, stat.pending > 0 && { color: WARM.ember }]} /> },
+  ];
+  const maxM = Math.max(1, ...p.monthly.map((m) => m.value));
+
   return (
-    <View style={[{ marginTop: 14 }, isWide && { flexDirection: 'row', alignItems: 'center', gap: 28 }]}>
-      <View style={isWide ? s.heroMain : undefined}>
-        <View style={s.personHead}>
-          <View style={[s.teamAvatar, s.personAvatar]}>
-            <Text style={[s.teamAvatarText, { fontSize: 14 }]}>{initials(p.name)}</Text>
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.heroGreeting} numberOfLines={1}>
-              {p.name}
-            </Text>
-            <Text style={s.heroDate} numberOfLines={1}>
-              {roleLabel(p, t)}  ·  {p.email}
-            </Text>
-          </View>
-        </View>
-
-        <AnimatedPressable style={s.heroKpi} onPress={onOpen} scaleTo={0.98}>
-          <Text style={s.heroLabel}>{t('panel.teamSalesLabel')}</Text>
-          {p.monthSales == null ? (
-            <Text style={[s.heroValue, isWide && s.heroValueWide]}>—</Text>
-          ) : (
-            <CountUp value={p.monthSales} format={(n) => fmt(n, 'TRY')} style={[s.heroValue, isWide && s.heroValueWide]} numberOfLines={1} adjustsFontSizeToFit />
-          )}
-          <Text style={s.heroSecondary} numberOfLines={1}>
-            {t('panel.teamVolumeLine')}: {p.monthVolume == null ? '—' : fmt(p.monthVolume, 'TRY')}
-          </Text>
-        </AnimatedPressable>
-
-        <View style={s.heroChips}>
-          <AnimatedPressable style={s.chipWarn} onPress={onOpen} scaleTo={0.96}>
-            <LiveDot color={GOLD} />
-            <Text style={s.chipWarnLabel}>{t('panel.s042')}</Text>
-            <Text style={s.chipWarnValue}>{p.pending}</Text>
-          </AnimatedPressable>
-          <View style={s.chip}>
-            <Ionicons name="document-text-outline" size={13} color="#C7D2FE" />
-            <Text style={s.chipLabel}>{t('panel.thisMonth')}</Text>
-            <Text style={s.chipValue}>
-              {p.monthCount} {t('panel.teklifUnit')}
-            </Text>
-          </View>
-          <AnimatedPressable style={s.chip} onPress={onOpen} scaleTo={0.96} testID={`hero-person-open-${p.email}`}>
-            <Text style={s.chipValue}>{t('panel.teamAllQuotes')}</Text>
-            <Ionicons name="chevron-forward" size={13} color="#C7D2FE" />
-          </AnimatedPressable>
-          <AnimatedPressable style={s.chip} onPress={onBack} scaleTo={0.96}>
-            <Ionicons name="people-outline" size={13} color="#C7D2FE" />
-            <Text style={s.chipValue}>{t('panel.teamAll')}</Text>
-          </AnimatedPressable>
+    <View style={{ marginTop: 14 }}>
+      <View style={s.wNav}>
+        <Pressable onPress={onBack} hitSlop={8} style={({ pressed }) => [s.wLink, pressed && { opacity: 0.6 }]}>
+          <Ionicons name="arrow-back" size={13} color={WARM.cream} />
+          <Text style={s.wLinkText}>{upper(t('panel.teamAll'))}</Text>
+        </Pressable>
+        <View style={s.wStepper}>
+          <Pressable onPress={onPrev} hitSlop={8} style={s.wStepBtn} testID="hero-person-prev">
+            <Ionicons name="chevron-back" size={14} color={WARM.cream} />
+          </Pressable>
+          <Text style={s.wPos}>{pos}</Text>
+          <Pressable onPress={onNext} hitSlop={8} style={s.wStepBtn} testID="hero-person-next">
+            <Ionicons name="chevron-forward" size={14} color={WARM.cream} />
+          </Pressable>
         </View>
       </View>
 
-      <View style={[s.heroChart, isWide && s.heroChartWide]}>
-        <Text style={s.heroChartTitle}>{t('panel.last6Months')}</Text>
-        <MiniBars data={p.monthly} height={isWide ? 104 : 62} />
+      <View style={[isWide && { flexDirection: 'row', gap: 32, alignItems: 'flex-start' }]}>
+        <View style={isWide ? { flex: 1.2 } : undefined}>
+          <Text style={s.wEyebrow}>
+            {upper(roleLabel(p, t))} · {p.email}
+          </Text>
+          <Text style={[s.wKpiLabel, { marginTop: 14 }]}>{upper(t('panel.teamSalesApproved'))}</Text>
+          {stat.sales == null ? (
+            <Text style={[s.wHero, isWide && { fontSize: 48, lineHeight: 56 }]}>—</Text>
+          ) : (
+            <CountUp value={stat.sales} format={(n) => fmt(n, 'TRY')} style={[s.wHero, isWide && { fontSize: 48, lineHeight: 56 }]} numberOfLines={1} adjustsFontSizeToFit />
+          )}
+
+          <View style={[s.wKpis, { marginTop: 14 }]}>
+            {nums.map((k, i) => (
+              <View key={k.label} style={[s.wKpi, i % 2 === 1 && s.wKpiSep, { minWidth: '45%' }]}>
+                <Text style={s.wKpiLabel}>{upper(k.label)}</Text>
+                {k.node}
+              </View>
+            ))}
+          </View>
+
+          <Text style={[s.wKpiLabel, { marginTop: 16, marginBottom: 8 }]}>{upper(t('panel.teamStatus'))}</Text>
+          <View style={s.wStack}>
+            {statusTotal === 0 ? (
+              <View style={{ flex: 1, backgroundColor: WARM.line }} />
+            ) : (
+              STATUS_WARM.filter((x) => stat.status[x.k]).map((x) => (
+                <View key={x.k} style={{ flex: stat.status[x.k], backgroundColor: x.color }} />
+              ))
+            )}
+          </View>
+          <View style={s.wLegend}>
+            {STATUS_WARM.map((x) => (
+              <View key={x.k} style={s.wLegendItem}>
+                <View style={[s.wLegendDot, { backgroundColor: x.color }]} />
+                <Text style={s.wLegendText}>
+                  {upper(statusLabel(lang, x.k))} {stat.status[x.k] || 0}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={isWide ? { flex: 1 } : { marginTop: 18 }}>
+          <Text style={[s.wKpiLabel, { marginBottom: 10 }]}>{upper(t('panel.last6Months'))}</Text>
+          <View style={s.wMonths}>
+            {p.monthly.map((m, i) => (
+              <View key={m.key} style={s.wMonthCol}>
+                <View style={s.wMonthTrack}>
+                  <WarmColumn ratio={m.value / maxM} delay={100 + i * 70} current={i === p.monthly.length - 1} />
+                </View>
+                <Text style={[s.wMonthLabel, i === p.monthly.length - 1 && { color: WARM.cream }]}>{upper(m.label)}</Text>
+              </View>
+            ))}
+          </View>
+          <Pressable onPress={onOpen} style={({ pressed }) => [s.wFilled, pressed && { opacity: 0.8 }]} testID={`hero-person-open-${p.email}`}>
+            <Text style={s.wFilledText}>{upper(t('panel.teamAllQuotes'))}</Text>
+            <Ionicons name="arrow-forward" size={14} color={WARM.cream} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
+}
+
+function WarmColumn({ ratio, delay, current }: { ratio: number; delay: number; current: boolean }) {
+  const reduced = useReducedMotion();
+  const h = useSharedValue(reduced ? ratio : 0);
+  useEffect(() => {
+    if (reduced) {
+      h.value = ratio;
+      return;
+    }
+    h.value = withDelay(delay, withTiming(ratio, { duration: 700, easing: Easing.out(Easing.cubic) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratio, reduced]);
+  const a = useAnimatedStyle(() => ({ height: `${Math.max(0.04, Math.min(1, h.value)) * 100}%` }));
+  return <Animated.View style={[{ width: '100%', borderRadius: 6, backgroundColor: current ? WARM.cream : 'rgba(255,237,215,0.22)' }, a]} />;
 }
 
 // Son 6 ayın sütunları -- açılışta sırayla yukarı doğru büyür.
@@ -1984,7 +2192,7 @@ const styles = themedSheet(() => {
     barLabelCurrent: { color: '#E9D5FF' },
 
     // Hero sayfaları (ekip özeti / personel)
-    pagerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 12, paddingTop: 2 },
+    pagerBar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: PAGER_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
     pagerBtn: {
       width: 28,
       height: 28,
@@ -1998,113 +2206,113 @@ const styles = themedSheet(() => {
     pagerBtnOff: { opacity: 0.3 },
     pagerDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     pagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)' },
-    pagerDotOn: { width: 18, backgroundColor: '#A5B4FC' },
+    pagerDotOn: { width: 18, backgroundColor: '#E0E7FF' },
     pagerCount: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
-    teamTotals: { flexDirection: 'row', gap: 8, marginTop: 14 },
-    teamTotal: {
-      flex: 1,
-      backgroundColor: 'rgba(255,255,255,0.07)',
-      borderColor: 'rgba(255,255,255,0.12)',
-      borderWidth: 1,
-      borderRadius: 14,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-    },
-    teamTotalWarn: { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.3)' },
-    teamTotalLabel: { color: '#A5B4FC', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
-    teamTotalValue: { color: '#FFFFFF', fontSize: 17, fontWeight: '900', marginTop: 2 },
-    teamHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 14,
-      paddingBottom: 6,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.1)',
-    },
-    teamHeadText: { color: 'rgba(148,163,184,0.9)', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
-    teamCol: { width: 52, textAlign: 'right' },
-    teamColMoney: { width: 78, textAlign: 'right' },
-    teamRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingVertical: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.06)',
-    },
-    teamAvatar: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(99,102,241,0.35)',
-      borderWidth: 1,
-      borderColor: 'rgba(165,180,252,0.4)',
-    },
-    teamAvatarText: { color: '#E0E7FF', fontSize: 11, fontWeight: '900' },
-    teamName: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-    teamRole: { color: 'rgba(148,163,184,0.95)', fontSize: 10.5, fontWeight: '700', marginTop: 1 },
-    teamCell: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '900' },
-    personHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    personAvatar: { width: 40, height: 40, borderRadius: 20 },
-    teamTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    teamPickBtn: {
+    // Ekip sayfası (warm editorial)
+    wPage: { flex: 1 },
+    wInner: { padding: 20, paddingBottom: 8 },
+    wTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    wEyebrow: { color: WARM.soft, fontSize: 10.5, fontWeight: '600', letterSpacing: 0.8 },
+    wDisplay: { color: WARM.cream, fontSize: 27, fontWeight: '600', lineHeight: 34, marginTop: 4, letterSpacing: -0.4 },
+    wGhost: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      maxWidth: 200,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 999,
-      backgroundColor: 'rgba(99,102,241,0.3)',
+      maxWidth: 180,
+      paddingVertical: 7,
+      paddingHorizontal: 14,
+      borderRadius: 22.5,
       borderWidth: 1,
-      borderColor: 'rgba(165,180,252,0.45)',
+      borderColor: WARM.cream,
     },
-    teamPickText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
-    metricTabs: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)' },
-    metricTab: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 9 },
-    metricTabOn: { backgroundColor: 'rgba(165,180,252,0.22)' },
-    metricTabText: { color: 'rgba(199,210,254,0.75)', fontSize: 11, fontWeight: '800' },
-    metricTabTextOn: { color: '#FFFFFF' },
-    tbarRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 22 },
-    tbarName: { width: 92, color: '#E0E7FF', fontSize: 11.5, fontWeight: '700' },
-    tbarTrack: { flex: 1, height: 10, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
-    tbarFill: { height: '100%', borderRadius: 4, backgroundColor: '#818CF8' },
-    tbarFillRest: { backgroundColor: 'rgba(148,163,184,0.55)' },
-    tbarValue: { width: 64, textAlign: 'right', color: '#FFFFFF', fontSize: 11.5, fontWeight: '900' },
-    teamMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9 },
-    teamMoreText: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
-    pickBackdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+    wGhostText: { color: WARM.cream, fontSize: 11, fontWeight: '600', letterSpacing: 0.6, flexShrink: 1 },
+    wPeriods: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 16 },
+    wPeriod: { color: WARM.muted, fontSize: 11.5, fontWeight: '600', letterSpacing: 0.6 },
+    wPeriodOn: { color: WARM.cream },
+    wKpis: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 12, marginTop: 14, marginBottom: 14 },
+    wKpi: { flex: 1, paddingHorizontal: 2 },
+    wKpiSep: { borderLeftWidth: 1, borderLeftColor: WARM.line, paddingLeft: 14 },
+    wKpiLabel: { color: WARM.muted, fontSize: 10, fontWeight: '600', letterSpacing: 0.8 },
+    wKpiValue: { color: WARM.cream, fontSize: 22, fontWeight: '600', marginTop: 4, letterSpacing: -0.3 },
+    wHero: { color: WARM.cream, fontSize: 38, fontWeight: '600', lineHeight: 42, marginTop: 4, letterSpacing: -0.8 },
+    wTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    wTab: { paddingVertical: 7, paddingHorizontal: 13, borderRadius: 36, borderWidth: 1, borderColor: WARM.line },
+    wTabOn: { backgroundColor: WARM.surface, borderColor: WARM.surface },
+    wTabText: { color: WARM.soft, fontSize: 10.5, fontWeight: '600', letterSpacing: 0.6 },
+    wTabTextOn: { color: WARM.cream },
+    wEmpty: { color: WARM.muted, fontSize: 11.5, fontWeight: '600', letterSpacing: 0.4, marginTop: 12 },
+    wRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+    wRank: { width: 22, color: WARM.muted, fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+    wRowTop: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 7 },
+    wName: { flex: 1, color: WARM.cream, fontSize: 13, fontWeight: '600', letterSpacing: 0.3 },
+    wMe: { color: WARM.muted, fontSize: 10.5 },
+    wVal: { color: WARM.cream, fontSize: 14, fontWeight: '600', fontVariant: ['tabular-nums'] },
+    wMeta: { color: WARM.muted, fontSize: 10.5, fontWeight: '600', marginTop: 6, letterSpacing: 0.3 },
+    wMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+    wMoreText: { color: WARM.cream, fontSize: 11, fontWeight: '600', letterSpacing: 0.6, textDecorationLine: 'underline' },
+    wNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+    wLink: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    wLinkText: { color: WARM.cream, fontSize: 11, fontWeight: '600', letterSpacing: 0.6, textDecorationLine: 'underline' },
+    wStepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    wStepBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: WARM.line,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    wPos: { color: WARM.soft, fontSize: 11, fontWeight: '600', fontVariant: ['tabular-nums'] },
+    wStack: { flexDirection: 'row', height: 8, borderRadius: 8, overflow: 'hidden', gap: 2 },
+    wLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 9 },
+    wLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    wLegendDot: { width: 8, height: 8, borderRadius: 4 },
+    wLegendText: { color: WARM.soft, fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
+    wMonths: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+    wMonthCol: { flex: 1, alignItems: 'center' },
+    wMonthTrack: { width: '100%', height: 92, justifyContent: 'flex-end' },
+    wMonthLabel: { color: WARM.muted, fontSize: 9.5, fontWeight: '600', marginTop: 6, letterSpacing: 0.5 },
+    wFilled: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginTop: 18,
+      paddingVertical: 13,
+      paddingHorizontal: 24,
+      borderRadius: 36,
+      backgroundColor: WARM.surface,
+    },
+    wFilledText: { color: WARM.cream, fontSize: 11.5, fontWeight: '600', letterSpacing: 0.7 },
+    pickBackdrop: { flex: 1, backgroundColor: 'rgba(16,9,4,0.72)', alignItems: 'center', justifyContent: 'center', padding: 16 },
     pickSheet: {
       width: '100%',
       maxWidth: 420,
-      backgroundColor: c.surface,
-      borderRadius: 20,
-      padding: 14,
+      backgroundColor: WARM.bg,
+      borderRadius: 12,
+      padding: 18,
       borderWidth: 1,
-      borderColor: c.line,
+      borderColor: WARM.line,
     },
-    pickHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-    pickHeadText: { fontSize: 15, fontWeight: '900', color: c.text },
+    pickHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    pickHeadText: { fontSize: 13, fontWeight: '600', color: WARM.cream, letterSpacing: 0.8 },
     pickSearch: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: c.line,
-      backgroundColor: c.surfaceSoft,
-      marginBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: WARM.cream,
+      marginBottom: 10,
     },
-    pickSearchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: c.text },
-    pickRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 12 },
-    pickRowOn: { backgroundColor: c.primarySoft },
-    pickIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySoft },
-    pickTitle: { fontSize: 14, fontWeight: '800', color: c.text },
-    pickSub: { fontSize: 11.5, color: c.textMuted, marginTop: 1 },
-    pickEmpty: { textAlign: 'center', color: c.textMuted, paddingVertical: 16 },
+    pickSearchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: WARM.cream },
+    pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12 },
+    pickRowOn: { backgroundColor: WARM.surface },
+    pickIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: WARM.line },
+    pickIconText: { color: WARM.cream, fontSize: 11, fontWeight: '600' },
+    pickTitle: { fontSize: 13, fontWeight: '600', color: WARM.cream, letterSpacing: 0.3 },
+    pickSub: { fontSize: 11, color: WARM.muted, marginTop: 2 },
+    pickEmpty: { textAlign: 'center', color: WARM.muted, paddingVertical: 16 },
 
     // CANLI PİYASA
     marketBlock: { marginBottom: 14 },

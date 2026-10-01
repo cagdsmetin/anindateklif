@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated as RNAnimated, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Animated as RNAnimated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -606,17 +606,14 @@ export default function PanelScreen() {
             width={W}
             extraPages={
               team.length > 0
-                ? (go) => [
-                    <TeamSummaryPage key="team" team={team} isWide={isWide} t={t} onPick={(i) => go(i + 2)} />,
-                    ...team.map((p) => (
-                      <PersonPage
-                        key={p.email}
-                        person={p}
-                        isWide={isWide}
-                        t={t}
-                        onOpen={() => router.push({ pathname: '/(tabs)/personel-teklifleri', params: { email: p.email } } as any)}
-                      />
-                    )),
+                ? () => [
+                    <TeamPage
+                      key="team"
+                      team={team}
+                      isWide={isWide}
+                      t={t}
+                      onOpenPerson={(p) => router.push({ pathname: '/(tabs)/personel-teklifleri', params: { email: p.email } } as any)}
+                    />,
                   ]
                 : undefined
             }
@@ -956,10 +953,157 @@ function HeroPager({
   );
 }
 
-// Ekip özeti: herkesin bu ayki satışı (onaylanan), teklif adedi ve yanıt
-// bekleyen teklif sayısı tek tabloda. Satıra dokununca o kişinin sayfasına geçer.
-function TeamSummaryPage({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide: boolean; t: (k: string) => string; onPick: (i: number) => void }) {
+// Ekip sayfası: üstte aramalı personel seçici. "Tüm ekip" seçiliyken kişi
+// bazlı yatay çubuk grafik (Satış / Hacim / Teklif / Bekleyen) ve özet tablo;
+// bir kişi seçilince o kişinin ayrıntısı aynı kartta açılır. Ekip kalabalık
+// olabilir diye grafik ilk TEAM_TOP kişiyi gösterip kalanları "Diğer"de
+// toplar, tablo da ilk TEAM_TOP satırdan sonra "Tümünü göster" ile açılır.
+const TEAM_TOP = 8;
+type TeamMetric = 'sales' | 'volume' | 'count' | 'pending';
+
+function TeamPage({
+  team,
+  isWide,
+  t,
+  onOpenPerson,
+}: {
+  team: TeamPerson[];
+  isWide: boolean;
+  t: (k: string) => string;
+  onOpenPerson: (p: TeamPerson) => void;
+}) {
   const s = styles();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const person = selected ? team.find((p) => p.email === selected) || null : null;
+
+  return (
+    <View style={[s.heroInner, isWide && { padding: 24 }]}>
+      <View style={s.teamTopRow}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.heroLabel}>{t('panel.teamTitle')}</Text>
+          <Text style={s.heroDate} numberOfLines={1}>
+            {team.length} {t('panel.teamPeople')}
+          </Text>
+        </View>
+        <Pressable style={({ pressed }) => [s.teamPickBtn, pressed && { opacity: 0.75 }]} onPress={() => setPickerOpen(true)} testID="hero-team-picker">
+          <Ionicons name={person ? 'person' : 'people'} size={14} color="#E0E7FF" />
+          <Text style={s.teamPickText} numberOfLines={1}>
+            {person ? person.name : t('panel.teamAll')}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color="#C7D2FE" />
+        </Pressable>
+      </View>
+
+      {person ? (
+        <PersonBody person={person} isWide={isWide} t={t} onOpen={() => onOpenPerson(person)} onBack={() => setSelected(null)} />
+      ) : (
+        <TeamOverview team={team} isWide={isWide} t={t} onPick={(email) => setSelected(email)} />
+      )}
+
+      <TeamPicker
+        visible={pickerOpen}
+        team={team}
+        selected={selected}
+        t={t}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(email) => {
+          setSelected(email);
+          setPickerOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+// Aramalı personel listesi -- kişi sayısı ne olursa olsun tek dokunuşla seçim.
+function TeamPicker({
+  visible,
+  team,
+  selected,
+  t,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  team: TeamPerson[];
+  selected: string | null;
+  t: (k: string) => string;
+  onClose: () => void;
+  onSelect: (email: string | null) => void;
+}) {
+  const s = styles();
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    if (!visible) setQ('');
+  }, [visible]);
+  const needle = q.trim().toLocaleLowerCase('tr-TR');
+  const list = [...team]
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+    .filter((p) => !needle || p.name.toLocaleLowerCase('tr-TR').includes(needle) || p.email.includes(needle));
+
+  const Row = ({ email, title, sub, icon }: { email: string | null; title: string; sub?: string; icon: IconName }) => {
+    const on = selected === email;
+    return (
+      <Pressable style={({ pressed }) => [s.pickRow, on && s.pickRowOn, pressed && { opacity: 0.7 }]} onPress={() => onSelect(email)}>
+        <View style={s.pickIcon}>
+          <Ionicons name={icon} size={15} color={theme.colors.primary} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.pickTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          {sub ? (
+            <Text style={s.pickSub} numberOfLines={1}>
+              {sub}
+            </Text>
+          ) : null}
+        </View>
+        {on ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} /> : null}
+      </Pressable>
+    );
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={s.pickBackdrop} onPress={onClose}>
+        <Pressable style={s.pickSheet} onPress={() => {}}>
+          <View style={s.pickHead}>
+            <Text style={s.pickHeadText}>{t('panel.teamPick')}</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
+            </Pressable>
+          </View>
+          {team.length > 6 ? (
+            <View style={s.pickSearch}>
+              <Ionicons name="search" size={15} color={theme.colors.textMuted} />
+              <TextInput
+                value={q}
+                onChangeText={setQ}
+                placeholder={t('panel.teamSearch')}
+                placeholderTextColor={theme.colors.textMuted}
+                style={s.pickSearchInput}
+                autoCorrect={false}
+              />
+            </View>
+          ) : null}
+          <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
+            {!needle ? <Row email={null} title={t('panel.teamAll')} sub={`${team.length} ${t('panel.teamPeople')}`} icon="people" /> : null}
+            {list.map((p) => (
+              <Row key={p.email} email={p.email} title={p.name} sub={roleLabel(p, t)} icon="person" />
+            ))}
+            {list.length === 0 ? <Text style={s.pickEmpty}>{t('panel.teamNoMatch')}</Text> : null}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function TeamOverview({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide: boolean; t: (k: string) => string; onPick: (email: string) => void }) {
+  const s = styles();
+  const [metric, setMetric] = useState<TeamMetric>('sales');
+  const [showAll, setShowAll] = useState(false);
   const money = (n: number | null) => (n == null ? '—' : fmtCompactTRY(n, t));
   const sum = (f: (p: TeamPerson) => number | null) => {
     let missing = false;
@@ -973,42 +1117,88 @@ function TeamSummaryPage({ team, isWide, t, onPick }: { team: TeamPerson[]; isWi
   const totSales = sum((p) => p.monthSales);
   const totCount = team.reduce((a, p) => a + p.monthCount, 0);
   const totPending = team.reduce((a, p) => a + p.pending, 0);
-  const rows = [...team.map((p, i) => ({ p, i }))].sort(
-    (a, b) => (b.p.monthSales || 0) - (a.p.monthSales || 0) || b.p.monthCount - a.p.monthCount
+
+  const metricOf = (p: TeamPerson): number | null =>
+    metric === 'sales' ? p.monthSales : metric === 'volume' ? p.monthVolume : metric === 'count' ? p.monthCount : p.pending;
+  const isMoney = metric === 'sales' || metric === 'volume';
+  const fmtMetric = (n: number | null) => (n == null ? '—' : isMoney ? fmtCompactTRY(n, t) : String(n));
+
+  const ranked = [...team].sort((a, b) => (metricOf(b) || 0) - (metricOf(a) || 0) || a.name.localeCompare(b.name, 'tr'));
+  const top = ranked.slice(0, TEAM_TOP);
+  const rest = ranked.slice(TEAM_TOP);
+  const restVal = rest.length ? rest.reduce((a, p) => a + (metricOf(p) || 0), 0) : 0;
+  const bars: { key: string; label: string; value: number | null; email?: string }[] = top.map((p) => ({
+    key: p.email,
+    label: p.name,
+    value: metricOf(p),
+    email: p.email,
+  }));
+  if (rest.length) bars.push({ key: '__rest__', label: `${t('panel.teamOthers')} (${rest.length})`, value: restVal });
+  const max = Math.max(1, ...bars.map((b) => b.value || 0));
+
+  const tabs: { k: TeamMetric; label: string }[] = [
+    { k: 'sales', label: t('panel.teamSales') },
+    { k: 'volume', label: t('panel.teamVolumeShort') },
+    { k: 'count', label: t('panel.teamCount') },
+    { k: 'pending', label: t('panel.teamPending') },
+  ];
+
+  const tableRows = [...team].sort(
+    (a, b) => (b.monthSales || 0) - (a.monthSales || 0) || b.monthCount - a.monthCount
+  );
+  const shownRows = showAll ? tableRows : tableRows.slice(0, TEAM_TOP);
+
+  const chart = (
+    <View>
+      <View style={s.metricTabs}>
+        {tabs.map((x) => (
+          <Pressable key={x.k} onPress={() => setMetric(x.k)} style={[s.metricTab, metric === x.k && s.metricTabOn]} testID={`hero-team-metric-${x.k}`}>
+            <Text style={[s.metricTabText, metric === x.k && s.metricTabTextOn]} numberOfLines={1}>
+              {x.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={{ marginTop: 10, gap: 7 }}>
+        {bars.map((b) => {
+          const ratio = (b.value || 0) / max;
+          const body = (
+            <>
+              <Text style={s.tbarName} numberOfLines={1}>
+                {b.label}
+              </Text>
+              <View style={s.tbarTrack}>
+                <View style={[s.tbarFill, { width: `${Math.max(ratio * 100, b.value ? 2 : 0)}%` as `${number}%` }, !b.email && s.tbarFillRest]} />
+              </View>
+              <Text style={s.tbarValue} numberOfLines={1}>
+                {fmtMetric(b.value)}
+              </Text>
+            </>
+          );
+          return b.email ? (
+            <Pressable key={b.key} style={({ pressed }) => [s.tbarRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(b.email as string)}>
+              {body}
+            </Pressable>
+          ) : (
+            <View key={b.key} style={s.tbarRow}>
+              {body}
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 
-  return (
-    <View style={[s.heroInner, isWide && { padding: 24 }]}>
-      <Text style={s.heroLabel}>{t('panel.teamTitle')}</Text>
-      <Text style={s.heroDate} numberOfLines={1}>
-        {t('panel.teamSub')}
-      </Text>
-
-      <View style={s.teamTotals}>
-        <View style={s.teamTotal}>
-          <Text style={s.teamTotalLabel}>{t('panel.teamSales')}</Text>
-          <Text style={s.teamTotalValue} numberOfLines={1} adjustsFontSizeToFit>
-            {money(totSales)}
-          </Text>
-        </View>
-        <View style={s.teamTotal}>
-          <Text style={s.teamTotalLabel}>{t('panel.teamCount')}</Text>
-          <Text style={s.teamTotalValue}>{totCount}</Text>
-        </View>
-        <View style={[s.teamTotal, s.teamTotalWarn]}>
-          <Text style={[s.teamTotalLabel, { color: '#FDE68A' }]}>{t('panel.teamPending')}</Text>
-          <Text style={s.teamTotalValue}>{totPending}</Text>
-        </View>
-      </View>
-
+  const table = (
+    <View>
       <View style={s.teamHead}>
         <Text style={[s.teamHeadText, { flex: 1 }]}>{t('panel.teamPerson')}</Text>
         <Text style={[s.teamHeadText, s.teamColMoney]}>{t('panel.teamSales')}</Text>
         <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamCount')}</Text>
         <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamPending')}</Text>
       </View>
-      {rows.map(({ p, i }) => (
-        <Pressable key={p.email} style={({ pressed }) => [s.teamRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(i)} testID={`hero-team-row-${p.email}`}>
+      {shownRows.map((p) => (
+        <Pressable key={p.email} style={({ pressed }) => [s.teamRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(p.email)} testID={`hero-team-row-${p.email}`}>
           <View style={s.teamAvatar}>
             <Text style={s.teamAvatarText}>{initials(p.name)}</Text>
           </View>
@@ -1027,15 +1217,65 @@ function TeamSummaryPage({ team, isWide, t, onPick }: { team: TeamPerson[]; isWi
           <Text style={[s.teamCell, s.teamCol, p.pending > 0 && { color: '#FDE68A' }]}>{p.pending}</Text>
         </Pressable>
       ))}
+      {tableRows.length > TEAM_TOP ? (
+        <Pressable onPress={() => setShowAll((v) => !v)} style={s.teamMore} hitSlop={6}>
+          <Text style={s.teamMoreText}>{showAll ? t('panel.teamShowLess') : `${t('panel.teamShowAll')} (${tableRows.length})`}</Text>
+          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={13} color="#C7D2FE" />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View>
+      <View style={s.teamTotals}>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamSales')}</Text>
+          <Text style={s.teamTotalValue} numberOfLines={1} adjustsFontSizeToFit>
+            {money(totSales)}
+          </Text>
+        </View>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamCount')}</Text>
+          <Text style={s.teamTotalValue}>{totCount}</Text>
+        </View>
+        <View style={[s.teamTotal, s.teamTotalWarn]}>
+          <Text style={[s.teamTotalLabel, { color: '#FDE68A' }]}>{t('panel.teamPending')}</Text>
+          <Text style={s.teamTotalValue}>{totPending}</Text>
+        </View>
+      </View>
+      {isWide ? (
+        <View style={{ flexDirection: 'row', gap: 24, marginTop: 14 }}>
+          <View style={{ flex: 1 }}>{chart}</View>
+          <View style={{ flex: 1 }}>{table}</View>
+        </View>
+      ) : (
+        <View style={{ marginTop: 14 }}>
+          {chart}
+          <View style={{ marginTop: 6 }}>{table}</View>
+        </View>
+      )}
     </View>
   );
 }
 
-// Tek bir personelin bu ayki satışı, teklif hacmi, bekleyenleri ve son 6 ayı.
-function PersonPage({ person: p, isWide, t, onOpen }: { person: TeamPerson; isWide: boolean; t: (k: string) => string; onOpen: () => void }) {
+// Seçilen personelin bu ayki satışı, teklif hacmi, bekleyenleri ve son 6 ayı.
+function PersonBody({
+  person: p,
+  isWide,
+  t,
+  onOpen,
+  onBack,
+}: {
+  person: TeamPerson;
+  isWide: boolean;
+  t: (k: string) => string;
+  onOpen: () => void;
+  onBack: () => void;
+}) {
   const s = styles();
   return (
-    <View style={[s.heroInner, isWide && s.heroInnerWide]}>
+    <View style={[{ marginTop: 14 }, isWide && { flexDirection: 'row', alignItems: 'center', gap: 28 }]}>
       <View style={isWide ? s.heroMain : undefined}>
         <View style={s.personHead}>
           <View style={[s.teamAvatar, s.personAvatar]}>
@@ -1079,6 +1319,10 @@ function PersonPage({ person: p, isWide, t, onOpen }: { person: TeamPerson; isWi
           <AnimatedPressable style={s.chip} onPress={onOpen} scaleTo={0.96} testID={`hero-person-open-${p.email}`}>
             <Text style={s.chipValue}>{t('panel.teamAllQuotes')}</Text>
             <Ionicons name="chevron-forward" size={13} color="#C7D2FE" />
+          </AnimatedPressable>
+          <AnimatedPressable style={s.chip} onPress={onBack} scaleTo={0.96}>
+            <Ionicons name="people-outline" size={13} color="#C7D2FE" />
+            <Text style={s.chipValue}>{t('panel.teamAll')}</Text>
           </AnimatedPressable>
         </View>
       </View>
@@ -1804,6 +2048,63 @@ const styles = themedSheet(() => {
     teamCell: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '900' },
     personHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     personAvatar: { width: 40, height: 40, borderRadius: 20 },
+    teamTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    teamPickBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      maxWidth: 200,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: 'rgba(99,102,241,0.3)',
+      borderWidth: 1,
+      borderColor: 'rgba(165,180,252,0.45)',
+    },
+    teamPickText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
+    metricTabs: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)' },
+    metricTab: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 9 },
+    metricTabOn: { backgroundColor: 'rgba(165,180,252,0.22)' },
+    metricTabText: { color: 'rgba(199,210,254,0.75)', fontSize: 11, fontWeight: '800' },
+    metricTabTextOn: { color: '#FFFFFF' },
+    tbarRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 22 },
+    tbarName: { width: 92, color: '#E0E7FF', fontSize: 11.5, fontWeight: '700' },
+    tbarTrack: { flex: 1, height: 10, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
+    tbarFill: { height: '100%', borderRadius: 4, backgroundColor: '#818CF8' },
+    tbarFillRest: { backgroundColor: 'rgba(148,163,184,0.55)' },
+    tbarValue: { width: 64, textAlign: 'right', color: '#FFFFFF', fontSize: 11.5, fontWeight: '900' },
+    teamMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9 },
+    teamMoreText: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
+    pickBackdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+    pickSheet: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: c.surface,
+      borderRadius: 20,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    pickHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    pickHeadText: { fontSize: 15, fontWeight: '900', color: c.text },
+    pickSearch: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.line,
+      backgroundColor: c.surfaceSoft,
+      marginBottom: 8,
+    },
+    pickSearchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: c.text },
+    pickRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 12 },
+    pickRowOn: { backgroundColor: c.primarySoft },
+    pickIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySoft },
+    pickTitle: { fontSize: 14, fontWeight: '800', color: c.text },
+    pickSub: { fontSize: 11.5, color: c.textMuted, marginTop: 1 },
+    pickEmpty: { textAlign: 'center', color: c.textMuted, paddingVertical: 16 },
 
     // CANLI PİYASA
     marketBlock: { marginBottom: 14 },

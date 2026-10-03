@@ -225,7 +225,7 @@
   L.versus = S => {
     cue(.55, 'pop'); cue(.9, 'whoosh'); if (S.a.strike) cue(1.9, 'whoosh'); cue(2.3, 'whoosh');
     const C = S.cols, PW = 450;
-    const panel = (id, x, top, cls) => `<div class="glass" id="${id}" style="position:absolute;${C ? `left:${id === 'pa' ? 0 : 486}px;right:auto;width:${PW}px;top:90px;height:820px;padding:54px 44px` : `left:0;right:0;top:${top}px;height:470px;padding:54px 60px`};overflow:hidden;opacity:0;${cls}">
+    const panel = (id, x, top, cls) => `<div class="glass" id="${id}" style="position:absolute;${C ? `left:${id === 'pa' ? 0 : 486}px;right:auto;width:${PW}px;top:90px;height:660px;padding:54px 44px` : `left:0;right:0;top:${top}px;height:470px;padding:54px 60px`};overflow:hidden;opacity:0;${cls}">
         <div class="eyebrow" style="font-size:28px;${id === 'pb' ? 'color:#D9D7FF' : ''}">${x.tag}</div>
         <div class="display h-s" style="margin-top:30px;position:relative;display:inline-block;font-size:${C ? 62 : 72}px">${x.big}${x.strike ? `<span id="${id}s" style="position:absolute;left:-2%;top:46%;height:12px;width:0;background:#EF4444;border-radius:6px;transform:rotate(${C ? -10 : -3}deg)"></span>` : ''}</div>
         <div class="sub" style="margin-top:24px;${id === 'pb' ? 'color:#E2E0FF' : ''}">${x.sub}</div></div>`;
@@ -233,8 +233,8 @@
       html: `${eb('eb', S.eyebrow, 'top:20px')}
         ${panel('pa', S.a, 90, '')}
         ${panel('pb', S.b, 620, 'background:linear-gradient(150deg,#5B54F0,#3A33C4);border-color:rgba(255,255,255,.25);box-shadow:0 40px 120px rgba(79,70,229,.45)')}
-        <div id="vs" class="it" style="left:50%;right:auto;top:${C ? 430 : 510}px;margin-left:-70px;width:140px;height:140px;border-radius:50%;background:var(--bg);border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:56px;z-index:3;opacity:0">ya da</div>
-        <div class="display h-s" id="cap" style="top:${C ? 990 : 1150}px">${lns(S.cap)}</div>`,
+        <div id="vs" class="it" style="left:50%;right:auto;top:${C ? 350 : 510}px;margin-left:-70px;width:140px;height:140px;border-radius:50%;background:var(--bg);border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:56px;z-index:3;opacity:0">ya da</div>
+        <div class="display h-s" id="cap" style="top:${C ? 850 : 1150}px">${lns(S.cap)}</div>`,
       update(t) {
         fadeIn($('eb'), t, 0, { dy: 20, blur: 6 });
         const pa = E.out(prog(t, -.15, .6)), pb = E.out(prog(t, .9, 1.6));

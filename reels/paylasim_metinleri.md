@@ -42,3 +42,31 @@ TEKLIF30 koduyla 1 ay Pro ücretsiz: https://anindateklif.co/hediye
 - Kapak olarak `kapak_reel01.png` seçin.
 - Linki bio'ya koyun; Reels açıklamasındaki linkler tıklanmaz.
 - En iyi saatler: hafta içi 12:00–13:00 ve 20:00–22:00.
+
+---
+
+# Reels v2 — 3 hook versiyonu (A/B testi için)
+
+Kaynaklar: `reel_v1_sayac.html`, `reel_v2_rakip.html`, `reel_v3_perdeci.html` (ortak: `lib/`).
+Üretim: `node extract-frames.mjs` (bir kez) → `node render.mjs reel_v1_sayac.html anindateklif_v1_sayac.mp4`.
+Kurgu: gerçek uygulama kaydı (demo veri) 0. kareden itibaren ekranda → ölçü → fiyat → PDF → 3 özellik → TEKLIF30 → logo.
+Tüm yazılar alttaki 420px Instagram arayüz alanının üstünde.
+
+| Video | Hook | Süre |
+|---|---|---|
+| `anindateklif_v1_sayac.mp4` | Bu teklif 8 saniyede hazırlandı ⏱ (canlı sayaç, PDF açılınca durur) | 19.1 sn |
+| `anindateklif_v2_rakip.mp4` | Müşterin teklifi rakibinden önce alsın. | 17.6 sn |
+| `anindateklif_v3_perdeci.mp4` | Perdeci misin? Bunu izlemeden teklif yazma. | 17.6 sn |
+
+## Açıklama metinleri
+**v1:** Ölçüyü girdin, fiyat hazır, PDF müşterinde. ⏱ Teklif yazmak artık dakikalar değil, saniyeler. Anında Teklif ⚡
+**v2:** Teklifi ilk gönderen işi alır. Ölçüyü gir, fiyat anında hesaplansın, PDF'i WhatsApp'tan tek dokunuşla gönder. ⚡
+**v3:** Perde, pergola, zip perde, cam balkon… Hâlâ Excel'le mi teklif yazıyorsun? Ölçüyü gir, fiyat ve PDF teklif anında hazır. ⚡
+
+Hepsine ek:
+🎁 Instagram'a özel: TEKLIF30 ile 1 ay Pro ücretsiz (ilk 1000 üye)
+👉 Profildeki linkten: anindateklif.co/hediye
+#perde #pergola #cambalkon #zipperde #teklif #esnaf #kobi #anindateklif
+
+## A/B önerisi
+Üçünü aynı hafta, aynı saat diliminde farklı günlerde paylaşın; 3 sn izlenme oranı (Insights → "izlenme süresi") en yüksek olanı reklama çıkarın.

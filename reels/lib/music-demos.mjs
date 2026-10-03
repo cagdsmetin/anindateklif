@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRESETS } from './music.mjs';
-import { mixAndMaster } from './audio.next.mjs';
+import { mixAndMaster } from './audio.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.resolve(HERE, '../preview/music_demos');
@@ -29,7 +29,15 @@ for (const p of names) {
     `drawtext=fontfile=${FONT}:text='${txt(P.label)}':fontsize=76:fontcolor=white:x=(w-tw)/2:y=260,` +
     `drawtext=fontfile=${FONT}:text='${txt(`${p} · ${P.bpm} BPM · ${keyName} major`)}':fontsize=40:fontcolor=0xA5B4FC:x=(w-tw)/2:y=370,` +
     `drawtext=fontfile=${FONT}:text='%{pts\\:hms}':fontsize=36:fontcolor=0x9CA3AF:x=(w-tw)/2:y=1700[v]`;
-  const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', wav, '-filter_complex', vf, '-map', '[v]', '-map', '0:a',
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', String(LEN), mp4], { encoding: 'utf8' });
-  if (r.status) { console.error(r.stderr); process.exitCode = 1; } else console.log('✓', mp4);
+  // AAC kodlaması true-peak'i yükseltebilir: ölç, > -1 dBTP ise farkı kadar kısıp yeniden kodla
+  let trim = 0, r, tp;
+  for (let pass = 0; pass < 3; pass++) {
+    r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', wav, '-filter_complex', vf + `;[0:a]volume=${trim.toFixed(2)}dB[a]`, '-map', '[v]', '-map', '[a]',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-t', String(LEN), mp4], { encoding: 'utf8' });
+    if (r.status) break;
+    const e = spawnSync('ffmpeg', ['-hide_banner', '-nostdin', '-i', mp4, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
+    tp = parseFloat(/True peak:\s+Peak:\s+(-?[\d.]+)/.exec(e.slice(e.lastIndexOf('Summary:')))?.[1]);
+    if (!(tp > -1.05)) break; trim -= tp + 1.15;
+  }
+  if (r.status) { console.error(r.stderr); process.exitCode = 1; } else console.log('✓', mp4, `TP ${tp} dBTP${trim ? ` (AAC için ${trim.toFixed(2)} dB)` : ''}`);
 }

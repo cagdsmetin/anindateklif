@@ -1,144 +1,37 @@
-// Reel ses tasarımı: sayfadaki window.DUR + window.CUES okunur, prosedürel
-// müzik yatağı + UI efektleri sentezlenir (ağdan indirme yok, telifsiz),
-// -14 LUFS / -1 dBTP'ye normalize edilip MP4'e AAC 192k olarak eklenir.
+// Reel/story ses tasarımı: sayfadaki window.DUR + window.CUES okunur; video başına
+// farklı, neşeli prosedürel müzik (lib/music.mjs, 8 preset, plan/music_map.json) +
+// UI efektleri + isteğe bağlı seslendirme (lib/voice.mjs, ElevenLabs) miksedilir,
+// -14 LUFS / ≤ -1 dBTP'ye getirilip MP4'e AAC 192k olarak eklenir. Telifsiz, deterministik.
 //
-//   node lib/audio.mjs "reel.html?id=r07" in.mp4 out.mp4
-//   node lib/audio.mjs --batch list.json      # [{page, in, out}, ...]
-//   node lib/audio.mjs --wav "reel.html" out.wav   # yalnızca miks (debug)
-//
-// Çıktı deterministiktir (sabit tohumlu RNG, sabit BPM/akor dizisi).
+//   node lib/audio.mjs "reel.html?id=r07" in.mp4 out.mp4 [seçenekler]
+//   node lib/audio.mjs --batch list.json [seçenekler]   # [{page, in, out, id?, music?, vo?}, ...]
+//   node lib/audio.mjs --wav "reel.html?id=r07" out.wav [seçenekler]   # yalnızca miks (debug)
+//   node lib/audio.mjs --list-voices
+// Seçenekler:
+//   --vo plan/voiceover.json   seslendirme planı (id sayfa sorgusundan ya da --id'den)
+//   --id rNN                   VO/müzik eşlemesi için kimlik (vars. sayfa ?id=)
+//   --vo-dry                   ElevenLabs yerine konuşma benzeri yer tutucu (anahtarsız test)
+//   --music <preset>           plan/music_map.json yerine preset zorla
+//   --debug-dir DIR            stem'leri (müzik/ducked, sfx, vo, duck zarfı) yaz
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { SR, rng, mtof, clamp, db, Bus, panLR, SVF, edge, lufs as lufsJS, renderMusic, presetFor, PRESETS } from './music.mjs';
+import { buildVoice, loadVO, listVoices } from './voice.mjs';
 
-const SR = 48000;
 const TAU = Math.PI * 2;
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const NOTES_DIR = path.resolve(HERE, '../preview/music_notes');
 const TARGET_I = -14, LIMIT_DB = -2.0; // AAC kodlama aşımı için 1 dB pay
-// Müzik stem'i -20 LUFS'a çekilir; efektler aynı ölçeğe +SFX_REL_DB ile eklenir
-// (seyrek efektlerin LUFS ölçümü güvenilmez olduğundan sabit göreli kazanç).
-const MUSIC_LUFS = -20, SFX_REL_DB = 3;
+// Müzik stem'i -20 LUFS; efektler aynı ölçeğe +SFX_REL_DB; VO tek başına -16 LUFS.
+const MUSIC_LUFS = -20, SFX_REL_DB = 3, VO_LUFS = -16;
+// VO altında ducking: müzik -9.5 dB, efektler -4 dB; 120 ms atak / 350 ms bırakma, 100 ms ileri bakış
+const DUCK = { music: -9.5, sfx: -4, att: 0.12, rel: 0.35, look: 0.10, hold: 0.20, thr: -42 };
 
-// ---------- yardımcılar ----------
-function rng(seed) { // mulberry32
-  let a = seed >>> 0;
-  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
-const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
-const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
-const db = d => Math.pow(10, d / 20);
-
-class Bus {
-  constructor(n) { this.n = n; this.L = new Float32Array(n); this.R = new Float32Array(n); }
-  add(i, l, r) { if (i >= 0 && i < this.n) { this.L[i] += l; this.R[i] += r; } }
-}
-// eşit güç pan: p -1..1
-const panLR = p => [Math.cos((p + 1) * Math.PI / 4), Math.sin((p + 1) * Math.PI / 4)];
-
-// TPT state-variable filter (kararlı, modülasyona uygun)
-class SVF {
-  constructor() { this.ic1 = 0; this.ic2 = 0; }
-  run(x, fc, q) {
-    const g = Math.tan(Math.PI * Math.min(fc, SR * 0.45) / SR), k = 1 / q;
-    const a1 = 1 / (1 + g * (g + k)), a2 = g * a1, a3 = g * a2;
-    const v3 = x - this.ic2, v1 = a1 * this.ic1 + a2 * v3, v2 = this.ic2 + a2 * this.ic1 + a3 * v3;
-    this.ic1 = 2 * v1 - this.ic1; this.ic2 = 2 * v2 - this.ic2;
-    return { lp: v2, bp: v1, hp: x - k * v1 - v2 };
-  }
-}
-// Her olay için yumuşak başlangıç/bitiş (klik önleme)
-const edge = (t, len, a = 0.002, r = 0.006) => clamp(t / a) * clamp((len - t) / r);
-
-// ---------- müzik yatağı ----------
-// 104 BPM, A minör: Am – F – C – G (her akor 1 ölçü). Yumuşak kick, kısık
-// hat'ler, sıcak pad, sub bas, hafif pluck arpej; kick'e bağlı sidechain.
-function music(bus, len, logoT) {
-  const BPM = 104, beat = 60 / BPM, bar = beat * 4;
-  const R = rng(0xB0A7);
-  const stopT = logoT ?? len; // logoda ritim biter, pad çözülür
-  const CH = [ // [bas kök midi, pad notaları]
-    [45, [57, 60, 64, 71]],      // Am(add9 tını: B)
-    [41, [57, 60, 65, 69]],      // Fmaj7
-    [48, [55, 60, 64, 67]],      // C
-    [43, [55, 59, 62, 66]],      // G (F# yerine 67? -> sus tadı)
-  ];
-  CH[3][1][3] = 67; // G: G B D G
-  const chordAt = t => CH[Math.floor(t / bar) % 4];
-  const kicks = [];
-  for (let k = 0; k * beat < stopT - 0.05; k++) kicks.push(k * beat);
-  // sidechain zarfı
-  const duck = new Float32Array(bus.n);
-  for (let i = 0; i < bus.n; i++) duck[i] = 1;
-  for (const kt of kicks) { const s = Math.round(kt * SR);
-    for (let j = 0; j < 0.3 * SR; j++) { const i = s + j; if (i >= bus.n) break;
-      const tt = j / SR; const d = 1 - 0.45 * Math.exp(-tt / 0.09) * clamp(tt / 0.004 + 0.3);
-      duck[i] = Math.min(duck[i], d); } }
-  // genel müzik zarfı: 0'da ~25ms fade-in (ilk karede duyulur), logoda çözülme
-  const master = t => clamp(t / 0.025) * clamp((len - t) / 0.08);
-
-  // Kick: sinüs pitch düşüşü + çok hafif tık
-  const kc = new SVF(), KR = rng(0x4B1C);
-  for (const kt of kicks) { const s = Math.round(kt * SR), L = 0.42 * SR; let ph = 0;
-    const vel = (Math.round(kt / beat) % 4 === 0) ? 1 : 0.82;
-    for (let j = 0; j < L; j++) { const t = j / SR;
-      const f = 54 + 80 * Math.exp(-t / 0.03); ph += TAU * f / SR;
-      const env = Math.exp(-t / 0.14) * edge(t, L / SR, 0.0015, 0.03);
-      const click = kc.run(KR() * 2 - 1, 3200, 0.9).bp * Math.exp(-t / 0.003) * 0.5; // telefon hoparlöründe duyulsun
-      const v = 0.42 * vel * (Math.sin(ph) * env + click * edge(t, 0.02, 0.0005, 0.005)) * master(kt + t);
-      bus.add(s + j, v, v); } }
-  // Hat: offbeat 8'lik + hafif 16'lık ghost, yüksek geçiren gürültü, hafif swing
-  { const svf = [new SVF(), new SVF()];
-    for (let k = 0; (k * beat / 2) < stopT - 0.05; k++) {
-      const off = k % 2 === 1; const ht = k * beat / 2 + (off ? 0.018 : 0);
-      if (!off && R() < 0.7) continue;
-      const amp = off ? 0.07 : 0.025, L = (off ? 0.06 : 0.03), s = Math.round(ht * SR);
-      const pan = off ? 0.25 : -0.2; const [pl, pr] = panLR(pan);
-      for (let j = 0; j < L * SR; j++) { const t = j / SR;
-        const n = R() * 2 - 1; const y = svf[0].run(n, 7500, 0.7).hp; const z = svf[1].run(y, 11000, 0.6).lp;
-        const e = Math.exp(-t / (off ? 0.018 : 0.01)) * edge(t, L, 0.0008, 0.01) * amp * master(ht);
-        bus.add(s + j, z * e * pl, z * e * pr); } } }
-  // Pad: aditif testere benzeri, L/R detune, yavaş filtre nefesi, sidechain
-  { const phL = new Float64Array(64), phR = new Float64Array(64);
-    const n0 = Math.round(0 * SR), n1 = Math.min(bus.n, Math.round((stopT + 1.2) * SR));
-    for (let i = n0; i < n1; i++) { const t = i / SR;
-      const tc = Math.min(t, stopT - 1e-3), ch = chordAt(tc);
-      // Akor sınırında 35 ms'lik yumuşak çukur: frekans değişimi sıfıra yakın genlikte olur (klik yok)
-      const bi = Math.floor(tc / bar), tb = tc - bi * bar, last = bi === Math.floor((stopT - 1e-3) / bar);
-      const xf = 0.15 + 0.85 * (bi ? clamp(tb / 0.035) : 1) * (last ? 1 : clamp((bar - tb) / 0.035));
-      const bright = 0.55 + 0.25 * Math.sin(TAU * t / (bar * 2));
-      let l = 0, r = 0, v = 0;
-      for (const m of ch[1]) { const f = mtof(m);
-        for (let h = 1; h <= 7; h++) { const w = Math.pow(h, -1.6) * Math.pow(bright, h - 1);
-          const idx = v++; phL[idx] += TAU * f * h * 1.0023 / SR; phR[idx] += TAU * f * h * 0.9977 / SR;
-          l += w * Math.sin(phL[idx]); r += w * Math.sin(phR[idx]); } }
-      const rel = t < stopT ? 1 : clamp(1 - (t - stopT) / 1.2) ** 2;
-      const g = 0.05 * xf * duck[i] * master(t) * rel * clamp(t / 0.06);
-      bus.add(i, l * g, r * g); } }
-  // Sub bas: kök, 1 ve 3. vuruşta + senkop, yumuşak sinüs + 2. harmonik
-  { const R2 = rng(77);
-    for (let k = 0; k * beat < stopT - 0.05; k++) {
-      const pos = k % 4; const steps = pos === 0 ? [0] : pos === 2 ? [0, 0.75] : [];
-      for (const st of steps) { const bt = (k + st) * beat; if (bt >= stopT - 0.05) continue;
-        const f = mtof(chordAt(bt)[0]), L = beat * (st ? 0.5 : 1.3), s = Math.round(bt * SR); let ph = R2() * 0;
-        for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * f / SR;
-          const e = edge(t, L, 0.008, 0.06) * (0.75 + 0.25 * Math.exp(-t / 0.2));
-          const v = 0.15 * (Math.sin(ph) + 0.35 * Math.sin(2 * ph) + 0.1 * Math.sin(3 * ph)) * e * duck[s + j] * master(bt + t);
-          bus.add(s + j, v, v); } } } }
-  // Pluck arpej: 8'likler, akor tonları üst oktav, ping-pong pan, çok kısık
-  { const svf = new SVF(); const pat = [0, 2, 1, 3, 2, 1, 3, 2];
-    for (let k = 0; (k * beat / 2) < stopT - 0.05; k++) {
-      const pt = k * beat / 2, ch = chordAt(pt)[1], m = ch[pat[k % 8]] + 12;
-      const f = mtof(m), L = 0.35, s = Math.round(pt * SR); const [pl, pr] = panLR(k % 2 ? 0.45 : -0.45);
-      const acc = k % 4 === 0 ? 1 : 0.7; let ph = 0;
-      for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * f / SR;
-        const tri = (2 / Math.PI) * Math.asin(Math.sin(ph));
-        const y = svf.run(tri, 900 + 2600 * Math.exp(-t / 0.05), 0.8).lp;
-        const e = Math.exp(-t / 0.09) * edge(t, L, 0.002, 0.05) * 0.06 * acc * master(pt);
-        const dd = duck[s + j] ?? 1;
-        bus.add(s + j, y * e * pl * dd, y * e * pr * dd); } } }
-}
+let KEY_SHIFT = 0; // efektlerdeki ezgisel seslerin (çan, logo) müziğin tonuna transpozu
 
 // ---------- efektler ----------
 const SFX = {
@@ -152,7 +45,7 @@ const SFX = {
     const f1 = new SVF(), f2 = new SVF();
     for (let j = 0; j < L * SR; j++) { const t = j / SR, x = (t - pre);
       const env = x < 0 ? Math.pow(clamp(t / pre), 2.2) : Math.exp(-x / 0.09);
-      const fc = 350 * Math.pow(18, clamp(t / (pre + 0.08))); // 350 → ~6.3k
+      const fc = 350 * Math.pow(18, clamp(t / (pre + 0.08)));
       const n = r() * 2 - 1; const y = f1.run(n, fc, 1.1).bp * 0.8 + f2.run(n, fc * 1.9, 0.9).bp * 0.4;
       const [pl, pr] = panLR(-0.6 + 1.2 * clamp(t / L));
       const v = 0.4 * y * env * edge(t, L, 0.004, 0.06);
@@ -179,12 +72,12 @@ const SFX = {
       for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * f / SR;
         const v = 0.16 * Math.sin(ph) * Math.exp(-t / 0.008) * edge(t, L, 0.0005, 0.01);
         bus.add(s + j, v, v); } } },
-  // Başarı: iki notalı çan (C6 → E6, majör üçlü), inharmonik kısmi sesler
-  ding(bus, t0) { bell(bus, t0, mtof(84), 0.2, -0.15, 0.9); bell(bus, t0 + 0.09, mtof(88), 0.22, 0.15, 1.1); },
-  // Logo: sıcak Cmaj9 kabarması + yumuşak alçak darbe + parıltı; DUR'a kadar söner
+  // Başarı: iki notalı çan (tonik → majör üçlü; müziğin tonunda)
+  ding(bus, t0) { bell(bus, t0, mtof(84 + KEY_SHIFT), 0.2, -0.15, 0.9); bell(bus, t0 + 0.09, mtof(88 + KEY_SHIFT), 0.22, 0.15, 1.1); },
+  // Logo: sıcak tonik maj9 kabarması + yumuşak alçak darbe + parıltı; DUR'a kadar söner
   logo(bus, t0, c, r, len) {
     const end = len - 0.02, L = end - t0; if (L <= 0.05) return; const s = Math.round(t0 * SR);
-    const notes = [36, 48, 55, 64, 71, 74]; const ph = new Float64Array(notes.length * 12);
+    const notes = [36, 48, 55, 64, 71, 74].map(m => m + KEY_SHIFT); const ph = new Float64Array(notes.length * 12);
     for (let j = 0; j < L * SR; j++) { const t = j / SR;
       const env = (1 - Math.exp(-t / 0.18)) * Math.pow(clamp((L - t) / Math.min(1.3, L * 0.8)), 1.5);
       let l = 0, rr = 0, v = 0;
@@ -194,10 +87,10 @@ const SFX = {
           l += w * Math.sin(ph[a]); rr += w * Math.sin(ph[b]); } });
       const g = 0.09 * env;
       bus.add(s + j, l * g, rr * g); }
-    // alçak 'boom'
     SFX.cut(bus, t0);
-    bell(bus, t0 + 0.05, mtof(91), 0.08, 0.3, 1.4); bell(bus, t0 + 0.17, mtof(96), 0.06, -0.3, 1.2);
+    bell(bus, t0 + 0.05, mtof(91 + KEY_SHIFT), 0.08, 0.3, 1.4); bell(bus, t0 + 0.17, mtof(96 + KEY_SHIFT), 0.06, -0.3, 1.2);
   },
+  cta() {}, // yalnızca işaretleyici (müzik break/drop zamanı)
 };
 function bell(bus, t0, f, amp, pan, decay) { const s = Math.round(t0 * SR), L = decay * 1.6; const [pl, pr] = panLR(pan);
   const parts = [[1, 1, 1], [2.76, 0.35, 0.45], [5.4, 0.12, 0.25], [0.5, 0.15, 1.2]]; const ph = parts.map(() => 0);
@@ -206,7 +99,7 @@ function bell(bus, t0, f, amp, pan, decay) { const s = Math.round(t0 * SR), L = 
     v *= amp * edge(t, L, 0.002, 0.2); bus.add(s + j, v * pl, v * pr); } }
 
 // ---------- I/O ----------
-function writeWav(file, bus) { // 32-bit float stereo
+export function writeWav(file, bus) { // 32-bit float stereo
   const n = bus.n, data = Buffer.alloc(n * 8), h = Buffer.alloc(44);
   for (let i = 0; i < n; i++) { data.writeFloatLE(bus.L[i], i * 8); data.writeFloatLE(bus.R[i], i * 8 + 4); }
   h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVEfmt ', 8); h.writeUInt32LE(16, 16);
@@ -218,9 +111,11 @@ function ff(args) { const r = spawnSync('ffmpeg', ['-hide_banner', '-nostdin', .
   if (r.status !== 0) throw new Error('ffmpeg failed: ' + args.join(' ') + '\n' + r.stderr.slice(-2000)); return r.stderr; }
 function lufs(file) { const e = ff(['-i', file, '-af', 'ebur128', '-f', 'null', '-']);
   const m = [...e.matchAll(/I:\s+(-?[\d.]+|-inf) LUFS/g)].pop(); return m ? parseFloat(m[1]) : -Infinity; }
+function truePeak(file) { const e = ff(['-i', file, '-map', '0:a:0', '-af', 'ebur128=peak=true', '-f', 'null', '-']);
+  const m = /True peak:\s+Peak:\s+(-?[\d.]+|-inf)/.exec(e.slice(e.lastIndexOf('Summary:'))); return m ? parseFloat(m[1]) : -Infinity; }
 function videoDur(file) { const r = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { encoding: 'utf8' });
   return parseFloat(r.stdout); }
-function hpf(bus, fc = 22) { const a = Math.exp(-TAU * fc / SR); // DC/rumble temizliği (1. derece)
+function hpf(bus, fc = 22) { const a = Math.exp(-TAU * fc / SR);
   for (const ch of [bus.L, bus.R]) { let x1 = 0, y1 = 0; for (let i = 0; i < ch.length; i++) { const x = ch[i]; y1 = a * (y1 + x - x1); x1 = x; ch[i] = y1; } } }
 
 async function readPage(browser, pageArg) {
@@ -234,65 +129,124 @@ async function readPage(browser, pageArg) {
   if (!Array.isArray(r.CUES)) r.CUES = [];
   return r;
 }
+const idOf = pageArg => (/[?&]id=([^&]+)/.exec(pageArg || '') || [])[1] || null;
 
-export function synth(DUR, CUES, len = DUR) {
-  const n = Math.round(len * SR), mus = new Bus(n), sfx = new Bus(n);
-  const logo = CUES.find(c => c.type === 'logo');
-  music(mus, len, logo ? logo.t : null);
+// Müzik + efekt stem'leri
+export function synth(DUR, CUES, len = DUR, { id = null, music = null } = {}) {
+  const preset = presetFor(id, music);
+  const M = renderMusic(len, CUES, preset, { musicLufs: MUSIC_LUFS });
+  KEY_SHIFT = ((M.key + 6) % 12) - 6;
+  const n = Math.round(len * SR), sfx = new Bus(n);
   const sorted = [...CUES].sort((a, b) => a.t - b.t || a.type.localeCompare(b.type));
   sorted.forEach((c, i) => { const fn = SFX[c.type]; if (!fn) { console.warn('bilinmeyen cue:', c.type); return; }
     fn(sfx, c.t, c, rng(1000 + i * 7919 + Math.round(c.t * 1000)), len); });
-  hpf(mus); hpf(sfx); return { mus, sfx };
+  hpf(M.bus); hpf(sfx);
+  return { mus: M.bus, sfx, M };
 }
 
-async function processOne(browser, { page, in: inp, out }) {
+// VO etkinliğinden ducking zarfı (dB, örnek başına)
+export function duckEnv(voice, n) {
+  const fr = Math.round(0.01 * SR), nf = Math.ceil(n / fr), act = new Uint8Array(nf), thr = db(DUCK.thr);
+  for (let f = 0; f < nf; f++) { let e = 0, c = 0; for (let i = f * fr; i < Math.min(n, (f + 1) * fr); i++) { e += voice[i] * voice[i]; c++; } act[f] = Math.sqrt(e / Math.max(1, c)) > thr ? 1 : 0; }
+  const look = Math.round(DUCK.look / 0.01), hold = Math.round(DUCK.hold / 0.01), on = new Uint8Array(nf);
+  for (let f = 0; f < nf; f++) if (act[f]) for (let k = Math.max(0, f - look); k <= Math.min(nf - 1, f + hold); k++) on[k] = 1;
+  const env = new Float32Array(nf); let cur = 0; const dn = 0.01 * Math.abs(DUCK.music) / DUCK.att, up = 0.01 * Math.abs(DUCK.music) / DUCK.rel;
+  for (let f = 0; f < nf; f++) { const tgt = on[f] ? DUCK.music : 0; cur = tgt < cur ? Math.max(tgt, cur - dn) : Math.min(tgt, cur + up); env[f] = cur; }
+  // yumuşatma: 2. kademe tek kutuplu (S-eğrisi) + örnek başına doğrusal ara değer
+  const sm = new Float32Array(nf); let z = 0; for (let f = 0; f < nf; f++) { z += (env[f] - z) * 0.35; sm[f] = z; }
+  const out = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i / fr, f0 = Math.min(nf - 1, Math.floor(x)), f1 = Math.min(nf - 1, f0 + 1), a = x - f0; out[i] = sm[f0] * (1 - a) + sm[f1] * a; }
+  return out;
+}
+
+async function processOne(browser, job, opt) {
+  const { page, in: inp, out } = job;
+  const id = job.id || opt.id || idOf(page);
   const { DUR, CUES } = await readPage(browser, page);
-  const vd = videoDur(inp); let len = DUR;
-  if (Math.abs(vd - DUR) > 1 / 30 + 1e-3) { console.warn(`UYARI: ${inp} süresi ${vd}s, sayfa DUR ${DUR}s — ses video süresine (${vd}s) uyarlanıyor; videoyu yeniden render etmeyi düşünün.`); len = vd; }
+  let len = DUR;
+  if (inp) { const vd = videoDur(inp);
+    if (Math.abs(vd - DUR) > 1 / 30 + 1e-3) { console.warn(`UYARI: ${inp} süresi ${vd}s, sayfa DUR ${DUR}s — ses video süresine (${vd}s) uyarlanıyor; videoyu yeniden render etmeyi düşünün.`); len = vd; } }
+  return mixAndMaster({ id, DUR, CUES, len, inp, out, music: job.music || opt.music, voFile: job.vo || opt.vo, dry: opt.dry, debugDir: opt.debugDir, wavOnly: opt.wavOnly });
+}
+
+export async function mixAndMaster({ id, DUR, CUES, len, inp, out, music, voFile, dry, debugDir, wavOnly, quiet }) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'reelaudio-'));
   try {
-    const { mus, sfx } = synth(DUR, CUES, len);
+    const { mus, sfx, M } = synth(DUR, CUES, len, { id, music });
     const fm = path.join(tmp, 'm.wav'), fx = path.join(tmp, 'mix.wav');
     writeWav(fm, mus);
     const gm = db(MUSIC_LUFS - lufs(fm)), gsx = gm * db(SFX_REL_DB);
-    const mix = new Bus(mus.n);
-    for (let i = 0; i < mix.n; i++) { mix.L[i] = mus.L[i] * gm + sfx.L[i] * gsx; mix.R[i] = mus.R[i] * gm + sfx.R[i] * gsx; }
-    writeWav(fx, mix);
-    // Normalizasyon: doğrusal kazanç + 4x aşırı örneklemeli tepe sınırlayıcı (true-peak
-    // yaklaşımı). loudnorm'un dinamik moduna (pompalama) düşmemek için kazanç
-    // ölçülerek 3 tura kadar yinelenir.
-    const fl = path.join(tmp, 'lim.wav'); let g = TARGET_I - lufs(fx), I = -Infinity;
-    let pk = 0; for (let i = 0; i < mix.n; i++) pk = Math.max(pk, Math.abs(mix.L[i]), Math.abs(mix.R[i]));
-    for (let it = 0; it < 4; it++) {
-      ff(['-y', '-i', fx, '-af', `volume=${g.toFixed(3)}dB,aresample=${SR * 4},alimiter=limit=${db(LIMIT_DB).toFixed(4)}:attack=1.5:release=60:level=0,aresample=${SR}`, '-c:a', 'pcm_f32le', fl]);
-      I = lufs(fl); if (Math.abs(I - TARGET_I) < 0.15) break; g += TARGET_I - I;
+    // --- seslendirme ---
+    let voice = null, gv = 0, vo = null, duck = null;
+    const entry = voFile && id ? loadVO(voFile, id) : null;
+    if (voFile && !entry) console.warn(`  (VO: ${voFile} içinde '${id}' yok — yalnızca müzik)`);
+    if (entry) {
+      vo = await buildVoice(entry, { id, len, sr: SR, dry });
+      voice = vo.track; const Lv = lufsJS(voice, voice); gv = isFinite(Lv) ? db(VO_LUFS - Lv) : 0;
+      for (let i = 0; i < voice.length; i++) voice[i] *= gv;
+      duck = duckEnv(voice, mus.n);
     }
+    const mix = new Bus(mus.n);
+    for (let i = 0; i < mix.n; i++) {
+      const dm = duck ? db(duck[i]) : 1, ds = duck ? db(duck[i] * (DUCK.sfx / DUCK.music)) : 1, v = voice ? voice[i] : 0;
+      mix.L[i] = mus.L[i] * gm * dm + sfx.L[i] * gsx * ds + v; mix.R[i] = mus.R[i] * gm * dm + sfx.R[i] * gsx * ds + v; }
+    writeWav(fx, mix);
+    if (debugDir) { fs.mkdirSync(debugDir, { recursive: true });
+      const mb = new Bus(mus.n), sb = new Bus(mus.n), vb = new Bus(mus.n);
+      for (let i = 0; i < mus.n; i++) { const dm = duck ? db(duck[i]) : 1, ds = duck ? db(duck[i] * (DUCK.sfx / DUCK.music)) : 1;
+        mb.L[i] = mus.L[i] * gm * dm; mb.R[i] = mus.R[i] * gm * dm; sb.L[i] = sfx.L[i] * gsx * ds; sb.R[i] = sfx.R[i] * gsx * ds; if (voice) { vb.L[i] = vb.R[i] = voice[i]; } }
+      writeWav(path.join(debugDir, 'music.wav'), mb); writeWav(path.join(debugDir, 'sfx.wav'), sb); if (voice) writeWav(path.join(debugDir, 'vo.wav'), vb);
+      if (duck) fs.writeFileSync(path.join(debugDir, 'duck.json'), JSON.stringify(Array.from({ length: Math.floor(duck.length / 480) }, (_, k) => +duck[k * 480].toFixed(2))));
+      fs.writeFileSync(path.join(debugDir, 'report.json'), JSON.stringify({ id, preset: M.preset, events: M.events, vo: vo?.report }, null, 1)); }
+    // Normalizasyon: doğrusal kazanç + 4x aşırı örneklemeli tepe sınırlayıcı (true-peak yaklaşımı).
+    // AAC kodlaması tepeleri yükseltebildiğinden çıktının true-peak'i ölçülür; > -1 dBTP ise
+    // sınırlayıcı eşiği düşürülüp yinelenir.
+    const fl = path.join(tmp, 'lim.wav'); let g = TARGET_I - lufs(fx), I = -Infinity, lim = LIMIT_DB, tp = null;
+    let pk = 0; for (let i = 0; i < mix.n; i++) pk = Math.max(pk, Math.abs(mix.L[i]), Math.abs(mix.R[i]));
     fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
-    ff(['-y', '-i', inp, '-i', fl, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
-      '-af', `atrim=0:${len},apad=whole_dur=${len}`, '-c:a', 'aac', '-b:a', '192k', '-ar', String(SR), '-ac', '2',
-      '-movflags', '+faststart', out]);
-    console.log(`✓ ${out}  (DUR ${DUR}s, ${CUES.length} cue, müzik ${(20 * Math.log10(gm)).toFixed(1)} dB, sfx ${(20 * Math.log10(gsx || 1)).toFixed(1)} dB, master +${g.toFixed(1)} dB, limiter ~${Math.max(0, 20 * Math.log10(pk) + g - LIMIT_DB).toFixed(1)} dB GR → ${I.toFixed(1)} LUFS)`);
+    for (let pass = 0; pass < 4; pass++) {
+      for (let it = 0; it < 4; it++) {
+        ff(['-y', '-i', fx, '-af', `volume=${g.toFixed(3)}dB,aresample=${SR * 4},alimiter=limit=${db(lim).toFixed(4)}:attack=1.5:release=60:level=0,aresample=${SR}`, '-c:a', 'pcm_f32le', fl]);
+        I = lufs(fl); if (Math.abs(I - TARGET_I) < 0.15) break; g += TARGET_I - I;
+      }
+      if (wavOnly) fs.copyFileSync(fl, out);
+      else ff(['-y', '-i', inp, '-i', fl, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy',
+        '-af', `atrim=0:${len},apad=whole_dur=${len}`, '-c:a', 'aac', '-b:a', '192k', '-ar', String(SR), '-ac', '2',
+        '-movflags', '+faststart', out]);
+      tp = truePeak(out); if (tp <= -1.05) break;
+      lim -= tp + 1.15; // aşım kadar (ve 0.1 dB pay) eşiği indir
+    }
+    if (id) { fs.mkdirSync(NOTES_DIR, { recursive: true });
+      fs.writeFileSync(path.join(NOTES_DIR, `${id}.json`), JSON.stringify({ id, preset: M.preset, key: M.key, bpm: M.bpm, events: M.events, notes: M.notes })); }
+    if (!quiet) console.log(`✓ ${out}  (${id || '-'} · müzik ${M.preset} ${M.bpm}bpm, DUR ${DUR}s, ${CUES.length} cue${vo ? `, VO ${vo.report.length} seg${dry ? ' (DRY)' : ''} ${(20 * Math.log10(gv)).toFixed(1)} dB` : ''}, master +${g.toFixed(1)} dB, limiter ~${Math.max(0, 20 * Math.log10(pk) + g - lim).toFixed(1)} dB GR → ${I.toFixed(1)} LUFS, TP ${tp.toFixed(1)} dBTP)`);
+    return { preset: M.preset, I, vo: vo?.report, events: M.events };
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
 const isMain = import.meta.url === 'file://' + path.resolve(process.argv[1] || '');
 if (isMain) {
-  const args = process.argv.slice(2);
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(() => chromium.launch());
-  try {
-    if (args[0] === '--batch') {
-      const list = JSON.parse(fs.readFileSync(args[1], 'utf8'));
-      let fail = 0;
-      for (const job of list) { try { await processOne(browser, job); } catch (e) { fail++; console.error(`✗ ${job.out}: ${e.message}`); } }
-      if (fail) { console.error(`${fail}/${list.length} iş başarısız`); process.exitCode = 1; }
-    } else if (args[0] === '--wav') {
-      const { DUR, CUES } = await readPage(browser, args[1]); const { mus, sfx } = synth(DUR, CUES);
-      const m = new Bus(mus.n); for (let i = 0; i < m.n; i++) { m.L[i] = mus.L[i] + sfx.L[i]; m.R[i] = mus.R[i] + sfx.R[i]; }
-      writeWav(args[2], m); console.log('✓', args[2]);
-    } else if (args.length === 3) {
-      await processOne(browser, { page: args[0], in: args[1], out: args[2] });
-    } else {
-      console.error('Kullanım: node lib/audio.mjs <sayfa[?query]> <in.mp4> <out.mp4>\n         node lib/audio.mjs --batch list.json'); process.exitCode = 2;
-    }
-  } finally { await browser.close(); }
+  const raw = process.argv.slice(2), opt = {}, args = [];
+  for (let i = 0; i < raw.length; i++) { const a = raw[i];
+    if (a === '--vo') opt.vo = raw[++i]; else if (a === '--id') opt.id = raw[++i]; else if (a === '--vo-dry') opt.dry = true;
+    else if (a === '--music') opt.music = raw[++i]; else if (a === '--debug-dir') opt.debugDir = raw[++i];
+    else args.push(a); }
+  if (opt.music && !PRESETS[opt.music]) { console.error(`bilinmeyen preset: ${opt.music} (${Object.keys(PRESETS).join(', ')})`); process.exit(2); }
+  if (args[0] === '--list-voices') { await listVoices().catch(e => { console.error(e.message); process.exitCode = 1; }); }
+  else {
+    const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(() => chromium.launch());
+    try {
+      if (args[0] === '--batch') {
+        const list = JSON.parse(fs.readFileSync(args[1], 'utf8'));
+        let fail = 0;
+        for (const job of list) { try { await processOne(browser, job, opt); } catch (e) { fail++; console.error(`✗ ${job.out}: ${e.message}`); } }
+        if (fail) { console.error(`${fail}/${list.length} iş başarısız`); process.exitCode = 1; }
+      } else if (args[0] === '--wav') {
+        await processOne(browser, { page: args[1], out: args[2] }, { ...opt, wavOnly: true });
+      } else if (args.length === 3) {
+        await processOne(browser, { page: args[0], in: args[1], out: args[2] }, opt);
+      } else {
+        console.error('Kullanım: node lib/audio.mjs <sayfa[?query]> <in.mp4> <out.mp4> [--vo plan/voiceover.json] [--vo-dry] [--music preset] [--id rNN]\n         node lib/audio.mjs --batch list.json [...]\n         node lib/audio.mjs --list-voices'); process.exitCode = 2;
+      }
+    } catch (e) { console.error('✗', e.message); process.exitCode = 1; }
+    finally { await browser.close(); }
+  }
 }

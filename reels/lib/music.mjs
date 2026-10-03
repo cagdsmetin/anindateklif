@@ -347,11 +347,11 @@ export function renderMusic(len, CUES, name, { musicLufs = -20, groups = false }
   const Lm = lufs(bus.L, bus.R); bus.scale(db(musicLufs - Lm));
   // efektler (normalize sonrası sabit seviye)
   const rootHz = mtof(rootMidi(0));
-  const FX = process.env.MUSIC_NOFX ? 0 : 1;
-  impact(bus, 0, rootHz, 0.55 * FX, R, true);
+
+  impact(bus, 0, rootHz, 0.55, R, true);
   for (const w of whooshes) { if (ctaT != null && Math.abs(w - ctaT) < 0.01) continue; const prev = Math.max(0, ...whooshes.filter(x => x < w - 0.01));
     riser(bus, Math.max(w - 0.75, prev + 0.15), Math.min(0.75, w - prev - 0.15), R, 0.8); }
-  if (ctaT != null) { riser(bus, breakStart - 0.1, breakLen + 0.1, R, 1.1); impact(bus, ctaT, rootHz, 0.38 * FX, R, false); }
+  if (ctaT != null) { riser(bus, breakStart - 0.1, breakLen + 0.1, R, 1.1); impact(bus, ctaT, rootHz, 0.38, R, false); }
   if (P.crackle) crackle(bus, len, rng(99));
   return { bus, notes, preset: name, G: groups ? G : undefined, label: P.label, key: keyPc, bpm: P.bpm, gains,
     events: { ctaT, breakStart, stopT: logo ? stopT : null, hookT: notes.find(x => x.role === 'lead')?.t ?? null, liftT } };

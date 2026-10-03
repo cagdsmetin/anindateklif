@@ -1,0 +1,79 @@
+/* Anında Teklif — Reels v2 ortak stil.
+   Tüm renk/tipografi/hareket kararları buradaki tokenlarda; referans stil
+   netleşince yalnızca bu blok güncellenir. */
+:root {
+  --bg: #07070B;
+  --bg-2: #0D0D16;
+  --ink: #F5F5F2;
+  --muted: #8B8B99;
+  --line: rgba(255,255,255,.08);
+  --brand: #4F46E5;          /* uygulamanın primary rengi */
+  --brand-hi: #8B87FF;       /* koyu zeminde okunur indigo */
+  --warm: #F5B544;           /* sayaç / vurgu */
+  --ok: #34D399;
+  --display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg);
+  font-family:var(--display); color:var(--ink); -webkit-font-smoothing:antialiased; }
+#stage { position:absolute; inset:0; overflow:hidden; background:var(--bg); }
+
+/* Zemin: tek ışık kaynağı + ince ızgara + gren */
+.bg-glow { position:absolute; width:1400px; height:1400px; left:-160px; top:-260px; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(79,70,229,.42), rgba(79,70,229,.10) 55%, transparent 72%); }
+.bg-grid { position:absolute; inset:0; opacity:.55;
+  background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:108px 108px; background-position:-1px -1px;
+  -webkit-mask-image:radial-gradient(ellipse 70% 55% at 50% 35%, #000 20%, transparent 75%); }
+.bg-grain { position:absolute; inset:0; opacity:.07; mix-blend-mode:overlay; pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+.vignette { position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse 85% 70% at 50% 40%, transparent 55%, rgba(0,0,0,.55)); }
+
+.scene { position:absolute; inset:0; visibility:hidden; }
+
+/* Maskeli satır açılışı: .ln > span */
+.ln { display:block; overflow:hidden; padding:.14em .04em .1em; margin:-.14em 0 -.1em; }
+.ln > span { display:inline-block; will-change:transform; }
+
+.display { font-weight:800; letter-spacing:-.045em; line-height:.96; }
+.h-xl { font-size:132px; }
+.h-l  { font-size:104px; }
+.h-m  { font-size:76px; letter-spacing:-.035em; line-height:1.02; }
+.it   { font-family:var(--serif); font-style:italic; font-weight:400; letter-spacing:-.01em; }
+.brand { color:var(--brand-hi); }
+.muted { color:var(--muted); }
+.eyebrow { font-size:30px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--muted);
+  display:flex; align-items:center; gap:18px; }
+.eyebrow i { width:14px; height:14px; border-radius:50%; background:var(--brand-hi); display:block;
+  box-shadow:0 0 0 6px rgba(139,135,255,.18); }
+
+/* Telefon */
+.phone-wrap { position:absolute; left:0; top:0; width:430px; height:932px; transform-origin:0 0; }
+.phone { position:absolute; inset:0; border-radius:62px; background:#000; padding:12px;
+  box-shadow:0 0 0 2px #2A2A33, 0 0 0 9px #111116, 0 80px 160px rgba(0,0,0,.7), 0 0 120px rgba(79,70,229,.25); }
+.phone .screen { position:relative; width:100%; height:100%; border-radius:50px; overflow:hidden; background:#fff; }
+.phone .island { position:absolute; top:22px; left:50%; width:118px; height:34px; margin-left:-59px;
+  background:#000; border-radius:20px; z-index:50; }
+
+/* Masaüstü ekran görüntüsü kartı */
+.win { position:absolute; border-radius:28px; overflow:hidden; background:#fff;
+  box-shadow:0 0 0 1.5px rgba(255,255,255,.10), 0 60px 140px rgba(0,0,0,.65); transform-origin:50% 50%; }
+.win img { display:block; position:absolute; left:0; top:0; }
+
+/* Etiket/rozet */
+.chip { display:inline-flex; align-items:center; gap:16px; padding:18px 30px; border-radius:999px;
+  background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12); font-size:34px; font-weight:700;
+  backdrop-filter:blur(12px); }
+.timer { font-family:var(--mono); font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+
+.ticket { position:relative; border-radius:34px; padding:40px 56px 44px; text-align:center;
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  border:2px dashed rgba(255,255,255,.28); }
+.btn { display:inline-flex; align-items:center; gap:18px; padding:30px 54px; border-radius:999px; font-size:46px; font-weight:800;
+  background:var(--ink); color:#0B0B12; letter-spacing:-.01em; }
+.logo-mark { width:200px; height:200px; border-radius:54px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(150deg,#6D66FF,#4338CA); box-shadow:0 30px 100px rgba(79,70,229,.55), inset 0 2px 0 rgba(255,255,255,.25); }
+.flash { position:absolute; inset:0; background:#fff; pointer-events:none; opacity:0; mix-blend-mode:overlay; }

@@ -229,7 +229,10 @@ async function readPage(browser, pageArg) {
   await page.goto('file://' + path.resolve(file) + (query ? '?' + query : ''), { waitUntil: 'networkidle' });
   await page.evaluate(() => window.READY);
   const r = await page.evaluate(() => ({ DUR: window.DUR, CUES: window.CUES || [] }));
-  await page.close(); return r;
+  await page.close();
+  if (!(typeof r.DUR === 'number' && r.DUR > 0)) throw new Error(`${pageArg}: window.DUR bulunamadı/geçersiz (${r.DUR})`);
+  if (!Array.isArray(r.CUES)) r.CUES = [];
+  return r;
 }
 
 export function synth(DUR, CUES, len = DUR) {
@@ -279,7 +282,9 @@ if (isMain) {
   try {
     if (args[0] === '--batch') {
       const list = JSON.parse(fs.readFileSync(args[1], 'utf8'));
-      for (const job of list) await processOne(browser, job);
+      let fail = 0;
+      for (const job of list) { try { await processOne(browser, job); } catch (e) { fail++; console.error(`✗ ${job.out}: ${e.message}`); } }
+      if (fail) { console.error(`${fail}/${list.length} iş başarısız`); process.exitCode = 1; }
     } else if (args[0] === '--wav') {
       const { DUR, CUES } = await readPage(browser, args[1]); const { mus, sfx } = synth(DUR, CUES);
       const m = new Bus(mus.n); for (let i = 0; i < m.n; i++) { m.L[i] = mus.L[i] + sfx.L[i]; m.R[i] = mus.R[i] + sfx.R[i]; }

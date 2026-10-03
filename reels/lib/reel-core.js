@@ -25,7 +25,7 @@
     $$(root, '.ln > span').forEach((s, i) => {
       const p = clamp(pre + E.out(prog(t, inAt + i * stagger, inAt + i * stagger + dur)) * (1 - pre));
       const q = E.in(prog(t, outAt + i * .03, outAt + i * .03 + outDur));
-      s.style.transform = `translate3d(0,${(1 - p) * 112 - q * 112}%,0)`;
+      s.style.transform = `translate3d(0,${(1 - p) * 150 - q * 150}%,0)`;
     });
   }
   // Yumuşak giriş: yukarı kayma + bulanıklıktan netliğe
@@ -66,7 +66,7 @@
     w.style.transform = `translate3d(0,${(1 - p) * 220 - q * 140}px,0) rotateX(${(1 - p) * 14}deg) scale(${.92 + .08 * p})`;
     w.style.opacity = Math.min(1, p * 1.6) * (1 - q);
     const k = prog(t, a, b);
-    img.style.transform = `translate3d(${mix(pan[0], pan[2], E.inOut(k))}px,${mix(pan[1], pan[3], E.inOut(k))}px,0) scale(${mix(zoom[0], zoom[1], E.inOut(k))})`;
+    img.style.transform = `translate3d(${-276 + mix(pan[0], pan[2], E.inOut(k))}px,${mix(pan[1], pan[3], E.inOut(k))}px,0) scale(${mix(zoom[0], zoom[1], E.inOut(k))})`;
     img.style.transformOrigin = '0 0';
     const tag = sc.querySelector('.idx'); if (tag) rise(tag, t, a, { dy: 20, blur: 6, outAt: b - .28 });
   }
@@ -103,14 +103,14 @@
   const SNIP = {
     bg: `<div class="bg-glow" id="bgGlow"></div><div class="bg-grid"></div>`,
     fx: `<div class="vignette"></div><div class="bg-grain"></div><div class="flash" id="flash"></div>`,
-    feature: (id, idx, l1, l2, src, h = 760) => `
+    feature: (id, idx, l1, l2, src, h = 860) => `
       <div class="scene" id="${id}">
         <div style="position:absolute;left:84px;right:84px;top:190px">
           <div class="eyebrow idx"><i></i>${idx}</div>
           <div class="display h-m" style="margin-top:34px"><span class="ln"><span>${l1}</span></span><span class="ln"><span class="brand">${l2}</span></span></div>
         </div>
         <div style="position:absolute;left:60px;right:60px;top:600px;perspective:1600px">
-          <div class="win" style="position:relative;height:${h}px"><img src="${src}"></div>
+          <div class="win" style="position:relative;height:${h}px"><img src="${src}" style="width:1240px"></div>
         </div>
       </div>`,
     cta: `

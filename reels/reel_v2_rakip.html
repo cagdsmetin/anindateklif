@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@700&display=block" rel="stylesheet">
+<link rel="stylesheet" href="lib/fonts/plus-jakarta-sans.css"><link rel="stylesheet" href="lib/fonts/extra.css">
 <link rel="stylesheet" href="lib/reel.css">
 <script src="lib/reel-core.js"></script>
 <script src="lib/quote-demo.js"></script>
@@ -11,30 +11,33 @@
 <div id="stage"></div>
 <script>
 // Reel v2 — Hook: "Müşterin teklifi rakibinden önce alsın."
-// Ortak kamera: geniş → toplam fiyata yakın çekim → gönder butonu
+// Ortak kamera: telefonun üst kenarı hook yazısının altında; fiyat oluşurken
+// yakınlaşma (GENEL TOPLAM bandı büyür), sonra geri çekilip tüm teklif görünür.
 function stdCam(Q, k) {
-  const r = n => Q.rect(n), mid = n => ({ x: r(n).x + r(n).w / 2, y: r(n).y + r(n).h / 2 });
-  const w = mid('width'), tot = mid('total'), snd = mid('send');
-  const t0 = k.priceAt, t1 = k.sendAt;
+  const top = k.top || 575;
   return [
-    { t: 0,        s: 1.62, fx: 215, fy: w.y, cx: 540, cy: 1010 },
-    { t: t0 - .2,  s: 1.70, fx: 215, fy: w.y + 40, cx: 540, cy: 1000 },
-    { t: t0 + .5,  s: 2.05, fx: 215, fy: tot.y, cx: 540, cy: 1080 },
-    { t: t1 - .3,  s: 2.05, fx: 215, fy: tot.y + 20, cx: 540, cy: 1070 },
-    { t: t1 + .3,  s: 1.85, fx: 215, fy: snd.y, cx: 540, cy: 1180 },
-    { t: 99,       s: 1.80, fx: 215, fy: snd.y, cx: 540, cy: 1170 },
+    { t: 0,                s: 1.62, fx: 215, fy: 0, cx: 540, cy: top },
+    { t: k.priceAt - .15,  s: 1.66, fx: 215, fy: 0, cx: 540, cy: top },
+    { t: k.priceEnd + .25, s: 1.92, fx: 215, fy: 0, cx: 540, cy: top - 15 },
+    { t: k.pullAt,         s: 1.92, fx: 215, fy: 0, cx: 540, cy: top - 15 },
+    { t: k.pullAt + .8,    s: 1.26, fx: 215, fy: 0, cx: 540, cy: k.pullTop },
+    { t: 99,               s: 1.24, fx: 215, fy: 0, cx: 540, cy: k.pullTop + 6 },
   ];
 }
 window.CFG = {
   actionEnd: 6.4,
   demoTime: t => t,
-  cam: Q => stdCam(Q, { priceAt: Q.T.priceStart, sendAt: Q.T.sendPress }),
+  cam: Q => stdCam(Q, { priceAt: Q.T.priceStart, priceEnd: Q.T.priceEnd, pullAt: 3.45, pullTop: 470 }),
   hookHTML: `
     <div style="position:absolute;left:84px;right:84px;top:150px">
       <div class="display h-l" id="hk"><span class="ln"><span>Müşterin teklifi</span></span><span class="ln"><span>rakibinden <span class="it brand" style="font-size:118px">önce</span></span></span><span class="ln"><span>alsın.</span></span></div>
+    </div>
+    <div id="cap" style="position:absolute;left:84px;right:84px;top:150px">
+      <div class="display h-m"><span class="ln"><span>Ölçüyü gir.</span></span><span class="ln"><span class="brand">Fiyat anında.</span></span><span class="ln"><span class="muted" style="font-size:52px;letter-spacing:-.02em">PDF + WhatsApp tek dokunuş.</span></span></div>
     </div>`,
   hook(t, q) {
-    R.lines(R.$('hk'), t, 0, { pre: .92, stagger: .05, dur: .5, outAt: this.actionEnd - .32 });
+    R.lines(R.$('cap'), t, 3.62, { stagger: .07, dur: .6, outAt: this.actionEnd - .32 });
+    R.lines(R.$('hk'), t, 0, { pre: .97, stagger: .05, dur: .5, outAt: 3.3 });
   },
 };
 </script>

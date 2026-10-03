@@ -35,7 +35,7 @@ html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg);
 .scene { position:absolute; inset:0; visibility:hidden; }
 
 /* Maskeli satır açılışı: .ln > span */
-.ln { display:block; overflow:hidden; padding:0 .04em .08em; margin-bottom:-.08em; }
+.ln { display:block; overflow:hidden; padding:.14em .04em .1em; margin:-.14em 0 -.1em; }
 .ln > span { display:inline-block; will-change:transform; }
 
 .display { font-weight:800; letter-spacing:-.045em; line-height:.96; }
@@ -61,7 +61,7 @@ html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg);
 /* Masaüstü ekran görüntüsü kartı */
 .win { position:absolute; border-radius:28px; overflow:hidden; background:#fff;
   box-shadow:0 0 0 1.5px rgba(255,255,255,.10), 0 60px 140px rgba(0,0,0,.65); transform-origin:50% 50%; }
-.win img { display:block; width:100%; }
+.win img { display:block; position:absolute; left:0; top:0; }
 
 /* Etiket/rozet */
 .chip { display:inline-flex; align-items:center; gap:16px; padding:18px 30px; border-radius:999px;

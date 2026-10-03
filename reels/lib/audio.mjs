@@ -16,7 +16,9 @@ import path from 'node:path';
 const SR = 48000;
 const TAU = Math.PI * 2;
 const TARGET_I = -14, LIMIT_DB = -2.0; // AAC kodlama aşımı için 1 dB pay
-const MUSIC_LUFS = -20, SFX_LUFS = -15; // stem seviyeleri (son normalizasyondan önce)
+// Müzik stem'i -20 LUFS'a çekilir; efektler aynı ölçeğe +SFX_REL_DB ile eklenir
+// (seyrek efektlerin LUFS ölçümü güvenilmez olduğundan sabit göreli kazanç).
+const MUSIC_LUFS = -20, SFX_REL_DB = 3;
 
 // ---------- yardımcılar ----------
 function rng(seed) { // mulberry32
@@ -100,10 +102,11 @@ function music(bus, len, logoT) {
   // Pad: aditif testere benzeri, L/R detune, yavaş filtre nefesi, sidechain
   { const phL = new Float64Array(64), phR = new Float64Array(64);
     const n0 = Math.round(0 * SR), n1 = Math.min(bus.n, Math.round((stopT + 1.2) * SR));
-    let prev = null, xf = 1;
     for (let i = n0; i < n1; i++) { const t = i / SR;
-      const ch = chordAt(Math.min(t, stopT - 1e-3)); if (ch !== prev) { prev = ch; xf = 0; }
-      xf = Math.min(1, xf + 1 / (0.04 * SR)); // akor değişiminde kısa crossfade
+      const tc = Math.min(t, stopT - 1e-3), ch = chordAt(tc);
+      // Akor sınırında 35 ms'lik yumuşak çukur: frekans değişimi sıfıra yakın genlikte olur (klik yok)
+      const bi = Math.floor(tc / bar), tb = tc - bi * bar, last = bi === Math.floor((stopT - 1e-3) / bar);
+      const xf = 0.15 + 0.85 * (bi ? clamp(tb / 0.035) : 1) * (last ? 1 : clamp((bar - tb) / 0.035));
       const bright = 0.55 + 0.25 * Math.sin(TAU * t / (bar * 2));
       let l = 0, r = 0, v = 0;
       for (const m of ch[1]) { const f = mtof(m);
@@ -152,7 +155,7 @@ const SFX = {
       const fc = 350 * Math.pow(18, clamp(t / (pre + 0.08))); // 350 → ~6.3k
       const n = r() * 2 - 1; const y = f1.run(n, fc, 1.1).bp * 0.8 + f2.run(n, fc * 1.9, 0.9).bp * 0.4;
       const [pl, pr] = panLR(-0.6 + 1.2 * clamp(t / L));
-      const v = 0.55 * y * env * edge(t, L, 0.004, 0.06);
+      const v = 0.4 * y * env * edge(t, L, 0.004, 0.06);
       bus.add(s + j, v * pl, v * pr); } },
   // Yumuşak pop: pitch düşüşlü sinüs + üçgen
   pop(bus, t0) { const s = Math.round(t0 * SR), L = 0.14; let ph = 0;
@@ -246,9 +249,9 @@ async function processOne(browser, { page, in: inp, out }) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'reelaudio-'));
   try {
     const { mus, sfx } = synth(DUR, CUES, len);
-    const fm = path.join(tmp, 'm.wav'), fs_ = path.join(tmp, 's.wav'), fx = path.join(tmp, 'mix.wav');
-    writeWav(fm, mus); writeWav(fs_, sfx);
-    const gm = db(MUSIC_LUFS - lufs(fm)), gsx = CUES.length ? db(SFX_LUFS - lufs(fs_)) : 0;
+    const fm = path.join(tmp, 'm.wav'), fx = path.join(tmp, 'mix.wav');
+    writeWav(fm, mus);
+    const gm = db(MUSIC_LUFS - lufs(fm)), gsx = gm * db(SFX_REL_DB);
     const mix = new Bus(mus.n);
     for (let i = 0; i < mix.n; i++) { mix.L[i] = mus.L[i] * gm + sfx.L[i] * gsx; mix.R[i] = mus.R[i] * gm + sfx.R[i] * gsx; }
     writeWav(fx, mix);

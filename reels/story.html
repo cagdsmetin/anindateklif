@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Anında Teklif · Story</title>
+<link rel="stylesheet" href="lib/fonts/plus-jakarta-sans.css">
+<link rel="stylesheet" href="lib/fonts/extra.css">
+<link rel="stylesheet" href="lib/reel.css">
+<style>
+/* Story'ye özel katman (Reels stiline ek). Güvenli alan: y 250–1600. */
+#safe { position:absolute; left:72px; right:72px; top:250px; height:1350px; }
+#safe > * , .abs { position:absolute; left:0; right:0; }
+/* Türkçe şapka/nokta/çengel kırpılmasın diye daha geniş maske payı */
+.ln { padding:.22em .12em .2em .04em; margin:-.22em -.12em -.2em -.04em; }
+.h-q { font-size:96px; font-weight:800; letter-spacing:-.04em; line-height:1.02; }
+.h-s { font-size:64px; font-weight:800; letter-spacing:-.03em; line-height:1.06; }
+.sub { font-size:40px; font-weight:600; line-height:1.3; color:var(--muted); letter-spacing:-.005em; }
+.warm { color:var(--warm); }
+.okc { color:var(--ok); }
+
+/* zemin varyantları */
+.bgk { position:absolute; inset:0; }
+.bg-indigo { background:radial-gradient(120% 80% at 20% 10%, #6D66FF 0%, #4F46E5 38%, #2B2690 75%, #17154F 100%); }
+.bg-beam { position:absolute; left:50%; top:-300px; width:900px; height:2600px; margin-left:-450px;
+  background:linear-gradient(90deg, transparent, rgba(139,135,255,.16) 35%, rgba(139,135,255,.30) 50%, rgba(139,135,255,.16) 65%, transparent); filter:blur(40px); }
+.bg-dots { position:absolute; inset:0; opacity:.5;
+  background-image:radial-gradient(rgba(255,255,255,.16) 2px, transparent 2.5px); background-size:54px 54px;
+  -webkit-mask-image:linear-gradient(180deg, transparent 5%, #000 40%, #000 70%, transparent 95%); }
+.bg-band { position:absolute; left:-300px; right:-300px; height:520px; top:1020px; transform:rotate(-12deg);
+  background:linear-gradient(90deg, rgba(79,70,229,.0), rgba(79,70,229,.35), rgba(139,135,255,.15), rgba(79,70,229,0)); filter:blur(30px); }
+.glow2 { position:absolute; width:900px; height:900px; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(245,181,68,.20), transparent 70%); }
+
+/* uygulama görüntüsü */
+.shot { position:absolute; overflow:hidden; border-radius:40px; background:#F4F6FA;
+  box-shadow:0 0 0 1.5px rgba(255,255,255,.14), 0 50px 140px rgba(0,0,0,.6), 0 0 140px rgba(79,70,229,.25); }
+.shot img { position:absolute; left:0; top:0; transform-origin:0 0; }
+.shot .redact { position:absolute; border-radius:10px; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  background:rgba(225,229,236,.82); display:none; }
+.shot .ring { position:absolute; border-radius:22px; border:5px solid var(--brand); opacity:0;
+  box-shadow:0 0 0 8px rgba(79,70,229,.18), 0 18px 50px rgba(79,70,229,.35); }
+.phone3 { position:absolute; border-radius:74px; background:#000; padding:16px;
+  box-shadow:0 0 0 2px #2A2A33, 0 0 0 10px #111116, 0 80px 160px rgba(0,0,0,.7), 0 0 160px rgba(79,70,229,.3); }
+.phone3 .shot { position:relative; border-radius:58px; box-shadow:none; width:100%; height:100%; }
+
+.glass { border-radius:36px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12); }
+.opt { position:absolute; left:0; right:0; display:flex; align-items:center; gap:30px; padding:0 40px; height:150px;
+  border-radius:34px; background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.12); font-size:50px; font-weight:800; letter-spacing:-.02em; }
+.opt .k { flex:none; width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:36px; background:rgba(139,135,255,.16); color:var(--brand-hi); }
+.opt .rd { margin-left:auto; flex:none; width:56px; height:56px; border-radius:50%; border:4px solid rgba(255,255,255,.3); position:relative; }
+.opt .rd::after { content:''; position:absolute; inset:9px; border-radius:50%; background:var(--brand-hi); opacity:var(--on,0); }
+.opt.hl { background:rgba(79,70,229,.24); border-color:rgba(139,135,255,.7); }
+.callout { position:absolute; display:inline-flex; align-items:center; gap:16px; padding:22px 32px; border-radius:999px; white-space:nowrap;
+  background:rgba(14,14,24,.86); border:2px solid rgba(139,135,255,.55); font-size:36px; font-weight:800; letter-spacing:-.01em;
+  box-shadow:0 20px 60px rgba(0,0,0,.5); backdrop-filter:blur(10px); }
+.callout i { width:16px; height:16px; border-radius:50%; background:var(--brand-hi); display:block; box-shadow:0 0 0 7px rgba(139,135,255,.22); }
+.chk { flex:none; width:70px; height:70px; border-radius:20px; border:4px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; }
+.chk svg { opacity:0; }
+.tile { position:absolute; border-radius:30px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--display); font-weight:800; background:linear-gradient(180deg,#22213A,#14131F); border:2px solid rgba(255,255,255,.14);
+  box-shadow:0 30px 70px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.08); }
+.pill { display:inline-flex; align-items:center; gap:12px; padding:14px 26px; border-radius:999px; font-size:30px; font-weight:800;
+  background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.14); color:var(--muted); }
+.pill.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+.step { position:absolute; left:0; right:0; display:flex; align-items:center; gap:34px; padding:34px 40px; border-radius:36px;
+  background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.12); }
+.step .n { flex:none; width:96px; height:96px; border-radius:30px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:46px; background:rgba(139,135,255,.16); color:var(--brand-hi); }
+.step .tx { font-size:46px; font-weight:800; letter-spacing:-.02em; line-height:1.15; }
+.step .tx small { display:block; font-size:32px; font-weight:600; color:var(--muted); letter-spacing:0; margin-top:6px; }
+</style>
+<script src="lib/reel-core.js"></script>
+<script src="plan/stories.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<script src="lib/story-build.js"></script>
+</body></html>

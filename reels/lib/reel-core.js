@@ -24,14 +24,14 @@
   function lines(root, t, inAt, { stagger = .07, dur = .7, outAt = Infinity, outDur = .28, pre = 0 } = {}) {
     $$(root, '.ln > span').forEach((s, i) => {
       const p = clamp(pre + E.out(prog(t, inAt + i * stagger, inAt + i * stagger + dur)) * (1 - pre));
-      const q = E.in(prog(t, outAt + i * .03, outAt + i * .03 + outDur));
+      const q = isFinite(outAt) ? E.in(prog(t, outAt + i * .03, outAt + i * .03 + outDur)) : 0;
       s.style.transform = `translate3d(0,${(1 - p) * 150 - q * 150}%,0)`;
     });
   }
   // Yumuşak giriş: yukarı kayma + bulanıklıktan netliğe
   function rise(el, t, a, { dur = .7, dy = 60, blur = 14, outAt = Infinity, outDur = .3, pre = 0, scale = 0 } = {}) {
     const p = clamp(pre + E.out(prog(t, a, a + dur)) * (1 - pre));
-    const q = E.in(prog(t, outAt, outAt + outDur));
+    const q = isFinite(outAt) ? E.in(prog(t, outAt, outAt + outDur)) : 0;  // outAt yoksa çıkış yok (Infinity-Infinity=NaN olmasın)
     el.style.opacity = p * (1 - q);
     el.style.transform = `translate3d(0,${(1 - p) * dy - q * dy * .6}px,0) scale(${1 - scale * (1 - p)})`;
     el.style.filter = (p < 1 || q > 0) ? `blur(${(1 - p) * blur + q * blur}px)` : 'none';

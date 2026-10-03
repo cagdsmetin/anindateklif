@@ -1,0 +1,1469 @@
+{
+  "r01": {
+    "dur": 19.4,
+    "voice_style": "Hızlı, kendinden emin; sayaç gibi tempolu. \"Sekiz saniyede\" vurgulu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.4,
+        "text": "Bu teklif sekiz saniyede hazırlandı.",
+        "words": 5,
+        "wps": 2.17
+      },
+      {
+        "start": 2.7,
+        "end": 6.6,
+        "text": "Ölçüyü giriyorum, seçimleri yapıyorum… fiyat anında hazır.",
+        "words": 7,
+        "wps": 1.79
+      },
+      {
+        "start": 6.9,
+        "end": 8.6,
+        "text": "Ve pe de ef hazır!",
+        "words": 3,
+        "wps": 1.76
+      },
+      {
+        "start": 9.0,
+        "end": 11.8,
+        "text": "Ürünü bir kez tanımla, sonra sadece seç.",
+        "words": 7,
+        "wps": 2.5
+      },
+      {
+        "start": 13.7,
+        "end": 18.9,
+        "text": "Sen de dene: yorumlara TEKLİF yaz, bir ay Pro hediyen otomatik gelsin.",
+        "words": 12,
+        "wps": 2.31
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "r02": {
+    "dur": 16,
+    "voice_style": "Müjde verir gibi, sıcak ve heyecanlı; \"TEKLİF\" kelimesini net ve vurgulu söyle.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.1,
+        "text": "Yorumlara TEKLİF yaz, bir ay Pro senin!",
+        "words": 7,
+        "wps": 2.33
+      },
+      {
+        "start": 3.4,
+        "end": 5.3,
+        "text": "Hediye: Anında Teklif Pro.",
+        "words": 4,
+        "wps": 2.11
+      },
+      {
+        "start": 5.6,
+        "end": 9.9,
+        "text": "Ölçüyü gir, fiyat hazır. Şablonunu seç, metni yapay zekâ yazsın.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 10.3,
+        "end": 15.5,
+        "text": "Hemen yorumlara TEKLİF yaz, hediyen otomatik cevapla gelsin. İlk bin üyeye!",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro"
+    }
+  },
+  "r03": {
+    "dur": 17.9,
+    "voice_style": "Rekabetçi, hafif meydan okuyan; \"önce\" kelimesine basarak.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.2,
+        "text": "Müşterin teklifi rakibinden önce alsın.",
+        "words": 5,
+        "wps": 1.61
+      },
+      {
+        "start": 3.6,
+        "end": 7.1,
+        "text": "Ölçüyü gir, fiyat anında… pe de ef hazır.",
+        "words": 6,
+        "wps": 1.71
+      },
+      {
+        "start": 7.5,
+        "end": 11.8,
+        "text": "Ürünü bir kez tanımla, WhatsApp’tan tek dokunuşla gönder.",
+        "words": 8,
+        "wps": 1.86
+      },
+      {
+        "start": 12.2,
+        "end": 17.4,
+        "text": "Rakipten önce davran: yorumlara TEKLİF yaz, bir ay Pro hediye.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r04": {
+    "dur": 17.6,
+    "voice_style": "Biraz sitemkâr başla (\"bırak artık\" tonu), sonra rahatlatıcı ve net.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.0,
+        "text": "Excel’le teklif yazmayı bırak.",
+        "words": 4,
+        "wps": 2.11
+      },
+      {
+        "start": 2.3,
+        "end": 6.8,
+        "text": "Formül yok, kopyala yapıştır yok. Fiyat hazır, pe de ef hazır.",
+        "words": 9,
+        "wps": 2.0
+      },
+      {
+        "start": 7.2,
+        "end": 11.5,
+        "text": "Ürünü bir kez tanımla; ka de ve dahil toplam kendiliğinden çıksın.",
+        "words": 9,
+        "wps": 2.09
+      },
+      {
+        "start": 11.9,
+        "end": 17.1,
+        "text": "Excel’e veda etmeye hazırsan yorumlara TEKLİF yaz, bir ay Pro bizden.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "ka de ve": "KDV (ka-de-ve)",
+      "Excel": "eksel"
+    }
+  },
+  "r05": {
+    "dur": 17.9,
+    "voice_style": "Sesleniş: esnafa doğrudan, samimi ve dikkat çekici; \"Perdeci misin?\" yüksek enerjiyle.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.1,
+        "text": "Perdeci misin? Bunu izlemeden teklif yazma.",
+        "words": 6,
+        "wps": 2.0
+      },
+      {
+        "start": 3.6,
+        "end": 7.1,
+        "text": "Ölçüyü giriyorum… fiyat anında hazır, pe de ef de.",
+        "words": 7,
+        "wps": 2.0
+      },
+      {
+        "start": 7.5,
+        "end": 11.8,
+        "text": "Ürününü bir kez tanımla, şablonunu seç, işin tek ekranda.",
+        "words": 9,
+        "wps": 2.09
+      },
+      {
+        "start": 12.2,
+        "end": 17.4,
+        "text": "Perdeciler, yorumlara TEKLİF yazın; bir ay Pro hediyeniz otomatik gelsin.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "r06": {
+    "dur": 17,
+    "voice_style": "Soru-cevap ritmi; ilk cümle şaşkın soru, ikincisi rahat \"hallettik\" tonu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.8,
+        "text": "Zip perde fiyatı mı soruldu?",
+        "words": 5,
+        "wps": 1.85
+      },
+      {
+        "start": 3.1,
+        "end": 6.2,
+        "text": "Kâr ve montaj dahil, satış fiyatı hazır.",
+        "words": 7,
+        "wps": 2.26
+      },
+      {
+        "start": 6.6,
+        "end": 10.9,
+        "text": "Ölçülü ürün görseli otomatik çizilir, WhatsApp’tan tek dokunuşla gider.",
+        "words": 9,
+        "wps": 2.09
+      },
+      {
+        "start": 11.3,
+        "end": 16.5,
+        "text": "Zip perdeciler buraya: yorumlara TEKLİF yaz, bir ay Pro hediye seni bekliyor.",
+        "words": 12,
+        "wps": 2.31
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r07": {
+    "dur": 16.2,
+    "voice_style": "Akşam yorgunluğunu anlayan, rahatlatıcı ama enerjik; \"son\" kesin.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Akşam ofiste teklif yazmaya son.",
+        "words": 5,
+        "wps": 2.0
+      },
+      {
+        "start": 3.0,
+        "end": 5.4,
+        "text": "Teklifi müşterinin yanında bitir.",
+        "words": 4,
+        "wps": 1.67
+      },
+      {
+        "start": 5.8,
+        "end": 10.1,
+        "text": "Zip perde fiyatı ölçüyle hesaplanır, metni de yapay zekâ hazırlar.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 10.5,
+        "end": 15.7,
+        "text": "Akşamların sana kalsın: yorumlara TEKLİF yaz, bir ay Pro hediye.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro"
+    }
+  },
+  "r08": {
+    "dur": 17.8,
+    "voice_style": "POV anlatımı: sahnedeymiş gibi, canlı ve akıcı.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.1,
+        "text": "Müşterinin kapısındasın. Ölçüyü al, teklifi orada ver.",
+        "words": 7,
+        "wps": 2.33
+      },
+      {
+        "start": 3.5,
+        "end": 7.0,
+        "text": "En, boy gir… fiyat orada. Pe de ef kapıda.",
+        "words": 9,
+        "wps": 2.57
+      },
+      {
+        "start": 7.4,
+        "end": 11.7,
+        "text": "Ürün görseli otomatik çizilir, teklif durumları panelde.",
+        "words": 7,
+        "wps": 1.63
+      },
+      {
+        "start": 12.1,
+        "end": 17.3,
+        "text": "Sahadaysan tam sana göre. Yorumlara TEKLİF yaz, bir ay Pro senin.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro"
+    }
+  },
+  "r09": {
+    "dur": 17.2,
+    "voice_style": "Hedef kitleye seslenen, profesyonel ama sıcak; \"bioklimatik\" net telaffuz.",
+    "segments": [
+      {
+        "start": 0.05,
+        "end": 2.4,
+        "text": "Pergolacılar, bioklimatik pergola teklifi tek ekranda.",
+        "words": 6,
+        "wps": 2.55
+      },
+      {
+        "start": 2.65,
+        "end": 6.4,
+        "text": "Kalemi seç, fiyat hazır… modern şablonla gönder.",
+        "words": 7,
+        "wps": 1.87
+      },
+      {
+        "start": 6.8,
+        "end": 11.1,
+        "text": "Pergola kalemini yapay zekâ hazırlasın, ürünlerin katalogda dursun.",
+        "words": 8,
+        "wps": 1.86
+      },
+      {
+        "start": 11.5,
+        "end": 16.7,
+        "text": "Pergolacı dostum, yorumlara TEKLİF yaz; bir ay Pro hediye seni bekliyor.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "bioklimatik": "bi-yo-kli-ma-tik"
+    }
+  },
+  "r10": {
+    "dur": 17,
+    "voice_style": "Sesleniş: cam balkoncuya doğrudan, samimi; ilk soru yükselen tonla.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.25,
+        "text": "Cam balkoncu musun? Bunu izle.",
+        "words": 5,
+        "wps": 2.33
+      },
+      {
+        "start": 2.6,
+        "end": 6.2,
+        "text": "Metrekareyi gir, fiyat hazır; ka de ve dahil toplam da.",
+        "words": 8,
+        "wps": 2.22
+      },
+      {
+        "start": 6.6,
+        "end": 10.9,
+        "text": "Cam balkonu bir kez kur, teklifte sadece seç, WhatsApp’tan gönder.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 11.3,
+        "end": 16.5,
+        "text": "Cam balkoncular, yorumlara TEKLİF yazın; bir ay Pro hediye otomatik cevapta.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "ka de ve": "KDV (ka-de-ve)",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r11": {
+    "dur": 16.6,
+    "voice_style": "Hafif takılan, gülümseyen ses; \"hâlâ\" vurgulu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Teklifin hâlâ Word’den mi çıkıyor?",
+        "words": 5,
+        "wps": 2.0
+      },
+      {
+        "start": 3.0,
+        "end": 5.8,
+        "text": "Şablonu seç, pe de ef hazır.",
+        "words": 4,
+        "wps": 1.43
+      },
+      {
+        "start": 6.2,
+        "end": 10.5,
+        "text": "Ka de ve dahil toplam kendiliğinden, WhatsApp’tan tek dokunuşla gider.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 10.9,
+        "end": 16.1,
+        "text": "Word’ü kapat, yorumlara TEKLİF yaz. Bir ay Pro hediyen otomatik gelsin.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "WhatsApp": "vatsap",
+      "Word": "vörd"
+    }
+  },
+  "r12": {
+    "dur": 17,
+    "voice_style": "Pratik, net, \"bu kadar kolay\" tonu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Teklifi WhatsApp’tan pe de ef gönder.",
+        "words": 4,
+        "wps": 1.9
+      },
+      {
+        "start": 2.5,
+        "end": 6.2,
+        "text": "Önizle, kontrol et, tek dokunuşla gönder.",
+        "words": 6,
+        "wps": 1.62
+      },
+      {
+        "start": 6.6,
+        "end": 10.9,
+        "text": "Şablonu seç, katalogdan ekle; zip perde fiyatı ölçüyle hesaplansın.",
+        "words": 9,
+        "wps": 2.09
+      },
+      {
+        "start": 11.3,
+        "end": 16.5,
+        "text": "Yorumlara TEKLİF yaz, bir ay Pro’yu otomatik cevapla gönderelim.",
+        "words": 9,
+        "wps": 1.73
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r13": {
+    "dur": 16.6,
+    "voice_style": "Rahat, biraz esprili; \"yapay zekâ yazsın\" kısmında gülümseme.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.0,
+        "text": "Teklif metnini sen yazma. Yapay zekâ yazsın.",
+        "words": 7,
+        "wps": 2.41
+      },
+      {
+        "start": 3.4,
+        "end": 5.8,
+        "text": "Sen sor, kalemi o hazırlasın.",
+        "words": 5,
+        "wps": 2.08
+      },
+      {
+        "start": 6.2,
+        "end": 10.5,
+        "text": "Katalogdan seç, adedi gir, fiyat hesaplansın; şablonla pe de ef hazır.",
+        "words": 9,
+        "wps": 2.09
+      },
+      {
+        "start": 10.9,
+        "end": 16.1,
+        "text": "Yazı işini bırak: yorumlara TEKLİF yaz, bir ay Pro hediye.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "r14": {
+    "dur": 16.9,
+    "voice_style": "Pratik ve tavsiye eden ton; kod kısmını yavaş ve net heceleyerek: \"TEKLİF otuz\".",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Aynı ürünü baştan yazmayı bırak.",
+        "words": 5,
+        "wps": 2.38
+      },
+      {
+        "start": 2.6,
+        "end": 6.4,
+        "text": "Bir kez tanımla, sonra sadece seç; fiyat kendiliğinden gelsin.",
+        "words": 9,
+        "wps": 2.37
+      },
+      {
+        "start": 6.8,
+        "end": 11.1,
+        "text": "Zip perde fiyatı ölçüyle, ka de ve dahil toplam kendiliğinden.",
+        "words": 8,
+        "wps": 1.86
+      },
+      {
+        "start": 11.5,
+        "end": 16.4,
+        "text": "Bir ay Pro ücretsiz. Profildeki linkten üye ol, kod TEKLİF otuz.",
+        "words": 11,
+        "wps": 2.24
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro",
+      "ka de ve": "KDV (ka-de-ve)"
+    }
+  },
+  "r15": {
+    "dur": 15.6,
+    "voice_style": "Merak uyandıran soru, ardından düzenli/rahatlatıcı ton.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.35,
+        "text": "Hangi teklif bekliyor, hangisi onaylandı?",
+        "words": 5,
+        "wps": 2.22
+      },
+      {
+        "start": 2.7,
+        "end": 4.8,
+        "text": "Teklif, müşteri, kasa… tek panelde.",
+        "words": 5,
+        "wps": 2.38
+      },
+      {
+        "start": 5.2,
+        "end": 9.5,
+        "text": "Gelir, gider, kasa aynı yerde; ürünler katalogda hazır.",
+        "words": 8,
+        "wps": 1.86
+      },
+      {
+        "start": 9.9,
+        "end": 15.1,
+        "text": "Takibi kolaylaştır: yorumlara TEKLİF yaz, bir ay Pro hediye.",
+        "words": 9,
+        "wps": 1.73
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro"
+    }
+  },
+  "r16": {
+    "dur": 15.6,
+    "voice_style": "Kısa, ritmik vuruşlar: \"Gelir. Gider. Kasa.\" ekrandaki tıklarla senkron; sonra sakin.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.5,
+        "text": "Gelir. Gider. Kasa. Teklifle aynı uygulamada.",
+        "words": 6,
+        "wps": 2.5
+      },
+      {
+        "start": 2.8,
+        "end": 4.8,
+        "text": "Nakit durumu bir bakışta.",
+        "words": 4,
+        "wps": 2.0
+      },
+      {
+        "start": 5.2,
+        "end": 9.5,
+        "text": "Zip perde fiyatı ölçüyle hesaplanır, teklif WhatsApp’tan tek dokunuşla gider.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 9.9,
+        "end": 15.1,
+        "text": "Yorumlara TEKLİF yaz, bir ay Pro hediye… ilk bin üyeye.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r17": {
+    "dur": 15.7,
+    "voice_style": "Rehber gibi, adım adım ve sakin-net; adımlar ekrandaki tiklerle aynı anda. Kod: \"TEKLİF otuz\".",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 1.6,
+        "text": "Hediye nasıl alınır?",
+        "words": 3,
+        "wps": 2.0
+      },
+      {
+        "start": 1.85,
+        "end": 6.8,
+        "text": "Yorumlara TEKLİF yaz, otomatik cevap gelsin. Linkten üye ol, kod kendiliğinden tanımlansın.",
+        "words": 12,
+        "wps": 2.42
+      },
+      {
+        "start": 7.2,
+        "end": 9.9,
+        "text": "Ürünü tanımla, metni yapay zekâ yazsın.",
+        "words": 6,
+        "wps": 2.22
+      },
+      {
+        "start": 10.3,
+        "end": 15.2,
+        "text": "Ya da profildeki linkten üye ol: kod TEKLİF otuz, bir ay Pro.",
+        "words": 12,
+        "wps": 2.45
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "r18": {
+    "dur": 16.8,
+    "voice_style": "Uyaran ama dostça (\"yapma bunu\" tonu), sonra güven veren.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.9,
+        "text": "Hesap makinesiyle teklif çıkarma.",
+        "words": 4,
+        "wps": 1.43
+      },
+      {
+        "start": 3.3,
+        "end": 6.0,
+        "text": "Kâr, montaj, opsiyon: hepsi hesapta.",
+        "words": 5,
+        "wps": 1.85
+      },
+      {
+        "start": 6.4,
+        "end": 10.7,
+        "text": "Sen sadece ölçüyü gir; teklif WhatsApp’tan gitsin, durumu panelde gör.",
+        "words": 10,
+        "wps": 2.33
+      },
+      {
+        "start": 11.1,
+        "end": 16.3,
+        "text": "Hesap makinesini kenara koy, yorumlara TEKLİF yaz; bir ay Pro hediye.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r19": {
+    "dur": 17.8,
+    "voice_style": "İlk cümle müşteri sorusu gibi (hafif farklı ton), \"Cevabın\" ile kendi sesine dön; özgüvenli.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.0,
+        "text": "Zip perde kaça olur? Cevabın: pe de ef teklif.",
+        "words": 7,
+        "wps": 2.41
+      },
+      {
+        "start": 3.5,
+        "end": 7.0,
+        "text": "Ölçüyü gir, satış fiyatı hazır. Hemen gönder.",
+        "words": 7,
+        "wps": 2.0
+      },
+      {
+        "start": 7.4,
+        "end": 11.7,
+        "text": "Ürünler katalogda, gönderim WhatsApp’tan, metin yapay zekâdan.",
+        "words": 7,
+        "wps": 1.63
+      },
+      {
+        "start": 12.1,
+        "end": 17.3,
+        "text": "Sen de müşterine böyle cevap ver: yorumlara TEKLİF yaz, bir ay Pro hediye.",
+        "words": 13,
+        "wps": 2.5
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "r20": {
+    "dur": 15.8,
+    "voice_style": "Kampanya duyurusu: en yüksek enerji, davetkâr; \"ilk bin\" vurgulu ama abartısız.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.0,
+        "text": "Instagram’a özel: bir ay Pro hediye!",
+        "words": 6,
+        "wps": 2.07
+      },
+      {
+        "start": 3.5,
+        "end": 6.6,
+        "text": "Ölçü gir, fiyat hazır, teklif pe de ef’te.",
+        "words": 6,
+        "wps": 1.94
+      },
+      {
+        "start": 7.0,
+        "end": 9.7,
+        "text": "Ürünün katalogda, işin tek ekranda.",
+        "words": 5,
+        "wps": 1.85
+      },
+      {
+        "start": 10.1,
+        "end": 15.3,
+        "text": "Kaçırma: yorumlara TEKLİF yaz, ilk bin üyeden biri sen ol.",
+        "words": 10,
+        "wps": 1.92
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "pe de ef": "PDF (pe-de-ef)",
+      "Instagram": "instagram"
+    }
+  },
+  "s01": {
+    "dur": 7,
+    "voice_style": "Sabah sorusu: merak eden, samimi.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Bir teklifi kaç dakikada hazırlıyorsun?",
+        "words": 5,
+        "wps": 2.0
+      },
+      {
+        "start": 3.0,
+        "end": 5.0,
+        "text": "Cevabını mesajla yaz.",
+        "words": 3,
+        "wps": 1.5
+      }
+    ]
+  },
+  "s02": {
+    "dur": 8,
+    "voice_style": "Gösterir gibi, akıcı.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.7,
+        "text": "Zip perde: ölçüyü yaz, fiyat anında.",
+        "words": 6,
+        "wps": 2.31
+      },
+      {
+        "start": 2.95,
+        "end": 7.4,
+        "text": "Motoru, kumaşı seç… ve satış fiyatı hazır.",
+        "words": 7,
+        "wps": 1.57
+      }
+    ]
+  },
+  "s03": {
+    "dur": 7,
+    "voice_style": "Akşam hediye CTA: sıcak, davetkâr; kod net.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.0,
+        "text": "İlk bin üyeye hediye!",
+        "words": 4,
+        "wps": 2.11
+      },
+      {
+        "start": 2.3,
+        "end": 6.5,
+        "text": "Profildeki linkten bir ay Pro hediyeni al, kod TEKLİF otuz.",
+        "words": 10,
+        "wps": 2.38
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s04": {
+    "dur": 7.5,
+    "voice_style": "Sabah sorusu: anlayışlı, \"biz de yaşadık\" tonu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.4,
+        "text": "Teklif hazırlarken hangisini yaşıyorsun? Hesap makinesi, defter, Word…",
+        "words": 8,
+        "wps": 2.42
+      },
+      {
+        "start": 3.85,
+        "end": 7.0,
+        "text": "Hepsinin kısa yolu var. Öğlen gösteriyoruz.",
+        "words": 6,
+        "wps": 1.9
+      }
+    ],
+    "pron": {
+      "Word": "vörd"
+    }
+  },
+  "s05": {
+    "dur": 8.5,
+    "voice_style": "Rahat, \"gerisini biz hallederiz\" tonu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Eni ve boyu gir, gerisi bizde.",
+        "words": 6,
+        "wps": 2.4
+      },
+      {
+        "start": 2.9,
+        "end": 8.0,
+        "text": "Teknik çizim kendiliğinden çıkar… ölçü ve metrekare üstünde yazılı.",
+        "words": 9,
+        "wps": 1.76
+      }
+    ]
+  },
+  "s06": {
+    "dur": 7,
+    "voice_style": "Akşam CTA (yorum yolu): oyunbaz, davetkâr. Ekrandaki \"Son Reels'e TEKLİF yaz\" ile birebir.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Son Reels’imize TEKLİF yaz.",
+        "words": 4,
+        "wps": 1.9
+      },
+      {
+        "start": 2.5,
+        "end": 6.5,
+        "text": "Otomatik cevaptaki linkten üye ol, bir ay Pro hesabına tanımlansın.",
+        "words": 10,
+        "wps": 2.5
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "Reels": "rils"
+    }
+  },
+  "s07": {
+    "dur": 7,
+    "voice_style": "Karşılaştırma: düşündüren, hafif sorgulayan.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.1,
+        "text": "Kâğıt mı, logolu pe de ef mi?",
+        "words": 5,
+        "wps": 2.5
+      },
+      {
+        "start": 2.4,
+        "end": 4.4,
+        "text": "Müşterin hangisine güvenir?",
+        "words": 3,
+        "wps": 1.5
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "s08": {
+    "dur": 8.5,
+    "voice_style": "Şık, kendinden emin; şablon adlarını çipler yandıkça say.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.6,
+        "text": "Tek dokunuşla kurumsal pe de ef. Klasik, modern, minimal…",
+        "words": 7,
+        "wps": 2.0
+      },
+      {
+        "start": 4.6,
+        "end": 7.5,
+        "text": "Şablonunu seç, logon üstünde.",
+        "words": 4,
+        "wps": 1.38
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "s09": {
+    "dur": 7,
+    "voice_style": "Akşam hediye CTA: kutu açılırken heyecanlı, sonra net talimat.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 1.8,
+        "text": "Hediyen var!",
+        "words": 2,
+        "wps": 1.18
+      },
+      {
+        "start": 2.05,
+        "end": 6.5,
+        "text": "Profildeki linkten bir ay Pro hediyeni al, kod TEKLİF otuz.",
+        "words": 10,
+        "wps": 2.25
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s10": {
+    "dur": 7,
+    "voice_style": "Sabah sorusu: dürüst, hafif takılan.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Aynı ürünü kaçıncı kez yazıyorsun?",
+        "words": 5,
+        "wps": 2.38
+      },
+      {
+        "start": 3.9,
+        "end": 6.6,
+        "text": "Öğlen: bir kez tanımla, sonra sadece seç.",
+        "words": 7,
+        "wps": 2.59
+      }
+    ]
+  },
+  "s11": {
+    "dur": 8.5,
+    "voice_style": "Adım adım, sakin; \"…\" yerinde kısa duraksama (ikinci başlık 5.6 sn'de).",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.5,
+        "text": "Ürünü bir kez tanımla.",
+        "words": 4,
+        "wps": 1.67
+      },
+      {
+        "start": 2.8,
+        "end": 8.0,
+        "text": "Teklifte sadece seç… adedi gir, toplam hazır.",
+        "words": 7,
+        "wps": 1.35
+      }
+    ]
+  },
+  "s12": {
+    "dur": 7.5,
+    "voice_style": "Akşam hediye CTA: rehber gibi, net; kod yavaş.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.1,
+        "text": "Üç adımda bir ay Pro.",
+        "words": 5,
+        "wps": 2.5
+      },
+      {
+        "start": 2.4,
+        "end": 7.0,
+        "text": "Profildeki linke dokun, üye ol; kod TEKLİF otuz otomatik tanımlanır.",
+        "words": 10,
+        "wps": 2.17
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s13": {
+    "dur": 7.5,
+    "voice_style": "Müşteri mesajını okur gibi başla, sonra kendi sesinle sor.",
+    "segments": [
+      {
+        "start": 0.3,
+        "end": 2.5,
+        "text": "Zip perde ne kadar tutar?",
+        "words": 5,
+        "wps": 2.27
+      },
+      {
+        "start": 2.75,
+        "end": 7.0,
+        "text": "Cevabın kaç dakikada gidiyor? Öğlen story’de gösteriyoruz.",
+        "words": 7,
+        "wps": 1.65
+      }
+    ],
+    "pron": {
+      "story": "stori"
+    }
+  },
+  "s14": {
+    "dur": 8.5,
+    "voice_style": "Pratik, hızlı.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.8,
+        "text": "Teklif hazır, şimdi gönder. WhatsApp’ta tek dokunuş.",
+        "words": 7,
+        "wps": 1.89
+      },
+      {
+        "start": 4.2,
+        "end": 8.0,
+        "text": "Müşterine logolu pe de ef gider.",
+        "words": 4,
+        "wps": 1.05
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)",
+      "WhatsApp": "vatsap"
+    }
+  },
+  "s15": {
+    "dur": 7.5,
+    "voice_style": "Akşam hediye CTA: \"not al\" tonu, kod çok net ve yavaş.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.45,
+        "text": "Bu kodu not al: TEKLİF otuz.",
+        "words": 6,
+        "wps": 2.55
+      },
+      {
+        "start": 2.7,
+        "end": 7.0,
+        "text": "Profildeki linkten bir ay Pro hediyeni al, ilk bin üyeye.",
+        "words": 10,
+        "wps": 2.33
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s16": {
+    "dur": 7,
+    "voice_style": "Sabah sorusu: halinden anlayan, gülümseyen.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Teklif açıklaması yazmak ne kadar sıkıcı?",
+        "words": 6,
+        "wps": 2.4
+      },
+      {
+        "start": 3.9,
+        "end": 6.5,
+        "text": "Öğlen: bu işi yapay zekâya bırak.",
+        "words": 6,
+        "wps": 2.31
+      }
+    ]
+  },
+  "s17": {
+    "dur": 9,
+    "voice_style": "Merak uyandıran, akıcı demo anlatımı.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.6,
+        "text": "Teklif metnini yapay zekâ yazsın. Ne istediğini yaz…",
+        "words": 8,
+        "wps": 2.29
+      },
+      {
+        "start": 4.7,
+        "end": 8.5,
+        "text": "Kalem metni, fiyat notu hazır; kataloğa tek dokunuşla.",
+        "words": 8,
+        "wps": 2.11
+      }
+    ]
+  },
+  "s18": {
+    "dur": 7,
+    "voice_style": "Akşam hediye CTA: davetkâr, sıcak.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Pro’yu bir ay ücretsiz kullan.",
+        "words": 5,
+        "wps": 2.38
+      },
+      {
+        "start": 2.5,
+        "end": 6.5,
+        "text": "Profildeki linkten bir ay Pro hediyeni al, kod TEKLİF otuz.",
+        "words": 10,
+        "wps": 2.5
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s19": {
+    "dur": 7,
+    "voice_style": "Sabah sorusu: düşündüren.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Kaç teklifin cevap bekliyor?",
+        "words": 4,
+        "wps": 1.9
+      },
+      {
+        "start": 2.6,
+        "end": 5.0,
+        "text": "Bilmiyorsan, öğlen story’ye bak.",
+        "words": 4,
+        "wps": 1.67
+      }
+    ],
+    "pron": {
+      "story": "stori"
+    }
+  },
+  "s20": {
+    "dur": 8,
+    "voice_style": "Düzenli, sakin; durumları çipler yandıkça say.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.3,
+        "text": "Hangi teklif ne durumda? Beklemede, görüldü, onaylandı…",
+        "words": 7,
+        "wps": 2.19
+      },
+      {
+        "start": 3.6,
+        "end": 6.5,
+        "text": "Hepsi panelde, tek bakışta.",
+        "words": 4,
+        "wps": 1.38
+      }
+    ]
+  },
+  "s21": {
+    "dur": 7.5,
+    "voice_style": "Akşam CTA (yorum yolu): oyunbaz, harfler düşerken enerjik. Ekrandaki metinle birebir.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.5,
+        "text": "Son Reels’imize TEKLİF yaz, hediyen gelsin.",
+        "words": 6,
+        "wps": 2.5
+      },
+      {
+        "start": 2.75,
+        "end": 7.0,
+        "text": "Cevaptaki linkten üye ol, bir ay Pro hesabına tanımlansın.",
+        "words": 9,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "Reels": "rils"
+    }
+  },
+  "s22": {
+    "dur": 7.5,
+    "voice_style": "Quiz: oyunbaz soru, cevap açılınca \"işte bu\" tonu.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 3.4,
+        "text": "Hızlı hesap: yüzde yirmi ka de ve ekle, kaç eder?",
+        "words": 8,
+        "wps": 2.42
+      },
+      {
+        "start": 4.9,
+        "end": 7.1,
+        "text": "Uygulama bunu sen yazarken yapıyor.",
+        "words": 5,
+        "wps": 2.27
+      }
+    ],
+    "pron": {
+      "ka de ve": "KDV (ka-de-ve)"
+    }
+  },
+  "s23": {
+    "dur": 8.5,
+    "voice_style": "Adım adım, akıcı; \"…\" yerinde kısa duraksama.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.55,
+        "text": "Kalemi ekle, adet ve fiyatı yaz.",
+        "words": 6,
+        "wps": 2.45
+      },
+      {
+        "start": 2.8,
+        "end": 8.0,
+        "text": "Ka de ve dahil toplam kendiliğinden… hepsi tek pe de ef’te, müşterine hazır.",
+        "words": 11,
+        "wps": 2.12
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "s24": {
+    "dur": 7,
+    "voice_style": "Akşam hediye CTA: kutu açılırken neşeli, sonra net talimat.",
+    "segments": [
+      {
+        "start": 0.2,
+        "end": 1.7,
+        "text": "Hediyen hazır!",
+        "words": 2,
+        "wps": 1.33
+      },
+      {
+        "start": 2.0,
+        "end": 6.5,
+        "text": "Profildeki linkten bir ay Pro hediyeni al, kod TEKLİF otuz.",
+        "words": 10,
+        "wps": 2.22
+      }
+    ],
+    "pron": {
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Pro": "pro"
+    }
+  },
+  "s25": {
+    "dur": 7,
+    "voice_style": "Ay sonu sorusu: hafif sorgulayan, samimi.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.2,
+        "text": "Tahmin mi, net rakam mı?",
+        "words": 5,
+        "wps": 2.38
+      },
+      {
+        "start": 2.45,
+        "end": 5.0,
+        "text": "Ayı hangisiyle kapatıyorsun?",
+        "words": 3,
+        "wps": 1.18
+      }
+    ]
+  },
+  "s26": {
+    "dur": 8,
+    "voice_style": "Sakin, güven veren.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.4,
+        "text": "Gelir, gider, net… tek bakışta.",
+        "words": 5,
+        "wps": 2.17
+      },
+      {
+        "start": 2.65,
+        "end": 6.0,
+        "text": "Teklif durumları da hemen yanında.",
+        "words": 5,
+        "wps": 1.49
+      }
+    ]
+  },
+  "s27": {
+    "dur": 7.5,
+    "voice_style": "Akşam CTA (Reels yolu): rehber gibi, adımlar tiklerle senkron.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 1.5,
+        "text": "Reels’ten hediye al.",
+        "words": 3,
+        "wps": 2.14
+      },
+      {
+        "start": 1.75,
+        "end": 7.0,
+        "text": "Son Reels’imizi aç, yorumlara TEKLİF yaz, linkten üye ol. Bir ay Pro hesabında.",
+        "words": 13,
+        "wps": 2.48
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "Pro": "pro",
+      "Reels": "rils"
+    }
+  },
+  "s28": {
+    "dur": 7.5,
+    "voice_style": "Son soru: merak eden, sohbet havasında.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 2.6,
+        "text": "Sence hangisi en çok zaman kazandırır?",
+        "words": 6,
+        "wps": 2.4
+      },
+      {
+        "start": 2.9,
+        "end": 7.0,
+        "text": "Zip perde hesabı, pe de ef, yapay zekâ, katalog… Cevabını mesajla yaz.",
+        "words": 10,
+        "wps": 2.44
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "s29": {
+    "dur": 8.5,
+    "voice_style": "Özet: ritmik, her başlıkta bir vuruş.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 1.9,
+        "text": "Ölçü gir, fiyat çıksın.",
+        "words": 4,
+        "wps": 2.22
+      },
+      {
+        "start": 2.15,
+        "end": 8.05,
+        "text": "Logolu pe de ef teklif. Yapay zekâyla teklif metni. Ve hepsi tek panelde.",
+        "words": 11,
+        "wps": 1.86
+      }
+    ],
+    "pron": {
+      "pe de ef": "PDF (pe-de-ef)"
+    }
+  },
+  "s30": {
+    "dur": 8,
+    "voice_style": "Kapanış CTA: net, davetkâr; iki yolu eşit vurgula, kod yavaş.",
+    "segments": [
+      {
+        "start": 0.1,
+        "end": 1.75,
+        "text": "İki yol, tek hediye.",
+        "words": 4,
+        "wps": 2.42
+      },
+      {
+        "start": 2.0,
+        "end": 7.55,
+        "text": "Ya Reels’e TEKLİF yaz, ya profildeki linkten üye ol. Kod: TEKLİF otuz.",
+        "words": 12,
+        "wps": 2.16
+      }
+    ],
+    "pron": {
+      "TEKLİF": "teklif (büyük harf: vurgulu tek kelime, harf harf okunmasın)",
+      "TEKLİF otuz": "teklif otuz (kod TEKLIF30)",
+      "Reels": "rils"
+    }
+  }
+}

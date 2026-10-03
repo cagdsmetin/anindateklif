@@ -6,6 +6,7 @@ const FPS = 30;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(()=>chromium.launch());
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 await page.goto('file://' + path.resolve(html), { waitUntil: 'networkidle' });
+await page.evaluate(() => window.READY);
 await page.evaluate(() => document.fonts.ready);
 await page.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));
 const dur = await page.evaluate(() => window.DUR);

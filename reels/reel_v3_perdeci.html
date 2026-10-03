@@ -2,48 +2,33 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="lib/fonts/plus-jakarta-sans.css"><link rel="stylesheet" href="lib/fonts/extra.css">
+<link rel="stylesheet" href="lib/fonts/plus-jakarta-sans.css">
+<link rel="stylesheet" href="lib/fonts/extra.css">
 <link rel="stylesheet" href="lib/reel.css">
 <script src="lib/reel-core.js"></script>
-<script src="lib/quote-demo.js"></script>
+<script src="lib/shots.js"></script>
 </head>
 <body>
 <div id="stage"></div>
 <script>
 // Reel v3 — Hook: "Perdeci misin? Bunu izlemeden teklif yazma."
-// Ortak kamera: telefonun üst kenarı hook yazısının altında; fiyat oluşurken
-// yakınlaşma (GENEL TOPLAM bandı büyür), sonra geri çekilip tüm teklif görünür.
-function stdCam(Q, k) {
-  const top = k.top || 575;
-  return [
-    { t: 0,                s: 1.62, fx: 215, fy: 0, cx: 540, cy: top },
-    { t: k.priceAt - .15,  s: 1.66, fx: 215, fy: 0, cx: 540, cy: top },
-    { t: k.priceEnd + .25, s: 1.92, fx: 215, fy: 0, cx: 540, cy: top - 15 },
-    { t: k.pullAt,         s: 1.92, fx: 215, fy: 0, cx: 540, cy: top - 15 },
-    { t: k.pullAt + .8,    s: 1.26, fx: 215, fy: 0, cx: 540, cy: k.pullTop },
-    { t: 99,               s: 1.24, fx: 215, fy: 0, cx: 540, cy: k.pullTop + 6 },
-  ];
-}
 window.CFG = {
-  actionEnd: 6.4,
-  demoTime: t => t,
-  cam: Q => stdCam(Q, { priceAt: Q.T.priceStart, priceEnd: Q.T.priceEnd, pullAt: 3.45, pullTop: 470 }),
+  actionEnd: 7.3,
+  shots: [zipShot(0, 4.9), pdfShot(4.9, 7.3, .15, .47)],
   hookHTML: `
-    <div style="position:absolute;left:84px;right:84px;top:140px">
+    <div style="position:absolute;left:84px;right:84px;top:130px">
       <div class="display h-xl brand" id="hk1"><span class="ln"><span>Perdeci misin?</span></span></div>
       <div class="display h-m" id="hk2" style="margin-top:22px"><span class="ln"><span>Bunu izlemeden</span></span><span class="ln"><span><span class="it" style="font-size:92px">teklif yazma.</span></span></span></div>
     </div>
     <div id="cap" style="position:absolute;left:84px;right:84px;top:150px">
       <div class="display h-m"><span class="ln"><span>Ölçüyü gir.</span></span><span class="ln"><span class="brand">Fiyat anında.</span></span><span class="ln"><span class="muted" style="font-size:52px;letter-spacing:-.02em">PDF + WhatsApp tek dokunuş.</span></span></div>
     </div>`,
-  hook(t, q) {
+  hook(t) {
+    R.lines(R.$('hk1'), t, 0, { pre: .97, dur: .45, outAt: 3.3 });
+    const p = R.E.out(R.prog(t, 0, .6));   // ilk karede hafif büyükten oturma
+    R.$('hk1').style.transform = `scale(${1.06 - .06 * p})`; R.$('hk1').style.transformOrigin = '0 50%';
+    R.lines(R.$('hk2'), t, .5, { stagger: .08, dur: .6, outAt: 3.36 });
     R.lines(R.$('cap'), t, 3.62, { stagger: .07, dur: .6, outAt: this.actionEnd - .32 });
-    const R_ = R;
-    R_.lines(R_.$('hk1'), t, 0, { pre: .97, dur: .45, outAt: 3.3 });
-    // ilk karede başlık hafif büyükten oturur (punch-in)
-    const p = R_.E.out(R_.prog(t, 0, .6));
-    R_.$('hk1').style.transform = `scale(${1.06 - .06 * p})`; R_.$('hk1').style.transformOrigin = '0 50%';
-    R_.lines(R_.$('hk2'), t, .55, { stagger: .08, dur: .6, outAt: 3.36 });
   },
 };
 </script>

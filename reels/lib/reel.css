@@ -77,3 +77,13 @@ html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg);
 .logo-mark { width:200px; height:200px; border-radius:54px; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(150deg,#6D66FF,#4338CA); box-shadow:0 30px 100px rgba(79,70,229,.55), inset 0 2px 0 rgba(255,255,255,.25); }
 .flash { position:absolute; inset:0; background:#fff; pointer-events:none; opacity:0; mix-blend-mode:overlay; }
+
+/* Uygulama kaydı kartı */
+.card { position:absolute; overflow:hidden; border-radius:44px; background:#F4F6FA; visibility:hidden;
+  box-shadow:0 0 0 1.5px rgba(255,255,255,.14), 0 50px 140px rgba(0,0,0,.65), 0 0 160px rgba(79,70,229,.28);
+  transform-origin:50% 0; }
+.card img { position:absolute; left:0; top:0; transform-origin:0 0; }
+.card .redact { position:absolute; border-radius:10px; backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px);
+  background:rgba(235,238,243,.55); display:none; }
+.card .ring { position:absolute; border-radius:22px; border:5px solid var(--brand); opacity:0;
+  box-shadow:0 0 0 8px rgba(79,70,229,.18), 0 18px 50px rgba(79,70,229,.35); }

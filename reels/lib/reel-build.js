@@ -1,64 +1,132 @@
-// Ortak kurgu: [ürün eylemi + hook] → özellikler → CTA → logo.
-// Versiyon dosyası window.CFG'yi tanımlar, sonra bu dosyayı yükler.
+// Ortak kurgu: [hook + gerçek uygulama kaydı] → özellikler → CTA → logo.
+// Uygulama görüntüleri reels/footage/ içindeki gerçek kayıtlardan gelir
+// (demo veri). Kareler önce `node extract-frames.mjs` ile preview/frames/'e
+// açılır; render(t) her karede doğru kareyi yükleyip decode'u bekler.
 (function () {
-  const { E, prog, clamp, $, show, lines, rise, background, camera, feature, cta, outro, SNIP } = window.R;
+  const { E, prog, clamp, $, show, lines, rise, background, cta, outro, SNIP } = window.R;
   const C = window.CFG;
-  const A = C.actionEnd;                 // ürün sahnesinin bitişi
-  const F = [A, A + 1.45, A + 2.9, A + 4.3]; // 3 özellik sahnesi
+
+  // Kaynak: 1170×2532 (@3x) kayıtlar, 30 fps
+  const SRC_W = 1170, SRC_H = 2532;
+  const CLIPS = {
+    zip:   { dir: 'preview/frames/v01_zip_perde_olcu_fiyat', n: 184 },
+    pdf:   { dir: 'preview/frames/v03_teklif_pdf_onizleme', n: 144 },
+    panel: { dir: 'preview/frames/v04_panel_kaydirma', n: 135 },
+    ai:    { dir: 'preview/frames/v05_ai_asistan', n: 164 },
+    katalog: { still: 'footage/mobile/m_18_katalog.png' },
+  };
+  const srcOf = (clip, lt) => {
+    const c = CLIPS[clip]; if (c.still) return c.still;
+    const i = clamp(Math.floor(lt * 30 + 1e-6) + 1, 1, c.n);
+    return `${c.dir}/${String(i).padStart(4, '0')}.jpg`;
+  };
+
+  // Kart: hook/başlık altında, Instagram alt arayüz alanının (alt 420px) üstünde
+  const CARD = { x: 60, y: 560, w: 960, h: 940 };
+  const K0 = CARD.w / SRC_W;
+
+  const A = C.actionEnd, FD = 1.6;
+  const F = [A, A + FD, A + 2 * FD, A + 3 * FD];
   const CTA = [F[3], F[3] + 3.6];
   const OUT = [CTA[1], CTA[1] + 1.9];
   const DUR = OUT[1];
 
+  // Özellik sahneleri de aynı kart çerçevesini kullanır
+  const shots = C.shots.concat([
+    { a: F[0], b: F[1], clip: 'katalog', from: 0, cam: [{ t: 0, sy: 205, z: 1.0 }, { t: FD, sy: 300, z: 1.05 }] },
+    { a: F[1], b: F[2], clip: 'panel', from: 2.1, cam: [{ t: 0, sy: 40, z: 1.0 }, { t: FD, sy: 40, z: 1.05 }] },
+    { a: F[2], b: F[3], clip: 'ai', from: 3.25, cam: [{ t: 0, sy: 60, z: 1.0 }, { t: FD, sy: 140, z: 1.05 }] },
+  ]);
+
+  const feat = (id, idx, l1, l2) => `
+    <div class="scene" id="${id}">
+      <div style="position:absolute;left:84px;right:84px;top:170px">
+        <div class="eyebrow idx"><i></i>${idx}</div>
+        <div class="display h-m" style="margin-top:30px"><span class="ln"><span>${l1}</span></span><span class="ln"><span class="brand">${l2}</span></span></div>
+      </div>
+    </div>`;
+
   document.getElementById('stage').innerHTML = `
     ${SNIP.bg}
-    <div class="scene" id="act">
-      <div class="phone-wrap" id="phoneWrap"><div class="phone"><div class="island"></div><div class="screen" id="screen"></div></div></div>
-      <div id="hook" style="position:absolute;left:0;right:0;top:0">${C.hookHTML}</div>
+    <div id="card" class="card">
+      <img id="shot">
+      <div class="redact" id="redact1"></div><div class="redact" id="redact2"></div>
+      <div class="ring" id="ring"></div>
     </div>
-    ${SNIP.feature('f1', '01 · Katalog', 'Ürünü bir kez tanımla,', 'sonra sadece seç.', 'assets/02_katalog.jpg')}
-    ${SNIP.feature('f2', '02 · Panel', 'Tüm işin', 'tek ekranda.', 'assets/01_panel.jpg')}
-    ${SNIP.feature('f3', '03 · AI Asistan', 'Teklif metnini', 'AI hazırlasın.', 'assets/05_ai_asistan.jpg')}
+    <div class="scene" id="act"><div id="hook" style="position:absolute;left:0;right:0;top:0">${C.hookHTML}</div></div>
+    ${feat('f1', '01 · Katalog', 'Ürünü bir kez tanımla,', 'sonra sadece seç.')}
+    ${feat('f2', '02 · Panel', 'Tüm işin', 'tek ekranda.')}
+    ${feat('f3', '03 · AI Asistan', 'Teklif metnini', 'AI hazırlasın.')}
     ${SNIP.cta}
     ${SNIP.outro}
     ${SNIP.fx}`;
 
-  QuoteDemo.mount($('screen'));
-  const CAM = typeof C.cam === 'function' ? C.cam(QuoteDemo) : C.cam;
+  const card = $('card'), img = $('shot');
+  Object.assign(card.style, { left: CARD.x + 'px', top: CARD.y + 'px', width: CARD.w + 'px', height: CARD.h + 'px' });
 
-  // Telefonu ekrana yerleştir: mantıksal (fx,fy) noktası ekranda (cx,cy)'ye gelsin
-  function placePhone(cam) {
-    const x = cam.cx - cam.fx * cam.s, y = cam.cy - cam.fy * cam.s;
-    $('phoneWrap').style.transform = `translate3d(${x}px,${y}px,0) scale(${cam.s})`;
-  }
-  function cam2(keys, t) {
-    // keys: {t, s, fx, fy, cx, cy}
+  function camAt(keys, lt) {
     let k0 = keys[0], k1 = keys[keys.length - 1];
-    if (t <= k0.t) return k0; if (t >= k1.t) return k1;
-    for (let i = 0; i < keys.length - 1; i++) if (t >= keys[i].t && t <= keys[i + 1].t) { k0 = keys[i]; k1 = keys[i + 1]; break; }
-    const p = E.inOut(prog(t, k0.t, k1.t)), m = (a, b) => a + (b - a) * p;
-    return { s: m(k0.s, k1.s), fx: m(k0.fx, k1.fx), fy: m(k0.fy, k1.fy), cx: m(k0.cx, k1.cx), cy: m(k0.cy, k1.cy) };
+    if (lt <= k0.t) k1 = k0; else if (lt >= k1.t) k0 = k1;
+    else for (let i = 0; i < keys.length - 1; i++) if (lt >= keys[i].t && lt <= keys[i + 1].t) { k0 = keys[i]; k1 = keys[i + 1]; break; }
+    const p = k0 === k1 ? 0 : E.inOut(prog(lt, k0.t, k1.t)), m = (a, b) => a + (b - a) * p;
+    return { sy: m(k0.sy, k1.sy), z: m(k0.z, k1.z), sx: m(k0.sx ?? 585, k1.sx ?? 585) };
   }
+  // Kaynak koordinatındaki bir dikdörtgeni kart koordinatına çevir
+  const toCard = (r, cam) => {
+    const k = K0 * cam.z;
+    return { x: CARD.w / 2 + (r[0] - cam.sx) * k, y: (r[1] - cam.sy) * k, w: r[2] * k, h: r[3] * k };
+  };
+  const place = (el, b) => Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
 
-  function render(t) {
+  let lastSrc = '';
+  async function render(t) {
     background(t);
-    if (show($('act'), t, -1, A)) {
-      QuoteDemo.render(C.demoTime(t));
-      placePhone(cam2(CAM, t));
-      // sahne çıkışı: telefon aşağı + bulanık
-      const q = E.in(prog(t, A - .3, A));
-      $('phoneWrap').style.opacity = 1 - q;
-      $('phoneWrap').style.filter = q ? `blur(${q * 16}px)` : 'none';
-      C.hook(t, q);
-    }
-    feature('f1', t, F[0], F[1], { pan: [0, 0, -40, -60], zoom: [1.0, 1.06] });
-    feature('f2', t, F[1], F[2], { pan: [0, 0, -60, -90], zoom: [1.0, 1.07] });
-    feature('f3', t, F[2], F[3], { pan: [0, 0, -30, -40], zoom: [1.0, 1.05] });
+    // --- kart / uygulama görüntüsü ---
+    const s = shots.find(s => t >= s.a && t < s.b);
+    if (s) {
+      const lt = t - s.a, clipT = s.from + lt * (s.rate || 1);
+      const cam = camAt(s.cam, lt);
+      const src = srcOf(s.clip, clipT);
+      if (src !== lastSrc) { img.src = src; lastSrc = src; await img.decode().catch(() => {}); }
+      const k = K0 * cam.z;
+      img.style.width = SRC_W * k + 'px';
+      img.style.transform = `translate3d(${CARD.w / 2 - cam.sx * k}px,${-cam.sy * k}px,0)`;
+      // kart giriş/çıkış ve çekim değişiminde küçük nefes
+      const inP = E.out(prog(t, s.a, s.a + .45)), first = s === shots[0];
+      const outP = E.in(prog(t, s.b - .22, s.b));
+      const nextIsCard = shots.some(n => Math.abs(n.a - s.b) < 1e-6);
+      const enter = first ? 1 : inP, leave = nextIsCard ? 0 : outP;
+      card.style.visibility = 'visible';
+      card.style.opacity = (first ? 1 : Math.min(1, inP * 1.4)) * (1 - leave);
+      card.style.transform = `translate3d(0,${(1 - enter) * 120 + leave * 60}px,0) scale(${.94 + .06 * enter - .03 * leave})`;
+      card.style.filter = (enter < 1 || leave > 0) ? `blur(${(1 - enter) * 10 + leave * 10}px)` : 'none';
+      // kişisel veri örtüsü (PDF'teki demo müşteri bloğu)
+      ['redact1', 'redact2'].forEach((id, i) => {
+        const r = s.redact && s.redact[i] && clipT >= s.redact[i].from ? s.redact[i].rect : null;
+        $(id).style.display = r ? 'block' : 'none'; if (r) place($(id), toCard(r, cam));
+      });
+      // vurgu halkası
+      const ring = $('ring');
+      if (s.ring && lt >= s.ring.at) {
+        const p = E.out(prog(lt, s.ring.at, s.ring.at + .5));
+        const b = toCard(s.ring.rect, cam);
+        place(ring, { x: b.x - 14, y: b.y - 10, w: b.w + 28, h: b.h + 20 });
+        ring.style.opacity = p; ring.style.transform = `scale(${1.12 - .12 * p})`;
+      } else ring.style.opacity = 0;
+    } else card.style.visibility = 'hidden';
+
+    // --- metin katmanları ---
+    if (show($('act'), t, -1, A)) C.hook(t);
+    [['f1', F[0], F[1]], ['f2', F[1], F[2]], ['f3', F[2], F[3]]].forEach(([id, a, b]) => {
+      const sc = $(id); if (!show(sc, t, a, b)) return;
+      lines(sc, t, a, { stagger: .06, dur: .6, outAt: b - .26 });
+      rise(sc.querySelector('.idx'), t, a, { dy: 20, blur: 6, outAt: b - .26 });
+    });
     cta(t, CTA[0], CTA[1]);
     outro(t, OUT[0], OUT[1] + 1);
-    // sahne kesmelerinde çok kısa ışık patlaması
-    const fl = [F[0], F[1], F[2], CTA[0], OUT[0]].reduce((m, c) => Math.max(m, 1 - clamp(Math.abs(t - c) / .09)), 0);
-    $('flash').style.opacity = fl * .35;
+    const fl = [F[0], CTA[0], OUT[0]].reduce((m, c) => Math.max(m, 1 - clamp(Math.abs(t - c) / .09)), 0);
+    $('flash').style.opacity = fl * .3;
   }
   window.render = render; window.DUR = DUR;
-  render(0);
+  window.READY = render(0);
 })();

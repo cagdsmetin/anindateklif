@@ -116,7 +116,8 @@ export const PRESETS = {
       B: [[0, 2, .5], [.5, 2, .5], [1, 3, .5], [1.5, 4, .5], [2, 4, 1], [3, 5, .5], [3.5, 4, .5], [4, 4, .5], [4.5, 3, .5], [5, 2, 1], [6, 1, .5], [6.5, 0, 1.5]] } },
 };
 const MAJOR = [0, 2, 4, 5, 7, 9, 11];
-const MIX_DEFAULT = { drums: -21.5, bass: -24, chords: -26.5, lead: -25 };
+const SHELF = db(-3);
+const MIX_DEFAULT = { drums: -22.5, bass: -27.5, chords: -23.5, lead: -22.5 };
 
 // id → preset: plan/music_map.json (elle düzenlenebilir), yoksa id hash'i.
 export function presetFor(id, override) {
@@ -129,39 +130,39 @@ export function presetFor(id, override) {
 // ---------- enstrümanlar (hepsi bus'a toplar; v = hız 0..1) ----------
 const I = {
   kick(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.38; let ph = 0; const f = new SVF();
-    for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (50 + 150 * Math.exp(-t / 0.022) + 260 * Math.exp(-t / 0.0025)) / SR;
-      const body = Math.sin(ph) * Math.exp(-t / 0.13), click = f.run(R() * 2 - 1, 3800, 0.8).bp * Math.exp(-t / 0.0018) * 0.9;
+    for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (58 + 140 * Math.exp(-t / 0.02) + 260 * Math.exp(-t / 0.0025)) / SR;
+      const body = Math.sin(ph) * Math.exp(-t / 0.075) + 0.25 * Math.sin(2 * ph) * Math.exp(-t / 0.03), click = f.run(R() * 2 - 1, 3200, 0.7).bp * Math.exp(-t / 0.0025) * 1.3;
       const y = Math.tanh(1.7 * (body + click)) / Math.tanh(1.7) * 0.5 * v * edge(t, L, 0.0006, 0.04); bus.add(s + j, y, y); } },
   stomp(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.42; let ph = 0; const f = new SVF();
-    for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (48 + 40 * Math.exp(-t / 0.03)) / SR;
-      const n = f.run(R() * 2 - 1, 650, 0.7).lp * Math.exp(-t / 0.05) * 1.6;
-      const y = Math.tanh(1.4 * (Math.sin(ph) * Math.exp(-t / 0.14) + n)) * 0.5 * v * edge(t, L, 0.001, 0.05); bus.add(s + j, y, y); } },
+    for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (60 + 45 * Math.exp(-t / 0.03)) / SR;
+      const n = f.run(R() * 2 - 1, 900, 0.7).lp * Math.exp(-t / 0.06) * 2.2;
+      const y = Math.tanh(1.4 * (Math.sin(ph) * Math.exp(-t / 0.08) + n)) * 0.5 * v * edge(t, L, 0.001, 0.05); bus.add(s + j, y, y); } },
   clap(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.3; const f = [new SVF(), new SVF()];
     for (let j = 0; j < L * SR; j++) { const t = j / SR;
       const e = Math.max(...[0, 0.009, 0.019].map(o => t >= o ? Math.exp(-(t - o) / 0.006) : 0)) * 0.8 + (t > 0.019 ? Math.exp(-(t - 0.019) / 0.085) : 0) * 0.55;
       const l = f[0].run(R() * 2 - 1, 1500, 1.1).bp, r = f[1].run(R() * 2 - 1, 1450, 1.1).bp;
-      const g = 0.32 * v * e * edge(t, L, 0.0005, 0.05); bus.add(s + j, l * g, r * g); } },
+      const g = 0.6 * v * e * edge(t, L, 0.0005, 0.05); bus.add(s + j, l * g, r * g); } },
   snare(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.28; let ph = 0; const f = new SVF(), f2 = new SVF();
     for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (185 + 40 * Math.exp(-t / 0.01)) / SR;
       const n = f2.run(f.run(R() * 2 - 1, 1800, 0.7).hp, 7000, 0.7).lp;
-      const y = (0.5 * Math.sin(ph) * Math.exp(-t / 0.05) + 0.7 * n * Math.exp(-t / 0.09)) * 0.3 * v * edge(t, L, 0.0006, 0.05); bus.add(s + j, y, y); } },
+      const y = (0.5 * Math.sin(ph) * Math.exp(-t / 0.05) + 0.7 * n * Math.exp(-t / 0.09)) * 0.55 * v * edge(t, L, 0.0006, 0.05); bus.add(s + j, y, y); } },
   snap(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.12; const f = new SVF(); let ph = 0;
     for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * 1100 / SR;
-      const y = (f.run(R() * 2 - 1, 2400, 1.8).bp * Math.exp(-t / 0.018) + 0.2 * Math.sin(ph) * Math.exp(-t / 0.006)) * 0.35 * v * edge(t, L, 0.0004, 0.03);
+      const y = (f.run(R() * 2 - 1, 2400, 1.8).bp * Math.exp(-t / 0.018) + 0.2 * Math.sin(ph) * Math.exp(-t / 0.006)) * 0.6 * v * edge(t, L, 0.0004, 0.03);
       const [pl, pr] = panLR(0.1); bus.add(s + j, y * pl, y * pr); } },
   rim(bus, t0, v) { const s = Math.round(t0 * SR), L = 0.06; let a = 0, b = 0; const [pl, pr] = panLR(-0.3);
     for (let j = 0; j < L * SR; j++) { const t = j / SR; a += TAU * 1650 / SR; b += TAU * 820 / SR;
       const y = (Math.sin(a) * 0.6 + Math.sin(b) * 0.5) * Math.exp(-t / 0.011) * 0.16 * v * edge(t, L, 0.0004, 0.01); bus.add(s + j, y * pl, y * pr); } },
   hat(bus, t0, v, R, open) { const s = Math.round(t0 * SR), L = open ? 0.28 : 0.07; const f1 = new SVF(), f2 = new SVF(); const [pl, pr] = panLR(open ? -0.25 : 0.3);
     for (let j = 0; j < L * SR; j++) { const t = j / SR; const y = f2.run(f1.run(R() * 2 - 1, 7200, 0.7).hp, 11500, 0.7).lp;
-      const e = Math.exp(-t / (open ? 0.09 : 0.016)) * edge(t, L, 0.0006, 0.03) * (open ? 0.085 : 0.075) * v; bus.add(s + j, y * e * pl, y * e * pr); } },
+      const e = Math.exp(-t / (open ? 0.09 : 0.016)) * edge(t, L, 0.0006, 0.03) * (open ? 0.12 : 0.13) * v; bus.add(s + j, y * e * pl, y * e * pr); } },
   shaker(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.09; const f = new SVF(); const [pl, pr] = panLR(-0.4);
     for (let j = 0; j < L * SR; j++) { const t = j / SR; const y = f.run(R() * 2 - 1, 6200, 1.3).bp;
-      const e = clamp(t / 0.012) * Math.exp(-Math.max(0, t - 0.012) / 0.025) * edge(t, L, 0, 0.02) * 0.11 * v; bus.add(s + j, y * e * pl, y * e * pr); } },
+      const e = clamp(t / 0.012) * Math.exp(-Math.max(0, t - 0.012) / 0.025) * edge(t, L, 0, 0.02) * 0.17 * v; bus.add(s + j, y * e * pl, y * e * pr); } },
   tamb(bus, t0, v, R) { const s = Math.round(t0 * SR), L = 0.14; const f = new SVF(); const [pl, pr] = panLR(0.35); let a = 0, b = 0;
     for (let j = 0; j < L * SR; j++) { const t = j / SR; a += TAU * 6900 / SR; b += TAU * 8300 / SR;
       const n = f.run(R() * 2 - 1, 6500, 0.8).hp * (0.7 + 0.3 * Math.sin(a) * Math.sin(b));
-      const e = clamp(t / 0.002) * Math.exp(-t / 0.045) * edge(t, L, 0, 0.03) * 0.1 * v; bus.add(s + j, n * e * pl, n * e * pr); } },
+      const e = clamp(t / 0.002) * Math.exp(-t / 0.045) * edge(t, L, 0, 0.03) * 0.15 * v; bus.add(s + j, n * e * pl, n * e * pr); } },
   conga(bus, t0, v, R, hi) { const s = Math.round(t0 * SR), L = 0.25, f0 = hi ? 330 : 225; let ph = 0; const [pl, pr] = panLR(hi ? 0.4 : -0.15);
     for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * f0 * (1 + 0.15 * Math.exp(-t / 0.008)) / SR;
       const y = (Math.sin(ph) * Math.exp(-t / 0.12) + (R() - 0.5) * 0.3 * Math.exp(-t / 0.004)) * 0.2 * v * edge(t, L, 0.0008, 0.04); bus.add(s + j, y * pl, y * pr); } },
@@ -223,7 +224,7 @@ const I = {
   // ---- bas ----
   sub(bus, t0, m, dur, v, pan) { const f = mtof(m), L = dur + 0.04, s = Math.round(t0 * SR); let ph = 0;
     for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * f / SR;
-      const y = (Math.sin(ph) + 0.35 * Math.sin(2 * ph) + 0.12 * Math.sin(3 * ph)) * edge(t, L, 0.006, 0.05) * (0.75 + 0.25 * Math.exp(-t / 0.2)) * 0.3 * v; bus.add(s + j, y, y); } },
+      const y = (Math.sin(ph) + 0.5 * Math.sin(2 * ph) + 0.25 * Math.sin(3 * ph) + 0.1 * Math.sin(4 * ph)) * edge(t, L, 0.006, 0.05) * (0.75 + 0.25 * Math.exp(-t / 0.2)) * 0.3 * v; bus.add(s + j, y, y); } },
   synth(bus, t0, m, dur, v) { const f = mtof(m), L = dur + 0.04, s = Math.round(t0 * SR); const fl = new SVF(); let p = 0, ph = 0;
     for (let j = 0; j < L * SR; j++) { const t = j / SR; p = (p + f / SR) % 1; ph += TAU * f / SR;
       const y = (fl.run(sawAt(p, f / SR), 280 + 900 * Math.exp(-t / 0.07), 1.0).lp * 0.7 + 0.6 * Math.sin(ph)) * edge(t, L, 0.004, 0.04) * 0.3 * v; bus.add(s + j, y, y); } },
@@ -237,10 +238,10 @@ const I = {
 // ---------- efekt katmanları (t=0 darbe, riser, drop) ----------
 function impact(bus, t0, rootHz, scale, R, tail) {
   const s = Math.round(t0 * SR), L = 1.2; let ph = 0, a = 0, b = 0; const f = new SVF(), fb = [new SVF(), new SVF()];
-  for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (rootHz + rootHz * 1.5 * Math.exp(-t / 0.09)) / SR; a += TAU * rootHz * 4 / SR; b += TAU * rootHz * 6 / SR;
-    const sub = Math.tanh(1.8 * Math.sin(ph) * Math.exp(-t / 0.45)) * 0.55;
-    const crack = f.run(R() * 2 - 1, 1200, 0.6).hp * Math.exp(-t / 0.045) * 0.5;
-    const body = (Math.sin(a) + 0.6 * Math.sin(b)) * Math.exp(-t / 0.22) * 0.12; // kök + beşli (konsonan)
+  for (let j = 0; j < L * SR; j++) { const t = j / SR; ph += TAU * (rootHz * 2 + rootHz * 4 * Math.exp(-t / 0.06)) / SR; a += TAU * rootHz * 4 / SR; b += TAU * rootHz * 6 / SR;
+    const sub = Math.tanh(2.5 * Math.sin(ph) * Math.exp(-t / 0.22)) * 0.4; // oktav üstünden düşüş + doygunluk → telefonda duyulur
+    const crack = f.run(R() * 2 - 1, 1500, 0.6).hp * Math.exp(-t / 0.05) * 0.7;
+    const body = (Math.sin(a) + 0.6 * Math.sin(b)) * Math.exp(-t / 0.25) * 0.2; // kök + beşli (konsonan)
     const y = (sub + crack + body) * scale * edge(t, L, 0.0008, 0.3); bus.add(s + j, y, y); }
   if (tail) riser(bus, t0 + 0.12, 0.6, R, 0.6 * scale, true);
 }
@@ -257,7 +258,7 @@ function crackle(bus, len, R) { const f = new SVF();
 
 // ---------- ana fonksiyon ----------
 // Dönüş: { bus, notes, preset, key, bpm, events:{ctaT, breakStart, stopT, hookT} }
-export function renderMusic(len, CUES, name, { musicLufs = -20 } = {}) {
+export function renderMusic(len, CUES, name, { musicLufs = -20, groups = false } = {}) {
   const P = PRESETS[name]; if (!P) throw new Error('preset yok: ' + name);
   const n = Math.round(len * SR), beat = 60 / P.bpm, bar = beat * 4, step = beat / 4;
   const R = rng(0xA11CE ^ (P.bpm * 977) ^ P.key);
@@ -270,8 +271,8 @@ export function renderMusic(len, CUES, name, { musicLufs = -20 } = {}) {
   const liftT = len > 10 ? (whooshes.find(t => t > 1.5) ?? 0) : 0;
   const keyPc = P.key, scalePc = MAJOR.map(x => (x + keyPc) % 12);
   const chordPcs = deg => { const d = [0, 2, 4].concat(P.seventh ? [6] : []).map(k => scalePc[(deg + k) % 7]); return d; };
-  const rootMidi = deg => { const pc = scalePc[deg % 7]; let m = 24 + pc; while (m < 33) m += 12; return m; }; // A1..G#2
-  const voicing = (deg, low = 53) => chordPcs(deg).map(pc => { let m = low - ((low - pc) % 12 + 12) % 12; if (m < low) m += 12; return m; }).sort((a, b) => a - b);
+  const rootMidi = deg => { const pc = scalePc[deg % 7]; let m = 24 + pc; while (m < 36) m += 12; return m; }; // C2..B2
+  const voicing = (deg, low = 57) => chordPcs(deg).map(pc => { let m = low - ((low - pc) % 12 + 12) % 12; if (m < low) m += 12; return m; }).sort((a, b) => a - b);
   let leadLow = 60 + keyPc; if (keyPc > 5) leadLow -= 12; leadLow += 12 * (P.lead.oct || 0);
   const ladder = deg => { const pcs = chordPcs(deg).slice(0, 3), out = []; for (let m = leadLow; out.length < 9; m++) if (pcs.includes(((m % 12) + 12) % 12)) out.push(m); return out; };
   const ladderNote = (deg, x) => { const L = ladder(deg), lo = Math.floor(x); if (x === lo) return L[lo];
@@ -302,7 +303,7 @@ export function renderMusic(len, CUES, name, { musicLufs = -20 } = {}) {
         const dur = Math.min(tie * step * 0.92, barEnd - t - 0.01); const inst = P.bass.inst === 'pluck' ? 'bpluck' : P.bass.inst;
         I[inst](G.bass, t, m, dur, c === 'r' ? 0.6 : 1, 0, rng(Math.round(t * 1e4) + 11), ctx); log(t, 'bass', inst, m, deg, gbi); }
       // akorlar
-      for (const layer of P.chords) { const vc = voicing(deg, layer.low ? 48 : 53);
+      for (const layer of P.chords) { const vc = voicing(deg, layer.low ? 52 : 57);
         for (const { s, c, tie } of parse(layer.pat)) { const t = tAt(seg, bi, s); if (t >= seg.b - 0.02) continue;
           const dur = Math.min(tie * step, barEnd - t) - 0.01, g = (layer.g ?? 1) * vel(c);
           if (layer.inst === 'strum') { const order = c === 'U' ? [...vc].reverse() : vc;
@@ -342,14 +343,16 @@ export function renderMusic(len, CUES, name, { musicLufs = -20 } = {}) {
   // break boyunca ritim/bas/melodi zaten yok; pad'i hafifçe kıs
   // genel zarf
   for (let i = 0; i < n; i++) { const t = i / SR, g = clamp(t / 0.004) * clamp((len - t) / 0.08); bus.L[i] *= g; bus.R[i] *= g; }
+  for (const ch of [bus.L, bus.R]) { const f1 = new SVF(), f2 = new SVF(), f3 = new SVF(); for (let i = 0; i < n; i++) { const x = f2.run(f1.run(ch[i], 38, 0.7).hp, 38, 0.7).hp; ch[i] = x + (SHELF - 1) * f3.run(x, 120, 0.6).lp; } } // 24 dB/okt HP + 120 Hz altı raf (telefon dengesi)
   const Lm = lufs(bus.L, bus.R); bus.scale(db(musicLufs - Lm));
   // efektler (normalize sonrası sabit seviye)
   const rootHz = mtof(rootMidi(0));
-  impact(bus, 0, rootHz, 0.75, R, true);
+  const FX = process.env.MUSIC_NOFX ? 0 : 1;
+  impact(bus, 0, rootHz, 0.55 * FX, R, true);
   for (const w of whooshes) { if (ctaT != null && Math.abs(w - ctaT) < 0.01) continue; const prev = Math.max(0, ...whooshes.filter(x => x < w - 0.01));
     riser(bus, Math.max(w - 0.75, prev + 0.15), Math.min(0.75, w - prev - 0.15), R, 0.8); }
-  if (ctaT != null) { riser(bus, breakStart - 0.1, breakLen + 0.1, R, 1.1); impact(bus, ctaT, rootHz, 0.5, R, false); }
+  if (ctaT != null) { riser(bus, breakStart - 0.1, breakLen + 0.1, R, 1.1); impact(bus, ctaT, rootHz, 0.38 * FX, R, false); }
   if (P.crackle) crackle(bus, len, rng(99));
-  return { bus, notes, preset: name, label: P.label, key: keyPc, bpm: P.bpm, gains,
+  return { bus, notes, preset: name, G: groups ? G : undefined, label: P.label, key: keyPc, bpm: P.bpm, gains,
     events: { ctaT, breakStart, stopT: logo ? stopT : null, hookT: notes.find(x => x.role === 'lead')?.t ?? null, liftT } };
 }

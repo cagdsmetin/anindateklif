@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=block" rel="stylesheet">
+<style>
+  :root { --indigo:#4F46E5; --violet:#7C3AED; --navy:#0B1020; --amber:#F59E0B; --green:#22C55E; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1920px; overflow:hidden; background:var(--navy);
+    font-family:'Plus Jakarta Sans', sans-serif; color:#fff; -webkit-font-smoothing:antialiased; }
+  #stage { position:absolute; inset:0; overflow:hidden; }
+  .bg { position:absolute; inset:-200px; }
+  .glow { position:absolute; border-radius:50%; filter:blur(120px); opacity:.55; }
+  .scene { position:absolute; inset:0; opacity:0; }
+  .center { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 80px; }
+  .kicker { font-size:38px; font-weight:700; letter-spacing:6px; text-transform:uppercase; color:#A5B4FC; }
+  .huge { font-size:118px; line-height:1.05; font-weight:800; letter-spacing:-3px; }
+  .big { font-size:88px; line-height:1.08; font-weight:800; letter-spacing:-2px; }
+  .mid { font-size:54px; line-height:1.2; font-weight:700; }
+  .hl { background:linear-gradient(90deg,#818CF8,#C084FC); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .strike { position:relative; display:inline-block; color:#94A3B8; }
+  .strike::after { content:''; position:absolute; left:-4%; top:52%; height:12px; width:var(--w,0%); background:#EF4444; border-radius:6px; transform:rotate(-4deg); }
+  .word { display:inline-block; opacity:0; }
+  .device { position:absolute; left:50%; width:980px; border-radius:36px; overflow:hidden;
+    box-shadow:0 60px 140px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.08); background:#fff; }
+  .device .bar { height:54px; background:#E5E7EB; display:flex; align-items:center; gap:14px; padding-left:26px; }
+  .device .bar i { width:18px; height:18px; border-radius:50%; display:block; }
+  .device .shot { position:relative; overflow:hidden; }
+  .device img { display:block; width:100%; transform-origin:0 0; }
+  .cap { position:absolute; left:60px; right:60px; text-align:left; }
+  .cap .n { font-size:34px; font-weight:800; color:#A5B4FC; letter-spacing:4px; }
+  .cap h2 { font-size:76px; line-height:1.08; font-weight:800; letter-spacing:-2px; margin-top:14px; }
+  .cap p { font-size:40px; line-height:1.35; color:#CBD5E1; font-weight:500; margin-top:22px; }
+  .ring { position:absolute; border:6px solid var(--amber); border-radius:22px; box-shadow:0 0 40px rgba(245,158,11,.6); }
+  .logo { width:220px; height:220px; border-radius:56px; background:linear-gradient(145deg,#6366F1,#4338CA);
+    display:flex; align-items:center; justify-content:center; box-shadow:0 30px 90px rgba(79,70,229,.6); }
+  .pill { display:inline-flex; align-items:center; gap:18px; padding:26px 48px; border-radius:999px; font-size:46px; font-weight:800; }
+  .ticket { border:4px dashed rgba(255,255,255,.35); border-radius:32px; padding:34px 50px; background:rgba(255,255,255,.06); }
+  .progress { position:absolute; left:0; top:0; height:10px; background:linear-gradient(90deg,#818CF8,#C084FC); }
+  .chips { display:flex; flex-wrap:wrap; justify-content:center; gap:20px; margin-top:50px; }
+  .chip { font-size:38px; font-weight:700; padding:18px 32px; border-radius:20px; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.12); opacity:0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg" id="bg">
+    <div class="glow" id="g1" style="width:900px;height:900px;background:#4F46E5;"></div>
+    <div class="glow" id="g2" style="width:800px;height:800px;background:#7C3AED;"></div>
+  </div>
+  <div class="progress" id="prog"></div>
+
+  <!-- S1: hook -->
+  <div class="scene center" id="s1">
+    <div class="kicker" id="s1k">Perde · Pergola · Cam Balkon</div>
+    <div class="huge" style="margin-top:60px">
+      <span class="word">Teklif</span> <span class="word">hazırlamak</span><br>
+      <span class="word strike" id="s1x">2 saat</span> <span class="word">mi</span> <span class="word">sürüyor?</span>
+    </div>
+  </div>
+
+  <!-- S2: pain -->
+  <div class="scene center" id="s2">
+    <div class="big" style="color:#CBD5E1">Excel, hesap makinesi,<br>WhatsApp'tan fotoğraf…</div>
+    <div class="huge hl" id="s2b" style="margin-top:70px">Müşteri<br>beklemez.</div>
+  </div>
+
+  <!-- S3: reveal -->
+  <div class="scene center" id="s3">
+    <div class="logo" id="s3logo">
+      <svg width="120" height="140" viewBox="0 0 24 28"><path d="M14 1 3 16h7l-2 11 11-15h-7l2-11z" fill="#fff"/></svg>
+    </div>
+    <div class="huge" style="margin-top:70px">Anında Teklif</div>
+    <div class="mid" style="margin-top:30px;color:#CBD5E1">Ölçüyü gir, fiyat <span class="hl">kendiliğinden</span> hesaplansın.</div>
+  </div>
+
+  <!-- S4: panel -->
+  <div class="scene" id="s4">
+    <div class="cap" style="top:170px"><div class="n">01 · PANEL</div><h2>Bütün işin<br><span class="hl">tek ekranda.</span></h2><p>Canlı döviz &amp; altın, aylık hacim, bekleyen teklifler.</p></div>
+    <div class="device" id="d4" style="top:660px"><div class="bar"><i style="background:#F87171"></i><i style="background:#FBBF24"></i><i style="background:#34D399"></i></div>
+      <div class="shot" style="height:720px"><img id="i4" src="assets/01_panel.jpg"><div class="ring" id="r4"></div></div></div>
+  </div>
+
+  <!-- S5: katalog -->
+  <div class="scene" id="s5">
+    <div class="cap" style="top:170px"><div class="n">02 · KATALOG</div><h2>Ürününü bir kez tanımla,<br><span class="hl">sonra sadece tıkla.</span></h2><p>Pergola, Giyotin Cam, Zip Perde… Hazır alanlarla teklif saniyeler içinde.</p></div>
+    <div class="device" id="d5" style="top:660px"><div class="bar"><i style="background:#F87171"></i><i style="background:#FBBF24"></i><i style="background:#34D399"></i></div>
+      <div class="shot" style="height:720px"><img id="i5" src="assets/02_katalog.jpg"><div class="ring" id="r5"></div></div></div>
+  </div>
+
+  <!-- S6: AI -->
+  <div class="scene" id="s6">
+    <div class="cap" style="top:170px"><div class="n">03 · YAPAY ZEKÂ</div><h2>Teklif metnini<br><span class="hl">AI yazsın.</span></h2><p>Ürün açıklaması, ölçü listesi, sözleşme — sen sadece onayla.</p></div>
+    <div class="device" id="d6" style="top:660px"><div class="bar"><i style="background:#F87171"></i><i style="background:#FBBF24"></i><i style="background:#34D399"></i></div>
+      <div class="shot" style="height:720px"><img id="i6" src="assets/05_ai_asistan.jpg"><div class="ring" id="r6"></div></div></div>
+  </div>
+
+  <!-- S7: feature burst -->
+  <div class="scene center" id="s7">
+    <div class="big">Hepsi <span class="hl">tek uygulamada</span></div>
+    <div class="chips">
+      <div class="chip">📄 PDF Teklif</div><div class="chip">👥 Müşteri</div><div class="chip">💰 Kasa</div>
+      <div class="chip">🧾 Tahsilat</div><div class="chip">🔧 Servis &amp; Garanti</div><div class="chip">📅 Takvim</div>
+      <div class="chip">🎯 Müşteri Avcısı</div><div class="chip">👷 Ekip</div><div class="chip">📊 Raporlar</div>
+    </div>
+  </div>
+
+  <!-- S8: CTA -->
+  <div class="scene center" id="s8">
+    <div class="kicker">Instagram'a özel</div>
+    <div class="huge" style="margin-top:40px">1 ay <span class="hl">Pro</span><br>ücretsiz</div>
+    <div class="ticket" id="s8t" style="margin-top:70px">
+      <div style="font-size:34px;color:#CBD5E1;font-weight:600">Kampanya kodu</div>
+      <div style="font-size:96px;font-weight:800;letter-spacing:8px;margin-top:6px">TEKLIF30</div>
+    </div>
+    <div class="pill" id="s8p" style="margin-top:80px;background:#fff;color:#312E81">anindateklif.co/hediye →</div>
+    <div class="mid" style="margin-top:50px;font-size:38px;color:#94A3B8">İlk 1000 üyeye özel · Üye ol, kod otomatik tanımlanır</div>
+  </div>
+</div>
+
+<script>
+const DUR = 24;
+const $ = id => document.getElementById(id);
+const clamp = (x,a=0,b=1) => Math.max(a,Math.min(b,x));
+const ease = x => { x=clamp(x); return 1-Math.pow(1-x,3); };
+const easeIO = x => { x=clamp(x); return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2; };
+const prog = (t,a,b) => clamp((t-a)/(b-a));
+// scene opacity with in/out fades
+function vis(el,t,a,b,f=.35){ const o = Math.min(ease(prog(t,a,a+f)), 1-ease(prog(t,b-f,b))); el.style.opacity = (t<a||t>b)?0:o; return o; }
+
+function deviceScene(id, t, a, b, img, ring, panFrom, panTo, zoomFrom, zoomTo, ringBox) {
+  const o = vis($('s'+id), t, a, b);
+  const p = prog(t,a,b);
+  const d = $('d'+id);
+  const rise = 1-ease(prog(t,a,a+.7));
+  d.style.transform = `translateX(-50%) translateY(${rise*160}px) scale(${.94+.06*ease(prog(t,a,a+.7))})`;
+  const z = zoomFrom + (zoomTo-zoomFrom)*easeIO(p);
+  const px = panFrom[0] + (panTo[0]-panFrom[0])*easeIO(p);
+  const py = panFrom[1] + (panTo[1]-panFrom[1])*easeIO(p);
+  $(img).style.transform = `translate(${-px}px,${-py}px) scale(${z})`;
+  const r = $(ring);
+  if (ringBox) {
+    const ro = ease(prog(t, a+1.2, a+1.6));
+    // ringBox in source-image px (1296 wide); image rendered at 980px * z
+    const s = 980/1296*z;
+    r.style.left = (ringBox[0]*s - px)+'px'; r.style.top = (ringBox[1]*s - py)+'px';
+    r.style.width = (ringBox[2]*s)+'px'; r.style.height = (ringBox[3]*s)+'px';
+    r.style.opacity = ro; r.style.transform = `scale(${1.15-.15*ro})`;
+  } else r.style.opacity = 0;
+  [...$('s'+id).querySelectorAll('.cap')].forEach((c,i)=>{
+    const q = ease(prog(t, a+.15+i*.25, a+.75+i*.25));
+    c.style.transform = `translateY(${(1-q)*50}px)`; c.style.opacity = q;
+  });
+}
+
+function render(t) {
+  // background drift
+  $('g1').style.transform = `translate(${200+Math.sin(t*.4)*180}px, ${300+Math.cos(t*.3)*220}px)`;
+  $('g2').style.transform = `translate(${500+Math.cos(t*.35)*200}px, ${1300+Math.sin(t*.45)*200}px)`;
+  $('prog').style.width = (t/DUR*100)+'%';
+
+  // S1 0–3.2
+  vis($('s1'),t,0,3.2,.25);
+  $('s1k').style.opacity = ease(prog(t,.05,.45));
+  [...$('s1').querySelectorAll('.word')].forEach((w,i)=>{
+    const q = ease(prog(t,.2+i*.16,.55+i*.16));
+    w.style.opacity = q; w.style.transform = `translateY(${(1-q)*60}px)`;
+  });
+  $('s1x').style.setProperty('--w', (ease(prog(t,1.6,2.1))*108)+'%');
+
+  // S2 3.2–6.0
+  vis($('s2'),t,3.2,6.0);
+  const b2 = ease(prog(t,4.1,4.6));
+  $('s2b').style.transform = `scale(${.7+.3*b2})`; $('s2b').style.opacity = b2;
+
+  // S3 6.0–8.8
+  vis($('s3'),t,6.0,8.8);
+  const l3 = ease(prog(t,6.0,6.7));
+  $('s3logo').style.transform = `scale(${.4+.6*l3}) rotate(${(1-l3)*-25}deg)`;
+
+  // device scenes
+  deviceScene(4,t,8.8,12.6,'i4','r4',[250,0],[290,170],1.15,1.3,[304,243,972,125]);
+  deviceScene(5,t,12.6,16.4,'i5','r5',[250,40],[290,200],1.15,1.3,[301,360,978,230]);
+  deviceScene(6,t,16.4,19.6,'i6','r6',[250,60],[300,160],1.15,1.3,[313,385,953,241]);
+
+  // S7 19.6–21.4
+  vis($('s7'),t,19.6,21.4,.25);
+  [...$('s7').querySelectorAll('.chip')].forEach((c,i)=>{
+    const q = ease(prog(t,19.8+i*.08,20.2+i*.08));
+    c.style.opacity = q; c.style.transform = `scale(${.6+.4*q})`;
+  });
+
+  // S8 21.4–24
+  const o8 = Math.min(ease(prog(t,21.4,21.75)),1); $('s8').style.opacity = t<21.4?0:o8;
+  const pulse = 1 + Math.sin((t-22)*6)*.03*clamp((t-22.2)*2);
+  $('s8p').style.transform = `scale(${pulse})`;
+  const tk = ease(prog(t,21.7,22.1));
+  $('s8t').style.transform = `rotate(${(1-tk)*-8}deg) scale(${.8+.2*tk})`; $('s8t').style.opacity = tk;
+}
+window.render = render; window.DUR = DUR;
+render(0);
+</script>
+</body>
+</html>

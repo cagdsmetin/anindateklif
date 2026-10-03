@@ -1,0 +1,1642 @@
+[
+  {
+    "id": "s01",
+    "kind": "story",
+    "day": 1,
+    "date": "2026-10-05",
+    "weekday": "Pazartesi",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-05T09:15:00+03:00",
+    "asset": "out/stories/s01.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Anket: \"Bir teklifi kaç dakikada hazırlıyorsun?\" (5 dk altı / 30 dk+ / Akşam ofiste 😅)",
+        "alt_text": "Koyu arka plan, büyük soru metni ve anket çıkartması.",
+        "sticker": "anket"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Koyu arka plan, büyük soru metni ve anket çıkartması."
+      }
+    }
+  },
+  {
+    "id": "r01",
+    "kind": "reel",
+    "day": 1,
+    "date": "2026-10-05",
+    "weekday": "Pazartesi",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-05T12:30:00+03:00",
+    "asset": "out/reels/r01.mp4",
+    "title": "Bu teklif 8 saniyede hazırlandı ⏱",
+    "platforms": {
+      "instagram": {
+        "caption": "Bu teklif 8 saniyede hazırlandı ⏱\n\nÖlçüyü girdin, fiyat hesaplandı, PDF hazır. Sayaç PDF açılınca duruyor; izle, kendin gör.\n\nAnında Teklif: perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için teklif uygulaması ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#pergola",
+          "#zipperde",
+          "#cambalkon",
+          "#teklif",
+          "#esnaf",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Bu teklif 8 saniyede hazırlandı ⏱\n\nÖlçüyü girdin, fiyat hesaplandı, PDF hazır. Sayaç PDF açılınca duruyor; izle, kendin gör.\n\nAnında Teklif: perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için teklif uygulaması ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #pergola #zipperde",
+        "image_post": {
+          "image": "out/covers/r01.jpg",
+          "caption": "Bu teklif 8 saniyede hazırlandı ⏱\n\nÖlçüyü girdin, fiyat hesaplandı, PDF hazır. Sayaç PDF açılınca duruyor; izle, kendin gör.\n\nAnında Teklif: perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için teklif uygulaması ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #pergola #zipperde"
+        }
+      },
+      "youtube": {
+        "title": "Bu teklif 8 saniyede hazırlandı ⏱ Ölçü gir, PDF hazır #shorts",
+        "description": "Ekrandaki sayaç gerçek: ölçü giriliyor, fiyat otomatik hesaplanıyor, PDF teklif açılınca sayaç duruyor. Perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için Anında Teklif.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #pergola #zipperde"
+      },
+      "linkedin": {
+        "text": "Bir teklifin hazırlanması ne kadar sürmeli?\n\nVideodaki sayaç, uygulamada ölçünün girilmesinden PDF teklifin açılmasına kadar geçen süreyi gösteriyor. Ürün ve fiyat bilgisi katalogda bir kez tanımlandığında, teklif aşamasında yapılan iş ölçüyü girmekten ibaret kalıyor; hesaplama ve belge hazırlığı sistemde.\n\nAnında Teklif; perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için geliştirilen bir teklif ve iş takip uygulaması.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r01.jpg",
+          "text": "Bir teklifin hazırlanması ne kadar sürmeli?\n\nVideodaki sayaç, uygulamada ölçünün girilmesinden PDF teklifin açılmasına kadar geçen süreyi gösteriyor. Ürün ve fiyat bilgisi katalogda bir kez tanımlandığında, teklif aşamasında yapılan iş ölçüyü girmekten ibaret kalıyor; hesaplama ve belge hazırlığı sistemde.\n\nAnında Teklif; perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için geliştirilen bir teklif ve iş takip uygulaması.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s02",
+    "kind": "story",
+    "day": 1,
+    "date": "2026-10-05",
+    "weekday": "Pazartesi",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-05T13:45:00+03:00",
+    "asset": "out/stories/s02.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: ölçü gir → fiyat otomatik. Uygulama kaydından EN×BOY girişi ve hesaplanan fiyat.",
+        "alt_text": "Telefon ekranında ölçü alanına değer giriliyor, fiyat anında beliriyor.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Telefon ekranında ölçü alanına değer giriliyor, fiyat anında beliriyor."
+      }
+    }
+  },
+  {
+    "id": "r02",
+    "kind": "reel",
+    "day": 1,
+    "date": "2026-10-05",
+    "weekday": "Pazartesi",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-05T20:30:00+03:00",
+    "asset": "out/reels/r02.mp4",
+    "title": "Zip perde fiyatı saniyede: EN × BOY gir, fiyat hazır",
+    "platforms": {
+      "instagram": {
+        "caption": "Zip perde fiyatı için tablo karıştırmaya son 📐\n\nEN ve BOY ölçüsünü gir; fiyat, kendi fiyat tablondan otomatik gelsin. Hesap makinesi yok, satır satır arama yok.\n\nTabloyu bir kez tanımla, her teklifte sadece ölçüyü yaz ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#zipperde",
+          "#perde",
+          "#pergola",
+          "#teklif",
+          "#esnaf",
+          "#perdeci"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Zip perde fiyatı için tablo karıştırmaya son 📐\n\nEN ve BOY ölçüsünü gir; fiyat, kendi fiyat tablondan otomatik gelsin. Hesap makinesi yok, satır satır arama yok.\n\nTabloyu bir kez tanımla, her teklifte sadece ölçüyü yaz ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #zipperde #perde #pergola",
+        "image_post": {
+          "image": "out/covers/r02.jpg",
+          "caption": "Zip perde fiyatı için tablo karıştırmaya son 📐\n\nEN ve BOY ölçüsünü gir; fiyat, kendi fiyat tablondan otomatik gelsin. Hesap makinesi yok, satır satır arama yok.\n\nTabloyu bir kez tanımla, her teklifte sadece ölçüyü yaz ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #zipperde #perde #pergola"
+        }
+      },
+      "youtube": {
+        "title": "Zip perde fiyatı saniyede: EN × BOY gir, fiyat hazır #shorts",
+        "description": "Zip perde fiyatlandırmasında EN × BOY tablosunu bir kez tanımlayın; teklifte ölçüyü girdiğinizde fiyat tablodan otomatik gelir.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #zipperde #perde #pergola"
+      },
+      "linkedin": {
+        "text": "Zip perde fiyatlandırması çoğu firmada EN × BOY tablosuna bakılarak yapılıyor. Tablo doğru olsa bile, her teklifte satır ve sütun eşleştirmek hem zaman alıyor hem hata riskini artırıyor.\n\nAnında Teklif'te fiyat tablonuzu bir kez tanımlıyorsunuz. Teklif sırasında yalnızca en ve boy ölçüsünü giriyorsunuz; uygulama ilgili fiyatı tablodan otomatik çekiyor ve teklife ekliyor.\n\nDaha az manuel işlem, daha tutarlı fiyat.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r02.jpg",
+          "text": "Zip perde fiyatlandırması çoğu firmada EN × BOY tablosuna bakılarak yapılıyor. Tablo doğru olsa bile, her teklifte satır ve sütun eşleştirmek hem zaman alıyor hem hata riskini artırıyor.\n\nAnında Teklif'te fiyat tablonuzu bir kez tanımlıyorsunuz. Teklif sırasında yalnızca en ve boy ölçüsünü giriyorsunuz; uygulama ilgili fiyatı tablodan otomatik çekiyor ve teklife ekliyor.\n\nDaha az manuel işlem, daha tutarlı fiyat.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s03",
+    "kind": "story",
+    "day": 1,
+    "date": "2026-10-05",
+    "weekday": "Pazartesi",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-05T21:15:00+03:00",
+    "asset": "out/stories/s03.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: 1 ay Pro hediye, kod TEKLIF30, ilk 1000 üyeye. Bağlantı çıkartması.",
+        "alt_text": "Hediye kutusu ikonu, TEKLIF30 kodu ve \"Linke dokun\" yazısı.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Hediye kutusu ikonu, TEKLIF30 kodu ve \"Linke dokun\" yazısı."
+      }
+    }
+  },
+  {
+    "id": "s04",
+    "kind": "story",
+    "day": 2,
+    "date": "2026-10-06",
+    "weekday": "Salı",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-06T09:15:00+03:00",
+    "asset": "out/stories/s04.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Soru: \"Müşteri 3 firmadan teklif istedi. İşi kim alır?\" (Emoji kaydırıcı)",
+        "alt_text": "Üç teklif kartı yan yana, biri öne çıkıyor.",
+        "sticker": "kaydırıcı"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Üç teklif kartı yan yana, biri öne çıkıyor."
+      }
+    }
+  },
+  {
+    "id": "r03",
+    "kind": "reel",
+    "day": 2,
+    "date": "2026-10-06",
+    "weekday": "Salı",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-06T12:30:00+03:00",
+    "asset": "out/reels/r03.mp4",
+    "title": "Müşterin teklifi rakibinden önce alsın",
+    "platforms": {
+      "instagram": {
+        "caption": "Müşterin teklifi rakibinden önce alsın 🏁\n\nÖlçüyü sahada al, fiyat anında hesaplansın, PDF teklifi WhatsApp'tan tek dokunuşla gönder. Müşteri daha kapıdan çıkmadan teklifin elinde.\n\nİlk dönen teklif akılda kalır ⚡\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#giyotincam",
+          "#satış",
+          "#esnaf",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Müşterin teklifi rakibinden önce alsın 🏁\n\nÖlçüyü sahada al, fiyat anında hesaplansın, PDF teklifi WhatsApp'tan tek dokunuşla gönder. Müşteri daha kapıdan çıkmadan teklifin elinde.\n\nİlk dönen teklif akılda kalır ⚡\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #pergola #cambalkon",
+        "image_post": {
+          "image": "out/covers/r03.jpg",
+          "caption": "Müşterin teklifi rakibinden önce alsın 🏁\n\nÖlçüyü sahada al, fiyat anında hesaplansın, PDF teklifi WhatsApp'tan tek dokunuşla gönder. Müşteri daha kapıdan çıkmadan teklifin elinde.\n\nİlk dönen teklif akılda kalır ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #pergola #cambalkon"
+        }
+      },
+      "youtube": {
+        "title": "Müşterin teklifi rakibinden önce alsın 🏁 Anında Teklif #shorts",
+        "description": "Ölçüyü sahada al, fiyat anında hesaplansın, PDF teklifi WhatsApp ile gönder. Perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #pergola #cambalkon"
+      },
+      "linkedin": {
+        "text": "Müşteri birden fazla firmadan teklif istediğinde, teklifin ne zaman ulaştığı da karar sürecinin bir parçası oluyor.\n\nAnında Teklif ile ölçü sahada girildiği anda fiyat hesaplanıyor ve PDF teklif hazırlanıyor. Teklif, WhatsApp üzerinden doğrudan müşteriye gönderilebiliyor. Böylece \"akşam hazırlayıp yollarım\" adımı ortadan kalkıyor.\n\nTeklifi hızlandırmak, satış sürecindeki en kolay iyileştirmelerden biri.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r03.jpg",
+          "text": "Müşteri birden fazla firmadan teklif istediğinde, teklifin ne zaman ulaştığı da karar sürecinin bir parçası oluyor.\n\nAnında Teklif ile ölçü sahada girildiği anda fiyat hesaplanıyor ve PDF teklif hazırlanıyor. Teklif, WhatsApp üzerinden doğrudan müşteriye gönderilebiliyor. Böylece \"akşam hazırlayıp yollarım\" adımı ortadan kalkıyor.\n\nTeklifi hızlandırmak, satış sürecindeki en kolay iyileştirmelerden biri.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s05",
+    "kind": "story",
+    "day": 2,
+    "date": "2026-10-06",
+    "weekday": "Salı",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-06T13:45:00+03:00",
+    "asset": "out/stories/s05.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: 4 PDF şablonu (Klasik/Modern/Minimal/Kurumsal). Test çıkartması: \"Hangisi senin tarzın?\"",
+        "alt_text": "Aynı teklifin dört farklı PDF şablonundaki görünümü.",
+        "sticker": "test"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Aynı teklifin dört farklı PDF şablonundaki görünümü."
+      }
+    }
+  },
+  {
+    "id": "r04",
+    "kind": "reel",
+    "day": 2,
+    "date": "2026-10-06",
+    "weekday": "Salı",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-06T20:30:00+03:00",
+    "asset": "out/reels/r04.mp4",
+    "title": "4 PDF teklif şablonu: Klasik, Modern, Minimal, Kurumsal",
+    "platforms": {
+      "instagram": {
+        "caption": "Teklifin de vitrin gibidir 📄\n\nKlasik, Modern, Minimal veya Kurumsal: dört PDF teklif şablonundan birini seç, logon ve bilgilerinle müşterine düzgün bir teklif gitsin.\n\nAynı teklif, dört farklı görünüm. Hangisi senin tarzın? 👇\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#kurumsal",
+          "#esnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Teklifin de vitrin gibidir 📄\n\nKlasik, Modern, Minimal veya Kurumsal: dört PDF teklif şablonundan birini seç, logon ve bilgilerinle müşterine düzgün bir teklif gitsin.\n\nAynı teklif, dört farklı görünüm. Hangisi senin tarzın? 👇\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #teklif #perde #pergola",
+        "image_post": {
+          "image": "out/covers/r04.jpg",
+          "caption": "Teklifin de vitrin gibidir 📄\n\nKlasik, Modern, Minimal veya Kurumsal: dört PDF teklif şablonundan birini seç, logon ve bilgilerinle müşterine düzgün bir teklif gitsin.\n\nAynı teklif, dört farklı görünüm. Hangisi senin tarzın? 👇\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #teklif #perde #pergola"
+        }
+      },
+      "youtube": {
+        "title": "Teklifin de vitrin gibidir: 4 PDF teklif şablonu 📄 #shorts",
+        "description": "Klasik, Modern, Minimal ve Kurumsal: Anında Teklif'teki dört PDF teklif şablonu. Aynı teklif, dört farklı görünüm.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #teklif #perde #pergola"
+      },
+      "linkedin": {
+        "text": "Müşterinin elindeki teklif belgesi, firmanın ilk somut izlenimlerinden biri.\n\nAnında Teklif'te PDF teklifler dört şablonla hazırlanabiliyor: Klasik, Modern, Minimal ve Kurumsal. Teklif içeriği aynı kalıyor; görünümü firmanızın tarzına göre seçiyorsunuz.\n\nDüzenli, okunaklı ve markalı bir teklif, fiyat konuşmasını da kolaylaştırır.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r04.jpg",
+          "text": "Müşterinin elindeki teklif belgesi, firmanın ilk somut izlenimlerinden biri.\n\nAnında Teklif'te PDF teklifler dört şablonla hazırlanabiliyor: Klasik, Modern, Minimal ve Kurumsal. Teklif içeriği aynı kalıyor; görünümü firmanızın tarzına göre seçiyorsunuz.\n\nDüzenli, okunaklı ve markalı bir teklif, fiyat konuşmasını da kolaylaştırır.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s06",
+    "kind": "story",
+    "day": 2,
+    "date": "2026-10-06",
+    "weekday": "Salı",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-06T21:15:00+03:00",
+    "asset": "out/stories/s06.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: \"Bugünkü Reels'e TEKLİF yaz ya da linke dokun.\" TEKLIF30, 1 ay Pro.",
+        "alt_text": "Reels kapağı küçük önizleme, altında link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Reels kapağı küçük önizleme, altında link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s07",
+    "kind": "story",
+    "day": 3,
+    "date": "2026-10-07",
+    "weekday": "Çarşamba",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-07T09:15:00+03:00",
+    "asset": "out/stories/s07.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Teaser: \"Perdeciler burada mı? 🙋\" (Evet/Hayır anketi)",
+        "alt_text": "Perde kumaşı dokulu arka plan, büyük soru.",
+        "sticker": "anket"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Perde kumaşı dokulu arka plan, büyük soru."
+      }
+    }
+  },
+  {
+    "id": "r05",
+    "kind": "reel",
+    "day": 3,
+    "date": "2026-10-07",
+    "weekday": "Çarşamba",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-07T12:30:00+03:00",
+    "asset": "out/reels/r05.mp4",
+    "title": "Perdeci misin? Bunu izlemeden teklif yazma",
+    "platforms": {
+      "instagram": {
+        "caption": "Perdeci misin? Bunu izlemeden teklif yazma 👀\n\nÖlçü al, gir, fiyat hazır. Kumaş, mekanizma, montaj… Ürünleri bir kez tanımla, teklifte sadece seç.\n\nPerde, zip perde, pergola, cam balkon, giyotin cam: hepsi için tek uygulama ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#perdeci",
+          "#perdemodelleri",
+          "#zipperde",
+          "#teklif",
+          "#esnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Perdeci misin? Bunu izlemeden teklif yazma 👀\n\nÖlçü al, gir, fiyat hazır. Kumaş, mekanizma, montaj… Ürünleri bir kez tanımla, teklifte sadece seç.\n\nPerde, zip perde, pergola, cam balkon, giyotin cam: hepsi için tek uygulama ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #perdeci #perdemodelleri",
+        "image_post": {
+          "image": "out/covers/r05.jpg",
+          "caption": "Perdeci misin? Bunu izlemeden teklif yazma 👀\n\nÖlçü al, gir, fiyat hazır. Kumaş, mekanizma, montaj… Ürünleri bir kez tanımla, teklifte sadece seç.\n\nPerde, zip perde, pergola, cam balkon, giyotin cam: hepsi için tek uygulama ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #perdeci #perdemodelleri"
+        }
+      },
+      "youtube": {
+        "title": "Perdeci misin? Bunu izlemeden teklif yazma 👀 #shorts",
+        "description": "Perde firmaları için teklif uygulaması: ürünü bir kez tanımla, teklifte ölçüyü gir, fiyat ve PDF teklif hazır.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #perdeci #perdemodelleri"
+      },
+      "linkedin": {
+        "text": "Perde sektöründe teklif hazırlığı; kumaş, mekanizma, montaj ve ölçü kombinasyonları nedeniyle her seferinde yeniden hesap yapmayı gerektiriyor.\n\nAnında Teklif'te ürünler ve fiyatları katalogda bir kez tanımlanıyor. Teklif aşamasında ürün seçilip ölçü girildiğinde tutar otomatik hesaplanıyor ve PDF teklif hazırlanıyor.\n\nPerde firmalarının yanı sıra pergola, zip perde, cam balkon ve giyotin cam firmaları için de aynı akış geçerli.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r05.jpg",
+          "text": "Perde sektöründe teklif hazırlığı; kumaş, mekanizma, montaj ve ölçü kombinasyonları nedeniyle her seferinde yeniden hesap yapmayı gerektiriyor.\n\nAnında Teklif'te ürünler ve fiyatları katalogda bir kez tanımlanıyor. Teklif aşamasında ürün seçilip ölçü girildiğinde tutar otomatik hesaplanıyor ve PDF teklif hazırlanıyor.\n\nPerde firmalarının yanı sıra pergola, zip perde, cam balkon ve giyotin cam firmaları için de aynı akış geçerli.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s08",
+    "kind": "story",
+    "day": 3,
+    "date": "2026-10-07",
+    "weekday": "Çarşamba",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-07T13:45:00+03:00",
+    "asset": "out/stories/s08.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: AI asistan teklif kalemi açıklaması ve fiyat notu yazıyor.",
+        "alt_text": "AI asistan ekranında teklif açıklama metni oluşuyor.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "AI asistan ekranında teklif açıklama metni oluşuyor."
+      }
+    }
+  },
+  {
+    "id": "r06",
+    "kind": "reel",
+    "day": 3,
+    "date": "2026-10-07",
+    "weekday": "Çarşamba",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-07T20:30:00+03:00",
+    "asset": "out/reels/r06.mp4",
+    "title": "Teklif metnini yapay zekâ yazsın",
+    "platforms": {
+      "instagram": {
+        "caption": "Teklif metni yazmakla uğraşma ✍️🤖\n\nAI asistan, teklif kalemlerinin açıklamasını ve fiyat notunu senin yerine hazırlasın. Sen kontrol et, gerekirse düzenle, gönder.\n\nDüzgün yazılmış teklif, daha profesyonel görünür ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#yapayzeka",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#kobi",
+          "#dijitalesnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Teklif metni yazmakla uğraşma ✍️🤖\n\nAI asistan, teklif kalemlerinin açıklamasını ve fiyat notunu senin yerine hazırlasın. Sen kontrol et, gerekirse düzenle, gönder.\n\nDüzgün yazılmış teklif, daha profesyonel görünür ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #yapayzeka #teklif #perde",
+        "image_post": {
+          "image": "out/covers/r06.jpg",
+          "caption": "Teklif metni yazmakla uğraşma ✍️🤖\n\nAI asistan, teklif kalemlerinin açıklamasını ve fiyat notunu senin yerine hazırlasın. Sen kontrol et, gerekirse düzenle, gönder.\n\nDüzgün yazılmış teklif, daha profesyonel görünür ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #yapayzeka #teklif #perde"
+        }
+      },
+      "youtube": {
+        "title": "Teklif metnini yapay zekâ yazsın 🤖 Anında Teklif AI asistan #shorts",
+        "description": "Anında Teklif'teki AI asistan, teklif kalemlerinin açıklama metnini ve fiyat notunu hazırlar; siz kontrol edip gönderirsiniz.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #yapayzeka #teklif #perde"
+      },
+      "linkedin": {
+        "text": "Teklifte fiyat kadar, kalemlerin nasıl anlatıldığı da önemli: ürün açıklaması, kapsam, fiyat notu.\n\nAnında Teklif'teki AI asistan, teklif kalemleri için açıklama metni ve fiyat notu taslağı hazırlıyor. Son kontrol ve düzenleme her zaman kullanıcıda.\n\nAmaç, metin yazmaya harcanan zamanı azaltıp teklifin anlaşılırlığını artırmak.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r06.jpg",
+          "text": "Teklifte fiyat kadar, kalemlerin nasıl anlatıldığı da önemli: ürün açıklaması, kapsam, fiyat notu.\n\nAnında Teklif'teki AI asistan, teklif kalemleri için açıklama metni ve fiyat notu taslağı hazırlıyor. Son kontrol ve düzenleme her zaman kullanıcıda.\n\nAmaç, metin yazmaya harcanan zamanı azaltıp teklifin anlaşılırlığını artırmak.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s09",
+    "kind": "story",
+    "day": 3,
+    "date": "2026-10-07",
+    "weekday": "Çarşamba",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-07T21:15:00+03:00",
+    "asset": "out/stories/s09.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: TEKLIF30 ile 1 ay Pro, üye olunca kod otomatik tanımlanır.",
+        "alt_text": "Kod kartı ve link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Kod kartı ve link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s10",
+    "kind": "story",
+    "day": 4,
+    "date": "2026-10-08",
+    "weekday": "Perşembe",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-08T09:15:00+03:00",
+    "asset": "out/stories/s10.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Anket: \"Teklifleri hâlâ Excel'de mi tutuyorsun?\" (Evet / Artık değil)",
+        "alt_text": "Excel tablosu görseli, üstünde soru.",
+        "sticker": "anket"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Excel tablosu görseli, üstünde soru."
+      }
+    }
+  },
+  {
+    "id": "r07",
+    "kind": "reel",
+    "day": 4,
+    "date": "2026-10-08",
+    "weekday": "Perşembe",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-08T12:30:00+03:00",
+    "asset": "out/reels/r07.mp4",
+    "title": "Excel'i bırak, teklifi uygulamadan ver",
+    "platforms": {
+      "instagram": {
+        "caption": "Teklifler hâlâ Excel'de mi? 📊\n\nFormül bozuldu mu, eski fiyat mı kaldı, hangi dosya son hâli? Bunlarla uğraşma.\n\nÜrünü bir kez tanımla, ölçüyü gir, fiyat ve PDF teklif hazır. Teklifler de tek yerde, düzenli ⚡\n\n👇 Hediyeyi istiyorsan yorumlara TEKLİF yaz, 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#excel",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#kobi",
+          "#dijitalesnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Teklifler hâlâ Excel'de mi? 📊\n\nFormül bozuldu mu, eski fiyat mı kaldı, hangi dosya son hâli? Bunlarla uğraşma.\n\nÜrünü bir kez tanımla, ölçüyü gir, fiyat ve PDF teklif hazır. Teklifler de tek yerde, düzenli ⚡\n\n👇 Hediyeyi istiyorsan yorumlara TEKLİF yaz, 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #excel #teklif #perde",
+        "image_post": {
+          "image": "out/covers/r07.jpg",
+          "caption": "Teklifler hâlâ Excel'de mi? 📊\n\nFormül bozuldu mu, eski fiyat mı kaldı, hangi dosya son hâli? Bunlarla uğraşma.\n\nÜrünü bir kez tanımla, ölçüyü gir, fiyat ve PDF teklif hazır. Teklifler de tek yerde, düzenli ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #excel #teklif #perde"
+        }
+      },
+      "youtube": {
+        "title": "Teklifler hâlâ Excel'de mi? 📊 Ölçü gir, fiyat ve PDF hazır #shorts",
+        "description": "Excel dosyalarıyla teklif hazırlamak yerine: ürünü bir kez tanımla, ölçüyü gir, fiyat ve PDF teklif otomatik hazırlansın.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #excel #teklif #perde"
+      },
+      "linkedin": {
+        "text": "Excel, birçok firmanın teklif sürecinin başladığı yer. Ancak dosya sayısı arttıkça güncel fiyatın hangisi olduğu, formüllerin doğruluğu ve geçmiş tekliflerin takibi zorlaşıyor.\n\nAnında Teklif'te ürün ve fiyatlar katalogda tek bir yerde duruyor. Teklif, ölçü girilerek hazırlanıyor; PDF olarak paylaşılıyor ve durumu panelden izlenebiliyor.\n\nTek kaynak, tutarlı fiyat, takip edilebilir teklifler.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r07.jpg",
+          "text": "Excel, birçok firmanın teklif sürecinin başladığı yer. Ancak dosya sayısı arttıkça güncel fiyatın hangisi olduğu, formüllerin doğruluğu ve geçmiş tekliflerin takibi zorlaşıyor.\n\nAnında Teklif'te ürün ve fiyatlar katalogda tek bir yerde duruyor. Teklif, ölçü girilerek hazırlanıyor; PDF olarak paylaşılıyor ve durumu panelden izlenebiliyor.\n\nTek kaynak, tutarlı fiyat, takip edilebilir teklifler.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s11",
+    "kind": "story",
+    "day": 4,
+    "date": "2026-10-08",
+    "weekday": "Perşembe",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-08T13:45:00+03:00",
+    "asset": "out/stories/s11.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: Panel (aylık hacim, nakit durumu, teklif durumları). Demo veri.",
+        "alt_text": "Panel ekranı: grafik ve durum kartları (demo veri).",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Panel ekranı: grafik ve durum kartları (demo veri)."
+      }
+    }
+  },
+  {
+    "id": "r08",
+    "kind": "reel",
+    "day": 4,
+    "date": "2026-10-08",
+    "weekday": "Perşembe",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-08T20:30:00+03:00",
+    "asset": "out/reels/r08.mp4",
+    "title": "İşinin özeti tek ekranda: Panel",
+    "platforms": {
+      "instagram": {
+        "caption": "İşin nereye gidiyor, tek ekranda gör 📈\n\nPanelde aylık teklif hacmin, nakit durumun ve tekliflerinin durumu bir arada. Hangi teklif bekliyor, hangisi onaylandı, kasada ne var: açtığın an görürsün.\n\nTahmin değil, rakam ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#kobi",
+          "#esnaf",
+          "#perde",
+          "#pergola",
+          "#nakitakışı",
+          "#teklif"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "İşin nereye gidiyor, tek ekranda gör 📈\n\nPanelde aylık teklif hacmin, nakit durumun ve tekliflerinin durumu bir arada. Hangi teklif bekliyor, hangisi onaylandı, kasada ne var: açtığın an görürsün.\n\nTahmin değil, rakam ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #kobi #esnaf #perde",
+        "image_post": {
+          "image": "out/covers/r08.jpg",
+          "caption": "İşin nereye gidiyor, tek ekranda gör 📈\n\nPanelde aylık teklif hacmin, nakit durumun ve tekliflerinin durumu bir arada. Hangi teklif bekliyor, hangisi onaylandı, kasada ne var: açtığın an görürsün.\n\nTahmin değil, rakam ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #kobi #esnaf #perde"
+        }
+      },
+      "youtube": {
+        "title": "İşinin özeti tek ekranda: teklif, nakit, durum 📈 #shorts",
+        "description": "Anında Teklif paneli: aylık teklif hacmi, nakit durumu ve teklif durumları tek ekranda.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #kobi #esnaf #perde"
+      },
+      "linkedin": {
+        "text": "Küçük ve orta ölçekli firmalarda yönetim kararları çoğu zaman gün sonunda toparlanan notlara dayanıyor.\n\nAnında Teklif'in paneli; aylık teklif hacmini, nakit durumunu ve tekliflerin hangi aşamada olduğunu tek ekranda gösteriyor. Bekleyen teklifler, onaylananlar ve kasa durumu ayrı ayrı aranmadan görülebiliyor.\n\nGörünürlük, takibin ilk adımı.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r08.jpg",
+          "text": "Küçük ve orta ölçekli firmalarda yönetim kararları çoğu zaman gün sonunda toparlanan notlara dayanıyor.\n\nAnında Teklif'in paneli; aylık teklif hacmini, nakit durumunu ve tekliflerin hangi aşamada olduğunu tek ekranda gösteriyor. Bekleyen teklifler, onaylananlar ve kasa durumu ayrı ayrı aranmadan görülebiliyor.\n\nGörünürlük, takibin ilk adımı.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s12",
+    "kind": "story",
+    "day": 4,
+    "date": "2026-10-08",
+    "weekday": "Perşembe",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-08T21:15:00+03:00",
+    "asset": "out/stories/s12.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: \"Paneli kendi verinle gör: 1 ay Pro hediye.\" Link çıkartması.",
+        "alt_text": "Panel görseli bulanık arka plan, önde hediye kodu.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Panel görseli bulanık arka plan, önde hediye kodu."
+      }
+    }
+  },
+  {
+    "id": "s13",
+    "kind": "story",
+    "day": 5,
+    "date": "2026-10-09",
+    "weekday": "Cuma",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-09T09:15:00+03:00",
+    "asset": "out/stories/s13.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Soru kutusu: \"Pergolacılar, teklifte en çok neye vakit harcıyorsunuz?\"",
+        "alt_text": "Pergola fotoğrafı üzerinde soru kutusu.",
+        "sticker": "soru"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Pergola fotoğrafı üzerinde soru kutusu."
+      }
+    }
+  },
+  {
+    "id": "r09",
+    "kind": "reel",
+    "day": 5,
+    "date": "2026-10-09",
+    "weekday": "Cuma",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-09T12:30:00+03:00",
+    "asset": "out/reels/r09.mp4",
+    "title": "Pergolacılar için: ölçü gir, teklif hazır",
+    "platforms": {
+      "instagram": {
+        "caption": "Pergolacılar, bu sizin için 🏡\n\nPergola, bioklimatik pergola, zip perde… Ürünlerini ve fiyatlarını bir kez tanımla. Sahada ölçüyü gir, fiyat hesaplansın, PDF teklif müşterine gitsin.\n\nHesap kâğıdı yok, akşam mesaisi yok ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#pergola",
+          "#bioklimatikpergola",
+          "#zipperde",
+          "#teklif",
+          "#esnaf",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Pergolacılar, bu sizin için 🏡\n\nPergola, bioklimatik pergola, zip perde… Ürünlerini ve fiyatlarını bir kez tanımla. Sahada ölçüyü gir, fiyat hesaplansın, PDF teklif müşterine gitsin.\n\nHesap kâğıdı yok, akşam mesaisi yok ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #pergola #bioklimatikpergola #zipperde",
+        "image_post": {
+          "image": "out/covers/r09.jpg",
+          "caption": "Pergolacılar, bu sizin için 🏡\n\nPergola, bioklimatik pergola, zip perde… Ürünlerini ve fiyatlarını bir kez tanımla. Sahada ölçüyü gir, fiyat hesaplansın, PDF teklif müşterine gitsin.\n\nHesap kâğıdı yok, akşam mesaisi yok ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #pergola #bioklimatikpergola #zipperde"
+        }
+      },
+      "youtube": {
+        "title": "Pergolacılar için: ölçü gir, fiyat ve PDF teklif hazır 🏡 #shorts",
+        "description": "Pergola ve bioklimatik pergola firmaları için teklif uygulaması: ürünü bir kez tanımla, ölçüyü gir, fiyat ve PDF teklif hazır.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #pergola #bioklimatikpergola #zipperde"
+      },
+      "linkedin": {
+        "text": "Pergola projelerinde teklif; ölçü, sistem tipi ve ek kalemler nedeniyle çok parçalı bir hesap.\n\nAnında Teklif'te pergola ürünleri ve fiyatları bir kez tanımlanıyor. Teklif sırasında ölçü girildiğinde tutar hesaplanıyor, ek kalemler listeye ekleniyor ve PDF teklif hazırlanıyor.\n\nSahada başlayan görüşme, sahada teklifle sonuçlanabiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r09.jpg",
+          "text": "Pergola projelerinde teklif; ölçü, sistem tipi ve ek kalemler nedeniyle çok parçalı bir hesap.\n\nAnında Teklif'te pergola ürünleri ve fiyatları bir kez tanımlanıyor. Teklif sırasında ölçü girildiğinde tutar hesaplanıyor, ek kalemler listeye ekleniyor ve PDF teklif hazırlanıyor.\n\nSahada başlayan görüşme, sahada teklifle sonuçlanabiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s14",
+    "kind": "story",
+    "day": 5,
+    "date": "2026-10-09",
+    "weekday": "Cuma",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-09T13:45:00+03:00",
+    "asset": "out/stories/s14.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: Katalog. Ürünü bir kez tanımla, teklifte sadece seç.",
+        "alt_text": "Katalog ekranında ürün listesi ve fiyatlar (demo veri).",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Katalog ekranında ürün listesi ve fiyatlar (demo veri)."
+      }
+    }
+  },
+  {
+    "id": "r10",
+    "kind": "reel",
+    "day": 5,
+    "date": "2026-10-09",
+    "weekday": "Cuma",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-09T20:30:00+03:00",
+    "asset": "out/reels/r10.mp4",
+    "title": "Ürününü bir kez tanımla, her teklifte sadece seç",
+    "platforms": {
+      "instagram": {
+        "caption": "Ürününü bir kez tanımla, gerisi kendiliğinden 📚\n\nKatalogda ürününü, fiyatını ve birimini bir kez gir. Sonra her teklifte sadece seç ve ölçüyü yaz.\n\nFiyat değişti mi? Katalogda güncelle, yeni tekliflerde o fiyat gelsin ⚡\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#giyotincam",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Ürününü bir kez tanımla, gerisi kendiliğinden 📚\n\nKatalogda ürününü, fiyatını ve birimini bir kez gir. Sonra her teklifte sadece seç ve ölçüyü yaz.\n\nFiyat değişti mi? Katalogda güncelle, yeni tekliflerde o fiyat gelsin ⚡\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #teklif #perde #pergola",
+        "image_post": {
+          "image": "out/covers/r10.jpg",
+          "caption": "Ürününü bir kez tanımla, gerisi kendiliğinden 📚\n\nKatalogda ürününü, fiyatını ve birimini bir kez gir. Sonra her teklifte sadece seç ve ölçüyü yaz.\n\nFiyat değişti mi? Katalogda güncelle, yeni tekliflerde o fiyat gelsin ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #teklif #perde #pergola"
+        }
+      },
+      "youtube": {
+        "title": "Ürününü bir kez tanımla, her teklifte sadece seç 📚 #shorts",
+        "description": "Anında Teklif katalog: ürün ve fiyatı bir kez tanımla; teklifte ürünü seç, ölçüyü gir, tutar hesaplansın.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #teklif #perde #pergola"
+      },
+      "linkedin": {
+        "text": "Teklif hızının arkasındaki asıl iş, düzgün kurulmuş bir ürün kataloğu.\n\nAnında Teklif'te ürünler, fiyatları ve birimleriyle birlikte katalogda bir kez tanımlanıyor. Teklif aşamasında ürün seçiliyor ve ölçü giriliyor; hesaplama katalogdaki bilgiye göre yapılıyor. Fiyat güncellemesi katalogda yapıldığında yeni teklifler güncel fiyatla hazırlanıyor.\n\nBir kez kurulum, her teklifte kazanılan zaman.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r10.jpg",
+          "text": "Teklif hızının arkasındaki asıl iş, düzgün kurulmuş bir ürün kataloğu.\n\nAnında Teklif'te ürünler, fiyatları ve birimleriyle birlikte katalogda bir kez tanımlanıyor. Teklif aşamasında ürün seçiliyor ve ölçü giriliyor; hesaplama katalogdaki bilgiye göre yapılıyor. Fiyat güncellemesi katalogda yapıldığında yeni teklifler güncel fiyatla hazırlanıyor.\n\nBir kez kurulum, her teklifte kazanılan zaman.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s15",
+    "kind": "story",
+    "day": 5,
+    "date": "2026-10-09",
+    "weekday": "Cuma",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-09T21:15:00+03:00",
+    "asset": "out/stories/s15.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: Hafta sonu öncesi hatırlatma, TEKLIF30 ile 1 ay Pro.",
+        "alt_text": "Hediye kutusu ve link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Hediye kutusu ve link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s16",
+    "kind": "story",
+    "day": 6,
+    "date": "2026-10-10",
+    "weekday": "Cumartesi",
+    "time": "10:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-10T10:30:00+03:00",
+    "asset": "out/stories/s16.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Teaser: \"Cam balkon ve giyotin cam yapanlar? Bugün sizin gününüz.\" (Emoji tepki)",
+        "alt_text": "Cam balkon görseli, büyük başlık.",
+        "sticker": "emoji"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Cam balkon görseli, büyük başlık."
+      }
+    }
+  },
+  {
+    "id": "r11",
+    "kind": "reel",
+    "day": 6,
+    "date": "2026-10-10",
+    "weekday": "Cumartesi",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-10T12:30:00+03:00",
+    "asset": "out/reels/r11.mp4",
+    "title": "Cam balkoncu musun? Teklifi yerinde ver",
+    "platforms": {
+      "instagram": {
+        "caption": "Cam balkoncu musun? 🪟\n\nBalkonun ölçüsünü al, uygulamaya gir; fiyat hesaplansın, PDF teklif hazır olsun. Giyotin cam için de aynı akış.\n\nMüşteri \"düşünüp haber vereyim\" demeden teklifin elinde ⚡\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#cambalkon",
+          "#giyotincam",
+          "#katlanircam",
+          "#teklif",
+          "#esnaf",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Cam balkoncu musun? 🪟\n\nBalkonun ölçüsünü al, uygulamaya gir; fiyat hesaplansın, PDF teklif hazır olsun. Giyotin cam için de aynı akış.\n\nMüşteri \"düşünüp haber vereyim\" demeden teklifin elinde ⚡\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #cambalkon #giyotincam #katlanircam",
+        "image_post": {
+          "image": "out/covers/r11.jpg",
+          "caption": "Cam balkoncu musun? 🪟\n\nBalkonun ölçüsünü al, uygulamaya gir; fiyat hesaplansın, PDF teklif hazır olsun. Giyotin cam için de aynı akış.\n\nMüşteri \"düşünüp haber vereyim\" demeden teklifin elinde ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #cambalkon #giyotincam #katlanircam"
+        }
+      },
+      "youtube": {
+        "title": "Cam balkoncu musun? Teklifi yerinde ver 🪟 Anında Teklif #shorts",
+        "description": "Cam balkon ve giyotin cam firmaları için: ölçüyü gir, fiyat hesaplansın, PDF teklif hazır.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #cambalkon #giyotincam #katlanircam"
+      },
+      "linkedin": {
+        "text": "Cam balkon ve giyotin cam satışında keşif görüşmesi genellikle müşterinin evinde yapılıyor. Teklifin aynı görüşmede verilebilmesi, sürecin ofise taşınmasını engelliyor.\n\nAnında Teklif'te ürünler önceden tanımlandığı için, ölçü girildiğinde tutar hesaplanıyor ve PDF teklif hazırlanıyor. Teklif müşteriye yerinde gösterilebiliyor ya da WhatsApp ile gönderilebiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r11.jpg",
+          "text": "Cam balkon ve giyotin cam satışında keşif görüşmesi genellikle müşterinin evinde yapılıyor. Teklifin aynı görüşmede verilebilmesi, sürecin ofise taşınmasını engelliyor.\n\nAnında Teklif'te ürünler önceden tanımlandığı için, ölçü girildiğinde tutar hesaplanıyor ve PDF teklif hazırlanıyor. Teklif müşteriye yerinde gösterilebiliyor ya da WhatsApp ile gönderilebiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        },
+        "note": "Hafta sonu LinkedIn erişimi düşük; isteğe bağlı paylaş ya da bir sonraki iş gününe 08:30'a kaydır."
+      }
+    }
+  },
+  {
+    "id": "s17",
+    "kind": "story",
+    "day": 6,
+    "date": "2026-10-10",
+    "weekday": "Cumartesi",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-10T13:45:00+03:00",
+    "asset": "out/stories/s17.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: Kasa ve tahsilat. Tahsilat girişi ve kasa özeti.",
+        "alt_text": "Kasa ekranı, tahsilat listesi (demo veri).",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Kasa ekranı, tahsilat listesi (demo veri)."
+      }
+    }
+  },
+  {
+    "id": "r12",
+    "kind": "reel",
+    "day": 6,
+    "date": "2026-10-10",
+    "weekday": "Cumartesi",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-10T20:30:00+03:00",
+    "asset": "out/reels/r12.mp4",
+    "title": "Kasada ne var? Tahsilat ve kasa tek yerde",
+    "platforms": {
+      "instagram": {
+        "caption": "Kasada ne var, kimden ne alacağın var? 💰\n\nTahsilatları gir, kasayı takip et. Teklif onaylandıktan sonraki süreç de aynı uygulamada: müşteri, tahsilat, kasa.\n\nDefter, not kâğıdı, hafıza… Hepsine gerek kalmasın ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#kasa",
+          "#tahsilat",
+          "#esnaf",
+          "#kobi",
+          "#perde",
+          "#pergola"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Kasada ne var, kimden ne alacağın var? 💰\n\nTahsilatları gir, kasayı takip et. Teklif onaylandıktan sonraki süreç de aynı uygulamada: müşteri, tahsilat, kasa.\n\nDefter, not kâğıdı, hafıza… Hepsine gerek kalmasın ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #kasa #tahsilat #esnaf",
+        "image_post": {
+          "image": "out/covers/r12.jpg",
+          "caption": "Kasada ne var, kimden ne alacağın var? 💰\n\nTahsilatları gir, kasayı takip et. Teklif onaylandıktan sonraki süreç de aynı uygulamada: müşteri, tahsilat, kasa.\n\nDefter, not kâğıdı, hafıza… Hepsine gerek kalmasın ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #kasa #tahsilat #esnaf"
+        }
+      },
+      "youtube": {
+        "title": "Kasada ne var, kimden ne alacağın var? 💰 Kasa ve tahsilat #shorts",
+        "description": "Anında Teklif'te kasa ve tahsilat takibi: teklif onaylandıktan sonraki süreç de aynı uygulamada.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #kasa #tahsilat #esnaf"
+      },
+      "linkedin": {
+        "text": "Teklif onaylandıktan sonra iş bitmiyor: tahsilat planı, alınan ödemeler ve kasa durumu takip edilmeli.\n\nAnında Teklif'te müşteri, tahsilat ve kasa kayıtları teklifle aynı sistemde tutuluyor. Böylece hangi müşteriden ne kadar tahsilat yapıldığı ve kasadaki güncel durum ayrı bir deftere ya da tabloya ihtiyaç duymadan izlenebiliyor.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r12.jpg",
+          "text": "Teklif onaylandıktan sonra iş bitmiyor: tahsilat planı, alınan ödemeler ve kasa durumu takip edilmeli.\n\nAnında Teklif'te müşteri, tahsilat ve kasa kayıtları teklifle aynı sistemde tutuluyor. Böylece hangi müşteriden ne kadar tahsilat yapıldığı ve kasadaki güncel durum ayrı bir deftere ya da tabloya ihtiyaç duymadan izlenebiliyor.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        },
+        "note": "Hafta sonu LinkedIn erişimi düşük; isteğe bağlı paylaş ya da bir sonraki iş gününe 08:30'a kaydır."
+      }
+    }
+  },
+  {
+    "id": "s18",
+    "kind": "story",
+    "day": 6,
+    "date": "2026-10-10",
+    "weekday": "Cumartesi",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-10T21:15:00+03:00",
+    "asset": "out/stories/s18.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: \"Hafta sonu kur, pazartesi teklif ver.\" TEKLIF30 link.",
+        "alt_text": "Takvim ikonu, kod ve link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Takvim ikonu, kod ve link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s19",
+    "kind": "story",
+    "day": 7,
+    "date": "2026-10-11",
+    "weekday": "Pazar",
+    "time": "10:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-11T10:30:00+03:00",
+    "asset": "out/stories/s19.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Anket: \"Pazar akşamı teklif yazan var mı?\" (Ben 🙋 / Artık yok)",
+        "alt_text": "Gece masa lambası, dizüstü görseli, soru.",
+        "sticker": "anket"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Gece masa lambası, dizüstü görseli, soru."
+      }
+    }
+  },
+  {
+    "id": "r13",
+    "kind": "reel",
+    "day": 7,
+    "date": "2026-10-11",
+    "weekday": "Pazar",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-11T12:30:00+03:00",
+    "asset": "out/reels/r13.mp4",
+    "title": "Akşam ofiste teklif yazmaya son",
+    "platforms": {
+      "instagram": {
+        "caption": "Gündüz sahada, akşam ofiste teklif mi yazıyorsun? 🌙\n\nÖlçüyü aldığın yerde gir, fiyat hesaplansın, PDF teklif orada hazır olsun. Akşamın sana kalsın.\n\nİş günü sahada bitsin ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#zipperde",
+          "#esnaf",
+          "#teklif"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Gündüz sahada, akşam ofiste teklif mi yazıyorsun? 🌙\n\nÖlçüyü aldığın yerde gir, fiyat hesaplansın, PDF teklif orada hazır olsun. Akşamın sana kalsın.\n\nİş günü sahada bitsin ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #pergola #cambalkon",
+        "image_post": {
+          "image": "out/covers/r13.jpg",
+          "caption": "Gündüz sahada, akşam ofiste teklif mi yazıyorsun? 🌙\n\nÖlçüyü aldığın yerde gir, fiyat hesaplansın, PDF teklif orada hazır olsun. Akşamın sana kalsın.\n\nİş günü sahada bitsin ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #pergola #cambalkon"
+        }
+      },
+      "youtube": {
+        "title": "Akşam ofiste teklif yazmaya son 🌙 Teklifi sahada ver #shorts",
+        "description": "Ölçüyü aldığın yerde gir; fiyat ve PDF teklif sahada hazır olsun. Perde, pergola, zip perde, cam balkon ve giyotin cam firmaları için.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #pergola #cambalkon"
+      },
+      "linkedin": {
+        "text": "Sahada ölçü alan ekiplerin teklifleri çoğu zaman gün sonunda, ofiste hazırlanıyor. Bu hem mesaiyi uzatıyor hem de teklifin müşteriye ulaşmasını bir sonraki güne bırakabiliyor.\n\nAnında Teklif ile teklif, ölçünün alındığı yerde hazırlanabiliyor: ölçü giriliyor, tutar hesaplanıyor, PDF teklif oluşturuluyor.\n\nİşin sahada tamamlanması, ekibin zamanını da müşterinin bekleme süresini de kısaltıyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r13.jpg",
+          "text": "Sahada ölçü alan ekiplerin teklifleri çoğu zaman gün sonunda, ofiste hazırlanıyor. Bu hem mesaiyi uzatıyor hem de teklifin müşteriye ulaşmasını bir sonraki güne bırakabiliyor.\n\nAnında Teklif ile teklif, ölçünün alındığı yerde hazırlanabiliyor: ölçü giriliyor, tutar hesaplanıyor, PDF teklif oluşturuluyor.\n\nİşin sahada tamamlanması, ekibin zamanını da müşterinin bekleme süresini de kısaltıyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        },
+        "note": "Hafta sonu LinkedIn erişimi düşük; isteğe bağlı paylaş ya da bir sonraki iş gününe 08:30'a kaydır."
+      }
+    }
+  },
+  {
+    "id": "s20",
+    "kind": "story",
+    "day": 7,
+    "date": "2026-10-11",
+    "weekday": "Pazar",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-11T13:45:00+03:00",
+    "asset": "out/stories/s20.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: PDF teklifi WhatsApp ile tek dokunuşla gönder.",
+        "alt_text": "Paylaş butonuna dokunuluyor, WhatsApp açılıyor, PDF ekli.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Paylaş butonuna dokunuluyor, WhatsApp açılıyor, PDF ekli."
+      }
+    }
+  },
+  {
+    "id": "r14",
+    "kind": "reel",
+    "day": 7,
+    "date": "2026-10-11",
+    "weekday": "Pazar",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-11T20:30:00+03:00",
+    "asset": "out/reels/r14.mp4",
+    "title": "PDF teklifi WhatsApp'tan tek dokunuşla gönder",
+    "platforms": {
+      "instagram": {
+        "caption": "Teklif hazır, peki nasıl gidecek? 📲\n\nPDF teklifi WhatsApp'tan tek dokunuşla müşterine gönder. Dosya indir, yeniden yükle, e-posta ara… Hiçbiri yok.\n\nMüşterin teklifi en çok baktığı yerden alsın ⚡\n\n👇 Hediyeyi istiyorsan yorumlara TEKLİF yaz, 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#whatsapp",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#esnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Teklif hazır, peki nasıl gidecek? 📲\n\nPDF teklifi WhatsApp'tan tek dokunuşla müşterine gönder. Dosya indir, yeniden yükle, e-posta ara… Hiçbiri yok.\n\nMüşterin teklifi en çok baktığı yerden alsın ⚡\n\n👇 Hediyeyi istiyorsan yorumlara TEKLİF yaz, 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #whatsapp #teklif #perde",
+        "image_post": {
+          "image": "out/covers/r14.jpg",
+          "caption": "Teklif hazır, peki nasıl gidecek? 📲\n\nPDF teklifi WhatsApp'tan tek dokunuşla müşterine gönder. Dosya indir, yeniden yükle, e-posta ara… Hiçbiri yok.\n\nMüşterin teklifi en çok baktığı yerden alsın ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #whatsapp #teklif #perde"
+        }
+      },
+      "youtube": {
+        "title": "PDF teklifi WhatsApp'tan tek dokunuşla gönder 📲 #shorts",
+        "description": "Anında Teklif'te hazırlanan PDF teklif, WhatsApp üzerinden doğrudan müşteriye gönderilir.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #whatsapp #teklif #perde"
+      },
+      "linkedin": {
+        "text": "Sektörde müşteriyle iletişimin büyük kısmı WhatsApp üzerinden yürüyor. Teklifin de aynı kanaldan, düzgün bir PDF olarak gitmesi süreci sadeleştiriyor.\n\nAnında Teklif'te hazırlanan PDF teklif, uygulama içinden WhatsApp ile doğrudan gönderilebiliyor. Dosyayı indirip yeniden yüklemeye gerek kalmıyor.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r14.jpg",
+          "text": "Sektörde müşteriyle iletişimin büyük kısmı WhatsApp üzerinden yürüyor. Teklifin de aynı kanaldan, düzgün bir PDF olarak gitmesi süreci sadeleştiriyor.\n\nAnında Teklif'te hazırlanan PDF teklif, uygulama içinden WhatsApp ile doğrudan gönderilebiliyor. Dosyayı indirip yeniden yüklemeye gerek kalmıyor.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        },
+        "note": "Hafta sonu LinkedIn erişimi düşük; isteğe bağlı paylaş ya da bir sonraki iş gününe 08:30'a kaydır."
+      }
+    }
+  },
+  {
+    "id": "s21",
+    "kind": "story",
+    "day": 7,
+    "date": "2026-10-11",
+    "weekday": "Pazar",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-11T21:15:00+03:00",
+    "asset": "out/stories/s21.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: \"Yeni haftaya hazır başla.\" 1 ay Pro, TEKLIF30.",
+        "alt_text": "Hediye kodu ve link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Hediye kodu ve link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s22",
+    "kind": "story",
+    "day": 8,
+    "date": "2026-10-12",
+    "weekday": "Pazartesi",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-12T09:15:00+03:00",
+    "asset": "out/stories/s22.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Soru: \"Ölçü aldıktan sonra teklif müşteriye kaç saatte gidiyor?\" (kaydırıcı)",
+        "alt_text": "Metre ve saat ikonu, kaydırıcı çıkartması.",
+        "sticker": "kaydırıcı"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Metre ve saat ikonu, kaydırıcı çıkartması."
+      }
+    }
+  },
+  {
+    "id": "r15",
+    "kind": "reel",
+    "day": 8,
+    "date": "2026-10-12",
+    "weekday": "Pazartesi",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-12T12:30:00+03:00",
+    "asset": "out/reels/r15.mp4",
+    "title": "Sahada ölçü al, teklifi orada ver",
+    "platforms": {
+      "instagram": {
+        "caption": "Ölçü sahada, teklif de sahada 📏\n\nMetreyi indir, telefonu al: ölçüyü gir, fiyat hesaplansın, PDF teklif hazır. Müşteri teklifini sen daha oradayken görsün.\n\n\"Akşam yollarım\" demeye son ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#giyotincam",
+          "#teklif",
+          "#esnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Ölçü sahada, teklif de sahada 📏\n\nMetreyi indir, telefonu al: ölçüyü gir, fiyat hesaplansın, PDF teklif hazır. Müşteri teklifini sen daha oradayken görsün.\n\n\"Akşam yollarım\" demeye son ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #pergola #cambalkon",
+        "image_post": {
+          "image": "out/covers/r15.jpg",
+          "caption": "Ölçü sahada, teklif de sahada 📏\n\nMetreyi indir, telefonu al: ölçüyü gir, fiyat hesaplansın, PDF teklif hazır. Müşteri teklifini sen daha oradayken görsün.\n\n\"Akşam yollarım\" demeye son ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #pergola #cambalkon"
+        }
+      },
+      "youtube": {
+        "title": "Sahada ölçü al, teklifi orada ver 📏 Anında Teklif #shorts",
+        "description": "Telefonda ölçüyü gir, fiyat otomatik hesaplansın, PDF teklif sahada hazır olsun.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #pergola #cambalkon"
+      },
+      "linkedin": {
+        "text": "Keşif ve ölçü görüşmesi, müşterinin ilgisinin en yüksek olduğu an. Teklifin bu görüşmede sunulabilmesi, karar sürecini doğrudan etkiliyor.\n\nAnında Teklif mobilde çalışıyor: ölçü sahada giriliyor, tutar katalogdaki fiyatlarla hesaplanıyor ve PDF teklif hazırlanıyor. Müşteri teklifi görüşme bitmeden görebiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r15.jpg",
+          "text": "Keşif ve ölçü görüşmesi, müşterinin ilgisinin en yüksek olduğu an. Teklifin bu görüşmede sunulabilmesi, karar sürecini doğrudan etkiliyor.\n\nAnında Teklif mobilde çalışıyor: ölçü sahada giriliyor, tutar katalogdaki fiyatlarla hesaplanıyor ve PDF teklif hazırlanıyor. Müşteri teklifi görüşme bitmeden görebiliyor.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s23",
+    "kind": "story",
+    "day": 8,
+    "date": "2026-10-12",
+    "weekday": "Pazartesi",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-12T13:45:00+03:00",
+    "asset": "out/stories/s23.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özellik: teklif kalemleri ve otomatik toplam.",
+        "alt_text": "Teklif ekranına kalemler ekleniyor, toplam güncelleniyor.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Teklif ekranına kalemler ekleniyor, toplam güncelleniyor."
+      }
+    }
+  },
+  {
+    "id": "r16",
+    "kind": "reel",
+    "day": 8,
+    "date": "2026-10-12",
+    "weekday": "Pazartesi",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-12T20:30:00+03:00",
+    "asset": "out/reels/r16.mp4",
+    "title": "Teklif kalemleri ve toplam: hepsi otomatik",
+    "platforms": {
+      "instagram": {
+        "caption": "Kalem kalem ekle, toplam kendiliğinden ➕\n\nPerde, mekanizma, montaj, ek hizmet… Teklife istediğin kadar kalem ekle; ara toplam ve genel toplam otomatik hesaplansın.\n\nHesap hatası olmasın, teklif net olsun ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#zipperde",
+          "#esnaf",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Kalem kalem ekle, toplam kendiliğinden ➕\n\nPerde, mekanizma, montaj, ek hizmet… Teklife istediğin kadar kalem ekle; ara toplam ve genel toplam otomatik hesaplansın.\n\nHesap hatası olmasın, teklif net olsun ⚡\n\n👇 Yorumlara sadece TEKLİF yaz; 1 ay Pro hediyen otomatik yanıtla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #teklif #perde #pergola",
+        "image_post": {
+          "image": "out/covers/r16.jpg",
+          "caption": "Kalem kalem ekle, toplam kendiliğinden ➕\n\nPerde, mekanizma, montaj, ek hizmet… Teklife istediğin kadar kalem ekle; ara toplam ve genel toplam otomatik hesaplansın.\n\nHesap hatası olmasın, teklif net olsun ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #teklif #perde #pergola"
+        }
+      },
+      "youtube": {
+        "title": "Kalem kalem ekle, toplam kendiliğinden ➕ Teklif kalemleri #shorts",
+        "description": "Anında Teklif'te teklif kalemleri: ürün, montaj ve ek hizmetleri ekle; toplam otomatik hesaplansın.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #teklif #perde #pergola"
+      },
+      "linkedin": {
+        "text": "Çok kalemli tekliflerde en sık yapılan hata, toplam hesaplamasında ortaya çıkıyor.\n\nAnında Teklif'te teklife ürün, montaj ve ek hizmet kalemleri ekleniyor; her kalemin tutarı ve teklifin toplamı otomatik hesaplanıyor. Müşteriye giden PDF'te kalemler ve toplam açık şekilde yer alıyor.\n\nNet bir teklif, daha az soru ve daha hızlı karar demek.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r16.jpg",
+          "text": "Çok kalemli tekliflerde en sık yapılan hata, toplam hesaplamasında ortaya çıkıyor.\n\nAnında Teklif'te teklife ürün, montaj ve ek hizmet kalemleri ekleniyor; her kalemin tutarı ve teklifin toplamı otomatik hesaplanıyor. Müşteriye giden PDF'te kalemler ve toplam açık şekilde yer alıyor.\n\nNet bir teklif, daha az soru ve daha hızlı karar demek.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s24",
+    "kind": "story",
+    "day": 8,
+    "date": "2026-10-12",
+    "weekday": "Pazartesi",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-12T21:15:00+03:00",
+    "asset": "out/stories/s24.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: \"Bir sonraki ölçüde dene.\" TEKLIF30 link.",
+        "alt_text": "Kod kartı, link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Kod kartı, link çıkartması."
+      }
+    }
+  },
+  {
+    "id": "s25",
+    "kind": "story",
+    "day": 9,
+    "date": "2026-10-13",
+    "weekday": "Salı",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-13T09:15:00+03:00",
+    "asset": "out/stories/s25.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Teaser: \"Bugün hediye günü 🎁 Reels'e TEKLİF yazan kodunu alıyor.\"",
+        "alt_text": "Büyük hediye kutusu, konfeti.",
+        "sticker": "geri sayım (yalnızca saat; sahte stok sayacı yok)"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Büyük hediye kutusu, konfeti."
+      }
+    }
+  },
+  {
+    "id": "r17",
+    "kind": "reel",
+    "day": 9,
+    "date": "2026-10-13",
+    "weekday": "Salı",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-13T12:30:00+03:00",
+    "asset": "out/reels/r17.mp4",
+    "title": "Yorumlara TEKLİF yaz, 1 ay Pro hediye",
+    "platforms": {
+      "instagram": {
+        "caption": "Bu videonun tek bir isteği var: yorumlara TEKLİF yaz 💬\n\nYazdığın an otomatik cevapla hediyen gelsin: Anında Teklif Pro, 1 ay ücretsiz. Ölçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan gitsin; hepsini Pro ile dene.\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#hediye",
+          "#kampanya",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#teklif",
+          "#esnaf"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Bu videonun tek bir isteği var: yorumlara TEKLİF yaz 💬\n\nYazdığın an otomatik cevapla hediyen gelsin: Anında Teklif Pro, 1 ay ücretsiz. Ölçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan gitsin; hepsini Pro ile dene.\n\n👇 Bir kelime yeter: yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #hediye #kampanya #perde",
+        "image_post": {
+          "image": "out/covers/r17.jpg",
+          "caption": "Bu videonun tek bir isteği var: yorumlara TEKLİF yaz 💬\n\nYazdığın an otomatik cevapla hediyen gelsin: Anında Teklif Pro, 1 ay ücretsiz. Ölçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan gitsin; hepsini Pro ile dene.\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #hediye #kampanya #perde"
+        }
+      },
+      "youtube": {
+        "title": "Yorumlara TEKLİF yaz, 1 ay Pro hediye 🎁 Anında Teklif #shorts",
+        "description": "Kampanya: yorumlara TEKLİF yaz, Anında Teklif Pro 1 ay ücretsiz. Kod: TEKLIF30, ilk 1000 üyeye.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #hediye #kampanya #perde"
+      },
+      "linkedin": {
+        "text": "Anında Teklif'i denemek isteyen perde, pergola, zip perde, cam balkon ve giyotin cam firmalarına 1 aylık Pro erişim hediye ediyoruz.\n\nKampanya ilk 1000 üyeyle sınırlı. TEKLIF30 koduyla üye olduğunuzda kod hesabınıza otomatik tanımlanıyor.\n\nBu gönderiye \"TEKLİF\" yazmanız ya da doğrudan aşağıdaki bağlantıyı kullanmanız yeterli.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r17.jpg",
+          "text": "Anında Teklif'i denemek isteyen perde, pergola, zip perde, cam balkon ve giyotin cam firmalarına 1 aylık Pro erişim hediye ediyoruz.\n\nKampanya ilk 1000 üyeyle sınırlı. TEKLIF30 koduyla üye olduğunuzda kod hesabınıza otomatik tanımlanıyor.\n\nBu gönderiye \"TEKLİF\" yazmanız ya da doğrudan aşağıdaki bağlantıyı kullanmanız yeterli.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s26",
+    "kind": "story",
+    "day": 9,
+    "date": "2026-10-13",
+    "weekday": "Salı",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-13T13:45:00+03:00",
+    "asset": "out/stories/s26.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Nasıl alınır: 1) Yorumlara TEKLİF yaz 2) Linke git 3) Üye ol, kod otomatik.",
+        "alt_text": "Üç numaralı adım kartı.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Üç numaralı adım kartı."
+      }
+    }
+  },
+  {
+    "id": "r18",
+    "kind": "reel",
+    "day": 9,
+    "date": "2026-10-13",
+    "weekday": "Salı",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-13T20:30:00+03:00",
+    "asset": "out/reels/r18.mp4",
+    "title": "Hediye nasıl alınır? 3 adım",
+    "platforms": {
+      "instagram": {
+        "caption": "1 ay Pro hediyeni almak 3 adım 🎁\n\n1️⃣ Yorumlara TEKLİF yaz\n2️⃣ Otomatik cevaptaki linke git (ya da profildeki linke): anindateklif.co/hediye\n3️⃣ Üye ol; TEKLIF30 kodu hesabına otomatik tanımlansın\n\nHepsi bu. Sonra ilk teklifini hazırla ⚡\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#hediye",
+          "#kampanya",
+          "#teklif",
+          "#perde",
+          "#pergola",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "1 ay Pro hediyeni almak 3 adım 🎁\n\n1️⃣ Yorumlara TEKLİF yaz\n2️⃣ Otomatik cevaptaki linke git (ya da profildeki linke): anindateklif.co/hediye\n3️⃣ Üye ol; TEKLIF30 kodu hesabına otomatik tanımlansın\n\nHepsi bu. Sonra ilk teklifini hazırla ⚡\n\n👇 Denemek istersen yorumlara TEKLİF yaz; 1 ay Pro kodun otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #hediye #kampanya #teklif",
+        "image_post": {
+          "image": "out/covers/r18.jpg",
+          "caption": "1 ay Pro hediyeni almak 3 adım 🎁\n\n1️⃣ Yorumlara TEKLİF yaz\n2️⃣ Otomatik cevaptaki linke git (ya da profildeki linke): anindateklif.co/hediye\n3️⃣ Üye ol; TEKLIF30 kodu hesabına otomatik tanımlansın\n\nHepsi bu. Sonra ilk teklifini hazırla ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #hediye #kampanya #teklif"
+        }
+      },
+      "youtube": {
+        "title": "Hediye nasıl alınır? 3 adımda 1 ay Pro 🎁 #shorts",
+        "description": "1) Yorumlara TEKLİF yaz 2) anindateklif.co/hediye adresine git 3) Üye ol; TEKLIF30 kodu otomatik tanımlanır.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #hediye #kampanya #teklif"
+      },
+      "linkedin": {
+        "text": "1 aylık Pro erişim nasıl alınır?\n\n1. https://anindateklif.co/hediye adresine gidin.\n2. Üye olun; TEKLIF30 kodu hesabınıza otomatik tanımlanır.\n3. Ürünlerinizi katalogda tanımlayıp ilk teklifinizi hazırlayın.\n\nKampanya ilk 1000 üye için geçerli. Bu gönderiye \"TEKLİF\" yazarsanız bağlantıyı yorum yanıtı olarak da iletiyoruz.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r18.jpg",
+          "text": "1 aylık Pro erişim nasıl alınır?\n\n1. https://anindateklif.co/hediye adresine gidin.\n2. Üye olun; TEKLIF30 kodu hesabınıza otomatik tanımlanır.\n3. Ürünlerinizi katalogda tanımlayıp ilk teklifinizi hazırlayın.\n\nKampanya ilk 1000 üye için geçerli. Bu gönderiye \"TEKLİF\" yazarsanız bağlantıyı yorum yanıtı olarak da iletiyoruz.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s27",
+    "kind": "story",
+    "day": 9,
+    "date": "2026-10-13",
+    "weekday": "Salı",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-13T21:15:00+03:00",
+    "asset": "out/stories/s27.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "CTA: link çıkartması, anindateklif.co/hediye. İlk 1000 üyeye.",
+        "alt_text": "Link çıkartması ve kod.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Link çıkartması ve kod."
+      }
+    }
+  },
+  {
+    "id": "s28",
+    "kind": "story",
+    "day": 10,
+    "date": "2026-10-14",
+    "weekday": "Çarşamba",
+    "time": "09:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-14T09:15:00+03:00",
+    "asset": "out/stories/s28.mp4",
+    "slot": "sabah teaser",
+    "platforms": {
+      "instagram": {
+        "note": "Teaser: \"Serinin son günü. Hangi özelliği en çok sevdin?\" (test)",
+        "alt_text": "Özellik ikonları ızgara hâlinde.",
+        "sticker": "test"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Özellik ikonları ızgara hâlinde."
+      }
+    }
+  },
+  {
+    "id": "r19",
+    "kind": "reel",
+    "day": 10,
+    "date": "2026-10-14",
+    "weekday": "Çarşamba",
+    "time": "12:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-14T12:30:00+03:00",
+    "asset": "out/reels/r19.mp4",
+    "title": "Son hatırlatma: 1 ay Pro hediye",
+    "platforms": {
+      "instagram": {
+        "caption": "Bu seriyi izlediysen, bu son hatırlatma 🔔\n\nAnında Teklif Pro 1 ay ücretsiz; hediye ilk 1000 üyeye. Henüz almadıysan şimdi tam zamanı.\n\nÖlçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan müşterine gitsin. Gerisini kendin dene ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#hediye",
+          "#kampanya",
+          "#perde",
+          "#pergola",
+          "#cambalkon",
+          "#zipperde",
+          "#teklif"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Bu seriyi izlediysen, bu son hatırlatma 🔔\n\nAnında Teklif Pro 1 ay ücretsiz; hediye ilk 1000 üyeye. Henüz almadıysan şimdi tam zamanı.\n\nÖlçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan müşterine gitsin. Gerisini kendin dene ⚡\n\n👇 TEKLİF yaz, gerisini bize bırak: 1 ay Pro hediyen yorumuna otomatik cevap olarak gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #hediye #kampanya #perde",
+        "image_post": {
+          "image": "out/covers/r19.jpg",
+          "caption": "Bu seriyi izlediysen, bu son hatırlatma 🔔\n\nAnında Teklif Pro 1 ay ücretsiz; hediye ilk 1000 üyeye. Henüz almadıysan şimdi tam zamanı.\n\nÖlçü gir, fiyat hesaplansın, PDF teklif WhatsApp'tan müşterine gitsin. Gerisini kendin dene ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #hediye #kampanya #perde"
+        }
+      },
+      "youtube": {
+        "title": "Son hatırlatma: Anında Teklif Pro 1 ay ücretsiz 🔔 #shorts",
+        "description": "Hatırlatma: TEKLIF30 koduyla Anında Teklif Pro 1 ay ücretsiz, ilk 1000 üyeye.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #hediye #kampanya #perde"
+      },
+      "linkedin": {
+        "text": "Son iki haftadır Anında Teklif'in özelliklerini kısa videolarla paylaşıyoruz: katalog, ölçüye göre otomatik fiyat, PDF teklif şablonları, WhatsApp ile gönderim, AI asistan, panel, kasa ve tahsilat.\n\nDenemek isteyen firmalar için TEKLIF30 kodu ile 1 aylık Pro erişim hâlâ geçerli; kampanya ilk 1000 üye ile sınırlı.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "ana",
+        "image_post": {
+          "image": "out/covers/r19.jpg",
+          "text": "Son iki haftadır Anında Teklif'in özelliklerini kısa videolarla paylaşıyoruz: katalog, ölçüye göre otomatik fiyat, PDF teklif şablonları, WhatsApp ile gönderim, AI asistan, panel, kasa ve tahsilat.\n\nDenemek isteyen firmalar için TEKLIF30 kodu ile 1 aylık Pro erişim hâlâ geçerli; kampanya ilk 1000 üye ile sınırlı.\n\nDenemek isterseniz yorumlara \"TEKLİF\" yazın; 1 aylık Pro erişim bağlantısını yanıt olarak iletelim. Doğrudan bağlantı: https://anindateklif.co/hediye (TEKLIF30, ilk 1000 üye)\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s29",
+    "kind": "story",
+    "day": 10,
+    "date": "2026-10-14",
+    "weekday": "Çarşamba",
+    "time": "13:45",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-14T13:45:00+03:00",
+    "asset": "out/stories/s29.mp4",
+    "slot": "öğle özellik",
+    "platforms": {
+      "instagram": {
+        "note": "Özet: katalog, ölçü→fiyat, PDF, WhatsApp, AI, panel, kasa. Hepsi tek uygulamada.",
+        "alt_text": "Özellik montajı, hızlı geçişler.",
+        "sticker": null
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun.",
+        "alt_text": "Özellik montajı, hızlı geçişler."
+      }
+    }
+  },
+  {
+    "id": "r20",
+    "kind": "reel",
+    "day": 10,
+    "date": "2026-10-14",
+    "weekday": "Çarşamba",
+    "time": "20:30",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-14T20:30:00+03:00",
+    "asset": "out/reels/r20.mp4",
+    "title": "Anında Teklif: hepsi tek uygulamada",
+    "platforms": {
+      "instagram": {
+        "caption": "Teklif, müşteri, kasa, tahsilat, servis, takvim. Hepsi tek uygulamada 🧰\n\n📚 Ürünü bir kez tanımla\n📐 Ölçüyü gir, fiyat otomatik\n📄 4 PDF şablonu\n📲 WhatsApp'tan gönder\n🤖 AI asistan\n📈 Panel\n\nPerde, pergola, zip perde, cam balkon ve giyotin cam firmaları için: Anında Teklif ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 Profildeki linkten: anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)",
+        "hashtags": [
+          "#anindateklif",
+          "#perde",
+          "#pergola",
+          "#zipperde",
+          "#cambalkon",
+          "#giyotincam",
+          "#teklif",
+          "#kobi"
+        ],
+        "first_comment": "🎁 Hediye kodu: TEKLIF30 (1 ay Pro, ilk 1000 üyeye). Profildeki linkten ya da anindateklif.co/hediye adresinden üye ol, kod otomatik tanımlansın. Kodu yorum cevabı olarak da almak için yorumlara TEKLİF yaz 👇"
+      },
+      "facebook": {
+        "caption": "Teklif, müşteri, kasa, tahsilat, servis, takvim. Hepsi tek uygulamada 🧰\n\n📚 Ürünü bir kez tanımla\n📐 Ölçüyü gir, fiyat otomatik\n📄 4 PDF şablonu\n📲 WhatsApp'tan gönder\n🤖 AI asistan\n📈 Panel\n\nPerde, pergola, zip perde, cam balkon ve giyotin cam firmaları için: Anında Teklif ⚡\n\n👇 Yorumlara TEKLİF yazana 1 ay Pro hediye; cevap otomatik geliyor 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\nBu işi yapan bir arkadaşına göndermeyi unutma 🙌\n\n#anindateklif #perde #pergola #zipperde",
+        "image_post": {
+          "image": "out/covers/r20.jpg",
+          "caption": "Teklif, müşteri, kasa, tahsilat, servis, takvim. Hepsi tek uygulamada 🧰\n\n📚 Ürünü bir kez tanımla\n📐 Ölçüyü gir, fiyat otomatik\n📄 4 PDF şablonu\n📲 WhatsApp'tan gönder\n🤖 AI asistan\n📈 Panel\n\nPerde, pergola, zip perde, cam balkon ve giyotin cam firmaları için: Anında Teklif ⚡\n\n👇 Yorumlara TEKLİF yaz, 1 ay Pro hediyen otomatik cevapla gelsin 🎁\n\n🏷️ Kod: TEKLIF30 · 1 ay Pro ücretsiz · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n🎬 Videosu sayfamızın Reels bölümünde.\n\n#anindateklif #perde #pergola #zipperde"
+        }
+      },
+      "youtube": {
+        "title": "Teklif, müşteri, kasa, servis: hepsi tek uygulamada 🧰 #shorts",
+        "description": "Anında Teklif özeti: katalog, ölçüye göre otomatik fiyat, 4 PDF şablonu, WhatsApp ile gönderim, AI asistan, panel, müşteri, kasa, tahsilat, servis ve takvim.\n\n💬 Yorumlara TEKLİF yaz, 1 ay Pro hediye bağlantısı cevap olarak gelsin.\n🎁 1 ay Pro ücretsiz · kod: TEKLIF30 · ilk 1000 üyeye\n👉 https://anindateklif.co/hediye (üye olunca kod otomatik tanımlanır)\n\n#shorts #anindateklif #perde #pergola #zipperde"
+      },
+      "linkedin": {
+        "text": "Anında Teklif'in kapsamını tek videoda özetledik:\n\n- Katalog: ürün ve fiyat bir kez tanımlanır\n- Teklif: ölçü girilir, tutar otomatik hesaplanır (zip perde için EN × BOY tablosu dahil)\n- PDF: Klasik, Modern, Minimal ve Kurumsal şablonlar\n- WhatsApp ile gönderim ve AI destekli teklif metni\n- Panel: aylık hacim, nakit durumu, teklif durumları\n- Müşteri, kasa, tahsilat, servis ve takvim\n\nPerde, pergola, zip perde, cam balkon ve giyotin cam firmaları için tasarlandı.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon",
+        "priority": "yedek",
+        "image_post": {
+          "image": "out/covers/r20.jpg",
+          "text": "Anında Teklif'in kapsamını tek videoda özetledik:\n\n- Katalog: ürün ve fiyat bir kez tanımlanır\n- Teklif: ölçü girilir, tutar otomatik hesaplanır (zip perde için EN × BOY tablosu dahil)\n- PDF: Klasik, Modern, Minimal ve Kurumsal şablonlar\n- WhatsApp ile gönderim ve AI destekli teklif metni\n- Panel: aylık hacim, nakit durumu, teklif durumları\n- Müşteri, kasa, tahsilat, servis ve takvim\n\nPerde, pergola, zip perde, cam balkon ve giyotin cam firmaları için tasarlandı.\n\n1 aylık Pro erişim için yorum olarak \"TEKLİF\" yazabilir ya da https://anindateklif.co/hediye adresini kullanabilirsiniz. TEKLIF30 kodu üyelikte otomatik tanımlanır; ilk 1000 üye için geçerli.\n\n#KOBİ #Dijitalleşme #Satış #Perde #Pergola #CamBalkon"
+        }
+      }
+    }
+  },
+  {
+    "id": "s30",
+    "kind": "story",
+    "day": 10,
+    "date": "2026-10-14",
+    "weekday": "Çarşamba",
+    "time": "21:15",
+    "tz": "Europe/Istanbul",
+    "datetime": "2026-10-14T21:15:00+03:00",
+    "asset": "out/stories/s30.mp4",
+    "slot": "akşam CTA",
+    "platforms": {
+      "instagram": {
+        "note": "Kapanış CTA: \"Teşekkürler! Hediye hâlâ geçerli: TEKLIF30, ilk 1000 üyeye.\" Link.",
+        "alt_text": "Logo, kod ve link çıkartması.",
+        "sticker": "link",
+        "link_sticker": "https://anindateklif.co/hediye",
+        "link_sticker_text": "1 ay Pro hediye"
+      },
+      "facebook": {
+        "note": "Instagram hikâyesiyle aynı video; Meta Business Suite'te \"Facebook'ta da paylaş\" seçili olsun. Bağlantı çıkartması: https://anindateklif.co/hediye",
+        "alt_text": "Logo, kod ve link çıkartması."
+      }
+    }
+  }
+]

@@ -2161,10 +2161,21 @@ async def accept_staff_invite(token: str, payload: StaffAcceptRequest, request: 
 
 @api_router.get("/company/{company_id}/members", response_model=List[StaffMemberOut])
 async def list_staff_members(company_id: str, user=Depends(get_current_user)):
-    if user.get("is_staff"):
+    # Yönetici rolündeki personel de panelde ekibin teklif özetini görebilsin
+    # diye listeyi salt okunur olarak alabilir; davet/çıkarma yine sadece
+    # firma sahibinde. Düz personel ("staff") ekibi göremez.
+    is_manager_staff = bool(user.get("is_staff")) and user.get("staff_role") == "admin"
+    if user.get("is_staff") and not is_manager_staff:
         raise HTTPException(status_code=403, detail="Sadece firma sahibi ekibi görebilir")
     await _own_company(user, company_id)
     out: List[StaffMemberOut] = []
+    if is_manager_staff:
+        # user sözlüğü personel için firma sahibine çözümlenmiş durumda
+        # (bkz. get_current_user) -- sahibi de listede görünsün.
+        out.append(StaffMemberOut(
+            type="active", id=user["user_id"], email=user.get("email", ""), role="owner",
+            name=user.get("name", ""), createdAt=user.get("createdAt", ""),
+        ))
     active = await db.users.find(
         {"staff_of_company_id": company_id, "staff_owner_user_id": user["user_id"]}, {"_id": 0}
     ).to_list(500)
@@ -2173,6 +2184,8 @@ async def list_staff_members(company_id: str, user=Depends(get_current_user)):
             type="active", id=u["user_id"], email=u["email"], role=u.get("staff_role", "staff"),
             name=u.get("name", ""), createdAt=u.get("createdAt", ""),
         ))
+    if is_manager_staff:
+        return out
     pending = await db.company_invites.find(
         {"companyId": company_id, "ownerUserId": user["user_id"], "status": "pending"}, {"_id": 0}
     ).to_list(500)

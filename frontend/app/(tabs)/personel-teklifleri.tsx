@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
@@ -40,6 +41,11 @@ export default function PersonelTekliflerScreen() {
   const { t, lang } = useLanguage();
   const { activeCompany, quotes } = useApp();
   const { user } = useAuth();
+  // Panel'deki ekip özetinden bir kişiye tıklanınca o kişi seçili açılır.
+  const params = useLocalSearchParams<{ email?: string }>();
+  const paramEmail = typeof params.email === 'string' ? params.email.toLowerCase() : '';
+  // Firma sahibi ve Yönetici rolündeki personel görebilir.
+  const restricted = !!user?.is_staff && user?.staff_role !== 'admin';
 
   const [members, setMembers] = useState<StaffMemberT[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +54,7 @@ export default function PersonelTekliflerScreen() {
 
   useEffect(() => {
     let alive = true;
-    if (!activeCompany) { setLoading(false); return; }
+    if (!activeCompany || restricted) { setLoading(false); return; }
     setLoading(true);
     setLoadError(false);
     api.listStaff(activeCompany.id)
@@ -56,34 +62,42 @@ export default function PersonelTekliflerScreen() {
       .catch(() => { if (alive) setLoadError(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [activeCompany]);
+  }, [activeCompany, restricted]);
 
   const people: PersonOption[] = useMemo(() => {
     const list: PersonOption[] = [];
     if (user?.email) {
-      list.push({ email: user.email.toLowerCase(), label: t('personelTeklif.s010'), isOwner: true });
+      list.push({ email: user.email.toLowerCase(), label: t('personelTeklif.s010'), isOwner: !user.is_staff });
     }
     members.forEach((m) => {
       const email = (m.email || '').toLowerCase();
       if (!email || list.some((p) => p.email === email)) return;
-      list.push({ email, label: m.name || m.email, isOwner: false });
+      list.push({ email, label: m.name || m.email, isOwner: m.role === 'owner' });
     });
     return list;
   }, [members, user, t]);
 
   useEffect(() => {
+    if (paramEmail && people.some((p) => p.email === paramEmail)) { setSelectedEmail(paramEmail); return; }
     if (people.length === 0) { setSelectedEmail(null); return; }
     if (!selectedEmail || !people.some((p) => p.email === selectedEmail)) {
       setSelectedEmail(people[0].email);
     }
-  }, [people, selectedEmail]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [people, paramEmail]);
 
   const personQuotes = useMemo(() => {
     if (!selectedEmail) return [];
+    // hazirlayanEmail'i boş eski teklifler firma sahibine sayılır (Panel'deki
+    // ekip özetiyle aynı kural).
+    const ownerEmail = people.find((p) => p.isOwner)?.email || '';
     return quotes
-      .filter((q) => (q.hazirlayanEmail || '').toLowerCase() === selectedEmail)
+      .filter((q) => {
+        const e = (q.hazirlayanEmail || '').toLowerCase();
+        return e ? e === selectedEmail : selectedEmail === ownerEmail;
+      })
       .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  }, [quotes, selectedEmail]);
+  }, [quotes, selectedEmail, people]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -96,7 +110,7 @@ export default function PersonelTekliflerScreen() {
   // Personel/İdari yardımcılar bu sayfayı doğrudan URL ile de açmaya
   // çalışabilir -- sol menüden zaten sadece firma sahibine gösteriliyor
   // (navItems.ts), ama personel.tsx'teki gibi burada da ikinci bir engel var.
-  if (user?.is_staff) {
+  if (restricted) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
         <TopHeader title={t('personelTeklif.s001')} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated as RNAnimated, Platform, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Animated as RNAnimated, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -41,7 +41,7 @@ import {
   useScrollScene,
   useViewportProgress,
 } from '@/src/components/motion';
-import { api, QuoteT, RatesT, ServiceT } from '@/src/lib/api';
+import { api, QuoteT, RatesT, ServiceT, StaffMemberT } from '@/src/lib/api';
 import { sumToTRY, RatesLike, computeCustomerDebtSummaries } from '@/src/lib/tahsilat-utils';
 import { useLanguage, orderedAmounts, statusLabel, Lang, upper } from '@/src/lib/i18n';
 
@@ -395,6 +395,64 @@ export default function PanelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quotes, rates, lang]);
 
+  // Ekip özeti (hero'da kaydırmalı sayfalar): sadece yöneticiler -- firma
+  // sahibi ve "Yönetici" (admin) rolündeki personel. Düz personel görmez.
+  const isManager = !!user && (!user.is_staff || user.staff_role === 'admin');
+  const [members, setMembers] = useState<StaffMemberT[]>([]);
+  useEffect(() => {
+    if (!isManager || !activeCompany) { setMembers([]); return; }
+    let alive = true;
+    api.listStaff(activeCompany.id)
+      .then((res) => { if (alive) setMembers((res || []).filter((m) => m.type === 'active')); })
+      .catch(() => { if (alive) setMembers([]); });
+    return () => { alive = false; };
+  }, [isManager, activeCompany?.id]);
+
+  const team = useMemo<TeamPerson[]>(() => {
+    if (!isManager) return [];
+    const me = (user?.email || '').toLowerCase();
+    const people: { email: string; name: string; role: string }[] = [];
+    if (!user?.is_staff && me) people.push({ email: me, name: user?.name || me, role: 'owner' });
+    members.forEach((m) => {
+      const email = (m.email || '').toLowerCase();
+      if (!email || people.some((p) => p.email === email)) return;
+      people.push({ email, name: m.name || m.email, role: m.role });
+    });
+    // Ekipte firma sahibinden başka kimse yoksa özet sayfası anlamsız.
+    if (people.length < 2) return [];
+    // hazirlayanEmail'i boş eski teklifler firma sahibine sayılır.
+    const ownerEmail = people.find((p) => p.role === 'owner')?.email || '';
+    const canConvert = !!(rates && rates.usd_try && rates.eur_try);
+    const toTRY = (list: QuoteT[]) =>
+      canConvert ? sumToTRY(list.map((q) => ({ paraBirimi: q.paraBirimi || 'USD', tutar: q.genelToplam || 0 })), rates as RatesLike) : null;
+    return people.map((p) => {
+      const mine = quotes.filter((q) => {
+        const e = (q.hazirlayanEmail || '').toLowerCase();
+        return e ? e === p.email : p.email === ownerEmail;
+      });
+      const month = mine.filter((q) => (q.tarih || '').slice(0, 7) === thisMonthKey);
+      const series: { key: string; label: string; value: number }[] = [];
+      for (let k = 5; k >= 0; k--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const inMonth = mine.filter((q) => (q.tarih || '').slice(0, 7) === key);
+        series.push({ key, label: monthsShort[d.getMonth()] || '', value: canConvert ? toTRY(inMonth) || 0 : inMonth.length });
+      }
+      return {
+        email: p.email,
+        name: p.name,
+        role: p.role,
+        isMe: p.email === me,
+        monthCount: month.length,
+        monthVolume: toTRY(month),
+        monthSales: toTRY(month.filter((q) => q.durum === 'Onaylandı')),
+        pending: mine.filter((q) => q.durum === 'Beklemede' || q.durum === 'Görüldü').length,
+        monthly: series,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isManager, user, members, quotes, rates, thisMonthKey, lang]);
+
   const s = styles();
 
   if (!activeCompany) {
@@ -545,6 +603,20 @@ export default function PanelScreen() {
             t={t}
             onVolume={() => router.push('/(tabs)/history')}
             onPending={() => router.push({ pathname: '/(tabs)/history', params: { filter: 'bekleyen' } } as any)}
+            width={W}
+            extraPages={
+              team.length > 0
+                ? () => [
+                    <TeamPage
+                      key="team"
+                      team={team}
+                      isWide={isWide}
+                      t={t}
+                      onOpenPerson={(p) => router.push({ pathname: '/(tabs)/personel-teklifleri', params: { email: p.email } } as any)}
+                    />,
+                  ]
+                : undefined
+            }
           />
 
           {rates && (rates.usd_try || rates.btc_try) ? (
@@ -691,7 +763,11 @@ function PanelHero({
   t,
   onVolume,
   onPending,
+  width,
+  extraPages,
 }: {
+  width: number;
+  extraPages?: (go: (i: number) => void) => React.ReactNode[];
   isWide: boolean;
   greeting: string;
   dateLine: string;
@@ -724,7 +800,9 @@ function PanelHero({
     <View style={s.heroShadow}>
       <BorderBeam radius={26} width={1.5} background={HERO_BASE} baseBorder="rgba(148,163,184,0.18)">
         <Aurora colors={['#6366F1', '#A855F7', '#22D3EE']} base={[HERO_BASE, '#141C3C']}>
-          <Animated.View style={[s.heroInner, isWide && s.heroInnerWide, drift]}>
+          <Animated.View style={drift}>
+            <HeroPager width={width} extraPages={extraPages}>
+          <View style={[s.heroInner, isWide && s.heroInnerWide]}>
             <View style={isWide ? s.heroMain : undefined}>
               <Text style={s.heroGreeting} numberOfLines={1}>
                 {greeting}
@@ -770,9 +848,489 @@ function PanelHero({
               <Text style={s.heroChartTitle}>{t('panel.last6Months')}</Text>
               <MiniBars data={monthly} height={isWide ? 104 : 62} />
             </View>
+          </View>
+            </HeroPager>
           </Animated.View>
         </Aurora>
       </BorderBeam>
+    </View>
+  );
+}
+
+type TeamPerson = {
+  email: string;
+  name: string;
+  role: string;
+  isMe: boolean;
+  monthCount: number;
+  monthVolume: number | null;
+  monthSales: number | null;
+  pending: number;
+  monthly: { key: string; label: string; value: number }[];
+};
+
+function roleLabel(p: TeamPerson, t: (k: string) => string): string {
+  const r = p.role === 'owner' ? t('panel.teamOwner') : p.role === 'admin' ? t('panel.teamManager') : t('panel.teamStaff');
+  return p.isMe ? `${r} · ${t('panel.teamMe')}` : r;
+}
+
+// Hero'yu yatay sayfalara böler: 1. sayfa firma geneli, sonra ekip özeti ve
+// her personel için ayrı bir sayfa. Kaydırarak (dokunmatik) ya da alttaki
+// oklar/noktalarla (masaüstü) gezilir. Ek sayfa yoksa olduğu gibi çizer.
+function HeroPager({
+  width,
+  extraPages,
+  children,
+}: {
+  width: number;
+  extraPages?: (go: (i: number) => void) => React.ReactNode[];
+  children: React.ReactNode;
+}) {
+  const s = styles();
+  const ref = useRef<ScrollView>(null);
+  const [idx, setIdx] = useState(0);
+  const go = (i: number) => {
+    const n = Math.max(0, Math.min(i, total - 1));
+    ref.current?.scrollTo({ x: n * width, animated: true });
+    setIdx(n);
+  };
+  const pages = extraPages ? [children, ...extraPages(go)] : [children];
+  const total = pages.length;
+
+  // Genişlik değişince (ekran döndürme / pencere boyutu) aynı sayfada kal.
+  useEffect(() => {
+    ref.current?.scrollTo({ x: idx * width, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width]);
+  useEffect(() => {
+    if (idx > total - 1) go(total - 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
+
+  if (total === 1 || !width) return <>{children}</>;
+
+  return (
+    <View>
+      <ScrollView
+        ref={ref}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const i = Math.round(e.nativeEvent.contentOffset.x / width);
+          if (i !== idx && i >= 0 && i < total) setIdx(i);
+        }}
+      >
+        {pages.map((p, i) => (
+          <View key={i} style={{ width }}>
+            {p}
+          </View>
+        ))}
+      </ScrollView>
+      <View style={s.pagerBar}>
+        <Pressable onPress={() => go(idx - 1)} disabled={idx === 0} style={[s.pagerBtn, idx === 0 && s.pagerBtnOff]} hitSlop={8} testID="hero-prev">
+          <Ionicons name="chevron-back" size={15} color="#E0E7FF" />
+        </Pressable>
+        {total <= 9 ? (
+          <View style={s.pagerDots}>
+            {pages.map((_, i) => (
+              <Pressable key={i} onPress={() => go(i)} hitSlop={6}>
+                <View style={[s.pagerDot, i === idx && s.pagerDotOn]} />
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text style={s.pagerCount}>
+            {idx + 1} / {total}
+          </Text>
+        )}
+        <Pressable onPress={() => go(idx + 1)} disabled={idx === total - 1} style={[s.pagerBtn, idx === total - 1 && s.pagerBtnOff]} hitSlop={8} testID="hero-next">
+          <Ionicons name="chevron-forward" size={15} color="#E0E7FF" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// Ekip sayfası: üstte aramalı personel seçici. "Tüm ekip" seçiliyken kişi
+// bazlı yatay çubuk grafik (Satış / Hacim / Teklif / Bekleyen) ve özet tablo;
+// bir kişi seçilince o kişinin ayrıntısı aynı kartta açılır. Ekip kalabalık
+// olabilir diye grafik ilk TEAM_TOP kişiyi gösterip kalanları "Diğer"de
+// toplar, tablo da ilk TEAM_TOP satırdan sonra "Tümünü göster" ile açılır.
+const TEAM_TOP = 8;
+type TeamMetric = 'sales' | 'volume' | 'count' | 'pending';
+
+function TeamPage({
+  team,
+  isWide,
+  t,
+  onOpenPerson,
+}: {
+  team: TeamPerson[];
+  isWide: boolean;
+  t: (k: string) => string;
+  onOpenPerson: (p: TeamPerson) => void;
+}) {
+  const s = styles();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const person = selected ? team.find((p) => p.email === selected) || null : null;
+
+  return (
+    <View style={[s.heroInner, isWide && { padding: 24 }]}>
+      <View style={s.teamTopRow}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.heroLabel}>{t('panel.teamTitle')}</Text>
+          <Text style={s.heroDate} numberOfLines={1}>
+            {team.length} {t('panel.teamPeople')}
+          </Text>
+        </View>
+        <Pressable style={({ pressed }) => [s.teamPickBtn, pressed && { opacity: 0.75 }]} onPress={() => setPickerOpen(true)} testID="hero-team-picker">
+          <Ionicons name={person ? 'person' : 'people'} size={14} color="#E0E7FF" />
+          <Text style={s.teamPickText} numberOfLines={1}>
+            {person ? person.name : t('panel.teamAll')}
+          </Text>
+          <Ionicons name="chevron-down" size={14} color="#C7D2FE" />
+        </Pressable>
+      </View>
+
+      {person ? (
+        <PersonBody person={person} isWide={isWide} t={t} onOpen={() => onOpenPerson(person)} onBack={() => setSelected(null)} />
+      ) : (
+        <TeamOverview team={team} isWide={isWide} t={t} onPick={(email) => setSelected(email)} />
+      )}
+
+      <TeamPicker
+        visible={pickerOpen}
+        team={team}
+        selected={selected}
+        t={t}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(email) => {
+          setSelected(email);
+          setPickerOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+// Aramalı personel listesi -- kişi sayısı ne olursa olsun tek dokunuşla seçim.
+function TeamPicker({
+  visible,
+  team,
+  selected,
+  t,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  team: TeamPerson[];
+  selected: string | null;
+  t: (k: string) => string;
+  onClose: () => void;
+  onSelect: (email: string | null) => void;
+}) {
+  const s = styles();
+  const [q, setQ] = useState('');
+  useEffect(() => {
+    if (!visible) setQ('');
+  }, [visible]);
+  const needle = q.trim().toLocaleLowerCase('tr-TR');
+  const list = [...team]
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+    .filter((p) => !needle || p.name.toLocaleLowerCase('tr-TR').includes(needle) || p.email.includes(needle));
+
+  const Row = ({ email, title, sub, icon }: { email: string | null; title: string; sub?: string; icon: IconName }) => {
+    const on = selected === email;
+    return (
+      <Pressable style={({ pressed }) => [s.pickRow, on && s.pickRowOn, pressed && { opacity: 0.7 }]} onPress={() => onSelect(email)}>
+        <View style={s.pickIcon}>
+          <Ionicons name={icon} size={15} color={theme.colors.primary} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.pickTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          {sub ? (
+            <Text style={s.pickSub} numberOfLines={1}>
+              {sub}
+            </Text>
+          ) : null}
+        </View>
+        {on ? <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} /> : null}
+      </Pressable>
+    );
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={s.pickBackdrop} onPress={onClose}>
+        <Pressable style={s.pickSheet} onPress={() => {}}>
+          <View style={s.pickHead}>
+            <Text style={s.pickHeadText}>{t('panel.teamPick')}</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
+            </Pressable>
+          </View>
+          {team.length > 6 ? (
+            <View style={s.pickSearch}>
+              <Ionicons name="search" size={15} color={theme.colors.textMuted} />
+              <TextInput
+                value={q}
+                onChangeText={setQ}
+                placeholder={t('panel.teamSearch')}
+                placeholderTextColor={theme.colors.textMuted}
+                style={s.pickSearchInput}
+                autoCorrect={false}
+              />
+            </View>
+          ) : null}
+          <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
+            {!needle ? <Row email={null} title={t('panel.teamAll')} sub={`${team.length} ${t('panel.teamPeople')}`} icon="people" /> : null}
+            {list.map((p) => (
+              <Row key={p.email} email={p.email} title={p.name} sub={roleLabel(p, t)} icon="person" />
+            ))}
+            {list.length === 0 ? <Text style={s.pickEmpty}>{t('panel.teamNoMatch')}</Text> : null}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function TeamOverview({ team, isWide, t, onPick }: { team: TeamPerson[]; isWide: boolean; t: (k: string) => string; onPick: (email: string) => void }) {
+  const s = styles();
+  const [metric, setMetric] = useState<TeamMetric>('sales');
+  const [showAll, setShowAll] = useState(false);
+  const money = (n: number | null) => (n == null ? '—' : fmtCompactTRY(n, t));
+  const sum = (f: (p: TeamPerson) => number | null) => {
+    let missing = false;
+    const v = team.reduce((a, p) => {
+      const x = f(p);
+      if (x == null) missing = true;
+      return a + (x || 0);
+    }, 0);
+    return missing ? null : v;
+  };
+  const totSales = sum((p) => p.monthSales);
+  const totCount = team.reduce((a, p) => a + p.monthCount, 0);
+  const totPending = team.reduce((a, p) => a + p.pending, 0);
+
+  const metricOf = (p: TeamPerson): number | null =>
+    metric === 'sales' ? p.monthSales : metric === 'volume' ? p.monthVolume : metric === 'count' ? p.monthCount : p.pending;
+  const isMoney = metric === 'sales' || metric === 'volume';
+  const fmtMetric = (n: number | null) => (n == null ? '—' : isMoney ? fmtCompactTRY(n, t) : String(n));
+
+  const ranked = [...team].sort((a, b) => (metricOf(b) || 0) - (metricOf(a) || 0) || a.name.localeCompare(b.name, 'tr'));
+  const top = ranked.slice(0, TEAM_TOP);
+  const rest = ranked.slice(TEAM_TOP);
+  const restVal = rest.length ? rest.reduce((a, p) => a + (metricOf(p) || 0), 0) : 0;
+  const bars: { key: string; label: string; value: number | null; email?: string }[] = top.map((p) => ({
+    key: p.email,
+    label: p.name,
+    value: metricOf(p),
+    email: p.email,
+  }));
+  if (rest.length) bars.push({ key: '__rest__', label: `${t('panel.teamOthers')} (${rest.length})`, value: restVal });
+  const max = Math.max(1, ...bars.map((b) => b.value || 0));
+
+  const tabs: { k: TeamMetric; label: string }[] = [
+    { k: 'sales', label: t('panel.teamSales') },
+    { k: 'volume', label: t('panel.teamVolumeShort') },
+    { k: 'count', label: t('panel.teamCount') },
+    { k: 'pending', label: t('panel.teamPending') },
+  ];
+
+  const tableRows = [...team].sort(
+    (a, b) => (b.monthSales || 0) - (a.monthSales || 0) || b.monthCount - a.monthCount
+  );
+  const shownRows = showAll ? tableRows : tableRows.slice(0, TEAM_TOP);
+
+  const chart = (
+    <View>
+      <View style={s.metricTabs}>
+        {tabs.map((x) => (
+          <Pressable key={x.k} onPress={() => setMetric(x.k)} style={[s.metricTab, metric === x.k && s.metricTabOn]} testID={`hero-team-metric-${x.k}`}>
+            <Text style={[s.metricTabText, metric === x.k && s.metricTabTextOn]} numberOfLines={1}>
+              {x.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={{ marginTop: 10, gap: 7 }}>
+        {bars.map((b) => {
+          const ratio = (b.value || 0) / max;
+          const body = (
+            <>
+              <Text style={s.tbarName} numberOfLines={1}>
+                {b.label}
+              </Text>
+              <View style={s.tbarTrack}>
+                <View style={[s.tbarFill, { width: `${Math.max(ratio * 100, b.value ? 2 : 0)}%` as `${number}%` }, !b.email && s.tbarFillRest]} />
+              </View>
+              <Text style={s.tbarValue} numberOfLines={1}>
+                {fmtMetric(b.value)}
+              </Text>
+            </>
+          );
+          return b.email ? (
+            <Pressable key={b.key} style={({ pressed }) => [s.tbarRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(b.email as string)}>
+              {body}
+            </Pressable>
+          ) : (
+            <View key={b.key} style={s.tbarRow}>
+              {body}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  const table = (
+    <View>
+      <View style={s.teamHead}>
+        <Text style={[s.teamHeadText, { flex: 1 }]}>{t('panel.teamPerson')}</Text>
+        <Text style={[s.teamHeadText, s.teamColMoney]}>{t('panel.teamSales')}</Text>
+        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamCount')}</Text>
+        <Text style={[s.teamHeadText, s.teamCol]}>{t('panel.teamPending')}</Text>
+      </View>
+      {shownRows.map((p) => (
+        <Pressable key={p.email} style={({ pressed }) => [s.teamRow, pressed && { opacity: 0.7 }]} onPress={() => onPick(p.email)} testID={`hero-team-row-${p.email}`}>
+          <View style={s.teamAvatar}>
+            <Text style={s.teamAvatarText}>{initials(p.name)}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.teamName} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={s.teamRole} numberOfLines={1}>
+              {roleLabel(p, t)}
+            </Text>
+          </View>
+          <Text style={[s.teamCell, s.teamColMoney]} numberOfLines={1}>
+            {money(p.monthSales)}
+          </Text>
+          <Text style={[s.teamCell, s.teamCol]}>{p.monthCount}</Text>
+          <Text style={[s.teamCell, s.teamCol, p.pending > 0 && { color: '#FDE68A' }]}>{p.pending}</Text>
+        </Pressable>
+      ))}
+      {tableRows.length > TEAM_TOP ? (
+        <Pressable onPress={() => setShowAll((v) => !v)} style={s.teamMore} hitSlop={6}>
+          <Text style={s.teamMoreText}>{showAll ? t('panel.teamShowLess') : `${t('panel.teamShowAll')} (${tableRows.length})`}</Text>
+          <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={13} color="#C7D2FE" />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View>
+      <View style={s.teamTotals}>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamSales')}</Text>
+          <Text style={s.teamTotalValue} numberOfLines={1} adjustsFontSizeToFit>
+            {money(totSales)}
+          </Text>
+        </View>
+        <View style={s.teamTotal}>
+          <Text style={s.teamTotalLabel}>{t('panel.teamCount')}</Text>
+          <Text style={s.teamTotalValue}>{totCount}</Text>
+        </View>
+        <View style={[s.teamTotal, s.teamTotalWarn]}>
+          <Text style={[s.teamTotalLabel, { color: '#FDE68A' }]}>{t('panel.teamPending')}</Text>
+          <Text style={s.teamTotalValue}>{totPending}</Text>
+        </View>
+      </View>
+      {isWide ? (
+        <View style={{ flexDirection: 'row', gap: 24, marginTop: 14 }}>
+          <View style={{ flex: 1 }}>{chart}</View>
+          <View style={{ flex: 1 }}>{table}</View>
+        </View>
+      ) : (
+        <View style={{ marginTop: 14 }}>
+          {chart}
+          <View style={{ marginTop: 6 }}>{table}</View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Seçilen personelin bu ayki satışı, teklif hacmi, bekleyenleri ve son 6 ayı.
+function PersonBody({
+  person: p,
+  isWide,
+  t,
+  onOpen,
+  onBack,
+}: {
+  person: TeamPerson;
+  isWide: boolean;
+  t: (k: string) => string;
+  onOpen: () => void;
+  onBack: () => void;
+}) {
+  const s = styles();
+  return (
+    <View style={[{ marginTop: 14 }, isWide && { flexDirection: 'row', alignItems: 'center', gap: 28 }]}>
+      <View style={isWide ? s.heroMain : undefined}>
+        <View style={s.personHead}>
+          <View style={[s.teamAvatar, s.personAvatar]}>
+            <Text style={[s.teamAvatarText, { fontSize: 14 }]}>{initials(p.name)}</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={s.heroGreeting} numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text style={s.heroDate} numberOfLines={1}>
+              {roleLabel(p, t)}  ·  {p.email}
+            </Text>
+          </View>
+        </View>
+
+        <AnimatedPressable style={s.heroKpi} onPress={onOpen} scaleTo={0.98}>
+          <Text style={s.heroLabel}>{t('panel.teamSalesLabel')}</Text>
+          {p.monthSales == null ? (
+            <Text style={[s.heroValue, isWide && s.heroValueWide]}>—</Text>
+          ) : (
+            <CountUp value={p.monthSales} format={(n) => fmt(n, 'TRY')} style={[s.heroValue, isWide && s.heroValueWide]} numberOfLines={1} adjustsFontSizeToFit />
+          )}
+          <Text style={s.heroSecondary} numberOfLines={1}>
+            {t('panel.teamVolumeLine')}: {p.monthVolume == null ? '—' : fmt(p.monthVolume, 'TRY')}
+          </Text>
+        </AnimatedPressable>
+
+        <View style={s.heroChips}>
+          <AnimatedPressable style={s.chipWarn} onPress={onOpen} scaleTo={0.96}>
+            <LiveDot color={GOLD} />
+            <Text style={s.chipWarnLabel}>{t('panel.s042')}</Text>
+            <Text style={s.chipWarnValue}>{p.pending}</Text>
+          </AnimatedPressable>
+          <View style={s.chip}>
+            <Ionicons name="document-text-outline" size={13} color="#C7D2FE" />
+            <Text style={s.chipLabel}>{t('panel.thisMonth')}</Text>
+            <Text style={s.chipValue}>
+              {p.monthCount} {t('panel.teklifUnit')}
+            </Text>
+          </View>
+          <AnimatedPressable style={s.chip} onPress={onOpen} scaleTo={0.96} testID={`hero-person-open-${p.email}`}>
+            <Text style={s.chipValue}>{t('panel.teamAllQuotes')}</Text>
+            <Ionicons name="chevron-forward" size={13} color="#C7D2FE" />
+          </AnimatedPressable>
+          <AnimatedPressable style={s.chip} onPress={onBack} scaleTo={0.96}>
+            <Ionicons name="people-outline" size={13} color="#C7D2FE" />
+            <Text style={s.chipValue}>{t('panel.teamAll')}</Text>
+          </AnimatedPressable>
+        </View>
+      </View>
+
+      <View style={[s.heroChart, isWide && s.heroChartWide]}>
+        <Text style={s.heroChartTitle}>{t('panel.last6Months')}</Text>
+        <MiniBars data={p.monthly} height={isWide ? 104 : 62} />
+      </View>
     </View>
   );
 }
@@ -1424,6 +1982,129 @@ const styles = themedSheet(() => {
     barCurrent: { backgroundColor: 'transparent' },
     barLabel: { color: 'rgba(148,163,184,0.85)', fontSize: 9.5, fontWeight: '800', marginTop: 6 },
     barLabelCurrent: { color: '#E9D5FF' },
+
+    // Hero sayfaları (ekip özeti / personel)
+    pagerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 12, paddingTop: 2 },
+    pagerBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.14)',
+    },
+    pagerBtnOff: { opacity: 0.3 },
+    pagerDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    pagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.28)' },
+    pagerDotOn: { width: 18, backgroundColor: '#A5B4FC' },
+    pagerCount: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
+    teamTotals: { flexDirection: 'row', gap: 8, marginTop: 14 },
+    teamTotal: {
+      flex: 1,
+      backgroundColor: 'rgba(255,255,255,0.07)',
+      borderColor: 'rgba(255,255,255,0.12)',
+      borderWidth: 1,
+      borderRadius: 14,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    teamTotalWarn: { backgroundColor: 'rgba(251,191,36,0.12)', borderColor: 'rgba(251,191,36,0.3)' },
+    teamTotalLabel: { color: '#A5B4FC', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
+    teamTotalValue: { color: '#FFFFFF', fontSize: 17, fontWeight: '900', marginTop: 2 },
+    teamHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 14,
+      paddingBottom: 6,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    teamHeadText: { color: 'rgba(148,163,184,0.9)', fontSize: 9.5, fontWeight: '900', letterSpacing: 0.6 },
+    teamCol: { width: 52, textAlign: 'right' },
+    teamColMoney: { width: 78, textAlign: 'right' },
+    teamRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.06)',
+    },
+    teamAvatar: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(99,102,241,0.35)',
+      borderWidth: 1,
+      borderColor: 'rgba(165,180,252,0.4)',
+    },
+    teamAvatarText: { color: '#E0E7FF', fontSize: 11, fontWeight: '900' },
+    teamName: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+    teamRole: { color: 'rgba(148,163,184,0.95)', fontSize: 10.5, fontWeight: '700', marginTop: 1 },
+    teamCell: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '900' },
+    personHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    personAvatar: { width: 40, height: 40, borderRadius: 20 },
+    teamTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    teamPickBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      maxWidth: 200,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: 'rgba(99,102,241,0.3)',
+      borderWidth: 1,
+      borderColor: 'rgba(165,180,252,0.45)',
+    },
+    teamPickText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800', flexShrink: 1 },
+    metricTabs: { flexDirection: 'row', gap: 4, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)' },
+    metricTab: { flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: 9 },
+    metricTabOn: { backgroundColor: 'rgba(165,180,252,0.22)' },
+    metricTabText: { color: 'rgba(199,210,254,0.75)', fontSize: 11, fontWeight: '800' },
+    metricTabTextOn: { color: '#FFFFFF' },
+    tbarRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 22 },
+    tbarName: { width: 92, color: '#E0E7FF', fontSize: 11.5, fontWeight: '700' },
+    tbarTrack: { flex: 1, height: 10, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden' },
+    tbarFill: { height: '100%', borderRadius: 4, backgroundColor: '#818CF8' },
+    tbarFillRest: { backgroundColor: 'rgba(148,163,184,0.55)' },
+    tbarValue: { width: 64, textAlign: 'right', color: '#FFFFFF', fontSize: 11.5, fontWeight: '900' },
+    teamMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9 },
+    teamMoreText: { color: '#C7D2FE', fontSize: 11.5, fontWeight: '800' },
+    pickBackdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.55)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+    pickSheet: {
+      width: '100%',
+      maxWidth: 420,
+      backgroundColor: c.surface,
+      borderRadius: 20,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    pickHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    pickHeadText: { fontSize: 15, fontWeight: '900', color: c.text },
+    pickSearch: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.line,
+      backgroundColor: c.surfaceSoft,
+      marginBottom: 8,
+    },
+    pickSearchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: c.text },
+    pickRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 12 },
+    pickRowOn: { backgroundColor: c.primarySoft },
+    pickIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primarySoft },
+    pickTitle: { fontSize: 14, fontWeight: '800', color: c.text },
+    pickSub: { fontSize: 11.5, color: c.textMuted, marginTop: 1 },
+    pickEmpty: { textAlign: 'center', color: c.textMuted, paddingVertical: 16 },
 
     // CANLI PİYASA
     marketBlock: { marginBottom: 14 },

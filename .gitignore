@@ -86,3 +86,7 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Reels çıktıları
+reels/*.mp4
+reels/preview/

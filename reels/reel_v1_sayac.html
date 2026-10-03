@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@700&display=block" rel="stylesheet">
+<link rel="stylesheet" href="lib/reel.css">
+<script src="lib/reel-core.js"></script>
+<script src="lib/quote-demo.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// Reel v1 — Hook: "Bu teklif 8 saniyede hazırlandı ⏱" + canlı sayaç.
+// Sayaç videodaki akışın gerçek süresini gösterir: 0. kareden başlar,
+// teklif gönderildiği karede durur (STOP ≤ 8 sn).
+// Ortak kamera: geniş → toplam fiyata yakın çekim → gönder butonu
+function stdCam(Q, k) {
+  const r = n => Q.rect(n), mid = n => ({ x: r(n).x + r(n).w / 2, y: r(n).y + r(n).h / 2 });
+  const w = mid('width'), tot = mid('total'), snd = mid('send');
+  const t0 = k.priceAt, t1 = k.sendAt;
+  return [
+    { t: 0,        s: 1.62, fx: 215, fy: w.y, cx: 540, cy: 1010 },
+    { t: t0 - .2,  s: 1.70, fx: 215, fy: w.y + 40, cx: 540, cy: 1000 },
+    { t: t0 + .5,  s: 2.05, fx: 215, fy: tot.y, cx: 540, cy: 1080 },
+    { t: t1 - .3,  s: 2.05, fx: 215, fy: tot.y + 20, cx: 540, cy: 1070 },
+    { t: t1 + .3,  s: 1.85, fx: 215, fy: snd.y, cx: 540, cy: 1180 },
+    { t: 99,       s: 1.80, fx: 215, fy: snd.y, cx: 540, cy: 1170 },
+  ];
+}
+// Gerçek zaman → demo zamanı (akış ~8 sn'ye yayılır, hızlandırma yok: yalnızca daha sakin yazım)
+function makeMap(T) {
+  const real = [0, .35, 2.3, 2.75, 4.5, 4.9, 5.7, 6.9, 7.5];
+  const demo = [0, T.widthStart, T.widthEnd, T.heightStart, T.heightEnd, T.priceStart, T.priceEnd, T.sendPress, T.toast];
+  return t => {
+    if (t >= real[real.length - 1]) return demo[demo.length - 1] + (t - real[real.length - 1]);
+    for (let i = 0; i < real.length - 1; i++) if (t <= real[i + 1]) {
+      const p = (t - real[i]) / (real[i + 1] - real[i]); return demo[i] + (demo[i + 1] - demo[i]) * Math.max(0, p);
+    }
+  };
+}
+const STOP = 7.5;
+let MAP = null;
+window.CFG = {
+  actionEnd: 9.2,
+  demoTime: t => (MAP = MAP || makeMap(QuoteDemo.T))(t),
+  cam: Q => stdCam(Q, { priceAt: 4.9, sendAt: 6.9 }),
+  hookHTML: `
+    <div style="position:absolute;left:84px;right:84px;top:130px">
+      <div class="chip" id="tmChip" style="font-size:40px;padding:16px 34px 16px 26px">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>
+        <span class="timer" id="tm" style="font-size:44px">00:00.0</span>
+      </div>
+      <div class="display h-l" id="hk" style="margin-top:34px"><span class="ln"><span>Bu teklif</span></span><span class="ln"><span><span class="it brand" style="font-size:122px">8 saniyede</span> hazırlandı</span></span></div>
+    </div>`,
+  hook(t, q) {
+    R.lines(R.$('hk'), t, 0, { pre: .92, stagger: .05, dur: .5, outAt: this.actionEnd - .32 });
+    const e = Math.min(t, STOP), done = t >= STOP;
+    const s = Math.floor(e), d = Math.floor((e - s) * 10);
+    R.$('tm').textContent = `00:${String(s).padStart(2, '0')}.${d}`;
+    const chip = R.$('tmChip');
+    const pop = R.E.back(R.prog(t, STOP, STOP + .45));
+    chip.style.color = done ? '#0B0B12' : 'var(--warm)';
+    chip.style.background = done ? 'var(--ok)' : 'rgba(245,181,68,.10)';
+    chip.style.borderColor = done ? 'var(--ok)' : 'rgba(245,181,68,.45)';
+    chip.style.transform = `scale(${done ? 1 + .12 * Math.sin(pop * Math.PI) : 1})`;
+    chip.style.transformOrigin = '0 50%';
+    chip.style.opacity = 1 - R.E.in(R.prog(t, this.actionEnd - .3, this.actionEnd));
+  },
+};
+</script>
+<script src="lib/reel-build.js"></script>
+</body></html>

@@ -7,16 +7,17 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 await page.goto('file://' + path.resolve(html), { waitUntil: 'networkidle' });
 await page.evaluate(() => document.fonts.ready);
+await page.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));
 const dur = await page.evaluate(() => window.DUR);
 if (mode === 'stills') {
-  for (const t of times) { await page.evaluate(t => render(+t), t); await page.screenshot({ path: `${out}_${t}.png` }); }
+  for (const t of times) { await page.evaluate(async t => { await render(+t); }, t); await page.screenshot({ path: `${out}_${t}.png` }); }
 } else {
   const ff = spawn('ffmpeg', ['-y','-f','image2pipe','-framerate',String(FPS),'-c:v','png','-i','-',
     '-c:v','libx264','-preset','slow','-crf','14','-pix_fmt','yuv420p','-profile:v','high','-level','4.2',
     '-movflags','+faststart','-r',String(FPS), out], { stdio: ['pipe','inherit','inherit'] });
   const n = Math.round(dur * FPS);
   for (let i = 0; i < n; i++) {
-    await page.evaluate(t => render(t), i / FPS);
+    await page.evaluate(async t => { await render(t); }, i / FPS);
     const buf = await page.screenshot({ type: 'png' });
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
   }

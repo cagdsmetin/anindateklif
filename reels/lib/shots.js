@@ -6,7 +6,10 @@ window.zipShot = (a, b) => ({
   cam: [
     { t: 0, sy: 0, z: 1.0 }, { t: .45, sy: 0, z: 1.0 },
     { t: 2.75, sy: 330, z: 1.2 },
-    { t: 4.3, sy: 1560, z: 1.15, sx: 590 },
+    // Uygulama içi kaydırma ~4.0 sn'de biter; kamera "Bayi fiyatı" satırının
+    // üzerinden geçmesin diye tek karede Satış fiyatı bölgesine kesilir.
+    { t: 4.03, sy: 330, z: 1.2 },
+    { t: 4.06, sy: 1560, z: 1.15, sx: 590 },
     { t: 7, sy: 1590, z: 1.19, sx: 590 },
   ],
   ring: { at: 4.35, rect: [86, 1858, 1012, 78] },

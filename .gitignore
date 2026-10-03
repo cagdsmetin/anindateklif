@@ -90,3 +90,4 @@ credentials.json
 # Reels çıktıları
 reels/*.mp4
 reels/preview/
+reels/out/

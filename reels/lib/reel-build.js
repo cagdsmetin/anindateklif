@@ -3,7 +3,7 @@
 // (demo veri). Kareler önce `node extract-frames.mjs` ile preview/frames/'e
 // açılır; render(t) her karede doğru kareyi yükleyip decode'u bekler.
 (function () {
-  const { E, prog, clamp, $, show, lines, rise, background, cta, outro, SNIP } = window.R;
+  const { E, prog, clamp, $, show, lines, rise, background, cta, ctaComment, outro, SNIP } = window.R;
   const C = window.CFG;
 
   // Kaynak: 1170×2532 (@3x) kayıtlar, 30 fps
@@ -14,6 +14,18 @@
     panel: { dir: 'preview/frames/v04_panel_kaydirma', n: 135 },
     ai:    { dir: 'preview/frames/v05_ai_asistan', n: 164 },
     katalog: { still: 'footage/mobile/m_18_katalog.png' },
+    // Kişi adı/telefon içermeyen ekran görüntüleri
+    m_panel_genel: { still: 'footage/mobile/m_02_panel_genel_bakis.png' },
+    m_katalogdan_ekle: { still: 'footage/mobile/m_04_teklif_katalogdan_ekle.png' },
+    m_kalemler: { still: 'footage/mobile/m_05_teklif_kalemler.png' },
+    m_toplam: { still: 'footage/mobile/m_06_teklif_toplam.png' },
+    m_pdf_klasik: { still: 'footage/mobile/m_07_pdf_onizleme.png' },
+    m_pdf_modern: { still: 'footage/mobile/m_07b_pdf_onizleme_modern.png' },
+    m_zip_olcu: { still: 'footage/mobile/m_08_zip_perde_olcu.png' },
+    m_zip_cizim: { still: 'footage/mobile/m_09_zip_perde_cizim.png' },
+    m_zip_fiyat: { still: 'footage/mobile/m_10_zip_perde_fiyat.png' },
+    m_kasa: { still: 'footage/mobile/m_12_kasa.png' },
+    m_ai: { still: 'footage/mobile/m_16_ai_asistan.png' },
   };
   const srcOf = (clip, lt) => {
     const c = CLIPS[clip]; if (c.still) return c.still;
@@ -25,18 +37,19 @@
   const CARD = { x: 60, y: 560, w: 960, h: 940 };
   const K0 = CARD.w / SRC_W;
 
-  const A = C.actionEnd, FD = 1.6;
-  const F = [A, A + FD, A + 2 * FD, A + 3 * FD];
-  const CTA = [F[3], F[3] + 3.6];
+  const DEF_FEATS = [
+    { clip: 'katalog', from: 0, idx: '01 · Katalog', l1: 'Ürünü bir kez tanımla,', l2: 'sonra sadece seç.', cam: [{ t: 0, sy: 205, z: 1.0 }, { t: 1.6, sy: 300, z: 1.05 }] },
+    { clip: 'panel', from: 2.1, idx: '02 · Panel', l1: 'Tüm işin', l2: 'tek ekranda.', cam: [{ t: 0, sy: 40, z: 1.0 }, { t: 1.6, sy: 40, z: 1.05 }] },
+    { clip: 'ai', from: 3.25, idx: '03 · AI Asistan', l1: 'Teklif metnini', l2: 'AI hazırlasın.', cam: [{ t: 0, sy: 60, z: 1.0 }, { t: 1.6, sy: 140, z: 1.05 }] },
+  ];
+  const FEATS = C.features || DEF_FEATS;
+  const A = C.actionEnd, FD = C.featDur || 1.6;
+  const F = FEATS.map((_, i) => A + i * FD); F.push(A + FEATS.length * FD);
+  const CTA_LEN = C.cta === 'code' ? 3.6 : 3.9;
+  const CTA = [F[F.length - 1], F[F.length - 1] + CTA_LEN];
   const OUT = [CTA[1], CTA[1] + 1.9];
   const DUR = OUT[1];
-
-  // Özellik sahneleri de aynı kart çerçevesini kullanır
-  const shots = C.shots.concat([
-    { a: F[0], b: F[1], clip: 'katalog', from: 0, cam: [{ t: 0, sy: 205, z: 1.0 }, { t: FD, sy: 300, z: 1.05 }] },
-    { a: F[1], b: F[2], clip: 'panel', from: 2.1, cam: [{ t: 0, sy: 40, z: 1.0 }, { t: FD, sy: 40, z: 1.05 }] },
-    { a: F[2], b: F[3], clip: 'ai', from: 3.25, cam: [{ t: 0, sy: 60, z: 1.0 }, { t: FD, sy: 140, z: 1.05 }] },
-  ]);
+  const shots = C.shots.concat(FEATS.map((f, i) => ({ a: F[i], b: F[i + 1], clip: f.clip, from: f.from || 0, cam: f.cam || [{ t: 0, sy: 0, z: 1 }, { t: FD, sy: 60, z: 1.05 }], redact: f.redact, ring: f.ring })));
 
   const feat = (id, idx, l1, l2) => `
     <div class="scene" id="${id}">
@@ -54,10 +67,8 @@
       <div class="ring" id="ring"></div>
     </div>
     <div class="scene" id="act"><div id="hook" style="position:absolute;left:0;right:0;top:0">${C.hookHTML}</div></div>
-    ${feat('f1', '01 · Katalog', 'Ürünü bir kez tanımla,', 'sonra sadece seç.')}
-    ${feat('f2', '02 · Panel', 'Tüm işin', 'tek ekranda.')}
-    ${feat('f3', '03 · AI Asistan', 'Teklif metnini', 'AI hazırlasın.')}
-    ${SNIP.cta}
+    ${FEATS.map((f, i) => feat('f' + i, f.idx, f.l1, f.l2)).join('')}
+    ${C.cta === 'code' ? SNIP.cta : SNIP.ctaComment}
     ${SNIP.outro}
     ${SNIP.fx}`;
 
@@ -117,16 +128,21 @@
 
     // --- metin katmanları ---
     if (show($('act'), t, -1, A)) C.hook(t);
-    [['f1', F[0], F[1]], ['f2', F[1], F[2]], ['f3', F[2], F[3]]].forEach(([id, a, b]) => {
+    FEATS.forEach((_, i) => { const id = 'f' + i, a = F[i], b = F[i + 1];
       const sc = $(id); if (!show(sc, t, a, b)) return;
       lines(sc, t, a, { stagger: .06, dur: .6, outAt: b - .26 });
       rise(sc.querySelector('.idx'), t, a, { dy: 20, blur: 6, outAt: b - .26 });
     });
-    cta(t, CTA[0], CTA[1]);
+    (C.cta === 'code' ? cta : ctaComment)(t, CTA[0], CTA[1]);
     outro(t, OUT[0], OUT[1] + 1);
-    const fl = [F[0], CTA[0], OUT[0]].reduce((m, c) => Math.max(m, 1 - clamp(Math.abs(t - c) / .09)), 0);
+    const fl = [A, CTA[0], OUT[0]].reduce((m, c) => Math.max(m, 1 - clamp(Math.abs(t - c) / .09)), 0);
     $('flash').style.opacity = fl * .3;
   }
+  // Ses ipuçları (lib/audio.mjs bunları okuyup efekt/müzik miksler)
+  window.CUES = [].concat(C.cues || [],
+    shots.slice(1).map(s => ({ t: s.a, type: 'cut' })),
+    [{ t: A, type: 'whoosh' }, { t: CTA[0], type: 'whoosh' }, { t: CTA[0] + (C.cta === 'code' ? .6 : .75), type: C.cta === 'code' ? 'type' : 'type', dur: .5 },
+     { t: CTA[0] + (C.cta === 'code' ? .4 : 1.45), type: 'pop' }, { t: OUT[0], type: 'logo' }]);
   window.render = render; window.DUR = DUR;
   window.READY = render(0);
 })();

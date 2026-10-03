@@ -89,6 +89,21 @@
     rise($('ctaNote'), t, a + 1.25, { dy: 20, blur: 6 });
   }
 
+
+  // Yorum CTA'sı: "Yorumlara TEKLİF yaz" → otomatik cevapla hediye
+  function ctaComment(t, a, b) {
+    const sc = $('ctaC'); if (!show(sc, t, a, b)) return;
+    rise($('ccEye'), t, a, { dy: 24, blur: 6 });
+    lines($('ccHead'), t, a + .05, { stagger: .07, dur: .65 });
+    const b1 = $('ccMe'), p1 = E.back(prog(t, a + .45, a + .9));
+    b1.style.opacity = clamp(prog(t, a + .45, a + .6)); b1.style.transform = `translate3d(0,${(1 - p1) * 40}px,0) scale(${.9 + .1 * p1})`;
+    const word = 'TEKLİF', n = Math.round(clamp(prog(t, a + .75, a + 1.2)) * word.length);
+    $('ccWord').innerHTML = word.slice(0, n) + `<span class="caret" style="opacity:${n < word.length || Math.floor((t - a) * 3) % 2 ? 1 : 0}"></span>`;
+    const b2 = $('ccReply'), p2 = E.back(prog(t, a + 1.45, a + 1.95));
+    b2.style.opacity = clamp(prog(t, a + 1.45, a + 1.6)); b2.style.transform = `translate3d(0,${(1 - p2) * 40}px,0) scale(${.9 + .1 * p2})`;
+    rise($('ccNote'), t, a + 1.9, { dy: 20, blur: 6 });
+  }
+
   function outro(t, a, b) {
     const sc = $('outro'); if (!show(sc, t, a, b)) return;
     const m = $('outroMark');
@@ -124,6 +139,14 @@
         <div class="btn" id="ctaBtn" style="margin-top:64px">anindateklif.co/hediye <span style="font-size:44px">→</span></div>
         <div id="ctaNote" style="margin-top:40px;font-size:34px;font-weight:600;color:var(--muted)">İlk 1000 üyeye · Üye ol, kod otomatik tanımlanır</div>
       </div>`,
+    ctaComment: `
+      <div class="scene" id="ctaC" style="padding:210px 84px 0">
+        <div class="eyebrow" id="ccEye"><i></i>Hediye · İlk 1000 kişiye</div>
+        <div class="display h-xl" id="ccHead" style="margin-top:40px"><span class="ln"><span>Yorumlara</span></span><span class="ln"><span><span class="brand">TEKLİF</span> <span class="it" style="font-size:150px">yaz.</span></span></span></div>
+        <div class="bubble me" id="ccMe" style="margin-top:70px"><div class="av">S</div><div><div class="who">sen</div><div class="txt" id="ccWord">TEKLİF</div></div></div>
+        <div class="bubble reply" id="ccReply"><div class="av brandav"><svg width="34" height="40" viewBox="0 0 24 28"><path d="M14 1 3 16h7l-2 11 11-15h-7l2-11z" fill="#fff"/></svg></div><div><div class="who">anindateklif · otomatik cevap</div><div class="txt">🎁 1 ay <b>Pro</b> hediyen hazır!<br><span class="muted2">anindateklif.co/hediye · kod: TEKLIF30</span></div></div></div>
+        <div id="ccNote" style="margin-top:46px;font-size:34px;font-weight:600;color:var(--muted)">Cevabındaki linkten üye ol, kod otomatik tanımlanır.</div>
+      </div>`,
     outro: `
       <div class="scene" id="outro" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:470px">
         <div class="logo-mark" id="outroMark"><svg width="104" height="122" viewBox="0 0 24 28"><path d="M14 1 3 16h7l-2 11 11-15h-7l2-11z" fill="#fff"/></svg></div>
@@ -132,5 +155,5 @@
       </div>`,
   };
 
-  window.R = { clamp, prog, mix, E, $, $$, show, lines, rise, tl, background, camera, feature, cta, outro, SNIP };
+  window.R = { clamp, prog, mix, E, $, $$, show, lines, rise, tl, background, camera, feature, cta, ctaComment, outro, SNIP };
 })();

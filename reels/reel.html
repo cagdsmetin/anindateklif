@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="lib/fonts/plus-jakarta-sans.css">
+<link rel="stylesheet" href="lib/fonts/extra.css">
+<link rel="stylesheet" href="lib/reel.css">
+<script src="lib/reel-core.js"></script>
+<script src="lib/shots.js"></script>
+<script src="plan/reels.js"></script>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+// Veri odaklı reel: reel.html?id=r07 → plan/reels.js içindeki REELS.r07
+const id = new URLSearchParams(location.search).get('id');
+window.CFG = window.REELS[id];
+if (!window.CFG) document.body.textContent = 'Bilinmeyen reel: ' + id;
+</script>
+<script src="lib/reel-build.js"></script>
+</body></html>

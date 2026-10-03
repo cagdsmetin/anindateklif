@@ -87,3 +87,15 @@ html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg);
   background:rgba(235,238,243,.55); display:none; }
 .card .ring { position:absolute; border-radius:22px; border:5px solid var(--brand); opacity:0;
   box-shadow:0 0 0 8px rgba(79,70,229,.18), 0 18px 50px rgba(79,70,229,.35); }
+
+/* Yorum CTA balonları */
+.bubble { display:flex; gap:24px; align-items:flex-start; padding:28px 34px; border-radius:36px; max-width:860px;
+  background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.12); backdrop-filter:blur(14px); }
+.bubble.reply { margin:26px 0 0 90px; background:rgba(79,70,229,.20); border-color:rgba(139,135,255,.45); }
+.bubble .av { flex:none; width:76px; height:76px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:36px; font-weight:800; background:linear-gradient(150deg,#F5B544,#E0752D); color:#1A1206; }
+.bubble .av.brandav { background:linear-gradient(150deg,#6D66FF,#4338CA); }
+.bubble .who { font-size:28px; font-weight:700; color:var(--muted); }
+.bubble .txt { font-size:46px; font-weight:800; margin-top:6px; letter-spacing:-.01em; line-height:1.25; }
+.bubble .muted2 { font-size:32px; font-weight:600; color:#C9C7FF; }
+.caret { display:inline-block; width:5px; height:44px; margin-left:6px; vertical-align:-6px; background:var(--ink); }

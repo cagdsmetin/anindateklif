@@ -55,9 +55,9 @@ yerden sürdürmek için hazırlandı. Mağaza metinleri: `memory/APP_STORE.md`.
 
 ### B. App Store Connect'te (tarayıcı: appstoreconnect.apple.com → Apps → Anında Teklif)
 
-3. [ ] **Uygulama Bilgileri:** Ana dil → İtalyanca; Kategori → İş (ikincil: Verimlilik);
+3. [ ] **Uygulama Bilgileri:** Ana dil → **Türkçe**; Kategori → İş (ikincil: Verimlilik);
        Gizlilik politikası URL → https://www.anindateklif.co/privacy
-4. [ ] **Dil ekle** (sağ üst dil menüsü): İtalyanca, İngilizce (U.K. ve/veya U.S.), Türkçe
+4. [ ] **Dil ekle** (sağ üst dil menüsü): İtalyanca, İngilizce (U.K. ve/veya U.S.) — Türkçe ana dil olarak zaten var
 5. [ ] Her dil için `memory/APP_STORE.md` içindeki ad, alt başlık, anahtar kelimeler,
        tanıtım metni, açıklama, "Yenilikler" metnini yapıştır; Destek URL → https://www.anindateklif.co
 6. [ ] **Ekran görüntüleri:** her dil için 3–10 adet, iPhone 6.9" (1320×2868) veya 6.7" (1290×2796)

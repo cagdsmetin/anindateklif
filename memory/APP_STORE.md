@@ -1,7 +1,7 @@
 # App Store mağaza metinleri (TR / EN / IT)
 
 App Store Connect → Anında Teklif → Dağıtım → (sağ üstten dil seçerek) her dil için doldurulur.
-Ana dil: Uygulama Bilgileri → Ana Dil → **İtalyanca** (istenirse).
+Ana dil: Uygulama Bilgileri → Ana Dil → **Türkçe**. Ek diller: İtalyanca, İngilizce.
 
 Ortak alanlar:
 - Gizlilik politikası URL: https://www.anindateklif.co/privacy

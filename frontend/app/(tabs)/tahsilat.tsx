@@ -20,6 +20,8 @@ import type { CustomerT } from '@/src/lib/api';
 import { YONTEMLER, computeCustomerBalances, sumToTRY, currentRateFor, convertBetween, singleDebtCurrency, customerKey } from '@/src/lib/tahsilat-utils';
 import { api, RatesT } from '@/src/lib/api';
 import { shareReceiptPdf } from '@/src/lib/receipt';
+import AgingCard from '@/src/components/AgingCard';
+import BankStatementCard from '@/src/components/BankStatementCard';
 import { useLanguage, statusLabel, upper } from '@/src/lib/i18n';
 import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, compactNumber, hashColor, readableOn, themedStyles } from '@/src/components/motion';
 
@@ -360,6 +362,13 @@ export default function TahsilatScreen() {
             />
           </View>
 
+          {tahsilat.some((x) => x.tur === 'borc') && (
+            <>
+              <Text style={s.sectionH}>{upper(t('aging.title'))}</Text>
+              <AgingCard tahsilat={tahsilat} rates={rates} onOpenCustomer={openLedger} />
+            </>
+          )}
+
           <View onLayout={(e) => { pendingSectionY.current = e.nativeEvent.layout.y; }}>
             <Text style={s.sectionH}>{t('tahsilat.s027')}</Text>
           </View>
@@ -397,6 +406,13 @@ export default function TahsilatScreen() {
                 </Reveal>
               ))}
             </View>
+          )}
+
+          {!restricted && (
+            <>
+              <Text style={s.sectionH}>{upper(t('ekstre.title'))}</Text>
+              <BankStatementCard />
+            </>
           )}
 
           <Text style={s.sectionH}>{t('tahsilat.s031')}</Text>

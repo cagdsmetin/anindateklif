@@ -61,7 +61,12 @@ export default function CampaignDetailScreen() {
     return Array.from(set).sort();
   }, [customerSystemTypes]);
 
-  const AUDIENCE_FILTERS = useMemo(() => [t('campaignDetail.s002'), ...availableSegments], [availableSegments]);
+  // Müşteri etiketleri de hedef kitle olarak seçilebilir ("#VIP" gibi).
+  const tagFilters = useMemo(
+    () => Array.from(new Set(customers.flatMap((c) => c.etiketler || []))).sort().map((x) => `#${x}`),
+    [customers],
+  );
+  const AUDIENCE_FILTERS = useMemo(() => [t('campaignDetail.s002'), ...tagFilters, ...availableSegments], [availableSegments, tagFilters]);
 
   const [audienceFilter, setAudienceFilter] = useState(t('campaignDetail.s002'));
   const [search, setSearch] = useState('');
@@ -74,7 +79,9 @@ export default function CampaignDetailScreen() {
   const audienceCustomers = useMemo(() => {
     let list = allCustomersWithPhone;
     if (audienceFilter !== t('campaignDetail.s002')) {
-      list = list.filter((c) => customerSystemTypes[phoneKey(c.telefon)]?.has(audienceFilter));
+      list = audienceFilter.startsWith('#')
+        ? list.filter((c) => (c.etiketler || []).includes(audienceFilter.slice(1)))
+        : list.filter((c) => customerSystemTypes[phoneKey(c.telefon)]?.has(audienceFilter));
     }
     const q = search.trim().toLowerCase();
     if (q) {

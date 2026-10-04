@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -13,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
@@ -20,14 +19,11 @@ import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { CAMPAIGN_STORAGE_KEY, useAuth } from '@/src/state/AuthContext';
 import { storage } from '@/src/utils/storage';
 import { ApiError } from '@/src/lib/api';
-import {
-  evaluatePassword,
-  isPasswordValid,
-  PASSWORD_RULE_LABELS,
-  PasswordRuleKey,
-} from '@/src/utils/password-validation';
+import { isPasswordValid } from '@/src/utils/password-validation';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
+import { MotionScrollView, themedStyles } from '@/src/components/motion';
+import { glass, GlassAuthCard, GlassButton, GlassInput } from '@/src/components/auth/GlassAuth';
+import PasswordStrength from '@/src/components/auth/PasswordStrength';
 
 export default function RegisterScreen() {
   const { t } = useLanguage();
@@ -55,7 +51,6 @@ export default function RegisterScreen() {
     storage.getItem<string>(CAMPAIGN_STORAGE_KEY, '').then((c) => setCampaign(c || ''));
   }, []);
 
-  const pwStatus = useMemo(() => evaluatePassword(password), [password]);
   const pwValid = useMemo(() => isPasswordValid(password), [password]);
 
   const phoneDigits = phone.replace(/\D/g, '');
@@ -131,19 +126,19 @@ export default function RegisterScreen() {
         >
           {isDesktopWeb && (
             <TouchableOpacity style={s.backHome} onPress={() => router.push('/landing')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="arrow-back" size={15} color={authTheme.textMuted} />
+              <Ionicons name="arrow-back" size={15} color={glass.textDim} />
               <Text style={s.backHomeText}>{t('landing.s001')} {t('landing.s002')}</Text>
             </TouchableOpacity>
           )}
-          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+          <GlassAuthCard contentStyle={!isDesktopWeb && s.cardCompact}>
             <View style={s.langRow}>
               <LanguageFlagSwitcher />
             </View>
-            <View style={s.logoWrap}>
-              <BrandLogo size={76} />
-            </View>
-            <Text style={s.title}>{t('register.s010')}</Text>
-            <Text style={s.subtitle}>{t('register.s011')}</Text>
+            <Animated.View entering={ZoomIn.springify().damping(14)} style={s.logoWrap}>
+              <BrandLogo size={isDesktopWeb ? 64 : 58} />
+            </Animated.View>
+            <Animated.Text entering={FadeInDown.delay(200).duration(450)} style={s.title}>{t('register.s010')}</Animated.Text>
+            <Animated.Text entering={FadeIn.delay(300).duration(450)} style={s.subtitle}>{t('register.s011')}</Animated.Text>
             {!!campaign && (
               <View style={s.giftBanner}>
                 <Ionicons name="gift" size={16} color="#fff" />
@@ -158,16 +153,17 @@ export default function RegisterScreen() {
               </View>
             ) : null}
 
-            <InputRow icon="person-outline" placeholder={t('register.s012')} value={name} onChangeText={setName} autoCapitalize="words" testID="reg-name" />
-            <InputRow
+            <GlassInput icon="person-outline" placeholder={t('register.s012')} value={name} onChangeText={setName} autoCapitalize="words" autoComplete="name" testID="reg-name" />
+            <GlassInput
               icon="call-outline"
               placeholder={t('register.s013')}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
+              autoComplete="tel"
               testID="reg-phone"
             />
-            <InputRow
+            <GlassInput
               icon="mail-outline"
               placeholder={t('register.s014')}
               value={email}
@@ -177,22 +173,24 @@ export default function RegisterScreen() {
               autoComplete="email"
               testID="reg-email"
             />
-            <InputRow
+            <GlassInput
               icon="lock-closed-outline"
               placeholder={t('register.s015')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPw}
               autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
               testID="reg-password"
               trailing={
                 <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                  <Ionicons name={showPw ? 'eye-outline' : 'eye-off-outline'} size={19} color={glass.textFaint} />
                 </TouchableOpacity>
               }
             />
 
-            <PasswordChecklist status={pwStatus} />
+            <PasswordStrength value={password} />
 
             <TouchableOpacity
               style={s.terms}
@@ -201,104 +199,43 @@ export default function RegisterScreen() {
               testID="reg-terms"
             >
               <View style={[s.checkbox, acceptedTerms && s.checkboxOn]}>
-                {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+                {acceptedTerms ? <Ionicons name="checkmark" size={14} color={glass.ink} /> : null}
               </View>
               <Text style={s.termsText}>
                 {t('register.s016')}<Text style={s.termsLink}>{t('register.s017')}</Text> ve{' '}
                 <Text style={s.termsLink}>{t('register.s018')}</Text> {t('register.s019')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[s.cta, (busy || !canSubmit) && s.ctaDisabled]}
-              onPress={onSubmit}
-              disabled={busy}
-              testID="reg-submit"
-            >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>{t('register.s020')}</Text>}
-            </TouchableOpacity>
+            <GlassButton label={t('register.s020')} onPress={onSubmit} busy={busy} dimmed={!canSubmit} testID="reg-submit" />
 
-            <View style={s.footer}>
-              <Text style={s.footerText}>{t('register.s021')}</Text>
+            <Animated.View entering={FadeIn.delay(500)} style={s.footer}>
+              <Text style={s.footerText}>{t('register.s021')} </Text>
               <TouchableOpacity onPress={() => router.replace('/login')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={s.footerLink}>{t('register.s022')}</Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            </Animated.View>
+          </GlassAuthCard>
         </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function PasswordChecklist({ status }: { status: Record<PasswordRuleKey, boolean> }) {
-  const { t } = useLanguage();
-  const RULES: PasswordRuleKey[] = ['lower', 'upper', 'digit', 'symbol', 'length'];
-  return (
-    <View style={s.pwBlock}>
-      <Text style={s.pwTitle}>{t('register.s023')}</Text>
-      <View style={s.pwList}>
-        {RULES.map((k) => (
-          <View key={k} style={s.pwRow}>
-            <Ionicons
-              name={status[k] ? 'checkmark-circle' : 'ellipse-outline'}
-              size={14}
-              color={status[k] ? authTheme.success : authTheme.textMuted}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={[s.pwText, status[k] && { color: authTheme.textSoft }]}>
-              {PASSWORD_RULE_LABELS[k]}
-            </Text>
-          </View>
-        ))}
-      </View>
-      <Text style={s.pwHint}>{t('register.s024')}</Text>
-    </View>
-  );
-}
-
-function InputRow({
-  icon,
-  trailing,
-  ...rest
-}: React.ComponentProps<typeof TextInput> & {
-  icon: keyof typeof Ionicons.glyphMap;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <View style={s.inputRow}>
-      <Ionicons name={icon} size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-      <MotionInput {...rest} placeholderTextColor={authTheme.textMuted} style={s.input} />
-      {trailing ? <View style={{ marginLeft: 8 }}>{trailing}</View> : null}
-    </View>
-  );
-}
-
 const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
   bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  scroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 },
+  scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
   scrollDesktop: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
   backHome: {
     width: '100%', maxWidth: 440, marginBottom: 14,
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  backHomeText: { color: authTheme.textMuted, fontSize: 13, fontWeight: '600' },
-  desktopCard: {
-    width: '100%',
-    maxWidth: 440,
-    backgroundColor: authTheme.card,
-    borderColor: authTheme.cardBorder,
-    borderWidth: 1,
-    borderRadius: authRadius.xl,
-    paddingHorizontal: 36,
-    paddingVertical: 32,
-    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
-  },
+  backHomeText: { color: glass.textDim, fontSize: 13, fontWeight: '600' },
+  cardCompact: { paddingHorizontal: 20, paddingVertical: 24 },
   langRow: { alignItems: 'center', marginBottom: 10 },
   logoWrap: { alignItems: 'center', marginBottom: 14 },
-  title: { color: authTheme.text, fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 4 },
-  subtitle: { color: authTheme.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 20 },
+  title: { color: glass.text, fontSize: 25, fontWeight: '900', textAlign: 'center', marginBottom: 4 },
+  subtitle: { color: glass.textDim, fontSize: 14, textAlign: 'center', marginBottom: 20 },
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: 'rgba(239,68,68,0.10)',
@@ -306,45 +243,18 @@ const s = themedStyles(() => StyleSheet.create({
     borderRadius: authRadius.md, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12,
   },
   errorText: { color: authTheme.danger, fontSize: 13, fontWeight: '600', flex: 1 },
-  inputRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: authTheme.card, borderColor: authTheme.cardBorder, borderWidth: 1,
-    borderRadius: authRadius.lg, paddingHorizontal: 14, height: 56, marginBottom: 12,
-  },
-  input: { flex: 1, color: authTheme.text, fontSize: 15, paddingVertical: 0, ...Platform.select({ web: { outlineWidth: 0 } as any }) },
-  pwBlock: {
-    marginTop: 4, marginBottom: 14,
-    backgroundColor: authTheme.bgSoft,
-    borderColor: authTheme.line, borderWidth: 1, borderRadius: authRadius.md,
-    padding: 12,
-  },
-  pwTitle: { color: authTheme.text, fontWeight: '800', fontSize: 13, marginBottom: 8 },
-  pwList: { flexDirection: 'row', flexWrap: 'wrap' },
-  pwRow: { flexDirection: 'row', alignItems: 'center', marginRight: 12, marginBottom: 6, minWidth: '30%' },
-  pwText: { color: authTheme.textMuted, fontSize: 12 },
-  pwHint: { color: authTheme.textMuted, fontSize: 11, marginTop: 4, fontStyle: 'italic' },
   terms: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 18 },
   checkbox: {
-    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5,
-    borderColor: authTheme.cardBorder, backgroundColor: 'transparent',
-    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+    width: 20, height: 20, borderRadius: 6, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
   },
-  checkboxOn: { backgroundColor: authTheme.primary, borderColor: authTheme.primary },
-  termsText: { color: authTheme.textMuted, fontSize: 12.5, flex: 1, lineHeight: 18 },
-  termsLink: { color: authTheme.link, fontWeight: '700' },
-  cta: {
-    backgroundColor: authTheme.primary, borderRadius: authRadius.xl, paddingVertical: 16,
-    alignItems: 'center', justifyContent: 'center',
-    ...Platform.select({
-      ios: { shadowColor: authTheme.primary, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-      android: { elevation: 6 },
-    }),
-  },
-  ctaDisabled: { opacity: 0.55 },
-  ctaText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-  footer: { marginTop: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  footerText: { color: authTheme.textMuted, fontSize: 13 },
-  footerLink: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
-  giftBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: authTheme.gold, borderRadius: authRadius.md, paddingHorizontal: 14, paddingVertical: 10, marginTop: authSpacing.md, marginBottom: authSpacing.md },
+  checkboxOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  termsText: { color: glass.textDim, fontSize: 12.5, flex: 1, lineHeight: 18 },
+  termsLink: { color: glass.text, fontWeight: '700' },
+  footer: { marginTop: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
+  footerText: { color: glass.textDim, fontSize: 13 },
+  footerLink: { color: glass.text, fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' },
+  giftBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: authTheme.gold, borderRadius: authRadius.md, paddingHorizontal: 14, paddingVertical: 10, marginTop: authSpacing.xs, marginBottom: authSpacing.md },
   giftText: { color: '#fff', fontWeight: '700', fontSize: 13, flex: 1 },
 }));

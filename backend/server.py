@@ -665,7 +665,14 @@ class UserProfileUpdate(BaseModel):
         return v
 
 
-async def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+async def get_current_user(request: Request, authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
+    user = await _resolve_current_user(authorization)
+    # İşlem geçmişi middleware'i (_audit_mw) isteği yapanı buradan okur.
+    request.state.audit_user = user
+    return user
+
+
+async def _resolve_current_user(authorization: Optional[str]) -> Dict[str, Any]:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = authorization[7:].strip()
@@ -1025,6 +1032,10 @@ async def login(payload: LoginRequest, request: Request):
     if u.get("deleted_at"):
         raise HTTPException(status_code=403, detail="Bu hesap kapatıldı. Destek ile iletişime geçin.")
     access = _make_access_token(u)
+    # Giriş, firma sahibinin işlem geçmişine yazılır (personel girişi dahil).
+    owner_uid = u.get("staff_owner_user_id") or u["user_id"]
+    await _audit({"user_id": owner_uid, "actual_user_id": u["user_id"], "actor_name": u.get("name", ""), "actor_email": u.get("email", "")},
+                 "Giriş yapıldı", "auth", "", "", u.get("staff_of_company_id") or "", None, _client_ip(request))
     return AuthResponse(access_token=access, user=_user_out(u))
 
 
@@ -1224,6 +1235,13 @@ async def delete_account(user=Depends(get_current_user)):
     await db.manual_reminders.delete_many({"userId": uid})
     await db.kasa.delete_many({"userId": uid})
     await db.tahsilat.delete_many({"userId": uid})
+    await db.cek_senet.delete_many({"userId": uid})
+    await db.audit_log.delete_many({"userId": uid})
+    await db.business_cards.delete_many({"userId": uid})
+    await db.rent_units.delete_many({"userId": uid})
+    await db.rent_payments.delete_many({"userId": uid})
+    await db.session_packages.delete_many({"userId": uid})
+    await db.catalog_images.delete_many({"userId": uid})
     await db.company_invites.delete_many({"ownerUserId": uid})
     await db.subscription_payments.delete_many({"user_id": uid})
     await db.email_verifications.delete_many({"user_id": uid})
@@ -1231,6 +1249,49 @@ async def delete_account(user=Depends(get_current_user)):
     await db.users.delete_many({"staff_owner_user_id": uid})
     await db.users.delete_one({"user_id": uid})
     return {"ok": True}
+
+
+# KVKK md. 11 / taşınabilirlik: firma sahibi tüm iş verisini tek JSON olarak
+# indirebilir. Şifre/token gibi gizli alanlar ve çok büyük gömülü dosyalar
+# (base64 PDF/görsel) dışarıda bırakılır.
+EXPORT_COLLECTIONS = (
+    "companies", "customers", "quotes", "services", "campaigns", "manual_reminders", "kasa", "kasa_settings",
+    "kasa_recurring", "tahsilat", "cek_senet", "business_cards", "rent_units", "rent_payments", "session_packages", "catalog", "stock_moves", "contracts", "coupons", "invoices",
+    "audit_log",
+)
+EXPORT_SECRET_KEYS = {"password", "password_hash", "hashed_password", "apiKey", "token", "access_token", "refresh_token"}
+
+
+def _export_clean(v: Any) -> Any:
+    if isinstance(v, dict):
+        return {k: _export_clean(x) for k, x in v.items() if k != "_id" and k not in EXPORT_SECRET_KEYS}
+    if isinstance(v, list):
+        return [_export_clean(x) for x in v]
+    if isinstance(v, str) and len(v) > 200_000:
+        return "[büyük dosya dışa aktarılmadı]"
+    if isinstance(v, datetime):
+        return v.isoformat()
+    return v
+
+
+@api_router.get("/auth/export")
+async def export_account_data(user=Depends(get_current_user)):
+    if user.get("is_staff"):
+        raise HTTPException(status_code=403, detail="Verileri yalnız firma sahibi indirebilir")
+    uid = user["user_id"]
+    profile = await db.users.find_one({"user_id": uid}, {"_id": 0}) or {}
+    out: Dict[str, Any] = {
+        "format": "anindateklif-export-v1",
+        "exportedAt": utc_now_iso(),
+        "profile": _export_clean({k: profile.get(k) for k in ("user_id", "email", "name", "phone", "language", "created_at", "subscription_plan", "subscription_status")}),
+    }
+    for col in EXPORT_COLLECTIONS:
+        docs = await db[col].find({"userId": uid}, {"_id": 0}).to_list(50000)
+        out[col] = _export_clean(docs)
+    staff = await db.users.find({"staff_owner_user_id": uid}, {"_id": 0, "user_id": 1, "email": 1, "name": 1, "staff_role": 1}).to_list(500)
+    out["staff"] = _export_clean(staff)
+    await _audit(user, "Tüm veriler dışa aktarıldı", "account", uid)
+    return out
 
 
 @api_router.post("/auth/logout")
@@ -1366,6 +1427,10 @@ class CatalogItem(BaseModel):
     stok: float = 0.0
     minStok: float = 0.0
     stokKodu: str = ""
+    # Pazaryeri/vitrin: ürün firmanın kartvizit sayfasında listelensin mi.
+    vitrinde: bool = False
+    gorselVar: bool = False
+    gorselVer: int = 0
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1483,6 +1548,7 @@ class KasaEntry(BaseModel):
     hesap: str = "Ana Kasa"  # hangi kasa/banka hesabı (Kasa ayarlarından tanımlanır)
     kdvOrani: float = 0.0  # >0 ise tutar KDV dahildir; KDV özetinde indirilecek/hesaplanan KDV'ye girer
     recurringId: Optional[str] = None  # tekrarlayan bir kuraldan otomatik oluşturulduysa kuralın id'si
+    cekSenetId: str = ""  # bir çek/senet "Ödendi" olunca otomatik oluşturulduysa bağlantı
     # Kaydı giren/sahiplenen personelin gerçek user_id'si (bkz. _self_id);
     # boşsa firma sahibi/yönetici kaydıdır. Kısıtlı personel Kasa'da yalnız
     # kendi kayıtlarını görür (bkz. list_kasa).
@@ -1524,6 +1590,8 @@ class TahsilatEntry(BaseModel):
     notlar: str = ""
     tarih: str  # YYYY-MM-DD
     quoteId: str = ""  # dolu ise: bu borç bir teklifin "Onaylandı" durumuna geçmesiyle otomatik oluşturuldu
+    cekSenetId: str = ""  # dolu ise: müşteriden alınan bir çek/senetle borcundan düşüldü
+    ekstreRef: str = ""  # banka ekstresinden aktarıldıysa satırın parmak izi (mükerrer aktarımı önler)
     kurTRY: float = 0.0  # paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (bilgi amaçlı, referans)
     # Müşteriden sorumlu personelin gerçek user_id'si; boşsa sahiplik teklif
     # ve müşteri üzerinden çözülür (bkz. _tahsilat_owners).
@@ -1545,6 +1613,7 @@ class TahsilatEntryCreate(BaseModel):
     tarih: str
     quoteId: str = ""
     kurTRY: float = 0.0
+    ekstreRef: str = ""
 
 
 class Customer(BaseModel):
@@ -1561,6 +1630,9 @@ class Customer(BaseModel):
     vergiDairesi: str = ""
     il: str = ""
     ilce: str = ""
+    # Serbest etiketler (VIP, Sadık, Toptancı...): müşteri listesinde filtre
+    # ve kampanya hedefleme için.
+    etiketler: List[str] = Field(default_factory=list)
     # Müşteriyi ekleyen kişinin gerçek user_id'si (bkz. _self_id); kısıtlı
     # personel yalnız kendi müşterilerini görür (bkz. _visible_customers).
     createdByUserId: str = ""
@@ -1579,6 +1651,19 @@ class CustomerCreate(BaseModel):
     vergiDairesi: Optional[str] = None
     il: Optional[str] = None
     ilce: Optional[str] = None
+    etiketler: Optional[List[str]] = None
+
+    @field_validator("etiketler")
+    @classmethod
+    def _clean_tags(cls, v):
+        if v is None:
+            return v
+        out: List[str] = []
+        for x in v:
+            x = (x or "").strip()[:24]
+            if x and x.lower() not in [o.lower() for o in out]:
+                out.append(x)
+        return out[:10]
 
 
 class Service(BaseModel):
@@ -1954,6 +2039,11 @@ async def delete_company(company_id: str, user=Depends(get_current_user)):
     await db.manual_reminders.delete_many({"companyId": company_id, "userId": uid})
     await db.kasa.delete_many({"companyId": company_id, "userId": uid})
     await db.tahsilat.delete_many({"companyId": company_id, "userId": uid})
+    await db.cek_senet.delete_many({"companyId": company_id, "userId": uid})
+    await db.business_cards.delete_many({"companyId": company_id, "userId": uid})
+    await db.rent_units.delete_many({"companyId": company_id, "userId": uid})
+    await db.rent_payments.delete_many({"companyId": company_id, "userId": uid})
+    await db.session_packages.delete_many({"companyId": company_id, "userId": uid})
     return {"ok": True}
 
 
@@ -2530,6 +2620,7 @@ async def update_catalog_item(item_id: str, payload: CatalogItemCreate, user=Dep
 async def delete_catalog_item(item_id: str, user=Depends(get_current_user)):
     _require_owner(user)
     await db.catalog.delete_one({"id": item_id, "userId": user["user_id"]})
+    await db.catalog_images.delete_many({"itemId": item_id, "userId": user["user_id"]})
     return {"ok": True}
 
 
@@ -5099,6 +5190,8 @@ async def create_tahsilat_entry(payload: TahsilatEntryCreate, user=Depends(get_c
         if owners and me not in owners:
             raise HTTPException(status_code=403, detail="Bu müşteri size atanmamış; kaydı bir yönetici girebilir")
         personel_id = me
+    if payload.ekstreRef and await db.tahsilat.find_one({"userId": user["user_id"], "companyId": payload.companyId, "ekstreRef": payload.ekstreRef}, {"_id": 1}):
+        raise HTTPException(status_code=409, detail="Bu ekstre satırı zaten aktarılmış")
     obj = TahsilatEntry(userId=user["user_id"], personelId=personel_id, **payload.dict())
     await db.tahsilat.insert_one(obj.dict())
 
@@ -5135,6 +5228,222 @@ async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
     # silerken onu da temizle (yanlış girilen bir tahsilat Kasa'da asılı kalmasın).
     await db.kasa.delete_many({"userId": user["user_id"], "tahsilatId": entry_id})
     await db.tahsilat.delete_one({"id": entry_id, "userId": user["user_id"]})
+    return {"ok": True}
+
+
+# ============ ÇEK & SENET PORTFÖYÜ ============
+# Alınan (müşteriden, tahsil edilecek) ve verilen (tedarikçiye, ödenecek)
+# vadeli çek/senetler. Kasa ve Tahsilat ile bağlantı _sync_cek_links'te,
+# durumdan türetilir (idempotent): kayıt her değiştiğinde yeniden hesaplanır.
+#  - "odendi"  -> Kasa'ya gelir (alınan) / gider (verilen) yazılır.
+#  - cariDus   -> alınan çek müşterinin borcundan "tahsilat" olarak düşülür;
+#                 çek karşılıksız çıkarsa bu düşüm geri alınır, borç geri gelir.
+CEK_TURLER = ("cek", "senet")
+CEK_YONLER = ("alinan", "verilen")
+CEK_DURUMLAR = ("portfoy", "tahsilde", "odendi", "karsiliksiz", "ciro")
+
+
+class CekSenet(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    yon: str = "alinan"
+    tur: str = "cek"
+    customerId: str = ""
+    kesideci: str  # alınanda borçlu/keşideci, verilende lehtar (kime verildi)
+    telefon: str = ""
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    vadeTarihi: str  # YYYY-MM-DD
+    banka: str = ""
+    no: str = ""
+    durum: str = "portfoy"
+    ciroEdilen: str = ""  # ciro edildiyse kime
+    cariDus: bool = False
+    notlar: str = ""
+    kurTRY: float = 0.0
+    durumTarihi: str = ""  # son durum değişikliği (YYYY-MM-DD)
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class CekSenetCreate(BaseModel):
+    companyId: str
+    yon: str = "alinan"
+    tur: str = "cek"
+    customerId: str = ""
+    kesideci: str
+    telefon: str = ""
+    tutar: float
+    paraBirimi: str = "TRY"
+    vadeTarihi: str
+    banka: str = ""
+    no: str = ""
+    durum: str = "portfoy"
+    ciroEdilen: str = ""
+    cariDus: bool = False
+    notlar: str = ""
+    kurTRY: float = 0.0
+
+
+class CekSenetPatch(BaseModel):
+    durum: Optional[str] = None
+    ciroEdilen: Optional[str] = None
+    notlar: Optional[str] = None
+    vadeTarihi: Optional[str] = None
+    tutar: Optional[float] = None
+    banka: Optional[str] = None
+    no: Optional[str] = None
+    telefon: Optional[str] = None
+
+
+class CekSenetImport(BaseModel):
+    companyId: str
+    items: List[CekSenetCreate]
+
+
+def _cek_label(d: Dict[str, Any]) -> str:
+    return ("Çek" if d.get("tur") == "cek" else "Senet") + (f" #{d['no']}" if d.get("no") else "")
+
+
+def _validate_cek(d: Dict[str, Any]):
+    if d.get("yon") not in CEK_YONLER:
+        raise HTTPException(status_code=422, detail="Yön alınan ya da verilen olmalı")
+    if d.get("tur") not in CEK_TURLER:
+        raise HTTPException(status_code=422, detail="Tür çek ya da senet olmalı")
+    if d.get("durum") not in CEK_DURUMLAR:
+        raise HTTPException(status_code=422, detail="Geçersiz durum")
+    if not (d.get("kesideci") or "").strip():
+        raise HTTPException(status_code=422, detail="Keşideci / lehtar adı gerekli")
+    if not d.get("tutar") or d["tutar"] <= 0:
+        raise HTTPException(status_code=422, detail="Tutar sıfırdan büyük olmalı")
+    try:
+        datetime.strptime(d.get("vadeTarihi") or "", "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Vade tarihi YYYY-AA-GG olmalı")
+
+
+async def _sync_cek_links(uid: str, d: Dict[str, Any]):
+    label = _cek_label(d)
+    today = _istanbul_today().isoformat()
+    # Kasa: yalnız "Ödendi" durumunda tek bir bağlı kayıt.
+    kasa = await db.kasa.find_one({"userId": uid, "cekSenetId": d["id"]}, {"_id": 0, "id": 1})
+    if d["durum"] == "odendi":
+        fields = {
+            "tur": "gelir" if d["yon"] == "alinan" else "gider",
+            "kategori": "Çek/Senet",
+            "tutar": d["tutar"],
+            "paraBirimi": d.get("paraBirimi", "TRY"),
+            "yontem": "Çek" if d["tur"] == "cek" else "Senet",
+            "notlar": f"{d['kesideci']} - {label}" + (f" ({d['banka']})" if d.get("banka") else ""),
+            "kurTRY": d.get("kurTRY", 0.0),
+            "customerId": d.get("customerId", ""),
+            "musteriAdi": d["kesideci"] if d["yon"] == "alinan" else "",
+        }
+        if kasa:
+            await db.kasa.update_one({"id": kasa["id"], "userId": uid}, {"$set": fields})
+        else:
+            entry = KasaEntry(userId=uid, companyId=d["companyId"], tarih=d.get("durumTarihi") or today, cekSenetId=d["id"], **fields)
+            await db.kasa.insert_one(entry.dict())
+    elif kasa:
+        await db.kasa.delete_many({"userId": uid, "cekSenetId": d["id"]})
+
+    # Tahsilat: alınan çek müşterinin borcundan düşülsün mü?
+    want = d["yon"] == "alinan" and d.get("cariDus") and d["durum"] != "karsiliksiz"
+    tah = await db.tahsilat.find_one({"userId": uid, "cekSenetId": d["id"]}, {"_id": 0, "id": 1})
+    if want:
+        fields = {
+            "customerId": d.get("customerId", ""),
+            "musteriAdi": d["kesideci"],
+            "musteriTelefon": d.get("telefon", ""),
+            "tutar": d["tutar"],
+            "paraBirimi": d.get("paraBirimi", "TRY"),
+            "notlar": f"{label}, vade {d['vadeTarihi']}",
+            "kurTRY": d.get("kurTRY", 0.0),
+        }
+        if tah:
+            await db.tahsilat.update_one({"id": tah["id"], "userId": uid}, {"$set": fields})
+        else:
+            entry = TahsilatEntry(
+                userId=uid, companyId=d["companyId"], tur="tahsilat",
+                yontem="Çek" if d["tur"] == "cek" else "Diğer",
+                tarih=(d.get("createdAt") or today)[:10], cekSenetId=d["id"], **fields,
+            )
+            await db.tahsilat.insert_one(entry.dict())
+    elif tah:
+        await db.tahsilat.delete_many({"userId": uid, "cekSenetId": d["id"]})
+
+
+@api_router.get("/cek-senet/{company_id}", response_model=List[CekSenet])
+async def list_cek_senet(company_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, company_id)
+    docs = await db.cek_senet.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(5000)
+    return [CekSenet(**d) for d in docs]
+
+
+async def _insert_cek(uid: str, payload: CekSenetCreate) -> CekSenet:
+    data = payload.dict()
+    data["kesideci"] = (data.get("kesideci") or "").strip()
+    _validate_cek(data)
+    if data["durum"] != "ciro":
+        data["ciroEdilen"] = ""
+    obj = CekSenet(userId=uid, durumTarihi=_istanbul_today().isoformat(), **data)
+    await db.cek_senet.insert_one(obj.dict())
+    await _sync_cek_links(uid, obj.dict())
+    return obj
+
+
+@api_router.post("/cek-senet", response_model=CekSenet)
+async def create_cek_senet(payload: CekSenetCreate, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    return await _insert_cek(user["user_id"], payload)
+
+
+@api_router.post("/cek-senet/import")
+async def import_cek_senet(payload: CekSenetImport, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    ok, errors = 0, []
+    for i, item in enumerate(payload.items[:1000]):
+        item.companyId = payload.companyId
+        try:
+            await _insert_cek(user["user_id"], item)
+            ok += 1
+        except HTTPException as e:
+            errors.append({"row": i + 1, "detail": e.detail})
+    return {"imported": ok, "errors": errors}
+
+
+@api_router.patch("/cek-senet/{item_id}", response_model=CekSenet)
+async def patch_cek_senet(item_id: str, payload: CekSenetPatch, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    doc = await db.cek_senet.find_one({"id": item_id, "userId": uid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    patch = {k: v for k, v in payload.dict().items() if v is not None}
+    if "durum" in patch and patch["durum"] != doc.get("durum"):
+        patch["durumTarihi"] = _istanbul_today().isoformat()
+    merged = {**doc, **patch}
+    if merged["durum"] != "ciro":
+        merged["ciroEdilen"] = ""
+        patch["ciroEdilen"] = ""
+    _validate_cek(merged)
+    await db.cek_senet.update_one({"id": item_id, "userId": uid}, {"$set": patch})
+    await _sync_cek_links(uid, merged)
+    return CekSenet(**merged)
+
+
+@api_router.delete("/cek-senet/{item_id}")
+async def delete_cek_senet(item_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    # Kayıttan türeyen Kasa/Tahsilat hareketleri de gider; aksi halde silinen
+    # bir çek Kasa'da gelir ya da müşterinin borcundan düşüm olarak kalırdı.
+    await db.kasa.delete_many({"userId": uid, "cekSenetId": item_id})
+    await db.tahsilat.delete_many({"userId": uid, "cekSenetId": item_id})
+    await db.cek_senet.delete_one({"id": item_id, "userId": uid})
     return {"ok": True}
 
 
@@ -7229,6 +7538,13 @@ async def _hard_delete_user_data(uid: str) -> None:
     await db.manual_reminders.delete_many({"userId": uid})
     await db.kasa.delete_many({"userId": uid})
     await db.tahsilat.delete_many({"userId": uid})
+    await db.cek_senet.delete_many({"userId": uid})
+    await db.audit_log.delete_many({"userId": uid})
+    await db.business_cards.delete_many({"userId": uid})
+    await db.rent_units.delete_many({"userId": uid})
+    await db.rent_payments.delete_many({"userId": uid})
+    await db.session_packages.delete_many({"userId": uid})
+    await db.catalog_images.delete_many({"userId": uid})
     await db.company_invites.delete_many({"ownerUserId": uid})
     await db.subscription_payments.delete_many({"user_id": uid})
     await db.email_verifications.delete_many({"user_id": uid})
@@ -9888,7 +10204,7 @@ TIPS: Dict[str, List[Tuple[str, str, str]]] = {
 ENGAGE_TEXT = {
     "tr": {
         "morning_t": "☀️ Bugün sizi bekleyenler",
-        "rem": "{n} hatırlatma", "srv": "{n} servis/bakım", "due": "{n} vadesi gelen tahsilat",
+        "rem": "{n} hatırlatma", "srv": "{n} servis/bakım", "due": "{n} vadesi gelen tahsilat", "cek": "{n} çek/senet vadesi",
         "morning_m": "{items}. Günü planlamak için dokunun.",
         "sub_t": "⏰ Aboneliğiniz {d} gün içinde bitiyor", "sub_m": "Tekliflerinize kesintisiz devam etmek için aboneliğinizi yenileyin.",
         "pending_t": "📨 {n} teklif yanıt bekliyor", "pending_m": "3 günden eski bekleyen teklifleriniz var. Müşterinizi arayıp durumu sorun.",
@@ -9899,7 +10215,7 @@ ENGAGE_TEXT = {
     },
     "en": {
         "morning_t": "☀️ What's waiting for you today",
-        "rem": "{n} reminder(s)", "srv": "{n} service visit(s)", "due": "{n} payment(s) due",
+        "rem": "{n} reminder(s)", "srv": "{n} service visit(s)", "due": "{n} payment(s) due", "cek": "{n} cheque/note(s) due",
         "morning_m": "{items}. Tap to plan your day.",
         "sub_t": "⏰ Your subscription ends in {d} day(s)", "sub_m": "Renew to keep sending quotes without interruption.",
         "pending_t": "📨 {n} quote(s) awaiting reply", "pending_m": "Some quotes are older than 3 days. Give your customer a call.",
@@ -9910,7 +10226,7 @@ ENGAGE_TEXT = {
     },
     "it": {
         "morning_t": "☀️ Cosa ti aspetta oggi",
-        "rem": "{n} promemoria", "srv": "{n} interventi", "due": "{n} incassi in scadenza",
+        "rem": "{n} promemoria", "srv": "{n} interventi", "due": "{n} incassi in scadenza", "cek": "{n} assegni/cambiali in scadenza",
         "morning_m": "{items}. Tocca per pianificare la giornata.",
         "sub_t": "⏰ L'abbonamento scade tra {d} giorni", "sub_m": "Rinnova per continuare senza interruzioni.",
         "pending_t": "📨 {n} preventivi in attesa", "pending_m": "Alcuni hanno più di 3 giorni. Chiama il cliente.",
@@ -9947,10 +10263,11 @@ async def _engage_morning(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bo
     rems = await db.manual_reminders.count_documents({"userId": uid, "tarih": tday, "tamamlandi": False})
     srvs = await db.services.count_documents({"userId": uid, "$or": [{"servisTarihi": tday}, {"bakimTarihi": tday}], "durum": {"$ne": "İptal"}})
     dues = await db.tahsilat.count_documents({"userId": uid, "tur": "borc", "vadeTarihi": tday})
-    parts = [T[k].format(n=n) for k, n in (("rem", rems), ("srv", srvs), ("due", dues)) if n]
+    ceks = await db.cek_senet.count_documents({"userId": uid, "vadeTarihi": tday, "durum": {"$in": ["portfoy", "tahsilde"]}})
+    parts = [T[k].format(n=n) for k, n in (("rem", rems), ("srv", srvs), ("due", dues), ("cek", ceks)) if n]
     if not parts:
         return False
-    link = "/reminders" if rems else ("/services" if srvs else "/tahsilat")
+    link = "/reminders" if rems else ("/services" if srvs else ("/tahsilat" if dues else "/cek-senet"))
     return await _notify_user(uid, f"sabah:{uid}:{tday}", "akilli", T["morning_t"], T["morning_m"].format(items=", ".join(parts)), link, kind="sabah")
 
 
@@ -10070,6 +10387,741 @@ async def admin_broadcast(payload: BroadcastIn, user=Depends(get_current_user)):
     return {"ok": True, "recipients": len(ids), "batch": batch}
 
 
+# ============ KİRA & AİDAT (DÜZENLİ TAHSİLAT) ============
+# Aylık tahsil edilen birimler: kira (işyeri/konut/araç) ve site aidatı
+# (daire). Her birim için dönem (YYYY-MM) bazında ödeme kaydı tutulur;
+# "Ödendi" işareti Kasa'ya gelir yazar, geri alınınca silinir. Kira için
+# yıllık artış oranı tanımlanırsa her sözleşme yılında tutar kendiliğinden
+# artar (bkz. _unit_amount).
+DUZENLI_TIPLER = ("kira", "aidat")
+
+
+class RentUnit(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    tip: str = "kira"
+    grup: str = ""  # kira: İşyeri/Konut/Araç · aidat: site/apartman adı
+    ad: str  # "Kadıköy dükkan", "A Blok D:5"
+    kisi: str = ""  # kiracı / daire sakini
+    telefon: str = ""
+    customerId: str = ""
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    gun: int = 1
+    baslangic: str  # YYYY-MM-DD
+    bitis: str = ""
+    artisOrani: float = 0.0  # yıllık %
+    depozito: float = 0.0
+    notlar: str = ""
+    aktif: bool = True
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class RentUnitIn(BaseModel):
+    companyId: str
+    tip: str = "kira"
+    grup: str = ""
+    ad: str
+    kisi: str = ""
+    telefon: str = ""
+    customerId: str = ""
+    tutar: float
+    paraBirimi: str = "TRY"
+    gun: int = 1
+    baslangic: str = ""
+    bitis: str = ""
+    artisOrani: float = 0.0
+    depozito: float = 0.0
+    notlar: str = ""
+    aktif: bool = True
+
+
+class RentPayment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    unitId: str
+    donem: str  # YYYY-MM
+    tutar: float
+    paraBirimi: str = "TRY"
+    tarih: str
+    yontem: str = "Havale/EFT"
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class RentPaymentIn(BaseModel):
+    unitId: str
+    donem: str
+    tutar: Optional[float] = None
+    tarih: str = ""
+    yontem: str = "Havale/EFT"
+
+
+def _clean_unit(d: Dict[str, Any]) -> Dict[str, Any]:
+    if d.get("tip") not in DUZENLI_TIPLER:
+        raise HTTPException(status_code=422, detail="Tür kira ya da aidat olmalı")
+    d["ad"] = (d.get("ad") or "").strip()[:80]
+    if not d["ad"]:
+        raise HTTPException(status_code=422, detail="Birim adı gerekli")
+    if not d.get("tutar") or d["tutar"] <= 0:
+        raise HTTPException(status_code=422, detail="Tutar sıfırdan büyük olmalı")
+    d["gun"] = max(1, min(28, int(d.get("gun") or 1)))
+    d["baslangic"] = d.get("baslangic") or _istanbul_today().isoformat()
+    for k in ("baslangic", "bitis"):
+        if d.get(k):
+            try:
+                datetime.strptime(d[k], "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(status_code=422, detail="Tarih YYYY-AA-GG olmalı")
+    d["artisOrani"] = max(0.0, min(500.0, float(d.get("artisOrani") or 0)))
+    for k in ("grup", "kisi", "telefon", "notlar"):
+        d[k] = (d.get(k) or "").strip()[:300]
+    return d
+
+
+async def _sync_rent_kasa(uid: str, unit: Dict[str, Any], pay: Dict[str, Any], remove: bool = False):
+    await db.kasa.delete_many({"userId": uid, "rentPaymentId": pay["id"]})
+    if remove:
+        return
+    entry = KasaEntry(
+        userId=uid, companyId=pay["companyId"], tur="gelir", kategori="Kira" if unit["tip"] == "kira" else "Aidat",
+        tutar=pay["tutar"], paraBirimi=pay.get("paraBirimi", "TRY"), yontem=pay.get("yontem", "Havale/EFT"),
+        notlar=f"{unit['ad']}{' - ' + unit['kisi'] if unit.get('kisi') else ''} ({pay['donem']})", tarih=pay["tarih"],
+        customerId=unit.get("customerId", ""), musteriAdi=unit.get("kisi", ""),
+    )
+    doc = entry.dict()
+    doc["rentPaymentId"] = pay["id"]
+    await db.kasa.insert_one(doc)
+
+
+@api_router.get("/duzenli/{company_id}")
+async def list_rent(company_id: str, tip: str = "kira", user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, company_id)
+    units = await db.rent_units.find({"userId": user["user_id"], "companyId": company_id, "tip": tip}, {"_id": 0}).to_list(2000)
+    ids = [u["id"] for u in units]
+    pays = await db.rent_payments.find({"userId": user["user_id"], "unitId": {"$in": ids}}, {"_id": 0}).to_list(50000) if ids else []
+    return {"units": [RentUnit(**u).dict() for u in units], "payments": [RentPayment(**p).dict() for p in pays]}
+
+
+@api_router.post("/duzenli", response_model=RentUnit)
+async def create_rent_unit(payload: RentUnitIn, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    obj = RentUnit(userId=user["user_id"], **_clean_unit(payload.dict()))
+    await db.rent_units.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/duzenli/{unit_id}", response_model=RentUnit)
+async def update_rent_unit(unit_id: str, payload: RentUnitIn, user=Depends(get_current_user)):
+    _require_manager(user)
+    doc = await db.rent_units.find_one({"id": unit_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    data = _clean_unit({**payload.dict(), "companyId": doc["companyId"], "tip": doc["tip"]})
+    await db.rent_units.update_one({"id": unit_id, "userId": user["user_id"]}, {"$set": data})
+    return RentUnit(**{**doc, **data})
+
+
+@api_router.delete("/duzenli/{unit_id}")
+async def delete_rent_unit(unit_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    # Birim silinir; geçmiş ödemelerin Kasa'daki gelirleri kayıt olarak kalır.
+    await db.rent_payments.delete_many({"userId": uid, "unitId": unit_id})
+    await db.rent_units.delete_one({"id": unit_id, "userId": uid})
+    return {"ok": True}
+
+
+def _unit_amount(unit: Dict[str, Any], donem: str) -> float:
+    """Dönem tutarı: yıllık artış varsa her sözleşme yılında bileşik artar."""
+    base = float(unit.get("tutar") or 0)
+    rate = float(unit.get("artisOrani") or 0)
+    try:
+        s = datetime.strptime(unit["baslangic"], "%Y-%m-%d")
+        y, m = map(int, donem.split("-"))
+        years = max(0, ((y - s.year) * 12 + (m - s.month)) // 12)
+    except Exception:
+        years = 0
+    return round(base * ((1 + rate / 100) ** years), 2)
+
+
+@api_router.post("/duzenli/odeme", response_model=RentPayment)
+async def pay_rent(payload: RentPaymentIn, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    unit = await db.rent_units.find_one({"id": payload.unitId, "userId": uid}, {"_id": 0})
+    if not unit:
+        raise HTTPException(status_code=404, detail="Kayıt bulunamadı")
+    if not re.match(r"^\d{4}-(0[1-9]|1[0-2])$", payload.donem):
+        raise HTTPException(status_code=422, detail="Dönem YYYY-AA olmalı")
+    if await db.rent_payments.find_one({"userId": uid, "unitId": unit["id"], "donem": payload.donem}, {"_id": 1}):
+        raise HTTPException(status_code=409, detail="Bu dönem zaten ödendi olarak işaretli")
+    tutar = payload.tutar if payload.tutar and payload.tutar > 0 else _unit_amount(unit, payload.donem)
+    pay = RentPayment(userId=uid, companyId=unit["companyId"], unitId=unit["id"], donem=payload.donem, tutar=tutar,
+                      paraBirimi=unit.get("paraBirimi", "TRY"), tarih=payload.tarih or _istanbul_today().isoformat(), yontem=payload.yontem)
+    await db.rent_payments.insert_one(pay.dict())
+    await _sync_rent_kasa(uid, unit, pay.dict())
+    return pay
+
+
+@api_router.delete("/duzenli/odeme/{payment_id}")
+async def unpay_rent(payment_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    pay = await db.rent_payments.find_one({"id": payment_id, "userId": uid}, {"_id": 0})
+    if pay:
+        await _sync_rent_kasa(uid, {}, pay, remove=True)
+        await db.rent_payments.delete_one({"id": payment_id, "userId": uid})
+    return {"ok": True}
+
+
+# ============ SEANS PAKETLERİ ============
+# Ders/seans paketi sat (ör. 10 derslik pilates, 8 seanslık bakım), her
+# katılımı işle, kalan hakkı takip et. Satışta ödeme alındıysa Kasa'ya
+# gelir, alınmadıysa müşterinin borcu olarak Tahsilat'a yazılır.
+class SessionPackage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    customerId: str = ""
+    musteriAdi: str
+    telefon: str = ""
+    paketAdi: str
+    toplamSeans: int
+    katilimlar: List[Dict[str, str]] = Field(default_factory=list)  # [{id, tarih, not}]
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    odeme: str = "odendi"  # odendi | borc | yok
+    baslangic: str = ""
+    bitis: str = ""
+    notlar: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class SessionPackageIn(BaseModel):
+    companyId: str
+    customerId: str = ""
+    musteriAdi: str
+    telefon: str = ""
+    paketAdi: str
+    toplamSeans: int
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    odeme: str = "odendi"
+    yontem: str = "Nakit"
+    baslangic: str = ""
+    bitis: str = ""
+    notlar: str = ""
+
+
+class SessionAttendIn(BaseModel):
+    tarih: str = ""
+    not_: str = Field("", alias="not")
+
+
+@api_router.get("/seans/{company_id}", response_model=List[SessionPackage])
+async def list_sessions(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    docs = await db.session_packages.find({"userId": user["user_id"], "companyId": company_id}, {"_id": 0}).to_list(5000)
+    return [SessionPackage(**d) for d in docs]
+
+
+@api_router.post("/seans", response_model=SessionPackage)
+async def create_session_package(payload: SessionPackageIn, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    if not payload.musteriAdi.strip() or not payload.paketAdi.strip():
+        raise HTTPException(status_code=422, detail="Müşteri ve paket adı gerekli")
+    if payload.toplamSeans < 1 or payload.toplamSeans > 1000:
+        raise HTTPException(status_code=422, detail="Seans sayısı 1-1000 arası olmalı")
+    if payload.odeme not in ("odendi", "borc", "yok"):
+        raise HTTPException(status_code=422, detail="Geçersiz ödeme durumu")
+    data = payload.dict(exclude={"yontem"})
+    data["musteriAdi"] = data["musteriAdi"].strip()
+    data["paketAdi"] = data["paketAdi"].strip()[:80]
+    data["baslangic"] = data["baslangic"] or _istanbul_today().isoformat()
+    obj = SessionPackage(userId=user["user_id"], **data)
+    await db.session_packages.insert_one(obj.dict())
+    uid, today = user["user_id"], _istanbul_today().isoformat()
+    if obj.tutar > 0 and obj.odeme == "odendi":
+        k = KasaEntry(userId=uid, companyId=obj.companyId, tur="gelir", kategori="Seans Paketi", tutar=obj.tutar, paraBirimi=obj.paraBirimi,
+                      yontem=payload.yontem, notlar=f"{obj.musteriAdi} - {obj.paketAdi}", tarih=today, customerId=obj.customerId, musteriAdi=obj.musteriAdi).dict()
+        k["seansPaketId"] = obj.id
+        await db.kasa.insert_one(k)
+    elif obj.tutar > 0 and obj.odeme == "borc":
+        t = TahsilatEntry(userId=uid, companyId=obj.companyId, customerId=obj.customerId, musteriAdi=obj.musteriAdi, musteriTelefon=obj.telefon,
+                          tur="borc", tutar=obj.tutar, paraBirimi=obj.paraBirimi, notlar=f"Seans paketi: {obj.paketAdi}", tarih=today).dict()
+        t["seansPaketId"] = obj.id
+        await db.tahsilat.insert_one(t)
+    return obj
+
+
+@api_router.post("/seans/{pkg_id}/katilim", response_model=SessionPackage)
+async def attend_session(pkg_id: str, payload: SessionAttendIn, user=Depends(get_current_user)):
+    uid = user["user_id"]
+    doc = await db.session_packages.find_one({"id": pkg_id, "userId": uid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Paket bulunamadı")
+    await _own_company(user, doc["companyId"])
+    if len(doc.get("katilimlar") or []) >= doc["toplamSeans"]:
+        raise HTTPException(status_code=409, detail="Paketteki tüm seanslar kullanılmış")
+    k = {"id": str(uuid.uuid4()), "tarih": payload.tarih or _istanbul_today().isoformat(), "not": payload.not_.strip()[:120], "by": _actor_name(user)}
+    await db.session_packages.update_one({"id": pkg_id, "userId": uid}, {"$push": {"katilimlar": k}})
+    doc.setdefault("katilimlar", []).append(k)
+    return SessionPackage(**doc)
+
+
+@api_router.delete("/seans/{pkg_id}/katilim/{att_id}", response_model=SessionPackage)
+async def undo_attend(pkg_id: str, att_id: str, user=Depends(get_current_user)):
+    uid = user["user_id"]
+    doc = await db.session_packages.find_one({"id": pkg_id, "userId": uid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Paket bulunamadı")
+    await _own_company(user, doc["companyId"])
+    await db.session_packages.update_one({"id": pkg_id, "userId": uid}, {"$pull": {"katilimlar": {"id": att_id}}})
+    doc["katilimlar"] = [k for k in doc.get("katilimlar") or [] if k.get("id") != att_id]
+    return SessionPackage(**doc)
+
+
+@api_router.delete("/seans/{pkg_id}")
+async def delete_session_package(pkg_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    await db.kasa.delete_many({"userId": uid, "seansPaketId": pkg_id})
+    await db.tahsilat.delete_many({"userId": uid, "seansPaketId": pkg_id})
+    await db.session_packages.delete_one({"id": pkg_id, "userId": uid})
+    return {"ok": True}
+
+
+# ============ PAZARYERİ / ONLINE VİTRİN ============
+# Katalog ürünleri tek tek vitrine açılır (varsayılan kapalı) ve firmanın
+# dijital kartvizit sayfasında (anindateklif.co/k/{slug}) "Ürünlerimiz"
+# olarak listelenir; müşteri WhatsApp'tan sorar/sipariş verir. Ürün görseli
+# katalog listesini şişirmesin diye ayrı koleksiyonda tutulur ve herkese açık
+# bir adresten dosya olarak sunulur.
+MAX_PRODUCT_IMAGE_CHARS = 900_000  # ~650KB görsel
+
+
+class VitrinToggle(BaseModel):
+    vitrinde: bool
+
+
+class ProductImageIn(BaseModel):
+    data: str
+
+    @field_validator("data")
+    @classmethod
+    def _img(cls, v: str) -> str:
+        if len(v) > MAX_PRODUCT_IMAGE_CHARS:
+            raise ValueError("Görsel çok büyük (en fazla ~650KB)")
+        if not re.match(r'^data:image/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$', v):
+            raise ValueError("Görsel PNG/JPG/WEBP olmalı")
+        return v
+
+
+@api_router.put("/catalog/{item_id}/vitrin", response_model=CatalogItem)
+async def toggle_vitrin(item_id: str, payload: VitrinToggle, user=Depends(get_current_user)):
+    _require_owner(user)
+    doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Item not found")
+    await db.catalog.update_one({"id": item_id, "userId": user["user_id"]}, {"$set": {"vitrinde": payload.vitrinde}})
+    return CatalogItem(**{**doc, "vitrinde": payload.vitrinde})
+
+
+@api_router.put("/catalog/{item_id}/gorsel", response_model=CatalogItem)
+async def put_product_image(item_id: str, payload: ProductImageIn, user=Depends(get_current_user)):
+    _require_owner(user)
+    doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Item not found")
+    await db.catalog_images.update_one({"itemId": item_id, "userId": user["user_id"]},
+                                       {"$set": {"itemId": item_id, "userId": user["user_id"], "data": payload.data, "updatedAt": utc_now_iso()}}, upsert=True)
+    ver = int(_time.time())
+    await db.catalog.update_one({"id": item_id, "userId": user["user_id"]}, {"$set": {"gorselVar": True, "gorselVer": ver}})
+    return CatalogItem(**{**doc, "gorselVar": True, "gorselVer": ver})
+
+
+@api_router.delete("/catalog/{item_id}/gorsel", response_model=CatalogItem)
+async def delete_product_image(item_id: str, user=Depends(get_current_user)):
+    _require_owner(user)
+    doc = await db.catalog.find_one({"id": item_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Item not found")
+    await db.catalog_images.delete_many({"itemId": item_id, "userId": user["user_id"]})
+    await db.catalog.update_one({"id": item_id, "userId": user["user_id"]}, {"$set": {"gorselVar": False}})
+    return CatalogItem(**{**doc, "gorselVar": False})
+
+
+@api_router.get("/public/urun-gorsel/{item_id}")
+async def public_product_image(item_id: str, request: Request):
+    """Yalnız vitrine açık ve kartviziti yayında olan firmanın ürün görseli."""
+    from fastapi.responses import Response
+    import base64 as _b64
+    _rate_limit(f"img:ip:{_client_ip(request)}", 600, 60)
+    item = await db.catalog.find_one({"id": item_id, "vitrinde": True}, {"_id": 0, "userId": 1, "companyId": 1})
+    if not item or not await db.business_cards.find_one({"companyId": item["companyId"], "userId": item["userId"], "aktif": True}, {"_id": 1}):
+        raise HTTPException(404, "Görsel bulunamadı")
+    img = await db.catalog_images.find_one({"itemId": item_id, "userId": item["userId"]}, {"_id": 0, "data": 1})
+    if not img:
+        raise HTTPException(404, "Görsel bulunamadı")
+    m = re.match(r"^data:(image/[a-z]+);base64,(.+)$", img["data"])
+    if not m:
+        raise HTTPException(404, "Görsel bulunamadı")
+    return Response(content=_b64.b64decode(m.group(2)), media_type=m.group(1), headers={"Cache-Control": "public, max-age=86400"})
+
+
+async def _vitrin_products(user_id: str, company_id: str) -> List[Dict[str, Any]]:
+    docs = await db.catalog.find({"userId": user_id, "companyId": company_id, "vitrinde": True}, {"_id": 0}).to_list(300)
+    return [{
+        "id": d["id"], "urunAdi": d.get("urunAdi", ""), "aciklama": (d.get("aciklama") or "")[:400], "kategori": d.get("kategori", ""),
+        "birim": d.get("birim", ""), "birimFiyat": d.get("birimFiyat", 0), "paraBirimi": d.get("paraBirimi", "TRY"),
+        "gorsel": bool(d.get("gorselVar")), "gorselVer": d.get("gorselVer", 0),
+        "tukendi": bool(d.get("stokTakip")) and float(d.get("stok") or 0) <= 0,
+    } for d in docs]
+
+
+# ============ DİJİTAL KARTVİZİT ============
+# Firmanın tek linkte tanıtımı: anindateklif.co/k/{slug}. Ad, logo, telefon,
+# adres, IBAN firma kaydından gelir; burada yalnız karta özgü ayarlar tutulur
+# (ayrı koleksiyon: /companies PUT tüm belgeyi değiştirdiği için eski
+# istemciler bu alanları silmesin). Herkese açık okuma kimliksizdir.
+KART_RESERVED = {"admin", "api", "app", "www", "anindateklif", "login", "register", "destek", "support", "test", "k"}
+KART_SOCIALS = ("instagram", "facebook", "linkedin", "youtube", "tiktok", "x")
+
+
+class BusinessCard(BaseModel):
+    companyId: str
+    slug: str = ""
+    aktif: bool = False
+    slogan: str = ""
+    hakkinda: str = ""
+    whatsapp: str = ""
+    konumUrl: str = ""
+    ibanGoster: bool = True
+    renk: str = "#4F46E5"
+    instagram: str = ""
+    facebook: str = ""
+    linkedin: str = ""
+    youtube: str = ""
+    tiktok: str = ""
+    x: str = ""
+    goruntulenme: int = 0
+
+
+def _slugify(s: str) -> str:
+    tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
+    s = (s or "").translate(tr).lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s[:40]
+
+
+def _social_url(kind: str, v: str) -> str:
+    v = (v or "").strip()
+    if not v:
+        return ""
+    if v.startswith("https://"):
+        return v[:300]
+    if v.startswith("http://"):
+        return "https://" + v[7:300]
+    handle = re.sub(r"[^A-Za-z0-9._-]", "", v.lstrip("@"))[:60]
+    if not handle:
+        return ""
+    base = {"instagram": "https://instagram.com/", "facebook": "https://facebook.com/", "linkedin": "https://linkedin.com/company/",
+            "youtube": "https://youtube.com/@", "tiktok": "https://tiktok.com/@", "x": "https://x.com/"}[kind]
+    return base + handle
+
+
+def _clean_card(c: BusinessCard) -> BusinessCard:
+    c.slug = _slugify(c.slug)
+    c.slogan = c.slogan.strip()[:120]
+    c.hakkinda = c.hakkinda.strip()[:800]
+    c.whatsapp = re.sub(r"[^0-9+]", "", c.whatsapp)[:20]
+    c.konumUrl = c.konumUrl.strip()[:500] if c.konumUrl.strip().startswith("https://") else ""
+    c.renk = c.renk if re.match(r"^#[0-9A-Fa-f]{6}$", c.renk or "") else "#4F46E5"
+    for k in KART_SOCIALS:
+        setattr(c, k, (getattr(c, k) or "").strip()[:300])
+    return c
+
+
+@api_router.get("/kartvizit/{company_id}", response_model=BusinessCard)
+async def get_business_card(company_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    company = await _own_company(user, company_id)
+    doc = await db.business_cards.find_one({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0, "userId": 0})
+    if doc:
+        return BusinessCard(**doc)
+    return BusinessCard(companyId=company_id, slug=_slugify((company or {}).get("sirketAdi", "")))
+
+
+@api_router.put("/kartvizit", response_model=BusinessCard)
+async def put_business_card(payload: BusinessCard, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    card = _clean_card(payload)
+    if len(card.slug) < 3 or card.slug in KART_RESERVED:
+        raise HTTPException(status_code=422, detail="Adres en az 3 karakter olmalı (harf, rakam, tire)")
+    taken = await db.business_cards.find_one({"slug": card.slug, "companyId": {"$ne": card.companyId}}, {"_id": 1})
+    if taken:
+        raise HTTPException(status_code=409, detail="Bu adres başka bir firma tarafından kullanılıyor")
+    prev = await db.business_cards.find_one({"companyId": card.companyId, "userId": user["user_id"]}, {"_id": 0, "goruntulenme": 1}) or {}
+    card.goruntulenme = prev.get("goruntulenme", 0)
+    await db.business_cards.update_one(
+        {"companyId": card.companyId, "userId": user["user_id"]},
+        {"$set": {**card.dict(), "userId": user["user_id"], "updatedAt": utc_now_iso()}},
+        upsert=True,
+    )
+    return card
+
+
+@api_router.get("/public/kartvizit/{slug}")
+async def public_business_card(slug: str, request: Request):
+    _rate_limit(f"kart:ip:{_client_ip(request)}", 120, 60)
+    card = await db.business_cards.find_one({"slug": _slugify(slug), "aktif": True}, {"_id": 0})
+    if not card:
+        raise HTTPException(status_code=404, detail="Kartvizit bulunamadı")
+    company = await db.companies.find_one({"id": card["companyId"], "userId": card["userId"]}, {"_id": 0}) or {}
+    owner = await db.users.find_one({"user_id": card["userId"]}, {"_id": 0, "user_id": 1, "deleted_at": 1})
+    if not company or owner is None or owner.get("deleted_at"):
+        raise HTTPException(status_code=404, detail="Kartvizit bulunamadı")
+    await db.business_cards.update_one({"companyId": card["companyId"], "userId": card["userId"]}, {"$inc": {"goruntulenme": 1}})
+    return {
+        "slug": card["slug"],
+        "sirketAdi": company.get("sirketAdi", ""),
+        "logoBase64": company.get("logoBase64", ""),
+        "telefon": company.get("telefon", ""),
+        "telefon2": company.get("telefon2", ""),
+        "email": company.get("email", ""),
+        "website": company.get("website", ""),
+        "adres": company.get("adres", ""),
+        "banklar": [
+            {k: b.get(k, "") for k in ("banka", "hesapSahibi", "iban")}
+            for b in (company.get("banklar") or []) if b.get("iban")
+        ] if card.get("ibanGoster", True) else [],
+        "slogan": card.get("slogan", ""),
+        "hakkinda": card.get("hakkinda", ""),
+        "whatsapp": card.get("whatsapp", "") or company.get("telefon", ""),
+        "konumUrl": card.get("konumUrl", ""),
+        "renk": card.get("renk", "#4F46E5"),
+        "sosyal": {k: _social_url(k, card.get(k, "")) for k in KART_SOCIALS if card.get(k)},
+        "urunler": await _vitrin_products(card["userId"], card["companyId"]),
+    }
+
+
+# ============ İŞLEM GEÇMİŞİ (AUDIT LOG) ============
+# Kim, ne zaman, hangi kaydı değiştirdi. Değiştiren istekler (POST/PUT/PATCH/
+# DELETE) aşağıdaki kural tablosuyla eşleşirse _audit_mw tarafından yazılır;
+# silmelerde kaydın silinmeden önceki içeriği de saklanır. Kayıtlar 2 yıl
+# tutulur (expireAt TTL index). Kimlik get_current_user'ın request.state'e
+# bıraktığı kullanıcıdan gelir; kimliği doğrulanmamış istekler yazılmaz.
+AUDIT_RETENTION_DAYS = 730
+_UUIDISH = r"([^/]+)"
+AUDIT_RULES: List[tuple] = [
+    ("POST", r"^/api/quotes$", "Teklif oluşturuldu", "quotes"),
+    ("PUT", rf"^/api/quotes/{_UUIDISH}$", "Teklif güncellendi", "quotes"),
+    ("PATCH", rf"^/api/quotes/{_UUIDISH}/status$", "Teklif durumu değişti", "quotes"),
+    ("PATCH", rf"^/api/quotes/{_UUIDISH}/(?:maliyet|item-maliyet|ekstra-maliyet)$", "Teklif maliyeti güncellendi", "quotes"),
+    ("DELETE", rf"^/api/quotes/{_UUIDISH}$", "Teklif çöp kutusuna taşındı", "quotes"),
+    ("POST", rf"^/api/quotes/{_UUIDISH}/restore$", "Teklif geri yüklendi", "quotes"),
+    ("POST", r"^/api/customers$", "Müşteri eklendi", "customers"),
+    ("POST", r"^/api/customers/bulk$", "Müşteriler içe aktarıldı", "customers"),
+    ("PUT", rf"^/api/customers/{_UUIDISH}$", "Müşteri güncellendi", "customers"),
+    ("DELETE", rf"^/api/customers/{_UUIDISH}$", "Müşteri silindi", "customers"),
+    ("POST", r"^/api/services$", "Servis kaydı eklendi", "services"),
+    ("PUT", rf"^/api/services/{_UUIDISH}$", "Servis kaydı güncellendi", "services"),
+    ("PATCH", rf"^/api/services/{_UUIDISH}/status$", "Servis durumu değişti", "services"),
+    ("DELETE", rf"^/api/services/{_UUIDISH}$", "Servis kaydı silindi", "services"),
+    ("POST", r"^/api/campaigns$", "Kampanya oluşturuldu", "campaigns"),
+    ("DELETE", rf"^/api/campaigns/{_UUIDISH}$", "Kampanya silindi", "campaigns"),
+    ("POST", r"^/api/reminders$", "Hatırlatma eklendi", "manual_reminders"),
+    ("DELETE", rf"^/api/reminders/{_UUIDISH}$", "Hatırlatma silindi", "manual_reminders"),
+    ("POST", r"^/api/kasa$", "Kasa kaydı eklendi", "kasa"),
+    ("DELETE", rf"^/api/kasa/{_UUIDISH}$", "Kasa kaydı silindi", "kasa"),
+    ("POST", r"^/api/kasa-recurring$", "Tekrarlayan gelir/gider eklendi", "kasa_recurring"),
+    ("PATCH", rf"^/api/kasa-recurring/{_UUIDISH}$", "Tekrarlayan gelir/gider güncellendi", "kasa_recurring"),
+    ("DELETE", rf"^/api/kasa-recurring/{_UUIDISH}$", "Tekrarlayan gelir/gider silindi", "kasa_recurring"),
+    ("PUT", r"^/api/kasa-settings$", "Kasa ayarları güncellendi", "kasa_settings"),
+    ("POST", r"^/api/tahsilat$", "Tahsilat/borç kaydı eklendi", "tahsilat"),
+    ("DELETE", rf"^/api/tahsilat/{_UUIDISH}$", "Tahsilat/borç kaydı silindi", "tahsilat"),
+    ("POST", r"^/api/cek-senet$", "Çek/senet eklendi", "cek_senet"),
+    ("POST", r"^/api/cek-senet/import$", "Çek/senet içe aktarıldı", "cek_senet"),
+    ("PATCH", rf"^/api/cek-senet/{_UUIDISH}$", "Çek/senet güncellendi", "cek_senet"),
+    ("DELETE", rf"^/api/cek-senet/{_UUIDISH}$", "Çek/senet silindi", "cek_senet"),
+    ("POST", r"^/api/catalog$", "Katalog ürünü eklendi", "catalog"),
+    ("POST", r"^/api/catalog/bulk$", "Katalog toplu güncellendi", "catalog"),
+    ("PUT", rf"^/api/catalog/{_UUIDISH}$", "Katalog ürünü güncellendi", "catalog"),
+    ("DELETE", rf"^/api/catalog/{_UUIDISH}$", "Katalog ürünü silindi", "catalog"),
+    ("POST", rf"^/api/catalog/{_UUIDISH}/stock$", "Stok hareketi girildi", "catalog"),
+    ("POST", r"^/api/contracts$", "Sözleşme oluşturuldu", "contracts"),
+    ("PUT", rf"^/api/contracts/{_UUIDISH}$", "Sözleşme güncellendi", "contracts"),
+    ("DELETE", rf"^/api/contracts/{_UUIDISH}$", "Sözleşme silindi", "contracts"),
+    ("POST", r"^/api/coupons$", "Kupon oluşturuldu", "coupons"),
+    ("PUT", rf"^/api/coupons/{_UUIDISH}$", "Kupon güncellendi", "coupons"),
+    ("DELETE", rf"^/api/coupons/{_UUIDISH}$", "Kupon silindi", "coupons"),
+    ("POST", r"^/api/companies$", "Firma oluşturuldu", "companies"),
+    ("PUT", rf"^/api/companies/{_UUIDISH}$", "Firma bilgileri güncellendi", "companies"),
+    ("DELETE", rf"^/api/companies/{_UUIDISH}$", "Firma silindi", "companies"),
+    ("POST", rf"^/api/company/{_UUIDISH}/members/invite$", "Personel davet edildi", ""),
+    ("DELETE", rf"^/api/company/[^/]+/members/{_UUIDISH}$", "Personel çıkarıldı", ""),
+    ("POST", r"^/api/efatura/invoices$", "e-Fatura kesildi", "invoices"),
+    ("PUT", r"^/api/efatura/config$", "e-Fatura ayarları güncellendi", ""),
+    ("PUT", r"^/api/commission-settings$", "Prim ayarları güncellendi", ""),
+    ("PATCH", r"^/api/auth/me$", "Profil güncellendi", ""),
+    ("PUT", r"^/api/kartvizit$", "Dijital kartvizit güncellendi", ""),
+    ("POST", r"^/api/duzenli$", "Kira/aidat birimi eklendi", "rent_units"),
+    ("PUT", rf"^/api/duzenli/{_UUIDISH}$", "Kira/aidat birimi güncellendi", "rent_units"),
+    ("DELETE", r"^/api/duzenli/odeme/([^/]+)$", "Kira/aidat ödemesi geri alındı", "rent_payments"),
+    ("DELETE", rf"^/api/duzenli/{_UUIDISH}$", "Kira/aidat birimi silindi", "rent_units"),
+    ("POST", r"^/api/duzenli/odeme$", "Kira/aidat ödemesi alındı", "rent_payments"),
+    ("POST", r"^/api/seans$", "Seans paketi satıldı", "session_packages"),
+    ("PUT", rf"^/api/catalog/{_UUIDISH}/vitrin$", "Ürün vitrin durumu değişti", "catalog"),
+    ("DELETE", rf"^/api/seans/{_UUIDISH}$", "Seans paketi silindi", "session_packages"),
+]
+_AUDIT_RULES_C = [(m, re.compile(p), label, col) for m, p, label, col in AUDIT_RULES]
+_AUDIT_NAME_KEYS = ("musFirma", "firma", "musteriAdi", "kesideci", "urunAdi", "baslik", "sirketAdi", "kod", "kategori", "name", "email", "teklifNo")
+
+
+def _audit_match(method: str, path: str):
+    for m, rx, label, col in _AUDIT_RULES_C:
+        if m == method:
+            mt = rx.match(path)
+            if mt:
+                return label, col, (mt.group(1) if mt.groups() else "")
+    return None
+
+
+def _audit_detail(*docs: Optional[Dict[str, Any]]) -> str:
+    parts: List[str] = []
+    for d in docs:
+        if not isinstance(d, dict):
+            continue
+        for k in _AUDIT_NAME_KEYS:
+            v = d.get(k)
+            if isinstance(v, str) and v.strip() and v.strip() not in parts:
+                parts.append(v.strip()[:80])
+                break
+        if isinstance(d.get("tutar"), (int, float)) and d["tutar"]:
+            parts.append(f"{d['tutar']:,.2f} {d.get('paraBirimi') or 'TRY'}".replace(",", "X").replace(".", ",").replace("X", "."))
+        if isinstance(d.get("durum"), str) and d["durum"]:
+            parts.append(f"→ {d['durum']}")
+        if isinstance(d.get("items"), list) and d["items"] and isinstance(d["items"][0], dict) and not parts:
+            parts.append(f"{len(d['items'])} kayıt")
+        if parts:
+            break
+    return " · ".join(parts)[:240]
+
+
+def _audit_trim(doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not doc:
+        return None
+    out = {}
+    for k, v in doc.items():
+        if k in ("_id", "userId") or k in EXPORT_SECRET_KEYS:
+            continue
+        if isinstance(v, str) and len(v) > 4000:
+            v = v[:4000] + "…"
+        out[k] = v
+    import json as _json
+    try:
+        if len(_json.dumps(out, default=str)) > 60_000:
+            return {k: out[k] for k in list(out)[:40] if not isinstance(out[k], (list, dict))}
+    except Exception:
+        return None
+    return out
+
+
+async def _audit(user: Dict[str, Any], action: str, entity: str, entity_id: str = "", detail: str = "",
+                 company_id: str = "", before: Optional[Dict[str, Any]] = None, ip: str = ""):
+    try:
+        now = _utc()
+        await db.audit_log.insert_one({
+            "id": str(uuid.uuid4()),
+            "userId": user["user_id"],
+            "companyId": company_id or "",
+            "actorId": _self_id(user),
+            "actorName": _actor_name(user),
+            "actorEmail": _actor_email(user),
+            "impersonated": bool(user.get("_impersonated")),
+            "action": action,
+            "entity": entity,
+            "entityId": entity_id or "",
+            "detail": detail or "",
+            "before": _audit_trim(before),
+            "ip": ip,
+            "createdAt": now.isoformat(),
+            "expireAt": now + timedelta(days=AUDIT_RETENTION_DAYS),
+        })
+    except Exception as e:  # işlem geçmişi asla asıl işlemi bozmasın
+        logger.warning(f"[audit] yazılamadı: {e}")
+
+
+@app.middleware("http")
+async def _audit_mw(request: Request, call_next):
+    method = request.method
+    if method not in ("POST", "PUT", "PATCH", "DELETE"):
+        return await call_next(request)
+    hit = _audit_match(method, request.url.path)
+    if not hit:
+        return await call_next(request)
+    label, col, entity_id = hit
+    body: Optional[Dict[str, Any]] = None
+    try:
+        if method != "DELETE" and int(request.headers.get("content-length") or 0) <= 200_000:
+            raw = await request.body()
+            import json as _json
+            parsed = _json.loads(raw) if raw else None
+            body = parsed if isinstance(parsed, dict) else None
+    except Exception:
+        body = None
+    before = None
+    if col and entity_id and method in ("DELETE", "PUT", "PATCH"):
+        try:
+            before = await db[col].find_one({"id": entity_id}, {"_id": 0})
+        except Exception:
+            before = None
+    response = await call_next(request)
+    user = getattr(request.state, "audit_user", None)
+    if user and 200 <= response.status_code < 300:
+        if before and before.get("userId") not in (None, user["user_id"]):
+            before = None  # başka hesabın kaydı: asla içeriğini yazma
+        company_id = (body or {}).get("companyId") or (before or {}).get("companyId") or ""
+        detail = _audit_detail(body, before)
+        await _audit(user, label, col, entity_id, detail, company_id,
+                     before if method == "DELETE" else None, _client_ip(request))
+    return response
+
+
+class AuditEntry(BaseModel):
+    id: str
+    companyId: str = ""
+    actorName: str = ""
+    actorEmail: str = ""
+    impersonated: bool = False
+    action: str
+    entity: str = ""
+    entityId: str = ""
+    detail: str = ""
+    before: Optional[Dict[str, Any]] = None
+    ip: str = ""
+    createdAt: str
+
+
+@api_router.get("/audit-log", response_model=List[AuditEntry])
+async def list_audit_log(companyId: str = "", before: str = "", limit: int = 50, user=Depends(get_current_user)):
+    _require_manager(user)
+    q: Dict[str, Any] = {"userId": user["user_id"]}
+    if companyId:
+        await _own_company(user, companyId)
+        q["companyId"] = {"$in": [companyId, ""]}
+    if before:
+        q["createdAt"] = {"$lt": before}
+    docs = await db.audit_log.find(q, {"_id": 0, "expireAt": 0}).sort("createdAt", -1).to_list(max(1, min(limit, 200)))
+    return [AuditEntry(**d) for d in docs]
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -10185,6 +11237,14 @@ async def on_startup():
         await db.customers.create_index([("userId", 1), ("companyId", 1)])
         await db.kasa.create_index([("userId", 1), ("companyId", 1)])
         await db.tahsilat.create_index([("userId", 1), ("companyId", 1)])
+        await db.cek_senet.create_index([("userId", 1), ("companyId", 1)])
+        await db.audit_log.create_index([("userId", 1), ("createdAt", -1)])
+        await db.audit_log.create_index("expireAt", expireAfterSeconds=0)
+        await db.business_cards.create_index("slug")
+        await db.rent_units.create_index([("userId", 1), ("companyId", 1)])
+        await db.rent_payments.create_index([("userId", 1), ("unitId", 1)])
+        await db.session_packages.create_index([("userId", 1), ("companyId", 1)])
+        await db.catalog_images.create_index([("itemId", 1), ("userId", 1)])
         await db.notify_log.create_index("key", unique=True)
         await db.stock_moves.create_index([("userId", 1), ("companyId", 1), ("createdAt", -1)])
         await db.calendar_feeds.create_index("token", unique=True)

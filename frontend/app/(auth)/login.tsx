@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -13,14 +11,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { authTheme, authRadius, authSpacing } from '@/src/lib/auth-theme';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { authTheme, authRadius } from '@/src/lib/auth-theme';
 import { BrandLogo } from '@/src/components/BrandLogo';
 import { LanguageFlagSwitcher } from '@/src/components/LanguageFlagSwitcher';
 import BlackHoleBackground from '@/src/components/BlackHoleBackground';
 import { useAuth } from '@/src/state/AuthContext';
 import { ApiError } from '@/src/lib/api';
 import { useLanguage } from '@/src/lib/i18n';
-import { MotionInput, MotionScrollView, themedStyles } from '@/src/components/motion';
+import { MotionScrollView, themedStyles } from '@/src/components/motion';
+import { glass, GlassAuthCard, GlassButton, GlassInput } from '@/src/components/auth/GlassAuth';
 
 export default function LoginScreen() {
   const { t } = useLanguage();
@@ -79,19 +79,19 @@ export default function LoginScreen() {
         >
           {isDesktopWeb && (
             <TouchableOpacity style={s.backHome} onPress={() => router.push('/landing')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="arrow-back" size={15} color={authTheme.textMuted} />
+              <Ionicons name="arrow-back" size={15} color={glass.textDim} />
               <Text style={s.backHomeText}>{t('landing.s001')} {t('landing.s002')}</Text>
             </TouchableOpacity>
           )}
-          <View style={isDesktopWeb ? s.desktopCard : undefined}>
+          <GlassAuthCard contentStyle={!isDesktopWeb && s.cardCompact}>
             <View style={s.langRow}>
               <LanguageFlagSwitcher />
             </View>
-            <View style={s.logoWrap}>
-              <BrandLogo size={92} />
-            </View>
-            <Text style={s.title}>{t('login.s007')}</Text>
-            <Text style={s.subtitle}>{t('login.s008')}</Text>
+            <Animated.View entering={ZoomIn.springify().damping(14)} style={s.logoWrap}>
+              <BrandLogo size={isDesktopWeb ? 72 : 64} />
+            </Animated.View>
+            <Animated.Text entering={FadeInDown.delay(200).duration(450)} style={s.title}>{t('login.s007')}</Animated.Text>
+            <Animated.Text entering={FadeIn.delay(300).duration(450)} style={s.subtitle}>{t('login.s008')}</Animated.Text>
 
             {error ? (
               <View style={s.errorBox}>
@@ -100,7 +100,7 @@ export default function LoginScreen() {
               </View>
             ) : null}
 
-            <InputRow
+            <GlassInput
               icon="mail-outline"
               placeholder={t('login.s009')}
               value={email}
@@ -110,7 +110,7 @@ export default function LoginScreen() {
               autoComplete="email"
               testID="login-email"
             />
-            <InputRow
+            <GlassInput
               icon="lock-closed-outline"
               placeholder={t('login.s010')}
               value={password}
@@ -118,10 +118,11 @@ export default function LoginScreen() {
               secureTextEntry={!showPw}
               autoCapitalize="none"
               autoComplete="password"
+              onSubmitEditing={onSubmit}
               testID="login-password"
               trailing={
                 <TouchableOpacity onPress={() => setShowPw((v) => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={authTheme.textMuted} />
+                  <Ionicons name={showPw ? 'eye-outline' : 'eye-off-outline'} size={19} color={glass.textFaint} />
                 </TouchableOpacity>
               }
             />
@@ -134,149 +135,45 @@ export default function LoginScreen() {
               <Text style={s.forgotText}>{t('login.s011')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={[s.cta, busy && s.ctaDisabled]}
-              onPress={onSubmit}
-              disabled={busy}
-              testID="login-submit"
-            >
-              {busy ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={s.ctaText}>{t('login.s012')}</Text>
-              )}
-            </TouchableOpacity>
+            <GlassButton label={t('login.s012')} onPress={onSubmit} busy={busy} testID="login-submit" />
 
-            <View style={s.footer}>
-              <Text style={s.footerText}>{t('login.s013')}</Text>
+            <Animated.View entering={FadeIn.delay(500)} style={s.footer}>
+              <Text style={s.footerText}>{t('login.s013')} </Text>
               <TouchableOpacity onPress={() => router.replace('/register')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={s.footerLink}>{t('login.s014')}</Text>
               </TouchableOpacity>
-            </View>
-          </View>
+            </Animated.View>
+          </GlassAuthCard>
         </MotionScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function InputRow({
-  icon,
-  trailing,
-  ...rest
-}: React.ComponentProps<typeof TextInput> & {
-  icon: keyof typeof Ionicons.glyphMap;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <View style={s.inputRow}>
-      <Ionicons name={icon} size={20} color={authTheme.primary} style={{ marginRight: 10 }} />
-      <MotionInput
-        {...rest}
-        placeholderTextColor={authTheme.textMuted}
-        style={s.input}
-      />
-      {trailing ? <View style={{ marginLeft: 8 }}>{trailing}</View> : null}
-    </View>
-  );
-}
-
 const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: authTheme.bg, position: 'relative', overflow: 'hidden' },
-  bgWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  scroll: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1, justifyContent: 'center' },
+  bgWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  scroll: { paddingHorizontal: 16, paddingVertical: 24, flexGrow: 1, justifyContent: 'center' },
   scrollDesktop: { alignItems: 'center', paddingVertical: 48 },
   backHome: {
     width: '100%', maxWidth: 440, marginBottom: 14,
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  backHomeText: { color: authTheme.textMuted, fontSize: 13, fontWeight: '600' },
-  desktopCard: {
-    width: '100%',
-    maxWidth: 440,
-    backgroundColor: authTheme.card,
-    borderColor: authTheme.cardBorder,
-    borderWidth: 1,
-    borderRadius: authRadius.xl,
-    paddingHorizontal: 36,
-    paddingVertical: 32,
-    ...Platform.select({ web: { boxShadow: '0 24px 60px rgba(0,0,0,0.45)' } as any }),
-  },
+  backHomeText: { color: glass.textDim, fontSize: 13, fontWeight: '600' },
+  cardCompact: { paddingHorizontal: 20, paddingVertical: 26 },
   langRow: { alignItems: 'center', marginBottom: 14 },
-  logoWrap: { alignItems: 'center', marginBottom: 20 },
-  title: {
-    color: authTheme.text,
-    fontSize: 28,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  subtitle: {
-    color: authTheme.textMuted,
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 28,
-  },
+  logoWrap: { alignItems: 'center', marginBottom: 18 },
+  title: { color: glass.text, fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 6 },
+  subtitle: { color: glass.textDim, fontSize: 14, textAlign: 'center', marginBottom: 26 },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(239,68,68,0.10)',
-    borderColor: 'rgba(239,68,68,0.35)',
-    borderWidth: 1,
-    borderRadius: authRadius.md,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.35)', borderWidth: 1,
+    borderRadius: authRadius.md, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 14,
   },
   errorText: { color: authTheme.danger, fontSize: 13, fontWeight: '600', flex: 1 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: authTheme.card,
-    borderColor: authTheme.cardBorder,
-    borderWidth: 1,
-    borderRadius: authRadius.lg,
-    paddingHorizontal: 14,
-    height: 56,
-    marginBottom: 12,
-  },
-  input: {
-    flex: 1,
-    color: authTheme.text,
-    fontSize: 15,
-    paddingVertical: 0,
-    ...Platform.select({ web: { outlineWidth: 0 } as any }),
-  },
-  forgotWrap: { alignSelf: 'flex-end', marginTop: 4, marginBottom: 20 },
-  forgotText: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
-  cta: {
-    backgroundColor: authTheme.primary,
-    borderRadius: authRadius.xl,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: { shadowColor: authTheme.primary, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
-      android: { elevation: 6 },
-    }),
-  },
-  ctaDisabled: { opacity: 0.7 },
-  ctaText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
-  footer: {
-    marginTop: 22,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  footerText: { color: authTheme.textMuted, fontSize: 13 },
-  footerLink: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
+  forgotWrap: { alignSelf: 'flex-end', marginTop: 2, marginBottom: 18 },
+  forgotText: { color: glass.textDim, fontSize: 13, fontWeight: '600' },
+  footer: { marginTop: 22, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
+  footerText: { color: glass.textDim, fontSize: 13 },
+  footerLink: { color: glass.text, fontSize: 13, fontWeight: '800', textDecorationLine: 'underline' },
 }));

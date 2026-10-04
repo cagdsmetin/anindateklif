@@ -21,6 +21,7 @@ import { useLanguage, LANGUAGES, upper } from '@/src/lib/i18n';
 import { useAppTheme } from '@/src/lib/theme-context';
 import TopHeader from '@/src/components/TopHeader';
 import { api, BankAccountT, CompanyT } from '@/src/lib/api';
+import { saveTextFile } from '@/src/lib/save-text';
 import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, hashColor, readableOn, themedStyles, useViewportProgress } from '@/src/components/motion';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -143,6 +144,22 @@ export default function CompanyScreen() {
     if (!form) return;
     try { await deleteCompany(form.id); setShowConfirmDelete(false); showToast(t('firma.toastDeleted')); }
     catch (e: any) { showToast(t('common.errorPrefix') + (e?.message || '')); }
+  };
+
+  const [exportBusy, setExportBusy] = useState(false);
+  // KVKK: tüm iş verisini tek JSON dosyası olarak indir.
+  const doExport = async () => {
+    if (exportBusy) return;
+    setExportBusy(true);
+    try {
+      const data = await api.exportAccount();
+      await saveTextFile(JSON.stringify(data, null, 2), `AnindaTeklif_Verilerim_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+      showToast(t('audit.exportDone'));
+    } catch (e: any) {
+      showToast(t('common.errorPrefix') + (e?.message || ''));
+    } finally {
+      setExportBusy(false);
+    }
   };
 
   const doDeleteAccount = async () => {
@@ -430,6 +447,13 @@ export default function CompanyScreen() {
               { key: 'whatsapp', icon: 'logo-whatsapp' as const, label: t('firma.writeWhatsapp'), color: '#16A34A', onPress: () => Linking.openURL('https://wa.me/905415858988'), testID: 'whatsapp-support-btn' },
               { key: 'assistant', icon: 'sparkles' as const, label: t('firma.talkToAssistant'), color: theme.colors.modules.mesaj, onPress: () => router.push('/(tabs)/assistant'), testID: 'ai-assistant-btn' },
               { key: 'privacy', icon: 'shield-checkmark' as const, label: t('firma.privacyPolicy'), color: theme.colors.modules.firma, onPress: () => router.push('/privacy'), testID: 'privacy-policy-btn' },
+              ...(!user?.is_staff || user?.staff_role === 'admin'
+                ? [{ key: 'kartvizit', icon: 'card' as const, label: t('kart.tile'), color: theme.colors.primary, onPress: () => router.push('/kartvizit' as any), testID: 'kartvizit-btn' },
+                   { key: 'audit', icon: 'time' as const, label: t('audit.tile'), color: theme.colors.modules.raporlar, onPress: () => router.push('/islem-gecmisi' as any), testID: 'audit-log-btn' }]
+                : []),
+              ...(!user?.is_staff
+                ? [{ key: 'export', icon: 'download' as const, label: exportBusy ? '...' : t('audit.exportTile'), color: theme.colors.modules.kasa, onPress: doExport, testID: 'export-data-btn' }]
+                : []),
             ].map((item, i) => (
               <Reveal key={item.key} variant="tilt" style={s.tileCell}>
                 <AnimatedPressable style={s.tile} onPress={item.onPress} testID={item.testID} scaleTo={0.95}>

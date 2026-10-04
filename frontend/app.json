@@ -19,7 +19,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anindateklif.app",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi"
+        "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

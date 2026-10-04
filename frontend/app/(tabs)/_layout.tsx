@@ -258,6 +258,9 @@ export default function TabsLayout() {
       <Tabs.Screen name="kuponlar" options={{ href: null }} />
       <Tabs.Screen name="bildirimler" options={{ href: null }} />
       <Tabs.Screen name="prim" options={{ href: null }} />
+      <Tabs.Screen name="cek-senet" options={{ href: null }} />
+      <Tabs.Screen name="islem-gecmisi" options={{ href: null }} />
+      <Tabs.Screen name="kartvizit" options={{ href: null }} />
       <Tabs.Screen name="yorumlar" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="customer-ledger" options={{ href: null }} />

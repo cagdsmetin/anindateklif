@@ -18,7 +18,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
       'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
       'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura', 'nav.sozlesmeler': 'Sozlesmeler',
-      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.yorumlar': 'Yorum Yanitla',
+      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.cekSenet': 'Cek & Senet', 'nav.yorumlar': 'Yorum Yanitla',
     };
     return fallback[k] || k;
   });
@@ -48,6 +48,11 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // müşterilerinin hareketlerini ve kendi harcamalarını alır, silemez.
   items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
   items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
+  // Çek & Senet portföyü yalnız yöneticilere: firmanın tüm vadeli
+  // evraklarını ve Kasa'ya etkisini gösterir (backend'de de 403).
+  if (!opts?.restricted) {
+    items.push({ name: 'cek-senet', title: tt('nav.cekSenet'), icon: 'documents', color: m.cek });
+  }
   items.push({ name: 'company', title: tt('nav.firma'), icon: 'business', color: m.firma });
   // AI Asistan artık sol menüde ayrı bir madde olarak gösterilmiyor (kullanıcı
   // isteğiyle kaldırıldı) — sayfaya route hâlâ var (app/(tabs)/assistant),

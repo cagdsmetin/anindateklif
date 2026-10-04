@@ -9,7 +9,7 @@ import * as XLSX from 'xlsx';
 
 export type ImportCustomer = { firma: string; yetkili: string; telefon: string; email: string; adres: string };
 
-const norm = (s: string) =>
+export const norm = (s: string) =>
   String(s || '')
     .toLocaleLowerCase('tr-TR')
     .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
@@ -73,8 +73,8 @@ function textToRows(text: string): string[][] {
   });
 }
 
-/** Dosya secer ve musterileri cikarir; iptal edilirse null. */
-export async function pickCustomerFile(): Promise<{ fileName: string; customers: ImportCustomer[]; headerFound: boolean } | null> {
+/** Excel/CSV dosyasi secer ve satirlarini doner; iptal edilirse null. */
+export async function pickSheetRows(): Promise<{ fileName: string; rows: string[][] } | null> {
   const result = await DocumentPicker.getDocumentAsync({
     type: ['text/csv', 'text/comma-separated-values', 'text/plain', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
     copyToCacheDirectory: true,
@@ -97,5 +97,11 @@ export async function pickCustomerFile(): Promise<{ fileName: string; customers:
     const text = Platform.OS === 'web' && webFile ? await webFile.text() : await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.UTF8 });
     rows = textToRows(text);
   }
-  return { fileName: asset.name || 'dosya', ...rowsToCustomers(rows) };
+  return { fileName: asset.name || 'dosya', rows };
+}
+
+/** Dosya secer ve musterileri cikarir; iptal edilirse null. */
+export async function pickCustomerFile(): Promise<{ fileName: string; customers: ImportCustomer[]; headerFound: boolean } | null> {
+  const picked = await pickSheetRows();
+  return picked ? { fileName: picked.fileName, ...rowsToCustomers(picked.rows) } : null;
 }

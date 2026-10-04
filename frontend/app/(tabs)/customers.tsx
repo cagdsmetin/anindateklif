@@ -19,6 +19,7 @@ import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, ha
 import { fill, useLanguage } from '@/src/lib/i18n';
 import { api, QuoteT } from '@/src/lib/api';
 import { ImportCustomer, pickCustomerFile } from '@/src/lib/customer-import';
+import { TagChip, tagColor } from '@/src/components/TagPicker';
 
 const currencySymbol = (code: string) => (code === 'USD' ? '$' : code === 'EUR' ? '€' : '₺');
 const formatMoney = (n: number) =>
@@ -80,6 +81,7 @@ export default function CustomersScreen() {
   const [quotesFor, setQuotesFor] = useState<{ id: string; firma: string; ownQuotes: QuoteT[] } | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>('3m');
 
+  const [tagFilter, setTagFilter] = useState('');
   const enriched = useMemo(() => {
     return customers.map((c) => {
       const own = quotes.filter(
@@ -90,8 +92,18 @@ export default function CustomersScreen() {
       const total = own.reduce((a, x) => a + (x.genelToplam || 0), 0);
       const currency = own[0]?.paraBirimi || 'TRY';
       return { ...c, count: own.length, total, currency, ownQuotes: own };
-    });
-  }, [customers, quotes]);
+    }).filter((c) => !tagFilter || (c.etiketler || []).some((x) => x.toLocaleLowerCase('tr-TR') === tagFilter));
+  }, [customers, quotes, tagFilter]);
+
+  // Firmada kullanılan etiketler ve kaç müşteride geçtikleri (filtre çipleri).
+  const tagCounts = useMemo(() => {
+    const m: Record<string, { tag: string; n: number }> = {};
+    customers.forEach((c) => (c.etiketler || []).forEach((x) => {
+      const k = x.toLocaleLowerCase('tr-TR');
+      (m[k] = m[k] || { tag: x, n: 0 }).n++;
+    }));
+    return Object.entries(m).sort((a, b) => b[1].n - a[1].n);
+  }, [customers]);
 
   const filteredModalQuotes = useMemo(() => {
     if (!quotesFor) return [];
@@ -155,6 +167,19 @@ export default function CustomersScreen() {
           </TouchableOpacity>
         </Reveal>
 
+        {tagCounts.length > 0 && (
+          <View style={s.tagBar} testID="customer-tag-filter">
+            <TouchableOpacity style={[s.tagFilter, !tagFilter && s.tagFilterOn]} onPress={() => setTagFilter('')}>
+              <Text style={[s.tagFilterText, !tagFilter && { color: '#fff' }]}>{t('tags.all')} · {customers.length}</Text>
+            </TouchableOpacity>
+            {tagCounts.map(([k, v]) => (
+              <TouchableOpacity key={k} style={[s.tagFilter, tagFilter === k && { backgroundColor: tagColor(v.tag), borderColor: tagColor(v.tag) }]} onPress={() => setTagFilter(tagFilter === k ? '' : k)} testID={`customer-tag-${k}`}>
+                <Text style={[s.tagFilterText, tagFilter === k && { color: readableOn(tagColor(v.tag)) }]}>{v.tag} · {v.n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={30} color={theme.colors.textMuted} />
@@ -181,6 +206,9 @@ export default function CustomersScreen() {
                     ) : (
                       <Text style={s.phoneMuted}>{t('customers.s006')}</Text>
                     )}
+                    {c.etiketler && c.etiketler.length > 0 ? (
+                      <View style={s.tagRow}>{c.etiketler.map((x) => <TagChip key={x} tag={x} small />)}</View>
+                    ) : null}
                   </View>
                   <TouchableOpacity
                     onPress={() => deleteCustomer(c.id)}
@@ -442,4 +470,9 @@ const s = themedStyles(() => StyleSheet.create({
   quoteRowNo: { fontSize: 13, fontWeight: '800', color: theme.colors.text },
   quoteRowDate: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   quoteRowAmount: { fontSize: 13, fontWeight: '900', color: theme.colors.primary },
+  tagBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  tagFilter: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
+  tagFilterOn: { backgroundColor: theme.colors.modules.musteri, borderColor: theme.colors.modules.musteri },
+  tagFilterText: { fontSize: 11.5, fontWeight: '800', color: theme.colors.textMuted },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
 }));

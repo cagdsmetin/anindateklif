@@ -18,7 +18,7 @@ export type { CizimModeli };
 const FALLBACK_BACKEND_URL = 'https://anindateklif-production.up.railway.app';
 const RAW_BASE = (process.env.EXPO_PUBLIC_BACKEND_URL || '').trim();
 const RESOLVED_BASE = RAW_BASE || FALLBACK_BACKEND_URL;
-const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';
+export const API_BASE = RESOLVED_BASE.replace(/\/+$/, '') + '/api';
 
 // Public: expose the resolved base for diagnostic banners / debug screens.
 export const RESOLVED_BACKEND_URL = RESOLVED_BASE;
@@ -186,6 +186,9 @@ export const api = {
     req('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   logout: () => req('/auth/logout', { method: 'POST' }),
   deleteAccount: () => req('/auth/account', { method: 'DELETE' }),
+  exportAccount: (): Promise<Record<string, any>> => req('/auth/export', {}, 120000),
+  listAuditLog: (companyId: string, before?: string): Promise<AuditEntryT[]> =>
+    req(`/audit-log?companyId=${encodeURIComponent(companyId)}&limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`),
 
   // Personel (ekip) yönetimi — sadece firma sahibi görebilir/yönetebilir
   inviteStaff: (companyId: string, data: { email: string; role: string }) =>
@@ -394,6 +397,41 @@ export const api = {
   listTahsilat: (companyId: string) => req(`/tahsilat/${companyId}`),
   createTahsilatEntry: (data: any) => req('/tahsilat', { method: 'POST', body: JSON.stringify(data) }),
   deleteTahsilatEntry: (id: string) => req(`/tahsilat/${id}`, { method: 'DELETE' }),
+
+  // Kira & Aidat (düzenli tahsilat)
+  listRent: (companyId: string, tip: RentTip): Promise<{ units: RentUnitT[]; payments: RentPaymentT[] }> => req(`/duzenli/${companyId}?tip=${tip}`),
+  createRentUnit: (data: RentUnitInput): Promise<RentUnitT> => req('/duzenli', { method: 'POST', body: JSON.stringify(data) }),
+  updateRentUnit: (id: string, data: RentUnitInput): Promise<RentUnitT> => req(`/duzenli/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteRentUnit: (id: string) => req(`/duzenli/${id}`, { method: 'DELETE' }),
+  payRent: (data: { unitId: string; donem: string; tutar?: number; tarih?: string; yontem?: string }): Promise<RentPaymentT> =>
+    req('/duzenli/odeme', { method: 'POST', body: JSON.stringify(data) }),
+  unpayRent: (paymentId: string) => req(`/duzenli/odeme/${paymentId}`, { method: 'DELETE' }),
+
+  // Seans paketleri
+  listSessions: (companyId: string): Promise<SessionPackageT[]> => req(`/seans/${companyId}`),
+  createSession: (data: SessionPackageInput): Promise<SessionPackageT> => req('/seans', { method: 'POST', body: JSON.stringify(data) }),
+  attendSession: (id: string, note = ''): Promise<SessionPackageT> => req(`/seans/${id}/katilim`, { method: 'POST', body: JSON.stringify({ not: note }) }),
+  undoAttend: (id: string, attId: string): Promise<SessionPackageT> => req(`/seans/${id}/katilim/${attId}`, { method: 'DELETE' }),
+  deleteSession: (id: string) => req(`/seans/${id}`, { method: 'DELETE' }),
+
+  // Pazaryeri / vitrin
+  setVitrin: (itemId: string, vitrinde: boolean): Promise<CatalogItemT> => req(`/catalog/${itemId}/vitrin`, { method: 'PUT', body: JSON.stringify({ vitrinde }) }),
+  setProductImage: (itemId: string, data: string): Promise<CatalogItemT> => req(`/catalog/${itemId}/gorsel`, { method: 'PUT', body: JSON.stringify({ data }) }, 60000),
+  deleteProductImage: (itemId: string): Promise<CatalogItemT> => req(`/catalog/${itemId}/gorsel`, { method: 'DELETE' }),
+
+  // Dijital kartvizit
+  getBusinessCard: (companyId: string): Promise<BusinessCardT> => req(`/kartvizit/${companyId}`),
+  putBusinessCard: (data: BusinessCardT): Promise<BusinessCardT> => req('/kartvizit', { method: 'PUT', body: JSON.stringify(data) }),
+  publicBusinessCard: (slug: string): Promise<PublicCardT> => req(`/public/kartvizit/${encodeURIComponent(slug)}`),
+
+  // Çek & Senet portföyü
+  listCekSenet: (companyId: string): Promise<CekSenetT[]> => req(`/cek-senet/${companyId}`),
+  createCekSenet: (data: CekSenetInput): Promise<CekSenetT> => req('/cek-senet', { method: 'POST', body: JSON.stringify(data) }),
+  importCekSenet: (companyId: string, items: Omit<CekSenetInput, 'companyId'>[]): Promise<{ imported: number; errors: { row: number; detail: string }[] }> =>
+    req('/cek-senet/import', { method: 'POST', body: JSON.stringify({ companyId, items: items.map((x) => ({ ...x, companyId })) }) }, 60000),
+  updateCekSenet: (id: string, data: Partial<Pick<CekSenetT, 'durum' | 'ciroEdilen' | 'notlar' | 'vadeTarihi' | 'tutar' | 'banka' | 'no' | 'telefon'>>): Promise<CekSenetT> =>
+    req(`/cek-senet/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCekSenet: (id: string) => req(`/cek-senet/${id}`, { method: 'DELETE' }),
 
   // Customers
   listCustomers: (companyId: string) => req(`/customers/${companyId}`),
@@ -867,6 +905,9 @@ export type CatalogItemT = {
   stok?: number;
   minStok?: number;
   stokKodu?: string;
+  vitrinde?: boolean;
+  gorselVar?: boolean;
+  gorselVer?: number;
 };
 
 export type StockMoveT = {
@@ -1021,7 +1062,135 @@ export type TahsilatEntryT = {
   quoteId?: string; // dolu ise: teklif "Onaylandı" durumuna geçtiğinde otomatik oluşturuldu
   kurTRY?: number; // paraBirimi TRY değilse: kayıt anındaki USD/EUR->TRY kuru (referans)
   personelId?: string; // müşteriden sorumlu personel (boşsa teklif/müşteri üzerinden çözülür)
+  cekSenetId?: string; // alınan bir çek/senetle borçtan düşüldüyse
+  ekstreRef?: string; // banka ekstresinden aktarıldıysa satır parmak izi
 };
+
+export type RentTip = 'kira' | 'aidat';
+export type RentUnitT = {
+  id: string;
+  companyId: string;
+  tip: RentTip;
+  grup: string;
+  ad: string;
+  kisi: string;
+  telefon: string;
+  customerId: string;
+  tutar: number;
+  paraBirimi: string;
+  gun: number;
+  baslangic: string;
+  bitis: string;
+  artisOrani: number;
+  depozito: number;
+  notlar: string;
+  aktif: boolean;
+};
+export type RentUnitInput = Omit<RentUnitT, 'id'>;
+export type RentPaymentT = { id: string; unitId: string; donem: string; tutar: number; paraBirimi: string; tarih: string; yontem: string };
+
+export type SessionPackageT = {
+  id: string;
+  companyId: string;
+  customerId: string;
+  musteriAdi: string;
+  telefon: string;
+  paketAdi: string;
+  toplamSeans: number;
+  katilimlar: { id: string; tarih: string; not: string; by?: string }[];
+  tutar: number;
+  paraBirimi: string;
+  odeme: 'odendi' | 'borc' | 'yok';
+  baslangic: string;
+  bitis: string;
+  notlar: string;
+  createdAt: string;
+};
+export type SessionPackageInput = {
+  companyId: string; customerId: string; musteriAdi: string; telefon: string; paketAdi: string; toplamSeans: number;
+  tutar: number; paraBirimi: string; odeme: 'odendi' | 'borc' | 'yok'; yontem: string; baslangic: string; bitis: string; notlar: string;
+};
+
+export type BusinessCardT = {
+  companyId: string;
+  slug: string;
+  aktif: boolean;
+  slogan: string;
+  hakkinda: string;
+  whatsapp: string;
+  konumUrl: string;
+  ibanGoster: boolean;
+  renk: string;
+  instagram: string;
+  facebook: string;
+  linkedin: string;
+  youtube: string;
+  tiktok: string;
+  x: string;
+  goruntulenme: number;
+};
+
+export type PublicCardT = {
+  slug: string;
+  sirketAdi: string;
+  logoBase64: string;
+  telefon: string;
+  telefon2: string;
+  email: string;
+  website: string;
+  adres: string;
+  banklar: { banka: string; hesapSahibi: string; iban: string }[];
+  slogan: string;
+  hakkinda: string;
+  whatsapp: string;
+  konumUrl: string;
+  renk: string;
+  sosyal: Record<string, string>;
+  urunler: { id: string; urunAdi: string; aciklama: string; kategori: string; birim: string; birimFiyat: number; paraBirimi: string; gorsel: boolean; gorselVer: number; tukendi: boolean }[];
+};
+
+export type AuditEntryT = {
+  id: string;
+  companyId: string;
+  actorName: string;
+  actorEmail: string;
+  impersonated: boolean;
+  action: string;
+  entity: string;
+  entityId: string;
+  detail: string;
+  before: Record<string, any> | null;
+  ip: string;
+  createdAt: string;
+};
+
+export type CekYon = 'alinan' | 'verilen';
+export type CekTur = 'cek' | 'senet';
+export type CekDurum = 'portfoy' | 'tahsilde' | 'odendi' | 'karsiliksiz' | 'ciro';
+
+export type CekSenetT = {
+  id: string;
+  companyId: string;
+  yon: CekYon; // alinan: müşteriden, tahsil edilecek · verilen: tedarikçiye, ödenecek
+  tur: CekTur;
+  customerId: string;
+  kesideci: string;
+  telefon: string;
+  tutar: number;
+  paraBirimi: string;
+  vadeTarihi: string; // YYYY-MM-DD
+  banka: string;
+  no: string;
+  durum: CekDurum;
+  ciroEdilen: string;
+  cariDus: boolean; // alınan çek müşterinin borcundan düşüldü mü
+  notlar: string;
+  kurTRY: number;
+  durumTarihi: string;
+  createdAt: string;
+};
+
+export type CekSenetInput = Omit<CekSenetT, 'id' | 'durumTarihi' | 'createdAt'>;
 
 export type CustomerT = {
   id: string;
@@ -1035,6 +1204,7 @@ export type CustomerT = {
   vergiDairesi?: string;
   il?: string;
   ilce?: string;
+  etiketler?: string[];
 };
 
 export type ServiceT = {

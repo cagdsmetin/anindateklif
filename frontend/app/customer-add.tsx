@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { api } from '@/src/lib/api';
+import TagPicker from '@/src/components/TagPicker';
 import { useLanguage } from '@/src/lib/i18n';
 import { BubbleButton, MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
@@ -46,6 +47,8 @@ export default function CustomerAddScreen() {
   const [vergiDairesi, setVergiDairesi] = useState(editing?.vergiDairesi || '');
   const [il, setIl] = useState(editing?.il || '');
   const [ilce, setIlce] = useState(editing?.ilce || '');
+  const [etiketler, setEtiketler] = useState<string[]>(editing?.etiketler || []);
+  const knownTags = useMemo(() => Array.from(new Set(customers.flatMap((c) => c.etiketler || []))), [customers]);
   const [busy, setBusy] = useState(false);
   const [errName, setErrName] = useState(false);
   const [errPhone, setErrPhone] = useState(false);
@@ -77,6 +80,7 @@ export default function CustomerAddScreen() {
         vergiDairesi: vergiDairesi.trim(),
         il: il.trim(),
         ilce: ilce.trim(),
+        etiketler,
       };
       if (editingId) {
         await api.updateCustomer(editingId, payload);
@@ -232,6 +236,7 @@ export default function CustomerAddScreen() {
                 isLast
               />
             </View>
+            <TagPicker value={etiketler} onChange={setEtiketler} known={knownTags} />
           </View>
           </View>
         </MotionScrollView>

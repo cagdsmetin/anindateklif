@@ -201,3 +201,76 @@ export function computeCustomerDebtSummaries(tahsilat: TahsilatEntryT[]): Custom
     });
 }
 
+
+// --- Alacak yaşlandırma ------------------------------------------------
+// Her müşterinin (ve para biriminin) tahsilatları en eski borçtan başlayarak
+// düşülür (FIFO); kalan borç parçaları vadesine (vade yoksa kayıt tarihine)
+// göre gecikme gününe ayrılır. Böylece "toplam alacak"ın ne kadarının
+// 0-30 / 31-60 / 61-90 / 90+ gündür beklediği görülür.
+export type AgingBucket = 'notDue' | 'd30' | 'd60' | 'd90' | 'd90p';
+export const AGING_BUCKETS: AgingBucket[] = ['notDue', 'd30', 'd60', 'd90', 'd90p'];
+
+export type AgingCustomer = {
+  key: string;
+  musteriAdi: string;
+  musteriTelefon: string;
+  customerId: string;
+  totalTRY: number;
+  overdueTRY: number;
+  maxDays: number; // en eski geciken parçanın gecikme günü (0 = gecikme yok)
+};
+
+export type AgingResult = {
+  buckets: Record<AgingBucket, number>; // TL karşılığı
+  customers: AgingCustomer[]; // gecikmesi olanlar, riske göre sıralı
+  unconverted: boolean; // kuru bilinmeyen dövizli alacak atlandı mı
+};
+
+function bucketOf(days: number): AgingBucket {
+  if (days <= 0) return 'notDue';
+  if (days <= 30) return 'd30';
+  if (days <= 60) return 'd60';
+  if (days <= 90) return 'd90';
+  return 'd90p';
+}
+
+export function computeAging(tahsilat: TahsilatEntryT[], rates: RatesLike, today: string = new Date().toISOString().slice(0, 10)): AgingResult {
+  const buckets: Record<AgingBucket, number> = { notDue: 0, d30: 0, d60: 0, d90: 0, d90p: 0 };
+  const groups: Record<string, TahsilatEntryT[]> = {};
+  tahsilat.forEach((t) => {
+    const g = `${customerKey(t)}|${t.paraBirimi || 'TRY'}`;
+    (groups[g] = groups[g] || []).push(t);
+  });
+  const cust: Record<string, AgingCustomer> = {};
+  let unconverted = false;
+  const todayMs = Date.parse(`${today}T00:00:00Z`);
+
+  Object.values(groups).forEach((list) => {
+    let paid = list.filter((t) => t.tur === 'tahsilat').reduce((s, t) => s + (t.tutar || 0), 0);
+    const debts = list
+      .filter((t) => t.tur === 'borc')
+      .map((t) => ({ t, due: t.vadeTarihi || t.tarih || today }))
+      .sort((a, b) => a.due.localeCompare(b.due));
+    debts.forEach(({ t, due }) => {
+      let rest = t.tutar || 0;
+      const used = Math.min(rest, paid);
+      rest -= used; paid -= used;
+      if (rest <= 0.009) return;
+      const v = convertToTRY(rest, t.paraBirimi, rates);
+      if (v == null) { unconverted = true; return; }
+      const dueMs = Date.parse(`${due}T00:00:00Z`);
+      const days = isNaN(dueMs) ? 0 : Math.round((todayMs - dueMs) / 86400000);
+      buckets[bucketOf(days)] += v;
+      const k = customerKey(t);
+      const c = (cust[k] = cust[k] || { key: k, musteriAdi: t.musteriAdi, musteriTelefon: t.musteriTelefon, customerId: t.customerId || '', totalTRY: 0, overdueTRY: 0, maxDays: 0 });
+      c.totalTRY += v;
+      if (days > 0) { c.overdueTRY += v; c.maxDays = Math.max(c.maxDays, days); }
+      if (t.musteriTelefon) c.musteriTelefon = t.musteriTelefon;
+    });
+  });
+
+  const customers = Object.values(cust)
+    .filter((c) => c.overdueTRY > 0.009)
+    .sort((a, b) => b.maxDays * b.overdueTRY - a.maxDays * a.overdueTRY);
+  return { buckets, customers, unconverted };
+}

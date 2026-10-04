@@ -150,3 +150,32 @@ Not (İngilizce):
 > Use the demo account above; it already has a company, customers and sample quotes.
 > Sign in with Apple is offered next to Google sign-in. Account deletion: Settings (Firma) → Delete account.
 > The app contains no in-app purchases.
+
+---
+
+## ASO düzeltmesi (04.10, Instagram notlarından — `memory/INSTAGRAM_NOTLARI_VE_KOMUTLAR.md`)
+
+Kural: ad ve alt başlıkta geçen kelime anahtar kelime alanına yazılmaz; alan 100 karaktere doldurulur.
+Yukarıdaki anahtar kelime satırları yerine **bunlar** yapıştırılacak (her biri tam 100 karakter):
+
+- **Türkçe:** `fiyat,proforma,fatura,müşteri,cari,katalog,whatsapp,esnaf,randevu,ekip,keşif,sipariş,hesap,satış,crm`
+- **English:** `estimate,proposal,invoice,customer,crm,catalog,whatsapp,contractor,team,bid,offer,price,sales,client`
+- **Italiano:** `offerta,fattura,clienti,catalogo,whatsapp,artigiano,pagamenti,team,prezzi,vendite,incassi,crm,ordine`
+
+Ekran görüntüsü başlıkları (görselin üstüne yazılacak, bunlar da aranıyor):
+1) Dakikalar içinde fiyat teklifi 2) Logolu PDF proforma 3) WhatsApp ile gönder
+4) Müşteri ve cari takibi 5) Tahsilat ve bakiye 6) Ekibinle birlikte çalış
+
+## iPad uyarısı (04.10)
+
+`frontend/app.json` → `ios.supportsTablet: true`. Bu yüzden App Store Connect **iPad 13" ekran görüntüsü**
+(2064 × 2752) de ister ve Apple uygulamayı iPad'de test eder. İki yol:
+- iPad varsa: TestFlight ile kur, ekranları kontrol et, iPad görüntülerini de çek (build 3 kullanılır).
+- iPad yoksa: `supportsTablet: false` yap → build 4 al → yalnız iPhone görüntüsü yeter.
+
+## 1.0.1'e bırakılanlar (Instagram notlarından)
+
+- Çapraz lokalizasyon: Türkiye ve İtalya mağazalarında English (U.K.) alanı da taranıyor (Apple listesinden doğrula);
+  o alana ek Türkçe/İtalyanca kelime konabilir.
+- Özel ürün sayfaları (70 adet hakkı): esnaf / tahsilat / ekip için ayrı sayfa.
+- İkonun 60 pikselde okunurluğu.

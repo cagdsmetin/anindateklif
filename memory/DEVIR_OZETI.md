@@ -35,6 +35,8 @@ Entegrasyon kurulumu: `memory/PRD.md` → "Entegrasyonlar".
 2. App Store Connect: ana dil Türkçe, kategori, gizlilik URL'si, İtalyanca + İngilizce dil ekle,
    `APP_STORE.md` metinlerini yapıştır.
 3. Ekran görüntüleri (her dil için 3–10, iPhone 6.9"/6.7") — TestFlight ile iPhone'a kurup çek.
+   **Dikkat:** `supportsTablet: true` olduğu için iPad 13" görüntüsü de istenir; karar `APP_STORE.md` → "iPad uyarısı".
+   Anahtar kelimeler için `APP_STORE.md` → "ASO düzeltmesi" bölümündeki 100 karakterlik satırları kullan.
 4. App Privacy formu (`APP_STORE.md` tablosu), yaş derecelendirmesi 4+, fiyat ücretsiz, AB tacir beyanı.
 5. Demo hesap (örnek müşteri + teklif) aç, App Review Information'a yaz; İngilizce notu ekle.
 6. Build 3'ü seç → Submit for Review. Apple'ın sorularını (özellikle Pro / uygulama içi satın alma, Kural 3.1)

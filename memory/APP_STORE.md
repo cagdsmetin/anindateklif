@@ -168,7 +168,7 @@ Ekran görüntüsü başlıkları (görselin üstüne yazılacak, bunlar da aran
 
 ## iPad uyarısı (04.10)
 
-`frontend/app.json` → `ios.supportsTablet: true`. Bu yüzden App Store Connect **iPad 13" ekran görüntüsü**
+**Karar (04.10): iPad yok → `supportsTablet: false` yapıldı, build 4 alınacak; yalnız iPhone görüntüsü yeter.** Eski durum: `supportsTablet: true` idi, bu yüzden App Store Connect **iPad 13" ekran görüntüsü**
 (2064 × 2752) de ister ve Apple uygulamayı iPad'de test eder. İki yol:
 - iPad varsa: TestFlight ile kur, ekranları kontrol et, iPad görüntülerini de çek (build 3 kullanılır).
 - iPad yoksa: `supportsTablet: false` yap → build 4 al → yalnız iPhone görüntüsü yeter.

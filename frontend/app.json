@@ -16,7 +16,7 @@
       "url": "https://u.expo.dev/7d8d615f-66fb-42ec-b916-2ef957a4ac28"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.anindateklif.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi",

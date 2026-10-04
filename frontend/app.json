@@ -21,7 +21,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Şirket logosu seçmek için galeri erişimi",
         "NSCameraUsageDescription": "Şirket logosu veya belge fotoğrafı çekmek için kamera erişimi",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true
       },
       "usesAppleSignIn": true
     },
@@ -65,6 +66,11 @@
       "eas": {
         "projectId": "7d8d615f-66fb-42ec-b916-2ef957a4ac28"
       }
+    },
+    "locales": {
+      "tr": "./locales/tr.json",
+      "en": "./locales/en.json",
+      "it": "./locales/it.json"
     }
   }
 }

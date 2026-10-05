@@ -3,7 +3,9 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 const [,, html, out, mode='video', ...times] = process.argv;
 const FPS = 30;
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(()=>chromium.launch());
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  // WebGL (three.js) sahneleri için yazılım GL; DOM sayfalarını etkilemez
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] }).catch(()=>chromium.launch());
 const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
 const [file, query] = html.split('?');
 await page.goto('file://' + path.resolve(file) + (query ? '?' + query : ''), { waitUntil: 'networkidle' });

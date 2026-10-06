@@ -74,7 +74,7 @@ window.V3_STORIES = {
   add('s03', 1, 3, 'Hız', 'Profildeki linkten 1 ay Pro hediye', mk('ukulele', { world: 'dusk', scenes: [
     { type: 'type', sec: 2.2, text: [
       { kind: 'fade', style: 'label', text: 'Bugünün hediyesi', y: 520, align: 'center', at: 0, pre: .6 },
-      { kind: 'stamp', text: '*Hızlı* teklife\n[1 ay Pro.]', y: 610, size: 124, align: 'center', at: 0, pre: .7, from: 1.8, rot: 0 },
+      { kind: 'stamp', text: '*Hızlı* teklife\n[1 ay Pro.]', x: 140, w: 800, y: 610, size: 124, align: 'center', at: 0, pre: .7, from: 1.25, rot: 0 },
     ], burst: [{ at: .25, x: 540, y: 820, n: 110, power: 1.1, seed: 7 }], out: 'flash' },
     { type: 'cta', mode: 'code', sec: 3.6, world: 'indigo', eyebrow: 'Profildeki linkten · İlk 1000 üyeye', head: '1 ay [Pro]\n*hediye.*', url: 'Profildeki link', note: 'Kod: TEKLIF30 · üye olunca otomatik tanımlanır.', out: 'iris' },
     OUT('midnight', 1.8),
@@ -88,7 +88,7 @@ window.V3_STORIES = {
       text: [
         { kind: 'fade', style: 'label', text: 'Sabah sorusu · Hesap', x: 84, y: 280, at: 0, pre: .6 },
         { kind: 'rise', text: 'Fiyatı hâlâ\n*hesap makinesiyle*\nmi çıkarıyorsun?', x: 84, y: 340, size: 92, at: 0, pre: .8, stagger: .05 },
-        { kind: 'stamp', box: true, text: '[Sen hangisisin?]', x: 160, w: 760, y: 1480, size: 64, align: 'center', at: 2.9, rot: 4, from: 1.25 },
+        { kind: 'stamp', box: true, text: '[Sen hangisisin?]', x: 160, w: 760, y: 1440, size: 64, align: 'center', at: 2.9, rot: 4, from: 1.25 },
       ],
       chips: [
         { at: .8, text: 'Evet, her seferinde', icon: 'euro', color: '#F5B544', anchor: [300, 1050], off: [-.14, .02], dz: .3, size: 1.25, light: true },
@@ -264,7 +264,7 @@ window.V3_STORIES = {
       text: [
         { kind: 'fade', style: 'label', text: 'Sabah sorusu · AI', x: 84, y: 280, at: 0, pre: .6 },
         { kind: 'blur', text: 'Teklif metnini\n*yapay zekâ* yazsa?', x: 84, y: 340, size: 100, at: 0, pre: .8, stagger: .05 },
-        { kind: 'stamp', box: true, text: '[Sen ne dersin?]', x: 160, w: 760, y: 1490, size: 64, align: 'center', at: 2.8, rot: -4, from: 1.25 },
+        { kind: 'stamp', box: true, text: '[Sen ne dersin?]', x: 160, w: 760, y: 1440, size: 64, align: 'center', at: 2.8, rot: -4, from: 1.25 },
       ],
       chips: [
         { at: .8, text: 'Olur, denerim', icon: 'ai', color: '#F0617A', anchor: [880, 800], off: [.12, .04], dz: .3, size: 1.25 },

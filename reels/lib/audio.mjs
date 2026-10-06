@@ -123,7 +123,7 @@ async function readPage(browser, pageArg) {
   const [file, query] = pageArg.split('?');
   await page.goto('file://' + path.resolve(file) + (query ? '?' + query : ''), { waitUntil: 'networkidle' });
   await page.evaluate(() => window.READY);
-  const r = await page.evaluate(() => ({ DUR: window.DUR, CUES: window.CUES || [] }));
+  const r = await page.evaluate(() => ({ DUR: window.DUR, CUES: window.CUES || [], MUSIC: window.MUSIC || null }));
   await page.close();
   if (!(typeof r.DUR === 'number' && r.DUR > 0)) throw new Error(`${pageArg}: window.DUR bulunamadı/geçersiz (${r.DUR})`);
   if (!Array.isArray(r.CUES)) r.CUES = [];
@@ -161,11 +161,11 @@ export function duckEnv(voice, n) {
 async function processOne(browser, job, opt) {
   const { page, in: inp, out } = job;
   const id = job.id || opt.id || idOf(page);
-  const { DUR, CUES } = await readPage(browser, page);
+  const { DUR, CUES, MUSIC } = await readPage(browser, page);
   let len = DUR;
   if (inp) { const vd = videoDur(inp);
     if (Math.abs(vd - DUR) > 1 / 30 + 1e-3) { console.warn(`UYARI: ${inp} süresi ${vd}s, sayfa DUR ${DUR}s — ses video süresine (${vd}s) uyarlanıyor; videoyu yeniden render etmeyi düşünün.`); len = vd; } }
-  return mixAndMaster({ id, DUR, CUES, len, inp, out, music: job.music || opt.music, voFile: job.vo || opt.vo, dry: opt.dry, debugDir: opt.debugDir, wavOnly: opt.wavOnly });
+  return mixAndMaster({ id, DUR, CUES, len, inp, out, music: job.music || opt.music || MUSIC, voFile: job.vo || opt.vo, dry: opt.dry, debugDir: opt.debugDir, wavOnly: opt.wavOnly });
 }
 
 export async function mixAndMaster({ id, DUR, CUES, len, inp, out, music, voFile, dry, debugDir, wavOnly, quiet }) {
@@ -232,7 +232,10 @@ if (isMain) {
   if (opt.music && !PRESETS[opt.music]) { console.error(`bilinmeyen preset: ${opt.music} (${Object.keys(PRESETS).join(', ')})`); process.exit(2); }
   if (args[0] === '--list-voices') { await listVoices().catch(e => { console.error(e.message); process.exitCode = 1; }); }
   else {
-    const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(() => chromium.launch());
+    // v3 sayfaları WebGL (three.js) kullanır: render.mjs ile aynı yazılım-GL bayrakları. DUR/CUES
+    // WebGL'den bağımsız (v3/timeline.js) hesaplandığından GL başlatılamasa da okunur.
+    const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] }).catch(() => chromium.launch());
     try {
       if (args[0] === '--batch') {
         const list = JSON.parse(fs.readFileSync(args[1], 'utf8'));

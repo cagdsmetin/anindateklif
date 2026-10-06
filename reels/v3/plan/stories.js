@@ -264,7 +264,7 @@ window.V3_STORIES = {
       text: [
         { kind: 'fade', style: 'label', text: 'Sabah sorusu · AI', x: 84, y: 280, at: 0, pre: .6 },
         { kind: 'blur', text: 'Teklif metnini\n*yapay zekâ* yazsa?', x: 84, y: 340, size: 100, at: 0, pre: .8, stagger: .05 },
-        { kind: 'stamp', box: true, text: '[Sen ne dersin?]', x: 160, w: 760, y: 1440, size: 64, align: 'center', at: 2.8, rot: -4, from: 1.25 },
+        { kind: 'stamp', text: '[Sen ne dersin?]', x: 160, w: 760, y: 640, size: 76, align: 'center', at: 2.8, rot: -4, from: 1.25 },
       ],
       chips: [
         { at: .8, text: 'Olur, denerim', icon: 'ai', color: '#F0617A', anchor: [880, 800], off: [.12, .04], dz: .3, size: 1.25 },
@@ -445,8 +445,8 @@ window.V3_STORIES = {
       cam: [{ t: 0, yaw: -24, pitch: 6, dist: 5.3, y: 330 }, { t: 4.2, yaw: 18, pitch: 3, dist: 5.0, y: 320, e: 'inOut' }, { t: 'end', yaw: 10, pitch: 2, dist: 4.8, y: 310, e: 'sine' }],
       phone: [{ t: 0, ry: 8 }, { t: 4.2, ry: -12, e: 'inOut' }, { t: 'end', ry: -6, e: 'sine' }],
       text: [
-        { kind: 'fade', style: 'label', text: 'Hepsi tek uygulamada', x: 84, y: 280, at: 0, pre: .6 },
-        { kind: 'cycle', words: ['Ölçü → fiyat', 'Katalog', 'PDF teklif', 'AI asistan', 'Panel', 'Kasa', 'Anında Teklif.'], period: .7, x: 84, y: 340, size: 112, at: 0, pre: 1, cycleColor: '#FFC86B' },
+        { kind: 'fade', style: 'label', text: 'Hepsi tek uygulamada', x: 90, y: 470, at: 0, pre: .6 },
+        { kind: 'cycle', words: ['Ölçü → fiyat', 'Katalog', 'PDF teklif', 'AI asistan', 'Panel', 'Kasa', 'Anında Teklif.'], period: .7, x: 84, y: 300, size: 112, at: 0, pre: 1, cycleColor: '#FFC86B' },
       ],
       pop: [{ at: 4.6, rect: [86, 1793, 1000, 84], style: 'price', label: 'Satış fiyatı', value: 800.53, prefix: '€ ', h: 180, to: { y: 1380, w: 920, rx: 6, ry: 10 }, counter: { delay: .25, dur: .8 } }],
       out: 'flash' },

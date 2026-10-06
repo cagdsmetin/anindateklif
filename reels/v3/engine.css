@@ -54,6 +54,7 @@ html, body { width: 1080px; height: 1920px; overflow: hidden; background: #05060
 .tx.giant { font-weight: 800; letter-spacing: -.06em; line-height: .86; }
 .tx.outline .seg { color: transparent; -webkit-text-stroke: 2.5px var(--ink); }
 .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+.tx.mono { font-family: var(--mono); font-weight: 700; letter-spacing: -.02em; }
 .tx .caret { display: inline-block; width: .07em; height: .86em; margin-left: .04em; background: var(--accent); vertical-align: -.06em; border-radius: 2px; }
 .odo { display: inline-block; overflow: hidden; height: 1.08em; line-height: 1.08em; vertical-align: top; padding: 0 .005em; }
 .odo > span { display: block; will-change: transform; }

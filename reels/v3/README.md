@@ -99,7 +99,7 @@ Koyu dünyalarda telefonun arkasında renkli parıltı, açık dünyalarda yumu�
 - `ai` — AI asistan; cevap ≈ 3.2 sn'de (`from: 2.4` önerilir).
 
 **Hareketsiz görseller** (`still`): `m_02` panel · `m_04` katalogdan ekle · `m_05` kalemler · `m_06` toplam ·
-`m_08` zip ölçü · `m_09` zip çizim · `m_10` zip fiyat (Bayi satırı otomatik örtülü) · `m_16` AI · `m_18` katalog.
+`m_08` zip ölçü · `m_09` zip çizim (Bayi satırı otomatik örtülü) · `m_10` zip fiyat (Bayi satırı otomatik örtülü) · `m_16` AI · `m_18` katalog.
 `m_01, m_03, m_11, m_13–15, m_17, v02` YASAK (kişisel veri). Ek örtü: `screen: { ..., redact: [[x,y,w,h]] }`.
 
 **Hazır dikdörtgenler** `V3.RECTS`: `zipSatis [86,1856,1012,82]`, `m10Satis [86,1793,1000,84]`,

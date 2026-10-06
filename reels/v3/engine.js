@@ -72,7 +72,7 @@ export const STILLS = {
   m_05: { src: MOB + 'm_05_teklif_kalemler.png' },
   m_06: { src: MOB + 'm_06_teklif_toplam.png' },
   m_08: { src: MOB + 'm_08_zip_perde_olcu.png' },
-  m_09: { src: MOB + 'm_09_zip_perde_cizim.png' },
+  m_09: { src: MOB + 'm_09_zip_perde_cizim.png', redact: [{ rect: [64, 1376, 1050, 104] }] },   // Bayi fiyatı satırı
   m_10: { src: MOB + 'm_10_zip_perde_fiyat.png', redact: [{ rect: [64, 1298, 1050, 102] }] },
   m_16: { src: MOB + 'm_16_ai_asistan.png' },
   m_18: { src: MOB + 'm_18_katalog.png' },
@@ -645,7 +645,11 @@ class PhoneScene extends Scene {
       p._e.style.height = hh + 'px';
       if (p._txt) { const fz = hh * .44; p._e.querySelector('.lab').style.fontSize = Math.max(hh * .22, 26) + 'px'; p._e.querySelector('.val').style.fontSize = fz + 'px'; p._e.style.paddingLeft = p._e.style.paddingRight = Math.max(30, hh * .26) + 'px';
         const cs = p.counter || {}; const r0 = p.at + (cs.delay ?? .35); p._txt.c.run = [r0, r0 + (cs.dur ?? .9)]; p._txt.render(lt); }
-      if (p._cv) { const g = p._cv.getContext('2d'), m = comp.map(r); g.drawImage(comp.c, m[0], m[1], m[2], m[3], 0, 0, p._cv.width, p._cv.height); }
+      // crop: kaynaktan kes (birleştirilmiş tuvalde bu bölgeye 'delik' çizildiği için oradan kesilemez); örtüler korunur
+      if (p._cv && img) { const g = p._cv.getContext('2d'), kx = p._cv.width / r[2], ky = p._cv.height / r[3];
+        g.drawImage(img, r[0], r[1], r[2], r[3], 0, 0, p._cv.width, p._cv.height);
+        for (const rr of src.redact) if (rr[0] < r[0] + r[2] && rr[0] + rr[2] > r[0] && rr[1] < r[1] + r[3] && rr[1] + rr[3] > r[1]) {
+          g.fillStyle = 'rgba(236,239,245,.97)'; g.fillRect((rr[0] - r[0]) * kx, (rr[1] - r[1]) * ky, rr[2] * kx, rr[3] * ky); } }
       const sp = prog(lt, p.at + d * .55, p.at + d * .55 + .8); p._sheen.style.transform = `translateX(${mix(-120, 120, E.inOut(sp))}%)`; p._sheen.style.opacity = sp > 0 && sp < 1 ? 1 : 0;
       p._e.style.boxShadow = '';
     }

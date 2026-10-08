@@ -2153,6 +2153,8 @@ async def accept_staff_invite(token: str, payload: StaffAcceptRequest, request: 
     await db.company_invites.update_one(
         {"id": invite["id"]}, {"$set": {"status": "accepted", "acceptedByUserId": user_id}}
     )
+    # Koltuk sayısı değişti: otomatik abonelik yeni kademeye taşınsın.
+    _schedule_tier_check(invite["ownerUserId"])
     access = _make_access_token(new_user)
     return AuthResponse(access_token=access, user=_user_out(new_user))
 
@@ -2206,6 +2208,7 @@ async def remove_staff_member(company_id: str, member_user_id: str, user=Depends
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
+    _schedule_tier_check(user["user_id"])
     return {"ok": True}
 
 
@@ -2821,13 +2824,9 @@ async def delete_ad_watchlist_item(item_id: str, user=Depends(get_current_user))
 #   - Kimlik dogrulama: "Authorization: Bearer {API_ANAHTARI}" header'i.
 #   - Test ortami tabani: https://apitest.nilvera.com
 #   - Canli ortam tabani: https://api.nilvera.com
-# v1 kapsami BILEREK sinirli: kimlik bilgisi saklama + GERCEK bir baglanti
-# testi (GET /general/GlobalCompany -- Nilvera'nin dogruladigimiz, hafif,
-# mukellef listesi donen ucu). Fatura KESME (belge olusturma/gonderme) bu
-# surumde YOK -- kullanicinin kendi Nilvera hesabinda dogru sablon/seri
-# ayarlarinin dogrulanmasi ve daha genis test gerektirir; sahte/calismayan
-# bir "fatura kes" ucu eklemek yerine, once gercekten calisan bir baglanti
-# testiyle baslayip fatura kesmeyi ayrica ele almak tercih edildi.
+# Bu bolum kimlik bilgisi saklama + baglanti testini (GET /general/GlobalCompany)
+# icerir. Fatura kesme, durum sorgulama, PDF ve gelen faturalar asagidaki
+# /efatura/invoices, /efatura/invoice/... ve /efatura/incoming uclarindadir.
 NILVERA_BASE_URLS = {
     "test": "https://apitest.nilvera.com",
     "canli": "https://api.nilvera.com",
@@ -6401,6 +6400,10 @@ class SubscriptionStatus(BaseModel):
     promo_days_total: Optional[int] = None
     promo_code: Optional[str] = None
     renewal_due_soon: bool = False
+    # iyzico aboneliği: kart her dönem otomatik tahsil ediliyor mu?
+    auto_renew: bool = False
+    # Personel sayısı kademe değiştirdiyse: "bir sonraki yenilemede 6–10 kişi fiyatı".
+    next_renewal_tier: Optional[str] = None
     plan_price_try: float = SUBSCRIPTION_PRICE_TRY
     plans: List[PlanOut] = []
     seat_count: int = 1
@@ -6448,7 +6451,9 @@ async def subscription_status(user=Depends(get_current_user)):
         days_left=days_left,
         promo_days_total=user.get("promo_days_total") if plan_id == "promo" else None,
         promo_code=user.get("promo_code") if plan_id == "promo" else None,
-        renewal_due_soon=state["subscription_active"] and _renewal_due_soon(user, days_left),
+        renewal_due_soon=state["subscription_active"] and not user.get("auto_renew") and _renewal_due_soon(user, days_left),
+        auto_renew=bool(user.get("auto_renew")),
+        next_renewal_tier=(user.get("iyzico_sub_tier_change") or {}).get("label") if user.get("auto_renew") else None,
         plan_price_try=plans[DEFAULT_SUBSCRIPTION_PLAN]["price_try"],
         plans=_plans_out(plans),
         seat_count=seats,
@@ -6480,7 +6485,8 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     if not IYZICO_API_KEY or not IYZICO_SECRET_KEY:
         raise HTTPException(status_code=503, detail="Ödeme sistemi henüz yapılandırılmadı")
     seats = await _seat_count(user["user_id"])
-    plans = _plans_for_tier(_seat_tier(seats))
+    tier = _seat_tier(seats)
+    plans = _plans_for_tier(tier)
     plan_id = payload.plan if payload.plan in plans else DEFAULT_SUBSCRIPTION_PLAN
     plan_cfg = plans[plan_id]
     # Kullanıcının uygulama dili İngilizce ise $, İtalyanca ise € ile sabit
@@ -6489,6 +6495,13 @@ async def create_subscription_checkout(payload: SubscriptionCheckoutRequest, use
     # tutar birebir aynı olmalı.
     billing_currency = currencyForLang(user.get("language", "tr"))
     plan_price, iyzico_currency = _plan_price_for_currency(plan_cfg, billing_currency)
+
+    # Bu plan/kademe/para birimi için iyzico'da bir abonelik fiyat planı
+    # tanımlıysa otomatik yenilenen abonelik başlatılır; yoksa aşağıdaki eski
+    # tek seferlik ödeme akışı aynen çalışır.
+    pricing_ref = _iyzico_sub_plan_ref(plan_id, tier, iyzico_currency)
+    if pricing_ref:
+        return await _start_recurring_checkout(user, payload, plan_id, pricing_ref, plan_price, iyzico_currency)
 
     name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
     first_name = name_parts[0] or "Müşteri"
@@ -6653,6 +6666,411 @@ async def subscription_callback(token: str = Form(...)):
         redirect_url = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed"
 
     return RedirectResponse(url=redirect_url, status_code=302)
+
+
+# ============ OTOMATİK YENİLENEN ABONELİK (iyzico Abonelik API) ============
+# Tek seferlik ödemede süre dolunca kullanıcı elle yeniden ödüyordu. iyzico'nun
+# abonelik ürününde kart iyzico'da saklanır ve her dönem otomatik tahsil edilir.
+#
+# Kurulum (iyzico paneli > Abonelik): bir ürün ve altında her plan/koltuk
+# kademesi/para birimi için bir fiyat planı açılır (haftalık = WEEKLY,
+# yıllık = YEARLY, tutarlar SEAT_TIERS ile aynı). Referans kodları JSON olarak
+# IYZICO_SUB_PLANS değişkenine girilir; anahtar "<plan>:<kademe>:<para birimi>",
+# kademe = koltuk üst sınırı (5/10/30) ya da en üst kademe için "max":
+#   {"weekly:5:TRY": "…", "yearly:5:TRY": "…", "yearly:max:USD": "…"}
+# Eşleşen kod yoksa o kullanıcı için eski tek seferlik akış kullanılır.
+#
+# Durum kaynağı iyzico'dur: callback, webhook ve günlük mutabakat hepsi aynı
+# işi yapar -- aboneliği iyzico'dan okuyup başarılı siparişlerin dönem
+# sonunu subscription_expires_at'e yazar. Böylece webhook kaçsa ya da iki kez
+# gelse bile sonuç aynıdır. Webhook adresi (iyzico paneli > Ayarlar >
+# Bildirimler): {BACKEND_BASE_URL}/api/subscription/recurring/webhook
+def _load_iyzico_sub_plans() -> Dict[str, str]:
+    raw = os.environ.get("IYZICO_SUB_PLANS", "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        return {str(k).strip(): str(v).strip() for k, v in data.items() if str(v).strip()}
+    except Exception:
+        logger.error("IYZICO_SUB_PLANS geçerli bir JSON değil; otomatik yenileme kapalı")
+        return {}
+
+
+IYZICO_SUB_PLANS = _load_iyzico_sub_plans()
+
+
+def _iyzico_sub_plan_ref(plan_id: str, tier: Dict[str, Any], currency: str) -> str:
+    tier_key = str(tier["max_seats"]) if tier.get("max_seats") else "max"
+    return IYZICO_SUB_PLANS.get(f"{plan_id}:{tier_key}:{currency}", "")
+
+
+def _iyzico_ms_to_dt(v: Any) -> Optional[datetime]:
+    try:
+        return datetime.fromtimestamp(int(v) / 1000, tz=timezone.utc)
+    except Exception:
+        return None
+
+
+async def _iyzico_json(fn, *args) -> Dict[str, Any]:
+    result = await asyncio.to_thread(fn, *args, _iyzico_options())
+    return json.load(result)
+
+
+async def _iyzico_subscription_detail(sub_ref: str) -> Dict[str, Any]:
+    from iyzipay.iyzipay_resource import IyzipayResource
+
+    class _Detail(IyzipayResource):
+        def get(self, ref, options):
+            return self.connect("GET", f"/v2/subscription/subscriptions/{ref}", options)
+
+    return await _iyzico_json(_Detail().get, sub_ref)
+
+
+def _recurring_paid_until(detail: Dict[str, Any]) -> Optional[datetime]:
+    """Başarıyla tahsil edilmiş siparişlerin en geç dönem sonu."""
+    ends = [
+        _iyzico_ms_to_dt(o.get("endPeriod"))
+        for o in (detail.get("orders") or [])
+        if (o.get("orderStatus") or "").upper() == "SUCCESS"
+    ]
+    ends = [e for e in ends if e]
+    return max(ends) if ends else None
+
+
+async def _sync_recurring_subscription(user_id: str) -> Optional[Dict[str, Any]]:
+    """Kullanıcının iyzico aboneliğini iyzico'dan okuyup yerel kaydı günceller.
+    Tekrar tekrar çağrılması güvenlidir (süre yalnız ileri alınır)."""
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not u or not u.get("iyzico_sub_ref"):
+        return None
+    resp = await _iyzico_subscription_detail(u["iyzico_sub_ref"])
+    if resp.get("status") != "success":
+        logger.warning(f"[subscription] iyzico abonelik okunamadı {user_id}: {resp.get('errorMessage')}")
+        return None
+    detail = resp.get("data") or {}
+    status = (detail.get("subscriptionStatus") or "").upper()
+    updates: Dict[str, Any] = {
+        "iyzico_sub_status": status,
+        # UPGRADED: kademe değişikliğiyle yeni plana taşındı, iptal değil.
+        "auto_renew": status in ("ACTIVE", "UPGRADED"),
+        "iyzico_sub_synced_at": utc_now_iso(),
+    }
+    paid_until = _recurring_paid_until(detail)
+    change = u.get("iyzico_sub_tier_change") or {}
+    if change.get("at") and paid_until and paid_until.isoformat() > change["at"]:
+        # Yeni kademe fiyatıyla yenileme tahsil edildi; bekleyen not kalksın.
+        updates["iyzico_sub_tier_change"] = None
+    if paid_until:
+        # Abonelik başlarken hesapta kalan süre (tek seferlik ödeme/hediye)
+        # kaybolmasın diye başlangıçta kaydedilen fark her döneme eklenir.
+        paid_until += timedelta(seconds=int(u.get("iyzico_sub_offset_s") or 0))
+        current = None
+        try:
+            current = datetime.fromisoformat(u["subscription_expires_at"]) if u.get("subscription_expires_at") else None
+            if current and current.tzinfo is None:
+                current = current.replace(tzinfo=timezone.utc)
+        except Exception:
+            current = None
+        if not current or paid_until > current:
+            updates["subscription_expires_at"] = paid_until.isoformat()
+            updates["subscription_status"] = "active"
+    await db.users.update_one({"user_id": user_id}, {"$set": updates})
+    return {**u, **updates}
+
+
+def _seat_tier_label(tier: Dict[str, Any]) -> str:
+    idx = SEAT_TIERS.index(tier)
+    low = SEAT_TIERS[idx - 1]["max_seats"] + 1 if idx else 1
+    return f"{low}+ kişi" if tier["max_seats"] is None else f"{low}–{tier['max_seats']} kişi"
+
+
+async def _ensure_recurring_tier(owner_id: str) -> None:
+    """Personel sayısı kademe sınırını aşınca (ya da altına inince) iyzico
+    aboneliğini yeni kademenin fiyat planına taşır. Değişiklik bir sonraki
+    yenilemede geçerli olur (NEXT_PERIOD): ödenmiş dönem için ek ücret ya da
+    iade yoktur. Tekrar çağrılması güvenlidir; plan zaten doğruysa bir şey
+    yapmaz. Personel ekleme/çıkarma ve periyodik mutabakat bunu çağırır."""
+    u = await db.users.find_one({"user_id": owner_id}, {"_id": 0})
+    if not u or not u.get("auto_renew") or not u.get("iyzico_sub_ref") or not u.get("iyzico_sub_pricing_ref"):
+        return
+    tier = _seat_tier(await _seat_count(owner_id))
+    currency = u.get("iyzico_sub_currency") or "TRY"
+    plan_id = u.get("subscription_plan") or DEFAULT_SUBSCRIPTION_PLAN
+    want = _iyzico_sub_plan_ref(plan_id, tier, currency)
+    if not want:
+        logger.error(f"[subscription] {plan_id}/{_seat_tier_label(tier)}/{currency} için IYZICO_SUB_PLANS'ta plan yok; "
+                     f"{owner_id} eski kademeden ücretlendirilmeye devam ediyor")
+        return
+    if want == u["iyzico_sub_pricing_ref"]:
+        return
+    import iyzipay
+    try:
+        resp = await _iyzico_json(iyzipay.Subscription().upgrade, {
+            "locale": "tr",
+            "subscriptionReferenceCode": u["iyzico_sub_ref"],
+            "newPricingPlanReferenceCode": want,
+            "upgradePeriod": "NEXT_PERIOD",
+            "useTrial": False,
+            "resetRecurrenceCount": False,
+        })
+    except Exception:
+        logger.exception(f"[subscription] kademe değişikliği isteği başarısız {owner_id}")
+        return
+    if resp.get("status") != "success":
+        logger.error(f"[subscription] kademe değişikliği reddedildi {owner_id}: {resp.get('errorMessage')}")
+        return
+    upd: Dict[str, Any] = {
+        "iyzico_sub_pricing_ref": want,
+        "iyzico_sub_tier_change": {"label": _seat_tier_label(tier), "at": u.get("subscription_expires_at") or utc_now_iso()},
+    }
+    push: Dict[str, Any] = {}
+    new_ref = (resp.get("data") or {}).get("referenceCode")
+    if new_ref and new_ref != u["iyzico_sub_ref"]:
+        # iyzico plan değişikliğinde yeni bir abonelik kodu verebiliyor; eski
+        # koddan gelecek webhook'lar da tanınsın diye eskisi saklanır.
+        upd["iyzico_sub_ref"] = new_ref
+        push = {"$addToSet": {"iyzico_sub_prev_refs": u["iyzico_sub_ref"]}}
+    await db.users.update_one({"user_id": owner_id}, {"$set": upd, **push})
+    logger.info(f"[subscription] {owner_id} bir sonraki yenilemede {_seat_tier_label(tier)} kademesine geçecek")
+
+
+def _schedule_tier_check(owner_id: str) -> None:
+    async def run():
+        try:
+            await _ensure_recurring_tier(owner_id)
+        except Exception:
+            logger.exception(f"[subscription] kademe kontrolü başarısız {owner_id}")
+    asyncio.create_task(run())
+
+
+async def _start_recurring_checkout(user, payload, plan_id: str, pricing_ref: str,
+                                    plan_price: float, currency: str) -> "SubscriptionCheckoutResponse":
+    if user.get("auto_renew") and (user.get("iyzico_sub_status") or "").upper() == "ACTIVE":
+        raise HTTPException(409, "Zaten otomatik yenilenen bir aboneliğiniz var")
+    import iyzipay
+
+    name_parts = (user.get("name") or "Müşteri").strip().split(" ", 1)
+    address = {
+        "contactName": user.get("name") or "Müşteri",
+        "city": payload.billing_city or "İstanbul",
+        "country": "Turkey",
+        "address": payload.billing_address or "-",
+        "zipCode": payload.billing_zip or "34000",
+    }
+    conversation_id = f"rsub_{user['user_id']}_{uuid.uuid4().hex[:8]}"
+    request = {
+        "locale": "tr",
+        "conversationId": conversation_id,
+        "callbackUrl": f"{BACKEND_BASE_URL.rstrip('/')}/api/subscription/recurring/callback",
+        "pricingPlanReferenceCode": pricing_ref,
+        "subscriptionInitialStatus": "ACTIVE",
+        "customer": {
+            "name": name_parts[0] or "Müşteri",
+            "surname": name_parts[1] if len(name_parts) > 1 else "-",
+            "identityNumber": payload.buyer_identity_number,
+            "email": user["email"],
+            "gsmNumber": user.get("phone") or "+905000000000",
+            "billingAddress": address,
+            "shippingAddress": address,
+        },
+    }
+    try:
+        response = await _iyzico_json(iyzipay.SubscriptionCheckoutForm().create, request)
+    except Exception:
+        logger.exception("[subscription] iyzico abonelik formu oluşturulamadı")
+        raise HTTPException(502, "Ödeme sağlayıcısına ulaşılamadı, lütfen daha sonra tekrar deneyin")
+    token = response.get("token")
+    if response.get("status") != "success" or not token or not response.get("checkoutFormContent"):
+        logger.error(f"[subscription] iyzico abonelik formu status!=success: {response}")
+        raise HTTPException(502, response.get("errorMessage") or "Ödeme başlatılamadı")
+    await db.subscription_payments.insert_one({
+        "user_id": user["user_id"],
+        "token": token,
+        "conversation_id": conversation_id,
+        "plan": plan_id,
+        "amount": plan_price,
+        "currency": currency,
+        "recurring": True,
+        "pricing_plan_ref": pricing_ref,
+        "checkout_form_content": response["checkoutFormContent"],
+        "status": "pending",
+        "created_at": utc_now_iso(),
+    })
+    # Abonelik formu (tek seferlik ödemeden farklı olarak) hazır bir ödeme
+    # sayfası adresi dönmüyor, sayfaya gömülecek bir betik dönüyor. İstemci
+    # hiçbir değişiklik yapmadan aynı şekilde açabilsin diye bu betiği
+    # kendi küçük sayfamızda sunuyoruz.
+    return SubscriptionCheckoutResponse(
+        payment_page_url=f"{BACKEND_BASE_URL.rstrip('/')}/api/subscription/recurring/pay/{token}",
+        checkout_form_content=response["checkoutFormContent"],
+        token=token,
+    )
+
+
+@api_router.get("/subscription/recurring/pay/{token}")
+async def recurring_pay_page(token: str):
+    from fastapi.responses import HTMLResponse
+    doc = await db.subscription_payments.find_one({"token": token, "recurring": True, "status": "pending"}, {"_id": 0})
+    if not doc:
+        return RedirectResponse(f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed", status_code=302)
+    html = (
+        "<!doctype html><html lang='tr'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Anında Teklif – Abonelik</title>"
+        "<style>body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;background:#f8fafc;color:#0f172a}"
+        "h1{font-size:18px;text-align:center;margin:24px 16px 4px}p{text-align:center;color:#475569;font-size:14px;margin:0 16px 12px}</style>"
+        "</head><body><h1>Anında Teklif aboneliği</h1>"
+        "<p>Kartınızdan her dönem otomatik tahsil edilir; dilediğiniz zaman uygulamadan iptal edebilirsiniz.</p>"
+        "<div id='iyzipay-checkout-form' class='responsive'></div>"
+        f"{doc['checkout_form_content']}</body></html>"
+    )
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+@api_router.post("/subscription/recurring/callback")
+async def recurring_subscription_callback(token: str = Form(...)):
+    import iyzipay
+    fail = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=failed"
+    ok = f"{FRONTEND_BASE_URL.rstrip('/')}/subscription-result?status=success"
+    pending = await db.subscription_payments.find_one({"token": token, "recurring": True}, {"_id": 0})
+    if not pending:
+        return RedirectResponse(fail, status_code=302)
+    if pending.get("status") == "paid":
+        return RedirectResponse(ok, status_code=302)
+    try:
+        response = await _iyzico_json(iyzipay.SubscriptionCheckoutForm().retrieve, {"locale": "tr", "token": token})
+    except Exception:
+        logger.exception("[subscription] iyzico abonelik sonucu okunamadı")
+        return RedirectResponse(fail, status_code=302)
+    data = response.get("data") or {}
+    sub_ref = data.get("referenceCode")
+    if response.get("status") != "success" or not sub_ref or (data.get("subscriptionStatus") or "").upper() != "ACTIVE":
+        logger.warning(f"[subscription] iyzico abonelik başarısız: {response.get('errorMessage')}")
+        await db.subscription_payments.update_one({"token": token}, {"$set": {"status": "failed"}})
+        return RedirectResponse(fail, status_code=302)
+
+    user_id = pending["user_id"]
+    u = await db.users.find_one({"user_id": user_id}, {"_id": 0, "subscription_expires_at": 1}) or {}
+    offset_s = 0
+    try:
+        existing = datetime.fromisoformat(u["subscription_expires_at"]) if u.get("subscription_expires_at") else None
+        if existing and existing.tzinfo is None:
+            existing = existing.replace(tzinfo=timezone.utc)
+        if existing and existing > utc_now():
+            offset_s = int((existing - utc_now()).total_seconds())
+    except Exception:
+        pass
+    await db.users.update_one({"user_id": user_id}, {"$set": {
+        "iyzico_sub_ref": sub_ref,
+        "iyzico_sub_customer_ref": data.get("customerReferenceCode", ""),
+        "iyzico_sub_status": "ACTIVE",
+        "iyzico_sub_offset_s": offset_s,
+        "iyzico_sub_pricing_ref": pending.get("pricing_plan_ref", ""),
+        "iyzico_sub_currency": pending.get("currency") or "TRY",
+        "iyzico_sub_tier_change": None,
+        "auto_renew": True,
+        "subscription_plan": pending.get("plan") or DEFAULT_SUBSCRIPTION_PLAN,
+    }})
+    await db.subscription_payments.update_one(
+        {"token": token}, {"$set": {"status": "paid", "subscription_ref": sub_ref}, "$unset": {"checkout_form_content": ""}}
+    )
+    synced = await _sync_recurring_subscription(user_id)
+    if not synced or not synced.get("subscription_expires_at") or not _is_subscription_active(synced):
+        # Sipariş kaydı iyzico'da henüz görünmüyorsa ilk dönemi plan
+        # süresinden hesapla; sonraki mutabakat gerçek değerle düzeltir.
+        plan_cfg = SUBSCRIPTION_PLANS.get(pending.get("plan")) or SUBSCRIPTION_PLANS[DEFAULT_SUBSCRIPTION_PLAN]
+        start = _iyzico_ms_to_dt(data.get("startDate")) or utc_now()
+        until = start + timedelta(days=plan_cfg["duration_days"], seconds=offset_s)
+        await db.users.update_one({"user_id": user_id}, {"$set": {
+            "subscription_status": "active", "subscription_expires_at": until.isoformat(),
+        }})
+    return RedirectResponse(ok, status_code=302)
+
+
+def _iyzico_webhook_signature_ok(body: Dict[str, Any], signature: str) -> bool:
+    import hmac
+    # iyzico V3 imzası: merchantId + secretKey + eventType + subscriptionRef + orderRef + customerRef
+    msg = "".join([
+        str(body.get("merchantId") or ""), IYZICO_SECRET_KEY, str(body.get("iyziEventType") or ""),
+        str(body.get("subscriptionReferenceCode") or ""), str(body.get("orderReferenceCode") or ""),
+        str(body.get("customerReferenceCode") or ""),
+    ])
+    expected = hmac.new(IYZICO_SECRET_KEY.encode(), msg.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, (signature or "").strip().lower())
+
+
+@api_router.post("/subscription/recurring/webhook")
+async def recurring_subscription_webhook(request: Request):
+    # Webhook yalnızca "şu aboneliği yeniden oku" tetikleyicisidir: süre her
+    # zaman iyzico API'sinden okunan siparişlere göre yazılır, gövdedeki
+    # verilere güvenilmez. Yine de imza tutmuyorsa kayda geçer.
+    _rate_limit(f"iyzico-webhook:ip:{_client_ip(request)}", 300, 3600)
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False}
+    sig = request.headers.get("x-iyz-signature-v3", "")
+    if sig and not _iyzico_webhook_signature_ok(body, sig):
+        logger.warning("[subscription] iyzico webhook imzası doğrulanamadı")
+    sub_ref = str(body.get("subscriptionReferenceCode") or "")
+    if not sub_ref:
+        return {"ok": True}
+    u = await db.users.find_one({"$or": [{"iyzico_sub_ref": sub_ref}, {"iyzico_sub_prev_refs": sub_ref}]},
+                                {"_id": 0, "user_id": 1})
+    if u:
+        try:
+            await _sync_recurring_subscription(u["user_id"])
+        except Exception:
+            logger.exception("[subscription] webhook sonrası mutabakat başarısız")
+    return {"ok": True}
+
+
+@api_router.post("/subscription/cancel")
+async def cancel_recurring_subscription(user=Depends(get_current_user)):
+    """Otomatik yenilemeyi kapatır; ödenmiş dönem sonuna kadar Pro sürer."""
+    if user.get("is_staff"):
+        raise HTTPException(403, "Abonelik işlemlerini sadece firma sahibi yapabilir")
+    if not user.get("iyzico_sub_ref") or not user.get("auto_renew"):
+        raise HTTPException(400, "Otomatik yenilenen bir aboneliğiniz yok")
+    import iyzipay
+    try:
+        resp = await _iyzico_json(iyzipay.Subscription().cancel, {
+            "locale": "tr", "subscriptionReferenceCode": user["iyzico_sub_ref"],
+        })
+    except Exception:
+        logger.exception("[subscription] iyzico iptal isteği başarısız")
+        raise HTTPException(502, "Ödeme sağlayıcısına ulaşılamadı, lütfen tekrar deneyin")
+    if resp.get("status") != "success":
+        raise HTTPException(502, resp.get("errorMessage") or "Abonelik iptal edilemedi")
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {
+        "auto_renew": False, "iyzico_sub_status": "CANCELED", "auto_renew_canceled_at": utc_now_iso(),
+    }})
+    return {"ok": True, "subscription_expires_at": user.get("subscription_expires_at")}
+
+
+async def _recurring_reconcile_all() -> None:
+    """Mutabakat: webhook kaçsa bile yenilemeler/başarısız çekimler en geç
+    birkaç saat içinde yerel kayda yansır."""
+    if not (IYZICO_API_KEY and IYZICO_SECRET_KEY):
+        return
+    async for u in db.users.find({"auto_renew": True, "iyzico_sub_ref": {"$nin": ["", None]}}, {"_id": 0, "user_id": 1}):
+        try:
+            await _sync_recurring_subscription(u["user_id"])
+            await _ensure_recurring_tier(u["user_id"])
+        except Exception:
+            logger.exception(f"[subscription] mutabakat başarısız {u['user_id']}")
+        await asyncio.sleep(0.5)
+
+
+async def _recurring_loop():
+    await asyncio.sleep(120)
+    while True:
+        try:
+            await _recurring_reconcile_all()
+        except Exception:
+            logger.exception("[subscription] mutabakat döngüsü hatası")
+        await asyncio.sleep(6 * 3600)
 
 
 # ============ FİRMA ARAMA TAKİBİ (LEAD / POTANSİYEL MÜŞTERİ) ============
@@ -8347,6 +8765,44 @@ def _ics_event(uid: str, date_iso: str, summary: str, desc: str = "") -> List[st
     return lines
 
 
+async def _calendar_items(uid: str, cid: str, person_id: str = "", include_finance: bool = True) -> List[Dict[str, Any]]:
+    """Firmanın takvimde görünecek günleri: hatırlatıcılar, servis/bakım/garanti
+    ve vade günleri. Hem .ics aboneliği hem Google Takvim senkronu bunu kullanır.
+    Her öğe: key (kalıcı kimlik), date, summary, desc, reminderId (elle
+    oluşturulan hatırlatıcıysa), icsUid (dışarıdan aktarıldıysa)."""
+    since = (_istanbul_today() - timedelta(days=90)).isoformat()
+    items: List[Dict[str, Any]] = []
+
+    def add(key: str, date: str, summary: str, desc: str = "", **extra):
+        items.append({"key": key, "date": (date or "")[:10], "summary": summary, "desc": desc or "", **extra})
+
+    async for r in db.manual_reminders.find({"userId": uid, "companyId": cid, "tarih": {"$gte": since}}, {"_id": 0}):
+        mark = "✓ " if r.get("tamamlandi") else ""
+        add(f"rem-{r['id']}", r["tarih"], mark + r.get("baslik", ""), r.get("notu", ""),
+            reminderId=r["id"], icsUid=r.get("icsUid", ""))
+    async for sv in db.services.find({"userId": uid, "companyId": cid}, {"_id": 0}):
+        who = sv.get("musFirma") or sv.get("musYetkili") or ""
+        info = f"{who} {sv.get('musTelefon', '')}".strip()
+        if sv.get("servisTarihi", "") >= since:
+            add(f"srv-{sv['id']}", sv["servisTarihi"], f"Servis: {sv.get('baslik', '')} – {who}", info)
+        if sv.get("bakimTarihi", "") >= since:
+            add(f"bkm-{sv['id']}", sv["bakimTarihi"], f"Bakım: {sv.get('baslik', '')} – {who}", info)
+        if sv.get("garantiBitis", "") >= since:
+            add(f"grn-{sv['id']}", sv["garantiBitis"], f"Garanti bitiyor: {sv.get('baslik', '')} – {who}", info)
+    if include_finance:
+        dues = await db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gte": since}}, {"_id": 0}).to_list(5000)
+        if person_id:
+            owners = (await _tahsilat_owners({"user_id": uid}, cid, await db.tahsilat.find({"userId": uid, "companyId": cid}, {"_id": 0}).to_list(5000)))["by_id"]
+            dues = [t for t in dues if owners.get(t["id"]) == person_id]
+        for t in dues:
+            add(
+                f"vade-{t['id']}", t["vadeTarihi"],
+                f"Vade: {t.get('musteriAdi', '')} {t.get('tutar', 0):,.2f} {t.get('paraBirimi', 'TRY')}",
+                t.get("notlar", ""),
+            )
+    return items
+
+
 @api_router.get("/calendar/feed/{token}.ics")
 async def calendar_feed(token: str):
     feed = await db.calendar_feeds.find_one({"token": token}, {"_id": 0})
@@ -8354,31 +8810,9 @@ async def calendar_feed(token: str):
         raise HTTPException(404, "Takvim bulunamadı")
     uid, cid = feed["userId"], feed["companyId"]
     company = await db.companies.find_one({"id": cid, "userId": uid}, {"_id": 0, "sirketAdi": 1}) or {}
-    since = (_istanbul_today() - timedelta(days=90)).isoformat()
     ev: List[str] = []
-    async for r in db.manual_reminders.find({"userId": uid, "companyId": cid, "tarih": {"$gte": since}}, {"_id": 0}):
-        mark = "✓ " if r.get("tamamlandi") else ""
-        ev += _ics_event(f"rem-{r['id']}", r["tarih"], mark + r.get("baslik", ""), r.get("notu", ""))
-    async for s in db.services.find({"userId": uid, "companyId": cid}, {"_id": 0}):
-        who = s.get("musFirma") or s.get("musYetkili") or ""
-        info = f"{who} {s.get('musTelefon', '')}".strip()
-        if s.get("servisTarihi", "") >= since:
-            ev += _ics_event(f"srv-{s['id']}", s["servisTarihi"], f"Servis: {s.get('baslik', '')} – {who}", info)
-        if s.get("bakimTarihi", "") >= since:
-            ev += _ics_event(f"bkm-{s['id']}", s["bakimTarihi"], f"Bakım: {s.get('baslik', '')} – {who}", info)
-        if s.get("garantiBitis", "") >= since:
-            ev += _ics_event(f"grn-{s['id']}", s["garantiBitis"], f"Garanti bitiyor: {s.get('baslik', '')} – {who}", info)
-    if feed.get("includeFinance", True):
-        dues = await db.tahsilat.find({"userId": uid, "companyId": cid, "tur": "borc", "vadeTarihi": {"$gte": since}}, {"_id": 0}).to_list(5000)
-        if feed.get("personId"):
-            owners = (await _tahsilat_owners({"user_id": uid}, cid, await db.tahsilat.find({"userId": uid, "companyId": cid}, {"_id": 0}).to_list(5000)))["by_id"]
-            dues = [t for t in dues if owners.get(t["id"]) == feed["personId"]]
-        for t in dues:
-            ev += _ics_event(
-                f"vade-{t['id']}", t["vadeTarihi"],
-                f"Vade: {t.get('musteriAdi', '')} {t.get('tutar', 0):,.2f} {t.get('paraBirimi', 'TRY')}",
-                t.get("notlar", ""),
-            )
+    for it in await _calendar_items(uid, cid, feed.get("personId") or "", feed.get("includeFinance", True)):
+        ev += _ics_event(it["key"], it["date"], it["summary"], it["desc"])
     name = f"{company.get('sirketAdi', 'Anında Teklif')} – Anında Teklif"
     lines = [
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//AnindaTeklif//TR", "CALSCALE:GREGORIAN",
@@ -8472,6 +8906,924 @@ async def import_calendar(payload: CalendarImportRequest, user=Depends(get_curre
         await db.manual_reminders.insert_many(docs)
     res.created = len(docs)
     return res
+
+
+# ============ GOOGLE (giriş, Takvim senkronu, İşletme yorumları) ============
+# Tek bir Google OAuth "Web uygulaması" istemcisi üç işi de görür; akış her
+# zaman sunucu üzerinden yürür (istemci sırrı sunucuda kalır, web ve mobil
+# aynı yolu kullanır, ek bir yerel kütüphane gerekmez):
+#   1. İstemci /api/auth/google/start (giriş) ya da /api/google/connect/start
+#      (Takvim/İşletme bağlama) ile Google onay sayfasına gider.
+#   2. Google /api/google/oauth/callback'e döner; kod burada değiş tokuş edilir.
+#   3. Girişte istemciye 2 dakikalık tek kullanımlık bir kod dönülür (JWT asla
+#      adres çubuğunda taşınmaz), istemci onu /api/auth/google/exchange ile
+#      oturuma çevirir. Bağlamada yenileme anahtarı şifreli saklanır.
+#
+# Kurulum (Google Cloud Console > APIs & Services):
+#   - OAuth istemcisi (Web application); yetkili yönlendirme adresi:
+#     {BACKEND_BASE_URL}/api/google/oauth/callback
+#   - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET ortam değişkenleri.
+#   - Takvim için "Google Calendar API" etkinleştirilir.
+#   - İşletme yorumları için Business Profile API erişimi Google'dan ayrıca
+#     onaylanır (onay gelmeden istekler 403 döner); onaydan sonra
+#     GOOGLE_BUSINESS_ENABLED=true yapılır.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI", f"{BACKEND_BASE_URL.rstrip('/')}/api/google/oauth/callback"
+)
+GOOGLE_ENABLED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+GOOGLE_BUSINESS_ENABLED = GOOGLE_ENABLED and os.environ.get("GOOGLE_BUSINESS_ENABLED", "false").lower() == "true"
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
+GCAL_API = "https://www.googleapis.com/calendar/v3"
+
+GOOGLE_SCOPES = {
+    "login": ["openid", "email", "profile"],
+    # calendar.app.created: yalnız uygulamanın kendi açtığı "Anında Teklif"
+    # takvimini yönetir; kullanıcının ana takvimi yalnızca okunur.
+    "calendar": [
+        "openid", "email",
+        "https://www.googleapis.com/auth/calendar.app.created",
+        "https://www.googleapis.com/auth/calendar.events.readonly",
+    ],
+    "business": ["openid", "email", "https://www.googleapis.com/auth/business.manage"],
+}
+GOOGLE_CONNECT_PURPOSES = ("calendar", "business")
+
+
+def _google_fernet():
+    from cryptography.fernet import Fernet
+    secret = os.environ.get("GOOGLE_TOKEN_KEY") or JWT_SECRET
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(("google-token:" + secret).encode()).digest()))
+
+
+def _google_encrypt(v: str) -> str:
+    return _google_fernet().encrypt(v.encode()).decode() if v else ""
+
+
+def _google_decrypt(v: str) -> str:
+    return _google_fernet().decrypt(v.encode()).decode() if v else ""
+
+
+def _allowed_app_redirect(url: str) -> bool:
+    """OAuth sonrası yalnız kendi ön yüzümüze ya da uygulamanın kendi
+    şemasına dönülür -- aksi halde giriş kodu başka bir siteye sızdırılabilir."""
+    from urllib.parse import urlparse
+    try:
+        p = urlparse(url or "")
+    except Exception:
+        return False
+    if p.scheme in ("anindateklif", "exp"):
+        return True
+    if p.scheme not in ("https", "http"):
+        return False
+    origin = f"{p.scheme}://{p.netloc}"
+    allowed = set(ALLOWED_ORIGINS) | {FRONTEND_BASE_URL.rstrip("/")}
+    if p.scheme == "http" and p.hostname in ("localhost", "127.0.0.1"):
+        return True
+    return origin in allowed
+
+
+def _with_query(url: str, **params) -> str:
+    from urllib.parse import urlencode
+    return url + ("&" if "?" in url else "?") + urlencode(params)
+
+
+def _google_state(purpose: str, redirect: str, **extra) -> str:
+    now = _utc()
+    return jwt.encode({
+        "purpose": purpose, "redirect": redirect, "nonce": uuid.uuid4().hex,
+        "aud": "google-oauth", "iss": JWT_ISSUER, "iat": now, "exp": now + timedelta(minutes=15), **extra,
+    }, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _google_auth_url(purpose: str, state: str, login_hint: str = "") -> str:
+    from urllib.parse import urlencode
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": " ".join(GOOGLE_SCOPES[purpose]),
+        "state": state,
+        "include_granted_scopes": "false",
+    }
+    if purpose == "login":
+        params["prompt"] = "select_account"
+    else:
+        # Yenileme anahtarı (refresh_token) yalnız "offline" + onay ekranıyla gelir.
+        params["access_type"] = "offline"
+        params["prompt"] = "consent"
+    if login_hint:
+        params["login_hint"] = login_hint
+    return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+
+
+def _google_id_claims(id_token: str) -> Dict[str, Any]:
+    # Kimlik belirteci Google'ın token ucundan, istemci sırrıyla, doğrudan TLS
+    # üzerinden alındı; OpenID Connect (Core 3.1.3.7) bu durumda imza yerine
+    # TLS doğrulamasına güvenmeye izin verir. Alıcı/yayıncı/süre yine kontrol edilir.
+    claims = jwt.decode(id_token, options={"verify_signature": False})
+    if claims.get("aud") != GOOGLE_CLIENT_ID:
+        raise ValueError("aud")
+    if claims.get("iss") not in ("https://accounts.google.com", "accounts.google.com"):
+        raise ValueError("iss")
+    if int(claims.get("exp", 0)) < int(_utc().timestamp()) - 60:
+        raise ValueError("exp")
+    return claims
+
+
+async def _google_post_token(data: Dict[str, str]) -> Dict[str, Any]:
+    resp = await asyncio.to_thread(requests.post, GOOGLE_TOKEN_URL, data={
+        "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, **data,
+    }, timeout=15)
+    body = resp.json() if resp.content else {}
+    if resp.status_code != 200:
+        raise HTTPException(502, f"Google yanıtı: {body.get('error_description') or body.get('error') or resp.status_code}")
+    return body
+
+
+class GoogleApiError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+async def _google_access_token(conn: Dict[str, Any], force: bool = False) -> str:
+    exp = conn.get("access_expires_at") or ""
+    if not force and conn.get("access_token_enc") and exp > (_utc() + timedelta(seconds=60)).isoformat():
+        return _google_decrypt(conn["access_token_enc"])
+    try:
+        tok = await _google_post_token({
+            "grant_type": "refresh_token", "refresh_token": _google_decrypt(conn["refresh_token_enc"]),
+        })
+    except HTTPException as e:
+        # Kullanıcı erişimi Google hesabından kaldırdıysa bağlantı geçersizdir.
+        await db.google_connections.update_one({"id": conn["id"]}, {"$set": {"status": "revoked", "lastError": str(e.detail)}})
+        raise GoogleApiError(401, "Google bağlantısının süresi doldu, lütfen yeniden bağlayın")
+    access = tok["access_token"]
+    upd = {
+        "access_token_enc": _google_encrypt(access),
+        "access_expires_at": (_utc() + timedelta(seconds=int(tok.get("expires_in", 3600)))).isoformat(),
+    }
+    conn.update(upd)
+    await db.google_connections.update_one({"id": conn["id"]}, {"$set": upd})
+    return access
+
+
+async def _google_api(conn: Dict[str, Any], method: str, url: str, params: Optional[Dict[str, Any]] = None,
+                      body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    for attempt in range(2):
+        token = await _google_access_token(conn, force=attempt > 0)
+        resp = await asyncio.to_thread(
+            requests.request, method, url, params=params, json=body,
+            headers={"Authorization": f"Bearer {token}"}, timeout=20,
+        )
+        if resp.status_code == 401 and attempt == 0:
+            continue
+        if resp.status_code in (200, 201, 204):
+            return resp.json() if resp.content else {}
+        try:
+            msg = resp.json().get("error", {}).get("message") or resp.text[:200]
+        except Exception:
+            msg = resp.text[:200]
+        raise GoogleApiError(resp.status_code, msg)
+    raise GoogleApiError(401, "Google yetkisi reddedildi")
+
+
+async def _google_list_all(conn: Dict[str, Any], url: str, params: Dict[str, Any], key: str = "items",
+                           max_pages: int = 10) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    page_token = None
+    for _ in range(max_pages):
+        q = dict(params)
+        if page_token:
+            q["pageToken"] = page_token
+        data = await _google_api(conn, "GET", url, params=q)
+        out += data.get(key) or []
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+    return out
+
+
+class GoogleConfigOut(BaseModel):
+    login: bool = False
+    calendar: bool = False
+    business: bool = False
+
+
+@api_router.get("/google/config", response_model=GoogleConfigOut)
+async def google_config():
+    return GoogleConfigOut(login=GOOGLE_ENABLED, calendar=GOOGLE_ENABLED, business=GOOGLE_BUSINESS_ENABLED)
+
+
+# ---- Google ile giriş ----
+@api_router.get("/auth/google/start")
+async def google_login_start(request: Request, redirect: str = Query(...), campaign: str = Query("")):
+    if not GOOGLE_ENABLED:
+        raise HTTPException(503, "Google ile giriş henüz yapılandırılmadı")
+    if not _allowed_app_redirect(redirect):
+        raise HTTPException(400, "Geçersiz dönüş adresi")
+    _rate_limit(f"google-start:ip:{_client_ip(request)}", 30, 600)
+    state = _google_state("login", redirect, campaign=(campaign or "")[:40])
+    return RedirectResponse(_google_auth_url("login", state), status_code=302)
+
+
+async def _google_login_user(claims: Dict[str, Any], campaign: str = "") -> Dict[str, Any]:
+    email = _normalize_email(claims.get("email", ""))
+    sub = str(claims.get("sub") or "")
+    if not email or not sub or not claims.get("email_verified"):
+        raise HTTPException(400, "Google hesabınızın e-posta adresi doğrulanmamış")
+    return await _social_login_user(
+        "google_sub", sub, email, (claims.get("name") or "").strip(),
+        claims.get("picture") or "", campaign, "Google",
+    )
+
+
+async def _social_login_user(sub_field: str, sub: str, email: str, name: str,
+                             picture: str, campaign: str, provider: str) -> Dict[str, Any]:
+    """Google/Apple girişinde ortak kullanıcı bul-bağla-oluştur akışı.
+    email boş olabilir (Apple ikinci girişte e-posta göndermeyebilir); o
+    durumda yalnızca daha önce bağlanmış hesap bulunabilir."""
+    u = await db.users.find_one({sub_field: sub}, {"_id": 0})
+    if not u and not email:
+        raise HTTPException(400, f"{provider} hesabınızdan e-posta adresi alınamadı")
+    if not u:
+        u = await db.users.find_one({"email": email}, {"_id": 0})
+    if not u and email.split("@")[-1] in _ALIAS_INSENSITIVE_DOMAINS:
+        # Gmail'de noktalar yok sayılır; a.b@gmail.com ile ab@gmail.com aynı
+        # kutudur ve Google o kutunun sahibini doğruladı.
+        u = await db.users.find_one({"email_canonical": _canonical_email_key(email)}, {"_id": 0})
+    if u:
+        if u.get("deleted_at"):
+            raise HTTPException(403, "Bu hesap kapatıldı. Destek ile iletişime geçin.")
+        if u.get(sub_field) and u[sub_field] != sub:
+            raise HTTPException(409, f"Bu hesap başka bir {provider} hesabına bağlı")
+        upd: Dict[str, Any] = {sub_field: sub, "email_verified": True}
+        if not u.get("picture") and picture:
+            upd["picture"] = picture
+        await db.users.update_one({"user_id": u["user_id"]}, {"$set": upd})
+        return {**u, **upd}
+
+    domain = email.split("@")[-1]
+    if domain in _BLOCKED_EMAIL_DOMAINS or any(domain.endswith("." + d) for d in _BLOCKED_EMAIL_DOMAINS):
+        raise HTTPException(400, "Geçici/tek kullanımlık e-posta adresleriyle kayıt olunamaz.")
+    user = {
+        "user_id": f"user_{uuid.uuid4().hex[:12]}",
+        "email": email,
+        "email_canonical": _canonical_email_key(email),
+        "email_verified": True,
+        # Şifre yok: şifreyle giriş reddedilir; istenirse "Şifremi unuttum"
+        # ile sonradan şifre belirlenebilir. Telefon alanı bilerek hiç
+        # yazılmıyor (phone_normalized benzersiz ve seyrek indeksli).
+        "hashed_password": "",
+        sub_field: sub,
+        "name": name,
+        "phone": "",
+        "picture": picture,
+        "country": "",
+        "currency": "",
+        "tax_label": "",
+        "language": "tr",
+        "onboarding_completed": False,
+        "createdAt": _utc().isoformat(),
+    }
+    try:
+        await db.users.insert_one(user)
+    except DuplicateKeyError:
+        raise HTTPException(409, "Bu e-posta adresiyle zaten bir hesap mevcut")
+    user.pop("_id", None)
+    campaign = (campaign or "").strip().upper().replace("İ", "I")
+    if campaign in CAMPAIGN_PROMO_CODES:
+        try:
+            await _redeem_campaign_code(user, campaign, CAMPAIGN_PROMO_CODES[campaign])
+        except HTTPException as e:
+            logger.info(f"Kampanya kodu {provider} kaydında uygulanamadı ({campaign}): {e.detail}")
+    return user
+
+
+class GoogleExchangeRequest(BaseModel):
+    code: str
+
+
+@api_router.post("/auth/google/exchange", response_model=AuthResponse)
+async def google_login_exchange(payload: GoogleExchangeRequest, request: Request):
+    _rate_limit(f"google-exchange:ip:{_client_ip(request)}", 30, 600)
+    doc = await db.oauth_login_codes.find_one_and_delete({"code_hash": _sha256(payload.code)})
+    if not doc or doc.get("expires_at", "") < utc_now_iso():
+        raise HTTPException(400, "Giriş bağlantısının süresi doldu, lütfen tekrar deneyin")
+    u = await db.users.find_one({"user_id": doc["user_id"]}, {"_id": 0})
+    if not u or u.get("deleted_at"):
+        raise HTTPException(401, "Hesap bulunamadı")
+    return AuthResponse(access_token=_make_access_token(u), user=_user_out(u))
+
+
+# ---- Apple ile giriş ----
+# App Store kuralı 4.8: üçüncü taraf girişi (Google) sunan iOS uygulaması
+# "Apple ile Giriş" de sunmalı. iPhone'daki yerel Apple penceresi bir
+# identityToken (Apple'ın imzaladığı JWT) döndürür; imzayı Apple'ın açık
+# anahtarlarıyla, aud'u uygulamanın paket kimliğiyle doğruluyoruz.
+APPLE_ISSUER = "https://appleid.apple.com"
+APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_AUDIENCES = [a.strip() for a in os.environ.get("APPLE_BUNDLE_IDS", "com.anindateklif.app").split(",") if a.strip()]
+_apple_keys_cache: Dict[str, Any] = {"at": 0.0, "keys": {}}
+
+
+async def _apple_public_key(kid: str):
+    fresh = _time.time() - _apple_keys_cache["at"] < 3600
+    if not fresh or kid not in _apple_keys_cache["keys"]:
+        resp = await asyncio.to_thread(requests.get, APPLE_KEYS_URL, timeout=10)
+        if resp.status_code != 200:
+            raise HTTPException(502, "Apple anahtarları alınamadı, lütfen tekrar deneyin")
+        _apple_keys_cache["keys"] = {k["kid"]: k for k in resp.json().get("keys", [])}
+        _apple_keys_cache["at"] = _time.time()
+    jwk = _apple_keys_cache["keys"].get(kid)
+    if not jwk:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    return jwt.PyJWK(jwk).key
+
+
+async def _apple_claims(identity_token: str) -> Dict[str, Any]:
+    try:
+        kid = jwt.get_unverified_header(identity_token).get("kid", "")
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    key = await _apple_public_key(kid)
+    try:
+        return jwt.decode(identity_token, key, algorithms=["RS256"],
+                          audience=APPLE_AUDIENCES, issuer=APPLE_ISSUER)
+    except jwt.PyJWTError:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+
+
+class AppleLoginRequest(BaseModel):
+    identityToken: str
+    # Apple adı yalnızca ilk girişte ve token dışında verir.
+    fullName: str = ""
+    campaign: str = ""
+
+
+@api_router.post("/auth/apple", response_model=AuthResponse)
+async def apple_login(payload: AppleLoginRequest, request: Request):
+    _rate_limit(f"apple-login:ip:{_client_ip(request)}", 30, 600)
+    claims = await _apple_claims(payload.identityToken)
+    sub = str(claims.get("sub") or "")
+    if not sub:
+        raise HTTPException(401, "Apple girişi doğrulanamadı")
+    verified = claims.get("email_verified") in (True, "true")
+    email = _normalize_email(claims.get("email", "")) if verified else ""
+    u = await _social_login_user(
+        "apple_sub", sub, email, (payload.fullName or "").strip()[:120], "",
+        (payload.campaign or "")[:40], "Apple",
+    )
+    return AuthResponse(access_token=_make_access_token(u), user=_user_out(u))
+
+
+# ---- Takvim / İşletme bağlama ----
+class GoogleConnectStartRequest(BaseModel):
+    purpose: str
+    companyId: str
+    redirect: str
+
+
+class GoogleConnectionOut(BaseModel):
+    purpose: str
+    connected: bool = False
+    status: str = ""
+    email: str = ""
+    lastSyncAt: str = ""
+    lastError: str = ""
+    calendarName: str = ""
+    locationName: str = ""
+    locationTitle: str = ""
+
+
+def _google_person(user: Dict[str, Any], purpose: str) -> str:
+    # Takvim kişiye özeldir (kısıtlı personel yalnız kendi vadelerini görür,
+    # bkz. _calendar_feed_doc); işletme profili firmanın ortak hesabıdır.
+    if purpose == "calendar" and not _is_manager(user):
+        return _self_id(user)
+    return ""
+
+
+def _google_conn_query(user: Dict[str, Any], company_id: str, purpose: str) -> Dict[str, Any]:
+    return {"userId": user["user_id"], "companyId": company_id, "purpose": purpose,
+            "personId": _google_person(user, purpose)}
+
+
+async def _google_conn(user: Dict[str, Any], company_id: str, purpose: str, required: bool = True) -> Optional[Dict[str, Any]]:
+    doc = await db.google_connections.find_one(_google_conn_query(user, company_id, purpose), {"_id": 0})
+    if required and (not doc or doc.get("status") != "active"):
+        raise HTTPException(400, "Önce Google hesabınızı bağlayın")
+    return doc
+
+
+def _google_conn_out(purpose: str, doc: Optional[Dict[str, Any]]) -> GoogleConnectionOut:
+    if not doc:
+        return GoogleConnectionOut(purpose=purpose)
+    return GoogleConnectionOut(
+        purpose=purpose, connected=doc.get("status") == "active", status=doc.get("status", ""),
+        email=doc.get("email", ""), lastSyncAt=doc.get("lastSyncAt", ""), lastError=doc.get("lastError", ""),
+        calendarName=doc.get("calendarName", ""), locationName=doc.get("locationName", ""),
+        locationTitle=doc.get("locationTitle", ""),
+    )
+
+
+@api_router.post("/google/connect/start")
+async def google_connect_start(payload: GoogleConnectStartRequest, user=Depends(get_current_user)):
+    if payload.purpose not in GOOGLE_CONNECT_PURPOSES:
+        raise HTTPException(400, "Geçersiz bağlantı türü")
+    if not GOOGLE_ENABLED or (payload.purpose == "business" and not GOOGLE_BUSINESS_ENABLED):
+        raise HTTPException(503, "Bu Google entegrasyonu henüz yapılandırılmadı")
+    if payload.purpose == "business":
+        _require_manager(user)
+    await _own_company(user, payload.companyId)
+    if not _allowed_app_redirect(payload.redirect):
+        raise HTTPException(400, "Geçersiz dönüş adresi")
+    state = _google_state(
+        payload.purpose, payload.redirect, uid=user["user_id"], selfId=_self_id(user),
+        companyId=payload.companyId, personId=_google_person(user, payload.purpose),
+    )
+    return {"url": _google_auth_url(payload.purpose, state, login_hint=_actor_email(user))}
+
+
+@api_router.get("/google/oauth/callback")
+async def google_oauth_callback(state: str = "", code: str = "", error: str = ""):
+    try:
+        st = jwt.decode(state, JWT_SECRET, algorithms=[JWT_ALGORITHM], audience="google-oauth", issuer=JWT_ISSUER)
+    except jwt.InvalidTokenError:
+        return RedirectResponse(f"{FRONTEND_BASE_URL.rstrip('/')}/login?google_error=state", status_code=302)
+    redirect, purpose = st["redirect"], st["purpose"]
+    if not _allowed_app_redirect(redirect):
+        return RedirectResponse(f"{FRONTEND_BASE_URL.rstrip('/')}/login?google_error=redirect", status_code=302)
+    if error or not code:
+        return RedirectResponse(_with_query(redirect, google_error=error or "cancelled"), status_code=302)
+    try:
+        tok = await _google_post_token({
+            "grant_type": "authorization_code", "code": code, "redirect_uri": GOOGLE_REDIRECT_URI,
+        })
+        claims = _google_id_claims(tok.get("id_token", ""))
+    except Exception as e:
+        logger.warning(f"[google] kod değişimi başarısız: {e}")
+        return RedirectResponse(_with_query(redirect, google_error="exchange"), status_code=302)
+
+    if purpose == "login":
+        try:
+            u = await _google_login_user(claims, st.get("campaign", ""))
+        except HTTPException as e:
+            return RedirectResponse(_with_query(redirect, google_error=str(e.detail)), status_code=302)
+        raw = py_secrets.token_urlsafe(32)
+        await db.oauth_login_codes.insert_one({
+            "code_hash": _sha256(raw), "user_id": u["user_id"],
+            "expires_at": (_utc() + timedelta(minutes=2)).isoformat(), "createdAt": utc_now_iso(),
+        })
+        return RedirectResponse(_with_query(redirect, google_code=raw), status_code=302)
+
+    if purpose not in GOOGLE_CONNECT_PURPOSES:
+        return RedirectResponse(_with_query(redirect, google_error="purpose"), status_code=302)
+    granted = set((tok.get("scope") or "").split())
+    missing = [sc for sc in GOOGLE_SCOPES[purpose] if sc.startswith("https://") and sc not in granted]
+    if missing or not tok.get("refresh_token"):
+        return RedirectResponse(_with_query(redirect, google_error="scope"), status_code=302)
+    q = {"userId": st["uid"], "companyId": st["companyId"], "purpose": purpose, "personId": st.get("personId", "")}
+    existing = await db.google_connections.find_one(q, {"_id": 0})
+    doc = {
+        **q,
+        "id": (existing or {}).get("id") or str(uuid.uuid4()),
+        "connectedBy": st.get("selfId", ""),
+        "email": claims.get("email", ""),
+        "googleSub": claims.get("sub", ""),
+        "status": "active",
+        "lastError": "",
+        "refresh_token_enc": _google_encrypt(tok["refresh_token"]),
+        "access_token_enc": _google_encrypt(tok.get("access_token", "")),
+        "access_expires_at": (_utc() + timedelta(seconds=int(tok.get("expires_in", 3600)))).isoformat(),
+        "updatedAt": utc_now_iso(),
+    }
+    # Başka bir Google hesabına geçildiyse eski takvim kimliği/konum geçersizdir.
+    if existing and existing.get("googleSub") != doc["googleSub"]:
+        for k in ("calendarId", "calendarName", "locationName", "locationTitle", "accountName"):
+            doc[k] = ""
+        await db.gcal_links.delete_many({"connId": doc["id"]})
+    await db.google_connections.update_one(q, {"$set": doc, "$setOnInsert": {"createdAt": utc_now_iso()}}, upsert=True)
+    if purpose == "calendar":
+        asyncio.create_task(_gcal_sync_safe(doc["id"]))
+    return RedirectResponse(_with_query(redirect, google_connected=purpose), status_code=302)
+
+
+@api_router.get("/google/connections/{company_id}", response_model=List[GoogleConnectionOut])
+async def google_connections(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    out = []
+    for purpose in GOOGLE_CONNECT_PURPOSES:
+        out.append(_google_conn_out(purpose, await _google_conn(user, company_id, purpose, required=False)))
+    return out
+
+
+@api_router.delete("/google/connections/{purpose}/{company_id}")
+async def google_disconnect(purpose: str, company_id: str, user=Depends(get_current_user)):
+    if purpose not in GOOGLE_CONNECT_PURPOSES:
+        raise HTTPException(400, "Geçersiz bağlantı türü")
+    if purpose == "business":
+        _require_manager(user)
+    await _own_company(user, company_id)
+    doc = await _google_conn(user, company_id, purpose, required=False)
+    if not doc:
+        return {"ok": True}
+    try:
+        await asyncio.to_thread(requests.post, GOOGLE_REVOKE_URL,
+                                params={"token": _google_decrypt(doc["refresh_token_enc"])}, timeout=10)
+    except Exception:
+        pass
+    await db.google_connections.delete_one({"id": doc["id"]})
+    await db.gcal_links.delete_many({"connId": doc["id"]})
+    return {"ok": True}
+
+
+# ---- Google Takvim: iki yönlü senkron ----
+# Uygulama -> Google: hatırlatıcılar, servis/bakım/garanti ve vade günleri
+#   Google'da uygulamanın açtığı ayrı "Anında Teklif" takvimine yazılır;
+#   değişen/silinen kayıtlar orada da güncellenir/silinir.
+# Google -> uygulama:
+#   - O takvimde bir hatırlatıcının tarihi/başlığı Google'da değiştirilirse ya
+#     da etkinlik silinirse hatırlatıcı uygulamada da güncellenir/silinir.
+#   - Kullanıcının ana takvimindeki etkinlikler hatırlatıcı olarak gelir
+#     (icsUid "gcal:<bağlantı>:<id>"); Google'da değişirse/silinirse uygulamada da.
+# gcal_links, hangi kaydın hangi etkinliğe yazıldığını tutar (connId+key).
+GCAL_PULL_PAST_DAYS = 30
+GCAL_PULL_FUTURE_DAYS = 365
+
+
+def _gcal_hash(date: str, summary: str, desc: str) -> str:
+    return _sha256(f"{date}|{summary}|{desc}")[:16]
+
+
+def _gcal_event_date(ev: Dict[str, Any]) -> Optional[str]:
+    start = ev.get("start") or {}
+    if start.get("date"):
+        return start["date"][:10]
+    if start.get("dateTime"):
+        try:
+            dt = datetime.fromisoformat(start["dateTime"].replace("Z", "+00:00"))
+            from zoneinfo import ZoneInfo
+            return dt.astimezone(ZoneInfo("Europe/Istanbul")).date().isoformat()
+        except Exception:
+            return start["dateTime"][:10]
+    return None
+
+
+def _gcal_event_body(it: Dict[str, Any]) -> Dict[str, Any]:
+    d = datetime.strptime(it["date"], "%Y-%m-%d").date()
+    return {
+        "summary": it["summary"][:1000],
+        "description": it["desc"][:8000],
+        "start": {"date": d.isoformat()},
+        "end": {"date": (d + timedelta(days=1)).isoformat()},
+        "transparency": "transparent",
+        "extendedProperties": {"private": {"atKey": it["key"]}},
+    }
+
+
+async def _gcal_ensure_calendar(conn: Dict[str, Any]) -> str:
+    if conn.get("calendarId"):
+        return conn["calendarId"]
+    company = await db.companies.find_one({"id": conn["companyId"], "userId": conn["userId"]}, {"_id": 0, "sirketAdi": 1}) or {}
+    name = f"Anında Teklif – {company.get('sirketAdi') or 'Takvim'}"[:200]
+    cal = await _google_api(conn, "POST", f"{GCAL_API}/calendars", body={"summary": name, "timeZone": "Europe/Istanbul"})
+    conn["calendarId"], conn["calendarName"] = cal["id"], name
+    await db.google_connections.update_one({"id": conn["id"]}, {"$set": {"calendarId": cal["id"], "calendarName": name}})
+    return cal["id"]
+
+
+async def _gcal_push(conn: Dict[str, Any]) -> Dict[str, int]:
+    from urllib.parse import quote
+    stats = {"pushed": 0, "updatedFromGoogle": 0, "deletedFromGoogle": 0, "removed": 0}
+    uid, cid = conn["userId"], conn["companyId"]
+    cal_id = await _gcal_ensure_calendar(conn)
+    base = f"{GCAL_API}/calendars/{quote(cal_id, safe='')}/events"
+    try:
+        events = await _google_list_all(conn, base, {"maxResults": 2500, "singleEvents": "true"})
+    except GoogleApiError as e:
+        if e.status != 404:
+            raise
+        # Kullanıcı takvimi Google'da sildiyse yeniden açılır.
+        await db.google_connections.update_one({"id": conn["id"]}, {"$set": {"calendarId": ""}})
+        await db.gcal_links.delete_many({"connId": conn["id"], "kind": "out"})
+        conn["calendarId"] = ""
+        cal_id = await _gcal_ensure_calendar(conn)
+        base = f"{GCAL_API}/calendars/{quote(cal_id, safe='')}/events"
+        events = []
+    by_key = {}
+    for ev in events:
+        k = ((ev.get("extendedProperties") or {}).get("private") or {}).get("atKey")
+        if k and ev.get("status") != "cancelled":
+            by_key[k] = ev
+    links = {l["key"]: l async for l in db.gcal_links.find({"connId": conn["id"], "kind": "out"}, {"_id": 0})}
+
+    # 1) Google tarafındaki değişiklikleri hatırlatıcılara uygula.
+    for key, link in links.items():
+        if not key.startswith("rem-"):
+            continue
+        rid = key[4:]
+        ev = by_key.get(key)
+        if ev is None:
+            # Uygulamanın yazdığı etkinlik Google'da silinmiş -> hatırlatıcıyı da sil.
+            res = await db.manual_reminders.delete_one({"id": rid, "userId": uid, "companyId": cid})
+            await db.gcal_links.delete_one({"connId": conn["id"], "key": key})
+            stats["deletedFromGoogle"] += res.deleted_count
+            continue
+        date = _gcal_event_date(ev)
+        summary = (ev.get("summary") or "").strip()
+        desc = ev.get("description") or ""
+        if date and _gcal_hash(date, summary, desc) != link.get("hash"):
+            done = summary.startswith("✓ ")
+            await db.manual_reminders.update_one({"id": rid, "userId": uid, "companyId": cid}, {"$set": {
+                "tarih": date, "baslik": (summary[2:] if done else summary)[:200] or "Hatırlatma",
+                "notu": desc[:2000], "tamamlandi": done, "updatedAt": utc_now_iso(),
+            }})
+            stats["updatedFromGoogle"] += 1
+
+    # 2) Uygulamadaki güncel kayıtları Google'a yaz.
+    items = [
+        it for it in await _calendar_items(uid, cid, conn.get("personId") or "")
+        if not (it.get("icsUid") or "").startswith("gcal:")  # Google'dan gelenleri geri yazma
+    ]
+    wanted = set()
+    for it in items:
+        try:
+            datetime.strptime(it["date"], "%Y-%m-%d")
+        except ValueError:
+            continue
+        wanted.add(it["key"])
+        h = _gcal_hash(it["date"], it["summary"], it["desc"])
+        ev = by_key.get(it["key"])
+        if ev is None:
+            ev = await _google_api(conn, "POST", base, body=_gcal_event_body(it))
+            stats["pushed"] += 1
+        elif _gcal_hash(_gcal_event_date(ev) or "", (ev.get("summary") or "").strip(), ev.get("description") or "") != h:
+            ev = await _google_api(conn, "PATCH", f"{base}/{quote(ev['id'], safe='')}", body=_gcal_event_body(it))
+            stats["pushed"] += 1
+        await db.gcal_links.update_one(
+            {"connId": conn["id"], "key": it["key"]},
+            {"$set": {"kind": "out", "eventId": ev["id"], "hash": h, "updatedAt": utc_now_iso()}}, upsert=True,
+        )
+
+    # 3) Uygulamada artık olmayan (silinen) kayıtları Google'dan kaldır.
+    since = (_istanbul_today() - timedelta(days=90)).isoformat()
+    for key, ev in by_key.items():
+        if key in wanted or (_gcal_event_date(ev) or "") < since:
+            continue
+        try:
+            await _google_api(conn, "DELETE", f"{base}/{quote(ev['id'], safe='')}")
+        except GoogleApiError as e:
+            if e.status not in (404, 410):
+                raise
+        await db.gcal_links.delete_one({"connId": conn["id"], "key": key})
+        stats["removed"] += 1
+    return stats
+
+
+async def _gcal_pull(conn: Dict[str, Any]) -> Dict[str, int]:
+    stats = {"imported": 0, "updated": 0, "deleted": 0}
+    uid, cid = conn["userId"], conn["companyId"]
+    today = _istanbul_today()
+    lo = (today - timedelta(days=GCAL_PULL_PAST_DAYS)).isoformat()
+    hi = (today + timedelta(days=GCAL_PULL_FUTURE_DAYS)).isoformat()
+    events = await _google_list_all(conn, f"{GCAL_API}/calendars/primary/events", {
+        "timeMin": f"{lo}T00:00:00Z", "timeMax": f"{hi}T00:00:00Z", "singleEvents": "true",
+        "maxResults": 2500, "orderBy": "startTime",
+    }, max_pages=4)
+    seen = set()
+    links = {l["key"]: l async for l in db.gcal_links.find({"connId": conn["id"], "kind": "in"}, {"_id": 0})}
+    # Aynı firmada birden çok kişi kendi takvimini bağlayabilir; her
+    # bağlantının içe aktardıkları kendi önekiyle ayrılır.
+    prefix = f"gcal:{conn['id'][:8]}:"
+    existing = {
+        r["icsUid"]: r async for r in db.manual_reminders.find(
+            {"userId": uid, "companyId": cid, "icsUid": {"$regex": f"^{re.escape(prefix)}"}}, {"_id": 0})
+    }
+    new_docs = []
+    for ev in events:
+        if ev.get("status") == "cancelled" or ev.get("eventType") in ("workingLocation", "outOfOffice", "focusTime"):
+            continue
+        date = _gcal_event_date(ev)
+        summary = (ev.get("summary") or "").strip() or "(Başlıksız etkinlik)"
+        if not date:
+            continue
+        key = f"{prefix}{ev['id']}"[:300]
+        seen.add(key)
+        notu = "\n".join(x for x in [(ev.get("location") or "").strip(), (ev.get("description") or "").strip()] if x)[:2000]
+        h = _gcal_hash(date, summary, notu)
+        cur = existing.get(key)
+        link = links.get(key)
+        if cur is None:
+            if link:
+                continue  # kullanıcı bu hatırlatıcıyı uygulamada silmiş; geri getirme
+            new_docs.append(ManualReminder(userId=uid, companyId=cid, baslik=summary[:200], notu=notu,
+                                           tarih=date, icsUid=key).dict())
+            stats["imported"] += 1
+        elif not link or link.get("hash") != h:
+            await db.manual_reminders.update_one({"id": cur["id"]}, {"$set": {
+                "baslik": summary[:200], "notu": notu, "tarih": date, "updatedAt": utc_now_iso(),
+            }})
+            stats["updated"] += 1
+        await db.gcal_links.update_one({"connId": conn["id"], "key": key},
+                                       {"$set": {"kind": "in", "eventId": ev["id"], "hash": h}}, upsert=True)
+    if new_docs:
+        await db.manual_reminders.insert_many(new_docs)
+    # Google'da silinen (pencere içindeki) etkinliklerin hatırlatıcılarını kaldır.
+    for key, r in existing.items():
+        if key not in seen and lo <= (r.get("tarih") or "") < hi:
+            await db.manual_reminders.delete_one({"id": r["id"]})
+            await db.gcal_links.delete_one({"connId": conn["id"], "key": key})
+            stats["deleted"] += 1
+    return stats
+
+
+_gcal_locks: Dict[str, asyncio.Lock] = {}
+
+
+async def _gcal_sync(conn_id: str) -> Dict[str, int]:
+    lock = _gcal_locks.setdefault(conn_id, asyncio.Lock())
+    async with lock:
+        conn = await db.google_connections.find_one({"id": conn_id, "purpose": "calendar"}, {"_id": 0})
+        if not conn or conn.get("status") != "active":
+            raise HTTPException(400, "Google Takvim bağlı değil")
+        try:
+            pulled = await _gcal_pull(conn)
+            pushed = await _gcal_push(conn)
+        except GoogleApiError as e:
+            await db.google_connections.update_one({"id": conn_id}, {"$set": {"lastError": str(e)[:300]}})
+            raise HTTPException(502 if e.status != 401 else 401, f"Google Takvim: {e}")
+        await db.google_connections.update_one({"id": conn_id}, {"$set": {"lastSyncAt": utc_now_iso(), "lastError": ""}})
+        return {**pulled, **pushed}
+
+
+async def _gcal_sync_safe(conn_id: str) -> None:
+    try:
+        await _gcal_sync(conn_id)
+    except Exception as e:
+        logger.warning(f"[gcal] senkron başarısız {conn_id}: {getattr(e, 'detail', e)}")
+
+
+@api_router.post("/google/calendar/sync/{company_id}")
+async def google_calendar_sync(company_id: str, user=Depends(get_current_user)):
+    await _own_company(user, company_id)
+    conn = await _google_conn(user, company_id, "calendar")
+    _rate_limit(f"gcal-sync:{conn['id']}", 10, 600)
+    return await _gcal_sync(conn["id"])
+
+
+async def _gcal_loop():
+    await asyncio.sleep(90)
+    while True:
+        try:
+            async for c in db.google_connections.find({"purpose": "calendar", "status": "active"}, {"_id": 0, "id": 1}):
+                await _gcal_sync_safe(c["id"])
+                await asyncio.sleep(1)
+        except Exception:
+            logger.exception("[gcal] senkron döngüsü hatası")
+        await asyncio.sleep(int(os.environ.get("GCAL_SYNC_MINUTES", "30")) * 60)
+
+
+# ---- Google İşletme Profili: yorumlar ----
+GBP_ACCOUNTS_API = "https://mybusinessaccountmanagement.googleapis.com/v1"
+GBP_INFO_API = "https://mybusinessbusinessinformation.googleapis.com/v1"
+GBP_V4_API = "https://mybusiness.googleapis.com/v4"
+_GBP_STARS = {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5}
+
+
+class GbpLocationOut(BaseModel):
+    name: str  # accounts/{a}/locations/{l}
+    title: str
+    address: str = ""
+
+
+class GbpLocationSelect(BaseModel):
+    companyId: str
+    name: str
+    title: str = ""
+
+
+class GbpReviewOut(BaseModel):
+    name: str
+    reviewer: str = ""
+    reviewerPhoto: str = ""
+    stars: int = 0
+    comment: str = ""
+    createTime: str = ""
+    reply: str = ""
+    replyTime: str = ""
+
+
+class GbpReviewsOut(BaseModel):
+    reviews: List[GbpReviewOut] = []
+    averageRating: Optional[float] = None
+    totalReviewCount: int = 0
+    nextPageToken: str = ""
+
+
+class GbpReplyRequest(BaseModel):
+    companyId: str
+    reviewName: str
+    comment: str
+
+
+async def _gbp_conn(user: Dict[str, Any], company_id: str) -> Dict[str, Any]:
+    if not GOOGLE_BUSINESS_ENABLED:
+        raise HTTPException(503, "Google İşletme entegrasyonu henüz yapılandırılmadı")
+    _require_manager(user)
+    await _own_company(user, company_id)
+    return await _google_conn(user, company_id, "business")
+
+
+def _gbp_error(e: GoogleApiError) -> HTTPException:
+    if e.status == 403:
+        return HTTPException(403, "Google bu işletme profiline erişim izni vermedi. Profilin sahibi/yöneticisi olan hesapla bağlandığınızdan emin olun.")
+    if e.status == 429:
+        return HTTPException(429, "Google istek sınırı doldu, biraz sonra tekrar deneyin")
+    return HTTPException(502, f"Google İşletme: {e}")
+
+
+@api_router.get("/google/business/locations/{company_id}", response_model=List[GbpLocationOut])
+async def gbp_locations(company_id: str, user=Depends(get_current_user)):
+    conn = await _gbp_conn(user, company_id)
+    out: List[GbpLocationOut] = []
+    try:
+        accounts = await _google_list_all(conn, f"{GBP_ACCOUNTS_API}/accounts", {"pageSize": 20}, key="accounts", max_pages=3)
+        for acc in accounts:
+            locs = await _google_list_all(conn, f"{GBP_INFO_API}/{acc['name']}/locations", {
+                "readMask": "name,title,storefrontAddress", "pageSize": 100,
+            }, key="locations", max_pages=3)
+            for loc in locs:
+                addr = loc.get("storefrontAddress") or {}
+                parts = [*(addr.get("addressLines") or []), addr.get("locality", ""), addr.get("administrativeArea", "")]
+                out.append(GbpLocationOut(
+                    name=f"{acc['name']}/{loc['name']}", title=loc.get("title", ""),
+                    address=", ".join(p for p in parts if p),
+                ))
+    except GoogleApiError as e:
+        raise _gbp_error(e)
+    return out
+
+
+@api_router.put("/google/business/location", response_model=GoogleConnectionOut)
+async def gbp_select_location(payload: GbpLocationSelect, user=Depends(get_current_user)):
+    conn = await _gbp_conn(user, payload.companyId)
+    if not re.fullmatch(r"accounts/[\w-]+/locations/[\w-]+", payload.name):
+        raise HTTPException(422, "Geçersiz işletme konumu")
+    upd = {"locationName": payload.name, "locationTitle": payload.title[:200], "updatedAt": utc_now_iso()}
+    await db.google_connections.update_one({"id": conn["id"]}, {"$set": upd})
+    return _google_conn_out("business", {**conn, **upd})
+
+
+@api_router.get("/google/business/reviews/{company_id}", response_model=GbpReviewsOut)
+async def gbp_reviews(company_id: str, pageToken: str = "", user=Depends(get_current_user)):
+    conn = await _gbp_conn(user, company_id)
+    if not conn.get("locationName"):
+        raise HTTPException(400, "Önce yorumları alınacak işletmeyi seçin")
+    params: Dict[str, Any] = {"pageSize": 50, "orderBy": "updateTime desc"}
+    if pageToken:
+        params["pageToken"] = pageToken
+    try:
+        data = await _google_api(conn, "GET", f"{GBP_V4_API}/{conn['locationName']}/reviews", params=params)
+    except GoogleApiError as e:
+        raise _gbp_error(e)
+    reviews = []
+    for r in data.get("reviews") or []:
+        rv = r.get("reviewer") or {}
+        rp = r.get("reviewReply") or {}
+        reviews.append(GbpReviewOut(
+            name=r.get("name", ""), reviewer=rv.get("displayName", ""), reviewerPhoto=rv.get("profilePhotoUrl", ""),
+            stars=_GBP_STARS.get(r.get("starRating", ""), 0), comment=r.get("comment", ""),
+            createTime=r.get("createTime", ""), reply=rp.get("comment", ""), replyTime=rp.get("updateTime", ""),
+        ))
+    return GbpReviewsOut(
+        reviews=reviews, averageRating=data.get("averageRating"),
+        totalReviewCount=int(data.get("totalReviewCount") or 0), nextPageToken=data.get("nextPageToken", ""),
+    )
+
+
+@api_router.post("/google/business/reviews/reply", response_model=GbpReviewOut)
+async def gbp_reply(payload: GbpReplyRequest, user=Depends(get_current_user)):
+    conn = await _gbp_conn(user, payload.companyId)
+    loc = conn.get("locationName") or ""
+    if not loc or not payload.reviewName.startswith(f"{loc}/reviews/") or "/" in payload.reviewName[len(loc) + 9:]:
+        raise HTTPException(422, "Yorum bu işletmeye ait değil")
+    comment = payload.comment.strip()
+    if not comment:
+        raise HTTPException(422, "Yanıt metni boş olamaz")
+    if len(comment) > 4000:
+        raise HTTPException(422, "Yanıt en fazla 4000 karakter olabilir")
+    _rate_limit(f"gbp-reply:{conn['id']}", 60, 3600)
+    try:
+        rp = await _google_api(conn, "PUT", f"{GBP_V4_API}/{payload.reviewName}/reply", body={"comment": comment})
+    except GoogleApiError as e:
+        raise _gbp_error(e)
+    return GbpReviewOut(name=payload.reviewName, reply=rp.get("comment", comment), replyTime=rp.get("updateTime", ""))
 
 
 # ============ OTOMATİK E-POSTA HATIRLATMALARI ============
@@ -9953,7 +11305,7 @@ async def _engage_morning(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bo
     if not prefs.get("akilli", True):
         return False
     days = _renewal_days_left(u)
-    if days is not None and days <= 3 and (u.get("email") or "").lower() not in FREE_ACCESS_EMAILS:
+    if days is not None and days <= 3 and not u.get("auto_renew") and (u.get("email") or "").lower() not in FREE_ACCESS_EMAILS:
         exp_key = str(u.get("subscription_expires_at"))[:10]
         if await _notify_user(uid, f"sub:{uid}:{exp_key}", "akilli", T["sub_t"].format(d=max(days, 1)), T["sub_m"], "/subscription", kind="abonelik"):
             return True
@@ -10032,7 +11384,7 @@ async def _engage_tick(now_ist: Optional[datetime] = None) -> int:
         return 0
     sent = 0
     async for u in db.users.find({"staff_owner_user_id": {"$in": [None, ""]}, "deleted_at": {"$in": [None, ""]}},
-                                 {"_id": 0, "user_id": 1, "email": 1, "subscription_expires_at": 1}):
+                                 {"_id": 0, "user_id": 1, "email": 1, "subscription_expires_at": 1, "auto_renew": 1}):
         uid = u.get("user_id")
         if not uid:
             continue
@@ -10208,6 +11560,14 @@ async def on_startup():
         await db.push_subs.create_index("ident", unique=True)
         await db.push_subs.create_index("userId")
         await db.promo_redemptions.create_index([("code", 1), ("user_id", 1)], unique=True)
+        await db.users.create_index("iyzico_sub_ref", sparse=True)
+        await db.users.create_index("iyzico_sub_prev_refs", sparse=True)
+        await db.users.create_index("google_sub", unique=True, sparse=True)
+        await db.users.create_index("apple_sub", unique=True, sparse=True)
+        await db.oauth_login_codes.create_index("code_hash", unique=True)
+        await db.google_connections.create_index([("userId", 1), ("companyId", 1), ("purpose", 1), ("personId", 1)], unique=True)
+        await db.google_connections.create_index("id", unique=True)
+        await db.gcal_links.create_index([("connId", 1), ("key", 1)], unique=True)
     except Exception as e:
         logger.warning(f"Index setup issue: {e}")
 
@@ -10218,6 +11578,14 @@ async def on_startup():
     # Kullanıcı bildirimleri: sabah özeti + akşam akıllı hatırlatma/ipucu.
     if os.environ.get("ENGAGE_LOOP_DISABLED") != "1":
         app.state.engage_task = asyncio.create_task(_engage_loop())
+
+    # iyzico otomatik yenilenen abonelik mutabakatı (IYZICO_SUB_PLANS ayarlıysa).
+    if IYZICO_SUB_PLANS and os.environ.get("RECURRING_LOOP_DISABLED") != "1":
+        app.state.recurring_task = asyncio.create_task(_recurring_loop())
+
+    # Google Takvim iki yönlü senkronu (GOOGLE_CLIENT_ID/SECRET ayarlıysa).
+    if GOOGLE_ENABLED and os.environ.get("GCAL_LOOP_DISABLED") != "1":
+        app.state.gcal_task = asyncio.create_task(_gcal_loop())
 
     # Gecelik veritabanı yedeği (BACKUP_BUCKET ayarlıysa).
     if os.environ.get("BACKUP_BUCKET") and os.environ.get("BACKUP_LOOP_DISABLED") != "1":

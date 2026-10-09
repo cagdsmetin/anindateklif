@@ -432,3 +432,25 @@ class TestAppleLogin:
         # Yanlış aud / imza reddedilir
         assert c.post("/api/auth/apple", json={"identityToken": apple(aud="com.baska.app")}).status_code == 401
         assert c.post("/api/auth/apple", json={"identityToken": "bozuk"}).status_code == 401
+
+
+class TestIosQuotaExemption:
+    """The iOS app (no in-app purchase yet) is not subject to the free monthly quote limit."""
+
+    IOS_UA = {"User-Agent": "AnndaTeklif/6 CFNetwork/1568.300.101 Darwin/24.2.0"}
+
+    def _quote(self, n):
+        return {"companyId": "c1", "teklifNo": f"T-{n}", "tarih": "2026-10-01", "gecerlilik": "2026-10-15",
+                "musFirma": f"Firma {n}", "items": []}
+
+    def test_web_is_limited_ios_is_not(self, env):
+        run(_mk_user(env))
+        with TestClient(server.app) as c:
+            for n in range(server.FREE_MONTHLY_QUOTE_LIMIT):
+                assert c.post("/api/quotes", json=self._quote(n), headers=_auth()).status_code == 200
+            assert c.post("/api/quotes", json=self._quote(90), headers=_auth()).status_code == 402
+            safari = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1"}
+            assert c.post("/api/quotes", json=self._quote(91), headers={**_auth(), **safari}).status_code == 402
+            assert c.post("/api/quotes", json=self._quote(92), headers={**_auth(), **self.IOS_UA}).status_code == 200
+            assert c.get("/api/subscription/status", headers={**_auth(), **self.IOS_UA}).json()["remaining_free"] is None
+            assert c.get("/api/subscription/status", headers=_auth()).json()["remaining_free"] == 0

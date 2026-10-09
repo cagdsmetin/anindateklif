@@ -22,6 +22,7 @@ import uuid
 import io
 from html import escape as esc
 from datetime import datetime, timezone, timedelta
+from contextvars import ContextVar
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -851,12 +852,25 @@ def _renewal_due_soon(user: Dict[str, Any], days_left: Optional[int]) -> bool:
     return days_left <= threshold
 
 
+# iOS uygulamasında aylık ücretsiz teklif sınırı UYGULANMAZ: App Store
+# (kural 3.1.1) ücretli özelliklerin uygulama içi satın almayla sunulmasını
+# şart koşuyor ve uygulamada henüz satın alma yok. Uygulama içi satın alma
+# eklendiğinde bu istisna onunla birlikte kaldırılır. iOS uygulaması yerel
+# ağ katmanının varsayılan User-Agent'ından (".. CFNetwork/.. Darwin/..")
+# tanınır; tarayıcılar (Safari dahil) bu imzayı göndermez.
+_ios_app_request: ContextVar[bool] = ContextVar("ios_app_request", default=False)
+
+
+def _is_ios_app_user_agent(ua: str) -> bool:
+    return "CFNetwork/" in ua and "Darwin/" in ua
+
+
 async def _get_quota_state(user: Dict[str, Any]) -> Dict[str, Any]:
     period = _current_period_key()
     stored_period = user.get("monthly_quote_period")
     count = user.get("monthly_quote_count", 0) if stored_period == period else 0
     active = _is_subscription_active(user)
-    remaining = None if active else max(0, FREE_MONTHLY_QUOTE_LIMIT - count)
+    remaining = None if (active or _ios_app_request.get()) else max(0, FREE_MONTHLY_QUOTE_LIMIT - count)
     return {
         "period": period,
         "count": count,
@@ -873,7 +887,7 @@ async def _enforce_and_increment_quota(user: Dict[str, Any]):
     stored_period = user.get("monthly_quote_period")
     count = user.get("monthly_quote_count", 0) if stored_period == period else 0
     active = _is_subscription_active(user)
-    if not active and count >= FREE_MONTHLY_QUOTE_LIMIT:
+    if not active and count >= FREE_MONTHLY_QUOTE_LIMIT and not _ios_app_request.get():
         raise HTTPException(
             status_code=402,
             detail="Bu ay için 5 ücretsiz teklif hakkınızı kullandınız. Devam etmek için aboneliği başlatın.",
@@ -892,7 +906,7 @@ async def _enforce_and_increment_quota(user: Dict[str, Any]):
             # letting this request through.
             fresh = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
             fresh_count = fresh.get("monthly_quote_count", 0) if fresh and fresh.get("monthly_quote_period") == period else 0
-            if fresh_count >= FREE_MONTHLY_QUOTE_LIMIT:
+            if fresh_count >= FREE_MONTHLY_QUOTE_LIMIT and not _ios_app_request.get():
                 raise HTTPException(
                     status_code=402,
                     detail="Bu ay için 5 ücretsiz teklif hakkınızı kullandınız. Devam etmek için aboneliği başlatın.",
@@ -11444,6 +11458,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _mark_ios_app(request: Request, call_next):
+    _ios_app_request.set(_is_ios_app_user_agent(request.headers.get("user-agent", "")))
+    return await call_next(request)
 
 
 @app.middleware("http")

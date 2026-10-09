@@ -655,7 +655,8 @@ export default function PanelScreen() {
             </Reveal>
           ) : null}
 
-          {subStatus && !subStatus.subscription_active && (
+          {/* "Devamı için abone olun" şeridi yalnız web'de: mobil uygulamada abonelik satın alınmaz. */}
+          {Platform.OS === 'web' && subStatus && !subStatus.subscription_active && (
             <Banner tone="primary" icon="gift-outline" onPress={() => router.push('/subscription' as any)}>
               <Text style={s.bannerStrong}>
                 {Math.max(subStatus.remaining_free ?? 0, 0)} {t('panel.s034')}

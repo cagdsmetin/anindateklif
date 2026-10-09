@@ -87,6 +87,8 @@ export default function ProBanner() {
 
   const days = Math.max(0, status.days_left ?? 0);
   const isPromo = status.subscription_plan === 'promo';
+  // Mobil uygulamada hediye süresi / "abone olun" şeritleri gösterilmez.
+  if (Platform.OS !== 'web' && isPromo) return null;
   let v: Variant | null = null;
   if (isPromo && status.subscription_active) {
     v = {

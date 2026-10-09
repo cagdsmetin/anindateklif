@@ -381,6 +381,9 @@ export default function CompanyScreen() {
           {/* Abonelik: kisayol karolarindan once, kendi kartiyla. Kalan sure
               ve hediye kodu durumu burada goruunur -- eskiden sadece kucuk
               bir karoydu ve "sonuk" kaliyordu. */}
+          {/* Mobil uygulamada abonelik satın alınmadığı için kart yalnızca
+              zaten aktif bir abonelik varken (durum/iptal için) görünür. */}
+          {(Platform.OS === 'web' || subStatus?.subscription_active) && (
           <Reveal variant="up" distance={18}>
             <AnimatedPressable style={s.subCard} onPress={() => router.push('/subscription')} testID="subscription-btn" scaleTo={0.985}>
               <LinearGradient
@@ -422,6 +425,7 @@ export default function CompanyScreen() {
               </View>
             </AnimatedPressable>
           </Reveal>
+          )}
 
           <View style={s.tileGrid}>
             {[

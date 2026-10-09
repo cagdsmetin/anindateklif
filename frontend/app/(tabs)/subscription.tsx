@@ -59,7 +59,7 @@ const BILLING_INFO_KEY = 'sub_billing_info_v1';
 
 // Android/iOS uygulamasında abonelik satın alınmaz (mağazalar dijital
 // abonelikte kendi ödeme sistemlerini şart koşuyor); burada yalnız durum,
-// hediye kodu ve otomatik yenilemeyi kapatma gösterilir. Satın alma web'de.
+// ve otomatik yenilemeyi kapatma gösterilir. Satın alma ve hediye kodu web'de.
 const PURCHASE_ENABLED = Platform.OS === 'web';
 
 const FALLBACK_PLANS: PlanT[] = [
@@ -420,7 +420,10 @@ export default function SubscriptionScreen() {
                 küçük ve soluk bir metin linki olarak duruyordu; kolayca
                 atlanıyordu. Şimdi status kartının hemen altında, plan
                 seçiminden önce, kendi dikkat çekici (altın renkli) kartı
-                içinde gösteriliyor. */}
+                içinde gösteriliyor.
+                App Store kuralı 3.1.1: uygulama içinde kodla özellik açılamaz;
+                bu yüzden mobil uygulamada gösterilmez, yalnız web'de. */}
+            {PURCHASE_ENABLED && (
             <TouchableOpacity
               style={s.promoToggle}
               onPress={() => setPromoOpen((v) => !v)}
@@ -433,7 +436,8 @@ export default function SubscriptionScreen() {
               <Text style={s.promoToggleText}>Hediye kodunuz mu var?</Text>
               <Ionicons name={promoOpen ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.goldDark} />
             </TouchableOpacity>
-            {promoOpen && (
+            )}
+            {PURCHASE_ENABLED && promoOpen && (
               <View style={s.promoBox}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <MotionInput
@@ -495,7 +499,7 @@ export default function SubscriptionScreen() {
               <View style={[s.card, { flexDirection: 'row', gap: 10, padding: 14, alignItems: 'center' }]} testID="sub-native-note">
                 <Ionicons name="information-circle-outline" size={18} color={theme.colors.textMuted} />
                 <Text style={{ flex: 1, fontSize: 13, color: theme.colors.textSoft }}>
-                  Bu uygulamada abonelik satın alınamaz. Mevcut aboneliğiniz ve hediye kodlarınız bu ekranda görünür.
+                  Bu uygulamada abonelik satın alınamaz. Mevcut aboneliğiniz bu ekranda görünür.
                 </Text>
               </View>
             )}

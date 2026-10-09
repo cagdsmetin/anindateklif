@@ -671,7 +671,8 @@ export default function EditorScreen() {
     } catch (e: any) {
       if (e?.status === 402) {
         showToast(t('teklifPage.s016'));
-        router.push('/subscription');
+        // Mobil uygulamada abonelik satın alınmadığı için yönlendirme yalnız web'de.
+        if (Platform.OS === 'web') router.push('/subscription');
         return null;
       }
       showToast(t('teklifPage.s017') + (e?.message || ''));

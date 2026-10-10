@@ -208,11 +208,17 @@ export function SheetRow({
   const press = useSharedValue(0);
   const tint = color || theme.colors.primary;
 
+  // Renkler worklet dışında hesaplanır: alpha() düz JS fonksiyonu olduğu
+  // için worklet içinde çağrılırsa iOS/Android'de uygulama kapanır.
+  const bgOn = alpha(tint, 0.1);
+  const bgOff = theme.colors.surfaceSoft;
+  const borderOn = alpha(tint, 0.45);
+  const borderOff = theme.colors.line;
+
   const shell = useAnimatedStyle(() => ({
     transform: [{ scale: 1 - press.value * 0.015 }],
-    backgroundColor:
-      press.value > 0.5 ? alpha(tint, 0.1) : theme.colors.surfaceSoft,
-    borderColor: press.value > 0.5 ? alpha(tint, 0.45) : theme.colors.line,
+    backgroundColor: press.value > 0.5 ? bgOn : bgOff,
+    borderColor: press.value > 0.5 ? borderOn : borderOff,
   }));
 
   return (

@@ -48,18 +48,28 @@ export default function ChoiceChip({
 
   const scale = useDerivedValue(() => (1 + sel.value * 0.03) * (1 - press.value * 0.05));
 
+  // Worklet içinde (iOS/Android'de UI iş parçacığında çalışır) yalnızca
+  // Reanimated fonksiyonları çağrılabilir: alpha()/readableOn() gibi düz JS
+  // yardımcıları ve tema nesnesi orada YOK -- çağrılırsa uygulama kapanır
+  // ("Object is not a function"). Bu yüzden renkler burada, JS tarafında
+  // hesaplanıp worklet'e düz dize olarak aktarılır.
+  const surface = theme.colors.surface;
+  const lineDark = theme.colors.lineDark;
+  const textMuted = theme.colors.textMuted;
+  const shadowOn = `0 6px 14px ${alpha(color, 0.35)}`;
+  // Secili zemin acik bir vurgu rengi oldugunda beyaz metin okunmuyor.
+  const ink = readableOn(color);
+
   const shell = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(sel.value, [0, 1], [theme.colors.surface, color]),
-    borderColor: interpolateColor(sel.value, [0, 1], [theme.colors.lineDark, color]),
+    backgroundColor: interpolateColor(sel.value, [0, 1], [surface, color]),
+    borderColor: interpolateColor(sel.value, [0, 1], [lineDark, color]),
     transform: [{ scale: scale.value }],
     // Not: animasyonlu stilde boxShadow HER ZAMAN geçerli bir dize olmalı --
     // undefined bırakılırsa Reanimated'ın web tarafı çöküyor.
-    boxShadow: sel.value > 0.5 ? `0 6px 14px ${alpha(color, 0.35)}` : '0 0px 0px rgba(0,0,0,0)',
+    boxShadow: sel.value > 0.5 ? shadowOn : '0 0px 0px rgba(0,0,0,0)',
   }));
-  // Secili zemin acik bir vurgu rengi oldugunda beyaz metin okunmuyor.
-  const ink = readableOn(color);
   const text = useAnimatedStyle(() => ({
-    color: interpolateColor(sel.value, [0, 1], [theme.colors.textMuted, ink]),
+    color: interpolateColor(sel.value, [0, 1], [textMuted, ink]),
   }));
 
   return (

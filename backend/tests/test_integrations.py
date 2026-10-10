@@ -454,3 +454,13 @@ class TestIosQuotaExemption:
             assert c.post("/api/quotes", json=self._quote(92), headers={**_auth(), **self.IOS_UA}).status_code == 200
             assert c.get("/api/subscription/status", headers={**_auth(), **self.IOS_UA}).json()["remaining_free"] is None
             assert c.get("/api/subscription/status", headers=_auth()).json()["remaining_free"] == 0
+
+    def test_ios_gets_no_subscription_info(self, env, monkeypatch):
+        run(_mk_user(env))
+        monkeypatch.setattr(server, "FREE_ACCESS_EMAILS", {"user_a@example.com"})
+        with TestClient(server.app) as c:
+            web = c.get("/api/subscription/status", headers=_auth()).json()
+            ios = c.get("/api/subscription/status", headers={**_auth(), **self.IOS_UA}).json()
+        assert web["subscription_active"] is True
+        assert ios["subscription_active"] is False and ios["remaining_free"] is None
+        assert ios["plans"] == [] and ios["subscription_plan"] is None and ios["auto_renew"] is False

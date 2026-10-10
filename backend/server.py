@@ -6457,6 +6457,18 @@ async def subscription_status(user=Depends(get_current_user)):
     else:
         plan_cfg = plans.get(plan_id) if plan_id else None
         plan_label = plan_cfg["label"] if plan_cfg else None
+    if _ios_app_request.get():
+        # iOS uygulamasında abonelik satılmaz, sınır uygulanmaz ve abonelik
+        # bilgisi gösterilmez (App Store 3.1.1) -- bkz. _ios_app_request.
+        return SubscriptionStatus(
+            subscription_active=False,
+            plan_price_try=plans[DEFAULT_SUBSCRIPTION_PLAN]["price_try"],
+            seat_count=seats,
+            period=state["period"],
+            quotes_used_this_month=state["count"],
+            free_limit=state["free_limit"],
+            remaining_free=None,
+        )
     return SubscriptionStatus(
         subscription_active=state["subscription_active"],
         subscription_expires_at=user.get("subscription_expires_at"),

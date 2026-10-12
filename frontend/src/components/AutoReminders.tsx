@@ -110,6 +110,7 @@ export default function AutoReminders() {
           {row({ k: "vadeHatirlat", label: ta('due'), dayKey: "vadeGunOnce", dayLabel: ta('daysBefore') })}
           {row({ k: "vadeGecikme", label: ta('overdue') })}
           {row({ k: "bakimHatirlat", label: ta('maint'), dayKey: "bakimGunOnce", dayLabel: ta('daysBefore') })}
+          {row({ k: "servisHatirlat", label: ta('service'), dayKey: "servisGunOnce", dayLabel: ta('daysBefore') })}
           {row({ k: "teklifTakip", label: ta('quote'), dayKey: "teklifTakipGun", dayLabel: ta('daysAfter') })}
           {row({ k: "gunlukOzet", label: ta('digest') })}
           {st.whatsappAvailable ? (

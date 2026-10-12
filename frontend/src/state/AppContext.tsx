@@ -65,6 +65,7 @@ type Ctx = {
   createService: (data: Partial<ServiceT>) => Promise<void>;
   updateService: (id: string, data: Partial<ServiceT>) => Promise<void>;
   updateServiceStatus: (id: string, durum: string) => Promise<void>;
+  assignService: (id: string, atananId: string) => Promise<void>;
   deleteService: (id: string) => Promise<void>;
   campaigns: CampaignT[];
   reloadCampaigns: () => Promise<void>;
@@ -484,6 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       garantiBitis: data.garantiBitis || '',
       bakimTarihi: data.bakimTarihi || '',
       durum: data.durum || 'Açık',
+      atananId: data.atananId || '',
     });
     await reloadServices();
   }, [activeCompanyId, reloadServices]);
@@ -503,12 +505,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       garantiBitis: merged.garantiBitis || '',
       bakimTarihi: merged.bakimTarihi || '',
       durum: merged.durum || 'Açık',
+      atananId: merged.atananId || '',
     });
     await reloadServices();
   }, [activeCompanyId, services, reloadServices]);
 
   const updateServiceStatus = useCallback(async (id: string, durum: string) => {
     await api.updateServiceStatus(id, durum);
+    await reloadServices();
+  }, [reloadServices]);
+
+  const assignService = useCallback(async (id: string, atananId: string) => {
+    await api.assignService(id, atananId);
     await reloadServices();
   }, [reloadServices]);
 
@@ -599,8 +607,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         agMaliyet: it.agMaliyet ?? null,
         agMontajBedeli: it.agMontajBedeli ?? null,
         agImalatBedeli: it.agImalatBedeli ?? null,
+        // Teknik çizim modeli ve Zip Perde seçimi -- gönderilmezse sunucu
+        // kalemi çizimsiz kaydeder ve PDF'e çizim sayfası hiç eklenmez
+        // (PDF sunucudan dönen kayıttan üretiliyor, bkz. teklif.tsx).
+        agCizim: it.agCizim ?? null,
+        zipEkler: it.zipEkler ?? null,
       })),
       durum: quote.durum || 'Beklemede',
+      kuponKodu: quote.kuponKodu || '',
     };
     if (existingId) {
       // Ekip üyesi başkasının teklifini SADECE görüntüleyip PDF/WhatsApp ile
@@ -642,8 +656,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             adet: Number(it.adet) || 0,
             birim: it.birim || 'Adet',
             birimFiyat: Number(it.birimFiyat) || 0,
+            agMaliyet: it.agMaliyet ?? null,
+            agMontajBedeli: it.agMontajBedeli ?? null,
+            agImalatBedeli: it.agImalatBedeli ?? null,
+            agCizim: it.agCizim ?? null,
+            zipEkler: it.zipEkler ?? null,
           })),
           durum: original.durum || 'Beklemede',
+          kuponKodu: original.kuponKodu || '',
         };
         const { companyId: _cid, ...newComparable } = payload;
         if (JSON.stringify(origComparable) === JSON.stringify(newComparable)) {
@@ -863,6 +883,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createService,
         updateService,
         updateServiceStatus,
+        assignService,
         deleteService,
         campaigns,
         reloadCampaigns,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Modal,
@@ -16,11 +16,14 @@ import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import { IconBadge, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
-import { ServiceT } from '@/src/lib/api';
+import { api, ServiceT, TeamDirectoryMemberT } from '@/src/lib/api';
+import { useAuth } from '@/src/state/AuthContext';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
 
 const STATUSES = ['Açık', 'Devam ediyor', 'Tamamlandı', 'İptal'];
+const ALL = 'Tümü';
+const isOpen = (s: ServiceT) => s.durum === 'Açık' || s.durum === 'Devam ediyor';
 
 // Days remaining until an ISO ("YYYY-MM-DD") date. Negative = already passed.
 function daysUntil(iso: string): number | null {
@@ -41,16 +44,56 @@ function trDate(iso: string): string {
 
 export default function ServicesScreen() {
   const { t, lang } = useLanguage();
-  const { services, activeCompany, deleteService, updateServiceStatus, showToast } = useApp();
+  const { services, activeCompany, deleteService, updateServiceStatus, assignService, showToast } = useApp();
+  const { user: me } = useAuth();
+  // Atamayı yönetici yapar; kısıtlı personel yalnız sahipsiz işi üstlenebilir.
+  const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
+  const myId = me?.user_id || '';
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState<string>(t('services.s001'));
+  const [filter, setFilter] = useState<string>(ALL);
   const [statusMenuFor, setStatusMenuFor] = useState<string | null>(null);
+  const [members, setMembers] = useState<TeamDirectoryMemberT[]>([]);
+  // null = herkes, '' = atanmamış, aksi halde görevlinin user_id'si
+  const [assignee, setAssignee] = useState<string | null>(null);
+  const [assignFor, setAssignFor] = useState<ServiceT | null>(null);
+
+  const companyId = activeCompany?.id;
+  useEffect(() => {
+    if (!companyId) { setMembers([]); return; }
+    let alive = true;
+    api.teamDirectory(companyId).then((m) => { if (alive) setMembers(m); }).catch(() => {});
+    return () => { alive = false; };
+  }, [companyId]);
+
+  // Görev dağılımı: kişi başına açık (Açık + Devam ediyor) iş sayısı.
+  const workload = useMemo(() => {
+    const open = services.filter(isOpen);
+    return {
+      unassigned: open.filter((s) => !s.atananId).length,
+      byId: open.reduce<Record<string, number>>((acc, s) => {
+        if (s.atananId) acc[s.atananId] = (acc[s.atananId] || 0) + 1;
+        return acc;
+      }, {}),
+    };
+  }, [services]);
+  const showTeam = members.length > 1 || services.some((s) => !!s.atananId);
+
+  const doAssign = async (svc: ServiceT, atananId: string, okMsg: string) => {
+    setAssignFor(null);
+    try {
+      await assignService(svc.id, atananId);
+      showToast(okMsg);
+    } catch (e: any) {
+      showToast(t('services.s034') + (e?.message || ''));
+    }
+  };
 
   const filtered = useMemo(() => {
     let list = services;
-    if (filter !== 'Tümü') list = list.filter((s) => s.durum === filter);
+    if (filter !== ALL) list = list.filter((s) => s.durum === filter);
+    if (assignee !== null) list = list.filter((s) => (s.atananId || '') === assignee);
     if (q) {
       const qq = q.toLowerCase();
       list = list.filter(
@@ -61,7 +104,7 @@ export default function ServicesScreen() {
       );
     }
     return list;
-  }, [services, filter, q]);
+  }, [services, filter, q, assignee]);
 
   const garantiYaklasan = services.filter((s) => {
     const d = daysUntil(s.garantiBitis);
@@ -77,7 +120,11 @@ export default function ServicesScreen() {
     const parts: string[] = [`Merhaba ${musteri},`, ''];
     const gDays = daysUntil(svc.garantiBitis);
     const bDays = daysUntil(svc.bakimTarihi);
-    if (svc.bakimTarihi && bDays !== null && bDays >= 0) {
+    const sDays = daysUntil(svc.servisTarihi);
+    if (svc.servisTarihi && sDays !== null && sDays >= 0 && isOpen(svc)) {
+      parts.push(`${svc.baslik} için servis randevunuz ${trDate(svc.servisTarihi)} tarihindedir.`);
+      if (svc.atananAd) parts.push(`Görevli personelimiz: ${svc.atananAd}.`);
+    } else if (svc.bakimTarihi && bDays !== null && bDays >= 0) {
       parts.push(`${svc.baslik} için bakım tarihiniz yaklaşıyor: ${trDate(svc.bakimTarihi)}.`);
     } else if (svc.garantiBitis && gDays !== null) {
       parts.push(
@@ -123,6 +170,38 @@ export default function ServicesScreen() {
               { label: t('services.s013'), value: garantiYaklasan, tone: garantiYaklasan > 0 ? '#FCD34D' : undefined },
             ]}
           />
+          {showTeam ? (
+            <View style={s.teamBox} testID="svc-workload">
+              <Text style={s.teamTitle}>{t('services.s023')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.teamRow}>
+                {[
+                  { id: '', name: t('services.s024'), count: workload.unassigned, warn: workload.unassigned > 0 },
+                  ...members.map((m) => ({
+                    id: m.userId,
+                    name: m.userId === myId ? t('services.s025') : m.name,
+                    count: workload.byId[m.userId] || 0,
+                    warn: false,
+                  })),
+                ].map((p) => {
+                  const active = assignee === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id || 'none'}
+                      testID={`svc-assignee-${p.id || 'none'}`}
+                      style={[s.teamChip, p.warn && s.teamChipWarn, active && s.teamChipActive]}
+                      onPress={() => setAssignee(active ? null : p.id)}
+                    >
+                      <Text style={[s.teamCount, p.warn && s.teamTextWarn, active && s.teamTextActive]}>{p.count}</Text>
+                      <View style={{ flexShrink: 1 }}>
+                        <Text style={[s.teamName, p.warn && s.teamTextWarn, active && s.teamTextActive]} numberOfLines={1}>{p.name}</Text>
+                        <Text style={[s.teamSub, active && s.teamTextActive]}>{t('services.s032')}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          ) : null}
         </View>
 
         {/* Arama + durum filtreleri: liste kayarken üstte yapışık kalır */}
@@ -139,9 +218,9 @@ export default function ServicesScreen() {
             />
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
-            {[t('services.s001'), ...STATUSES].map((st) => (
+            {[ALL, ...STATUSES].map((st) => (
               <TouchableOpacity key={st} testID={`svc-filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
-                <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st === t('services.s001') ? st : statusLabel(lang, st)}</Text>
+                <Text style={[s.filterText, filter === st && s.filterTextActive]} allowFontScaling={false}>{st === ALL ? t('services.s001') : statusLabel(lang, st)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -193,6 +272,30 @@ export default function ServicesScreen() {
                 </View>
               ) : null}
 
+              {showTeam ? (() => {
+                const canTake = restricted && !svc.atananId;
+                const tappable = !restricted || canTake;
+                return (
+                  <TouchableOpacity
+                    testID={`svc-assign-${svc.id}`}
+                    disabled={!tappable}
+                    activeOpacity={0.8}
+                    style={[s.assignRow, !svc.atananId && s.assignRowEmpty]}
+                    onPress={() => (canTake ? doAssign(svc, myId, t('services.s035')) : setAssignFor(svc))}
+                  >
+                    <Ionicons name={svc.atananId ? 'person-circle-outline' : 'person-add-outline'} size={15} color={svc.atananId ? theme.colors.primary : theme.colors.goldDark} />
+                    <Text style={[s.assignText, !svc.atananId && { color: theme.colors.goldDark }]} numberOfLines={1}>
+                      {svc.atananId
+                        ? `${t('services.s026')} ${svc.atananAd || '-'}${svc.atananId === myId ? ` (${t('services.s036')})` : ''}`
+                        : t('services.s024')}
+                    </Text>
+                    {tappable ? (
+                      <Text style={s.assignAction}>{canTake ? t('services.s033') : t('services.s027')}</Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })() : null}
+
               {svc.aciklama ? <Text style={s.desc} numberOfLines={2}>{svc.aciklama}</Text> : null}
 
               <View style={s.actionBar}>
@@ -242,6 +345,37 @@ export default function ServicesScreen() {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal visible={!!assignFor} transparent animationType="fade">
+        <TouchableOpacity style={s.menuOverlay} activeOpacity={1} onPress={() => setAssignFor(null)}>
+          <View style={s.menu}>
+            <Text style={s.menuTitle}>{t('services.s028')}</Text>
+            {assignFor ? <Text style={s.menuSub} numberOfLines={1}>{assignFor.baslik}</Text> : null}
+            <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ gap: 8 }}>
+              {members.map((m) => {
+                const sel = assignFor?.atananId === m.userId;
+                return (
+                  <TouchableOpacity
+                    key={m.userId}
+                    testID={`svc-assign-to-${m.userId}`}
+                    style={[s.memberRow, sel && s.memberRowActive]}
+                    onPress={() => assignFor && doAssign(assignFor, m.userId, t('services.s030'))}
+                  >
+                    <Ionicons name={sel ? 'checkmark-circle' : 'person-outline'} size={18} color={theme.colors.primary} />
+                    <Text style={s.memberName} numberOfLines={1}>{m.name}{m.userId === myId ? ` (${t('services.s036')})` : ''}</Text>
+                    <Text style={s.memberCount}>{workload.byId[m.userId] || 0} {t('services.s032')}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            {assignFor?.atananId ? (
+              <TouchableOpacity testID="svc-unassign" style={s.unassignBtn} onPress={() => assignFor && doAssign(assignFor, '', t('services.s031'))}>
+                <Text style={s.unassignText}>{t('services.s029')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -304,4 +438,26 @@ const s = themedStyles(() => StyleSheet.create({
   menuTitle: { fontSize: 14, fontWeight: '900', color: theme.colors.text, marginBottom: 6, textAlign: 'center' },
   menuItem: { padding: 12, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
   menuItemText: { fontSize: 13, fontWeight: '800' },
+  menuSub: { fontSize: 12, color: theme.colors.textMuted, textAlign: 'center', marginTop: -8, marginBottom: 4 },
+  teamBox: { marginTop: 10, backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, paddingVertical: 10, ...theme.shadow.sm },
+  teamTitle: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.4, color: theme.colors.textMuted, paddingHorizontal: 12, marginBottom: 8 },
+  teamRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 12 },
+  teamChip: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 190, minHeight: 44, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surfaceSoft },
+  teamChipWarn: { backgroundColor: theme.colors.goldSoft, borderColor: theme.colors.gold },
+  teamChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  teamCount: { fontSize: 18, fontWeight: '900', color: theme.colors.text },
+  teamName: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
+  teamSub: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
+  teamTextWarn: { color: theme.colors.goldDark },
+  teamTextActive: { color: '#fff' },
+  assignRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, minHeight: 36, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: theme.colors.primarySoft },
+  assignRowEmpty: { backgroundColor: theme.colors.goldSoft },
+  assignText: { flex: 1, fontSize: 11.5, fontWeight: '800', color: theme.colors.primary },
+  assignAction: { fontSize: 10.5, fontWeight: '900', color: theme.colors.text, letterSpacing: 0.2 },
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 46, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surfaceSoft },
+  memberRowActive: { borderColor: theme.colors.primary, backgroundColor: theme.colors.primarySoft },
+  memberName: { flex: 1, fontSize: 13, fontWeight: '800', color: theme.colors.text },
+  memberCount: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted },
+  unassignBtn: { padding: 12, borderRadius: 10, alignItems: 'center', backgroundColor: theme.colors.redSoft },
+  unassignText: { fontSize: 13, fontWeight: '800', color: theme.colors.red },
 }));

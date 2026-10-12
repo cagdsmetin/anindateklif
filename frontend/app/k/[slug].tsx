@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Linking, Platform, ScrollView, Share, StyleSh
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import { api, PublicCardT } from '@/src/lib/api';
+import { api, API_BASE, PublicCardT } from '@/src/lib/api';
 import { buildVCard } from '@/src/lib/vcard';
 import { saveTextFile } from '@/src/lib/save-text';
 import { normalizePhoneForWhatsApp } from '@/src/lib/whatsapp';
@@ -126,6 +126,40 @@ export default function PublicCardScreen() {
             </View>
           )}
 
+          {(card.urunler || []).length > 0 && (
+            <View style={s.banks} testID="card-products">
+              <Text style={s.sectionH}>Ürünlerimiz</Text>
+              <View style={s.grid}>
+                {card.urunler.map((u) => (
+                  <View key={u.id} style={s.prod}>
+                    {u.gorsel ? (
+                      <Image source={{ uri: `${API_BASE}/public/urun-gorsel/${u.id}?v=${u.gorselVer}` }} style={s.prodImg} resizeMode="cover" />
+                    ) : (
+                      <View style={[s.prodImg, s.prodNoImg]}><Ionicons name="cube-outline" size={26} color="#CBD5E1" /></View>
+                    )}
+                    <Text style={s.prodName} numberOfLines={2}>{u.urunAdi}</Text>
+                    {u.aciklama ? <Text style={s.prodDesc} numberOfLines={2}>{u.aciklama}</Text> : null}
+                    <Text style={[s.prodPrice, { color: accent }]}>
+                      {u.birimFiyat > 0 ? `${money(u.birimFiyat, u.paraBirimi)} / ${u.birim}` : 'Fiyat sorunuz'}
+                    </Text>
+                    {u.tukendi ? (
+                      <Text style={s.soldOut}>Tükendi</Text>
+                    ) : wa ? (
+                      <TouchableOpacity
+                        style={[s.askBtn, { borderColor: accent }]}
+                        onPress={() => open(`https://wa.me/${wa}?text=${encodeURIComponent(`Merhaba, "${u.urunAdi}" hakkında bilgi almak istiyorum. (${url})`)}`)}
+                        testID={`card-ask-${u.id}`}
+                      >
+                        <Ionicons name="logo-whatsapp" size={13} color={accent} />
+                        <Text style={[s.askText, { color: accent }]}>Sor / Sipariş ver</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           {card.banklar.length > 0 && (
             <View style={s.banks}>
               <Text style={s.sectionH}>Banka Hesapları</Text>
@@ -154,6 +188,11 @@ export default function PublicCardScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function money(n: number, cur: string) {
+  const sym = cur === 'USD' ? '$' : cur === 'EUR' ? '€' : '₺';
+  return sym + new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(n || 0);
 }
 
 function Row({ icon, text, onPress }: { icon: keyof typeof Ionicons.glyphMap; text: string; onPress?: () => void }) {
@@ -195,6 +234,16 @@ const s = StyleSheet.create({
   bankName: { fontSize: 12, fontWeight: '800', color: '#334155' },
   iban: { fontSize: 13, color: '#0F172A', marginTop: 2, letterSpacing: 0.3 },
   copyBtn: { padding: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  prod: { width: '47.5%', borderRadius: 14, backgroundColor: '#F8FAFC', padding: 8, gap: 3 },
+  prodImg: { width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  prodNoImg: { alignItems: 'center', justifyContent: 'center' },
+  prodName: { fontSize: 12.5, fontWeight: '800', color: '#0F172A', marginTop: 4 },
+  prodDesc: { fontSize: 10.5, color: '#64748B' },
+  prodPrice: { fontSize: 12.5, fontWeight: '900', marginTop: 2 },
+  soldOut: { fontSize: 11, fontWeight: '800', color: '#DC2626', marginTop: 4 },
+  askBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 5, paddingVertical: 6, borderRadius: 9, borderWidth: 1 },
+  askText: { fontSize: 11, fontWeight: '800' },
   shareBtn: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', marginTop: 16, alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F1F5F9' },
   shareText: { fontSize: 12.5, fontWeight: '700', color: '#334155' },
   credit: { fontSize: 11.5, color: '#94A3B8', marginTop: 14, marginBottom: 10 },

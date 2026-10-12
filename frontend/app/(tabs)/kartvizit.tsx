@@ -155,6 +155,11 @@ export default function KartvizitScreen() {
             </View>
 
             <Text style={[s.hint, { marginTop: 12 }]}>{tk('fromCompany')}</Text>
+            <TouchableOpacity onPress={() => router.push('/catalog' as any)} style={s.vitrinBox} testID="kart-vitrin">
+              <Ionicons name="storefront-outline" size={17} color={theme.colors.primary} />
+              <Text style={[s.hint, { flex: 1 }]}>{tk('vitrinHint')}</Text>
+              <Ionicons name="chevron-forward" size={15} color={theme.colors.textMuted} />
+            </TouchableOpacity>
             <BubbleButton icon="checkmark-done" label={saving ? tk('saving') : tk('save')} color={color} size="lg" loading={saving} onPress={save} testID="kart-save" />
           </View>
         </MotionScrollView>
@@ -181,6 +186,7 @@ const s = themedStyles(() => StyleSheet.create({
   slugPrefix: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textMuted },
   input: { backgroundColor: theme.colors.surfaceSoft, borderWidth: 1.5, borderColor: theme.colors.lineDark, borderRadius: 14, paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 12 : 9, fontSize: 13.5, color: theme.colors.text },
   row2: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  vitrinBox: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 10, padding: 10, borderRadius: 10, backgroundColor: theme.colors.primarySoft },
   socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   swatch: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   swatchOn: { borderWidth: 3, borderColor: theme.colors.surface, boxShadow: '0 0 0 2px #94a3b8' } as any,

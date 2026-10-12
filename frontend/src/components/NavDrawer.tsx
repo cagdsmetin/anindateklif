@@ -8,6 +8,7 @@ import { buildNavItems, isNavItemActive, navItemRoute } from '@/src/lib/navItems
 import { useOrderedNames } from '@/src/lib/orderPrefs';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
+import { useModules } from '@/src/lib/modules';
 import { useApp } from '@/src/state/AppContext';
 import BlinkingDot from '@/src/components/BlinkingDot';
 import { themedStyles } from '@/src/components/motion';
@@ -22,13 +23,15 @@ export default function NavDrawer({ visible, onClose }: { visible: boolean; onCl
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { teamUnreadTotal } = useApp();
+  const { teamUnreadTotal, activeCompany } = useApp();
+  const modules = useModules(activeCompany?.id);
   const { t } = useLanguage();
   const items = buildNavItems({
     restricted: !!user?.is_staff && user?.staff_role !== 'admin',
     isOwner: !user?.is_staff,
     isAdmin: (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com',
     t,
+    modules,
   });
   const [reordering, setReordering] = useState(false);
   const { applyOrder, moveUp, moveDown } = useOrderedNames(

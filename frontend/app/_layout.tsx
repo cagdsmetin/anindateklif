@@ -84,7 +84,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   // baloncuk üstüne binip gönder butonunu görünmez/tıklanamaz hale
   // getiriyordu (kullanıcı raporu: "gönder tuşu yok").
   const bubbleHiddenRoutes = ['/assistant', '/team-chat'];
-  const showSupportBubble = !!user && user.onboarding_completed && !bubbleHiddenRoutes.includes(pathname);
+  const showSupportBubble = !!user && user.onboarding_completed && !bubbleHiddenRoutes.includes(pathname) && !pathname.startsWith('/k/'); // /k/: herkese açık kartvizit
   return (
     <>
       {children}

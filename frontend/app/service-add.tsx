@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
+import { useAuth } from '@/src/state/AuthContext';
+import { api, TeamDirectoryMemberT } from '@/src/lib/api';
 import { useLanguage, statusLabel } from '@/src/lib/i18n';
 import { MotionInput, MotionScrollView, ScreenHero, themedStyles } from '@/src/components/motion';
 
@@ -47,6 +49,21 @@ export default function ServiceAddScreen() {
   const [garantiBitis, setGarantiBitis] = useState(editing?.garantiBitis || '');
   const [bakimTarihi, setBakimTarihi] = useState(editing?.bakimTarihi || '');
   const [durum, setDurum] = useState(editing?.durum || 'Açık');
+  const [atananId, setAtananId] = useState(editing?.atananId || '');
+  const [members, setMembers] = useState<TeamDirectoryMemberT[]>([]);
+  const { user: me } = useAuth();
+  // Atamayı yönetici yapar; kısıtlı personel yalnız kendini seçebilir.
+  const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
+  const companyId = activeCompany?.id;
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    api.teamDirectory(companyId).then((m) => { if (alive) setMembers(m); }).catch(() => {});
+    return () => { alive = false; };
+  }, [companyId]);
+  const pickable = restricted
+    ? (editing?.atananId ? [] : members.filter((m) => m.userId === me?.user_id))
+    : members;
   const [busy, setBusy] = useState(false);
   const [errFirma, setErrFirma] = useState(false);
   const [errBaslik, setErrBaslik] = useState(false);
@@ -95,6 +112,7 @@ export default function ServiceAddScreen() {
         garantiBitis: garantiBitis.trim(),
         bakimTarihi: bakimTarihi.trim(),
         durum,
+        atananId,
       };
       if (editingId) {
         await updateService(editingId, payload);
@@ -280,6 +298,25 @@ export default function ServiceAddScreen() {
                 ))}
               </View>
             </View>
+
+            {members.length > 1 && pickable.length > 0 ? (
+              <View style={[s.field, { marginTop: 12, marginBottom: 0 }]}>
+                <Text style={s.fieldLabel}>{t('serviceAdd.s029')}</Text>
+                <View style={s.statusRow}>
+                  {[{ userId: '', name: t('serviceAdd.s030') }, ...pickable].map((m) => (
+                    <TouchableOpacity
+                      key={m.userId || 'none'}
+                      testID={`svcadd-atanan-${m.userId || 'none'}`}
+                      style={[s.statusPill, atananId === m.userId && s.statusPillActive]}
+                      onPress={() => setAtananId(m.userId)}
+                    >
+                      <Text style={[s.statusPillText, atananId === m.userId && s.statusPillTextActive]} numberOfLines={1}>{m.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={s.assignHint}>{t('serviceAdd.s031')}</Text>
+              </View>
+            ) : null}
           </View>
           </View>
         </MotionScrollView>
@@ -423,6 +460,7 @@ const s = themedStyles(() => StyleSheet.create({
   statusPillActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
   statusPillText: { fontSize: 12, fontWeight: '800', color: theme.colors.textMuted },
   statusPillTextActive: { color: '#fff' },
+  assignHint: { fontSize: 11, color: theme.colors.textMuted, marginTop: 6 },
   footer: {
     position: 'absolute',
     left: 0,

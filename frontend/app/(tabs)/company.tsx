@@ -448,7 +448,8 @@ export default function CompanyScreen() {
               { key: 'assistant', icon: 'sparkles' as const, label: t('firma.talkToAssistant'), color: theme.colors.modules.mesaj, onPress: () => router.push('/(tabs)/assistant'), testID: 'ai-assistant-btn' },
               { key: 'privacy', icon: 'shield-checkmark' as const, label: t('firma.privacyPolicy'), color: theme.colors.modules.firma, onPress: () => router.push('/privacy'), testID: 'privacy-policy-btn' },
               ...(!user?.is_staff || user?.staff_role === 'admin'
-                ? [{ key: 'kartvizit', icon: 'card' as const, label: t('kart.tile'), color: theme.colors.primary, onPress: () => router.push('/kartvizit' as any), testID: 'kartvizit-btn' },
+                ? [{ key: 'moduller', icon: 'apps' as const, label: t('mods.tile'), color: theme.colors.modules.firma, onPress: () => router.push('/moduller' as any), testID: 'moduller-btn' },
+                   { key: 'kartvizit', icon: 'card' as const, label: t('kart.tile'), color: theme.colors.primary, onPress: () => router.push('/kartvizit' as any), testID: 'kartvizit-btn' },
                    { key: 'audit', icon: 'time' as const, label: t('audit.tile'), color: theme.colors.modules.raporlar, onPress: () => router.push('/islem-gecmisi' as any), testID: 'audit-log-btn' }]
                 : []),
               ...(!user?.is_staff

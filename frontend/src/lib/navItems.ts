@@ -8,7 +8,7 @@ export type NavItem = { name: string; title: string; icon: string; color: string
 // sync automatically.
 // `t`: i18n.tsx'teki useLanguage().t fonksiyonu -- verilmezse (LanguageProvider
 // disinda bir cagri) Turkce sabit basliklara geri duser, hicbir cagri yeri kirmaz.
-export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; isAdmin?: boolean; t?: (key: string) => string }): NavItem[] {
+export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; isAdmin?: boolean; t?: (key: string) => string; modules?: string[] }): NavItem[] {
   const m = theme.colors.modules;
   const tt = opts?.t || ((k: string) => {
     const fallback: Record<string, string> = {
@@ -18,7 +18,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
       'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
       'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura', 'nav.sozlesmeler': 'Sozlesmeler',
-      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.cekSenet': 'Cek & Senet', 'nav.yorumlar': 'Yorum Yanitla',
+      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.cekSenet': 'Cek & Senet', 'nav.kira': 'Kira Takibi', 'nav.aidat': 'Site & Aidat', 'nav.seans': 'Seans Paketleri', 'nav.yorumlar': 'Yorum Yanitla',
     };
     return fallback[k] || k;
   });
@@ -48,11 +48,16 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // müşterilerinin hareketlerini ve kendi harcamalarını alır, silemez.
   items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
   items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
-  // Çek & Senet portföyü yalnız yöneticilere: firmanın tüm vadeli
-  // evraklarını ve Kasa'ya etkisini gösterir (backend'de de 403).
+  // İsteğe bağlı modüller: firma "Modüller" ekranından açtıysa görünür
+  // (bkz. src/lib/modules.ts). Çek & Senet, Kira ve Aidat firmanın tüm
+  // finansını gösterdiği için yalnız yöneticilere; backend'de de 403.
+  const on = (name: string) => (opts?.modules || ['cek-senet']).includes(name);
   if (!opts?.restricted) {
-    items.push({ name: 'cek-senet', title: tt('nav.cekSenet'), icon: 'documents', color: m.cek });
+    if (on('cek-senet')) items.push({ name: 'cek-senet', title: tt('nav.cekSenet'), icon: 'documents', color: m.cek });
+    if (on('kira')) items.push({ name: 'kira', title: tt('nav.kira'), icon: 'key', color: '#0F766E' });
+    if (on('aidat')) items.push({ name: 'aidat', title: tt('nav.aidat'), icon: 'business', color: '#7C3AED' });
   }
+  if (on('seans')) items.push({ name: 'seans', title: tt('nav.seans'), icon: 'fitness', color: '#DB2777' });
   items.push({ name: 'company', title: tt('nav.firma'), icon: 'business', color: m.firma });
   // AI Asistan artık sol menüde ayrı bir madde olarak gösterilmiyor (kullanıcı
   // isteğiyle kaldırıldı) — sayfaya route hâlâ var (app/(tabs)/assistant),

@@ -419,6 +419,11 @@ export const api = {
   setProductImage: (itemId: string, data: string): Promise<CatalogItemT> => req(`/catalog/${itemId}/gorsel`, { method: 'PUT', body: JSON.stringify({ data }) }, 60000),
   deleteProductImage: (itemId: string): Promise<CatalogItemT> => req(`/catalog/${itemId}/gorsel`, { method: 'DELETE' }),
 
+  // Modül yönetimi (menüde hangi isteğe bağlı modüller görünsün)
+  getModules: (companyId: string): Promise<{ companyId: string; acik: string[] }> => req(`/moduller/${companyId}`),
+  putModules: (companyId: string, acik: string[]): Promise<{ companyId: string; acik: string[] }> =>
+    req('/moduller', { method: 'PUT', body: JSON.stringify({ companyId, acik }) }),
+
   // Dijital kartvizit
   getBusinessCard: (companyId: string): Promise<BusinessCardT> => req(`/kartvizit/${companyId}`),
   putBusinessCard: (data: BusinessCardT): Promise<BusinessCardT> => req('/kartvizit', { method: 'PUT', body: JSON.stringify(data) }),
@@ -445,6 +450,8 @@ export const api = {
   updateService: (id: string, data: any) => req(`/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateServiceStatus: (id: string, durum: string) =>
     req(`/services/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  assignService: (id: string, atananId: string) =>
+    req(`/services/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ atananId }) }),
   deleteService: (id: string) => req(`/services/${id}`, { method: 'DELETE' }),
 
   // Campaigns (Kampanya)
@@ -951,6 +958,8 @@ export type NotifySettingsT = {
   vadeGecikme: boolean;
   bakimHatirlat: boolean;
   bakimGunOnce: number;
+  servisHatirlat: boolean;
+  servisGunOnce: number;
   teklifTakip: boolean;
   teklifTakipGun: number;
   gunlukOzet: boolean;
@@ -1220,6 +1229,11 @@ export type ServiceT = {
   garantiBitis: string;
   bakimTarihi: string;
   durum: string;
+  // Görevli ekip üyesi (firma sahibi ya da personel); boşsa atanmamış.
+  atananId?: string;
+  atananAd?: string;
+  atayanAd?: string;
+  atamaTarihi?: string;
   createdAt: string;
   updatedAt: string;
 };

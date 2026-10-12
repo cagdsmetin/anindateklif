@@ -27,6 +27,7 @@ import { downloadFileWeb } from '@/src/lib/web-download';
 import * as Sharing from 'expo-sharing';
 import { useLanguage, upper } from '@/src/lib/i18n';
 import { BubbleButton, IconBadge, MotionInput, MotionScrollView, Reveal, ScreenHero, themedStyles } from '@/src/components/motion';
+import * as ImagePicker from 'expo-image-picker';
 import StockModal, { fmtQty, stockLow } from '@/src/components/StockModal';
 
 const FIELD_TYPES: { value: SystemField['type']; label: string; icon: any }[] = [
@@ -184,6 +185,30 @@ export default function CatalogScreen() {
   const [bulkText, setBulkText] = useState('');
   const [q, setQ] = useState('');
   const [stockItem, setStockItem] = useState<CatalogItemT | null>(null);
+  // Pazaryeri/vitrin: ürün kartvizit sayfasında listelensin mi + ürün görseli.
+  const [vitrinBusy, setVitrinBusy] = useState('');
+  const toggleVitrin = async (c: CatalogItemT) => {
+    setVitrinBusy(c.id);
+    try {
+      await api.setVitrin(c.id, !c.vitrinde);
+      await reloadCatalog();
+      if (!c.vitrinde) showToast(t('vitrin.onToast'));
+    } catch (e: any) { showToast(e?.message || ''); } finally { setVitrinBusy(''); }
+  };
+  const pickProductImage = async (c: CatalogItemT) => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return;
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+      const a = res.canceled ? null : res.assets?.[0];
+      if (!a?.base64) return;
+      const mime = (a.mimeType || 'image/jpeg').replace('image/jpg', 'image/jpeg');
+      setVitrinBusy(c.id);
+      await api.setProductImage(c.id, `data:${mime};base64,${a.base64}`);
+      await reloadCatalog();
+      showToast(t('vitrin.imgSaved'));
+    } catch (e: any) { showToast(e?.message || ''); } finally { setVitrinBusy(''); }
+  };
   const [lowOnly, setLowOnly] = useState(false);
   const { reloadCatalog } = useApp();
 
@@ -959,6 +984,25 @@ export default function CatalogScreen() {
                     {stockLow(c) ? '⚠ ' : ''}{t('stock.inStock')}: {fmtQty(c.stok ?? 0)} {c.birim}{c.stokKodu ? ` · ${c.stokKodu}` : ''}
                   </Text>
                 ) : null}
+                {!isStaffUser && (
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+                    <TouchableOpacity
+                      style={[s.vitrinChip, c.vitrinde && s.vitrinChipOn]}
+                      onPress={() => toggleVitrin(c)}
+                      disabled={vitrinBusy === c.id}
+                      testID={`vitrin-${c.id}`}
+                    >
+                      <Ionicons name={c.vitrinde ? 'storefront' : 'storefront-outline'} size={13} color={c.vitrinde ? '#fff' : theme.colors.textMuted} />
+                      <Text style={[s.vitrinChipText, c.vitrinde && { color: '#fff' }]}>{t(c.vitrinde ? 'vitrin.on' : 'vitrin.off')}</Text>
+                    </TouchableOpacity>
+                    {c.vitrinde && (
+                      <TouchableOpacity style={s.vitrinChip} onPress={() => pickProductImage(c)} disabled={vitrinBusy === c.id} testID={`vitrin-img-${c.id}`}>
+                        <Ionicons name={c.gorselVar ? 'image' : 'camera-outline'} size={13} color={c.gorselVar ? theme.colors.green : theme.colors.textMuted} />
+                        <Text style={s.vitrinChipText}>{t(c.gorselVar ? 'vitrin.changeImg' : 'vitrin.addImg')}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
               <View style={{ gap: 6 }}>
                 <TouchableOpacity onPress={() => setStockItem(c)} testID={`stock-${c.id}`}>
@@ -1366,4 +1410,7 @@ const s = themedStyles(() => StyleSheet.create({
   fileName: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text },
   fileMeta: { fontSize: 10.5, color: theme.colors.textMuted, marginTop: 2 },
   fileActionBtn: { paddingHorizontal: 6, paddingVertical: 4, marginLeft: 4 },
+  vitrinChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
+  vitrinChipOn: { backgroundColor: '#0F766E', borderColor: '#0F766E' },
+  vitrinChipText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted },
 }));

@@ -9,6 +9,7 @@ import { useOrderedNames } from '@/src/lib/orderPrefs';
 import { useAuth } from '@/src/state/AuthContext';
 import { useLanguage } from '@/src/lib/i18n';
 import { useApp } from '@/src/state/AppContext';
+import { useModules } from '@/src/lib/modules';
 import BlinkingDot from '@/src/components/BlinkingDot';
 import FloatingTabBar from '@/src/components/FloatingTabBar';
 import { themedStyles } from '@/src/components/motion';
@@ -194,7 +195,9 @@ export default function TabsLayout() {
   const isAdmin = (user?.email || '').toLowerCase() === 'ncagdasm@gmail.com';
 
   const { t: tNav } = useLanguage();
-  const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin, t: tNav });
+  const { activeCompany: activeCompanyForModules } = useApp();
+  const modules = useModules(activeCompanyForModules?.id);
+  const navItems: NavItem[] = buildNavItems({ restricted, isOwner, isAdmin, t: tNav, modules });
 
   // Bildirimler: izin verilmişse push aboneliğini eşitle; bildirime dokunulunca
   // (telefon) ya da web push'tan ?nid= ile gelince okundu say ve ekrana git.
@@ -261,6 +264,10 @@ export default function TabsLayout() {
       <Tabs.Screen name="cek-senet" options={{ href: null }} />
       <Tabs.Screen name="islem-gecmisi" options={{ href: null }} />
       <Tabs.Screen name="kartvizit" options={{ href: null }} />
+      <Tabs.Screen name="kira" options={{ href: null }} />
+      <Tabs.Screen name="aidat" options={{ href: null }} />
+      <Tabs.Screen name="seans" options={{ href: null }} />
+      <Tabs.Screen name="moduller" options={{ href: null }} />
       <Tabs.Screen name="yorumlar" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="customer-ledger" options={{ href: null }} />

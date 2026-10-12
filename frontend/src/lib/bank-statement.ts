@@ -87,13 +87,19 @@ export function matchCustomers(
   const tryBalance = (c: CustomerT) =>
     balances.find((b) => b.customerId === c.id || b.musteriAdi.trim().toLowerCase() === c.firma.trim().toLowerCase())
       ?.balances.find((x) => x.paraBirimi === 'TRY')?.bakiye || 0;
-  const prepared = customers.map((c) => ({ c, toks: [...tokens(c.firma), ...tokens(c.yetkili || '')], bal: tryBalance(c) }));
+  const prepared = customers.map((c) => ({ c, firma: tokens(c.firma), yetkili: tokens(c.yetkili || ''), bal: tryBalance(c) }));
   return items.map((it) => {
     const text = ` ${norm(it.aciklama)} `;
     let best: { c: CustomerT; score: number; reason: StatementRow['reason'] } | null = null;
-    prepared.forEach(({ c, toks, bal }) => {
-      const hits = toks.filter((w) => text.includes(` ${w} `)).length;
-      const nameScore = toks.length ? hits / toks.length : 0;
+    prepared.forEach(({ c, firma, yetkili, bal }) => {
+      // Firma adı ve yetkili ayrı puanlanır (açıklamada genelde yalnız biri
+      // geçer). Yetkilinin tek kelimesi (yalnız "Zeynep") eşleşme sayılmaz:
+      // yaygın bir isim yanlış müşteriyi önermesin.
+      const ratio = (toks: string[], min: number) => {
+        const hits = toks.filter((w) => text.includes(` ${w} `)).length;
+        return toks.length && hits >= min ? hits / toks.length : 0;
+      };
+      const nameScore = Math.max(ratio(firma, 1), ratio(yetkili, 2));
       const amountHit = bal > 0 && Math.abs(bal - it.tutar) < 0.01;
       const score = (nameScore >= 0.5 ? nameScore * 2 : 0) + (amountHit ? 1 : 0);
       if (score > 0 && (!best || score > best.score)) {

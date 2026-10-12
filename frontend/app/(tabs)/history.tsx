@@ -20,6 +20,8 @@ import { theme, statusColor } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
+import QuickSearchBar from '@/src/components/QuickSearchBar';
+import { matchesQuery } from '@/src/lib/search';
 import { api, QuoteT, QuoteEkstraMaliyetT, RatesT, fetchQuoteExcelBytes } from '@/src/lib/api';
 import { buildQuotePdfHtml } from '@/src/lib/pdf';
 import { buildQuoteFileName } from '@/src/lib/quote-utils';
@@ -125,12 +127,16 @@ export default function HistoryScreen() {
     let list = quotes;
     if (filter === PENDING_FILTER) list = list.filter((qq) => qq.durum === 'Beklemede' || qq.durum === 'Görüldü');
     else if (filter !== 'Tümü') list = list.filter((qq) => qq.durum === filter);
-    if (q) {
-      const qq = q.toLowerCase();
-      list = list.filter((x) => x.musFirma.toLowerCase().includes(qq) || x.teklifNo.toLowerCase().includes(qq) || x.projeAdi.toLowerCase().includes(qq));
+    if (q.trim()) {
+      list = list.filter((x) => matchesQuery(q, [
+        x.musFirma, x.musYetkili, x.musTelefon, x.musEmail, x.musAdres, x.teklifNo, x.projeAdi,
+        x.durum, statusLabel(lang, x.durum), x.tarih, (x.tarih || '').split('-').reverse().join('.'),
+        x.genelToplam != null ? String(Math.round(x.genelToplam)) : '', x.paraBirimi, x.createdByName, x.notlar,
+        ...(x.items || []).flatMap((it) => [it.urunAdi, it.sistemTipi, it.aciklama]),
+      ]));
     }
     return list;
-  }, [quotes, filter, q]);
+  }, [quotes, filter, q, lang]);
 
   // Müşteriler USD, EUR ya da TL üzerinden teklif veriyor olabilir — bunları
   // olduğu gibi toplamak yanlış bir rakam üretir. Canlı kurla hepsini TRY'ye
@@ -364,6 +370,25 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('history.s012')} />
+      {/* Hızlı arama: ekrana girer girmez en üstte, liste kayarken de sabit */}
+      <QuickSearchBar
+        testID="history-search"
+        value={q}
+        onChangeText={setQ}
+        placeholder={t('quickSearch.history')}
+        count={filtered.length}
+        countLabel={t('quickSearch.results')}
+        right={(
+          <TouchableOpacity
+            style={s.trashEntryBtn}
+            onPress={() => router.push('/trash' as any)}
+            testID="trash-entry-btn"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      />
       <MotionScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
@@ -415,22 +440,8 @@ export default function HistoryScreen() {
           )}
         </View>
 
-        {/* Arama + durum filtreleri: liste kayarken üstte yapışık kalır */}
+        {/* Durum filtreleri: liste kayarken üstte yapışık kalır */}
         <View style={s.stickyBar}>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <View style={[s.searchWrap, { flex: 1 }]}>
-              <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-              <TextInput testID="history-search" style={s.searchInput} placeholder={t('history.s018')} placeholderTextColor="#94a3b8" value={q} onChangeText={setQ} />
-            </View>
-            <TouchableOpacity
-              style={s.trashEntryBtn}
-              onPress={() => router.push('/trash' as any)}
-              testID="trash-entry-btn"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="trash-outline" size={18} color={theme.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRowOuter} contentContainerStyle={s.filterRow}>
             {[t('history.s003'), ...STATUSES].map((st) => (
               <TouchableOpacity key={st} testID={`filter-${st}`} style={[s.filterChip, filter === st && s.filterChipActive]} onPress={() => setFilter(st)}>
@@ -444,7 +455,7 @@ export default function HistoryScreen() {
         {filtered.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="document-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>{t('history.s019')}</Text>
+            <Text style={s.emptyTextBox}>{q.trim() ? t('quickSearch.none') : t('history.s019')}</Text>
           </View>
         ) : filtered.map((quote, idx) => {
           const c = statusColor(quote.durum);

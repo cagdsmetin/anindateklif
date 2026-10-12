@@ -407,6 +407,8 @@ export const api = {
   updateService: (id: string, data: any) => req(`/services/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateServiceStatus: (id: string, durum: string) =>
     req(`/services/${id}/status`, { method: 'PATCH', body: JSON.stringify({ durum }) }),
+  assignService: (id: string, atananId: string) =>
+    req(`/services/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ atananId }) }),
   deleteService: (id: string) => req(`/services/${id}`, { method: 'DELETE' }),
 
   // Campaigns (Kampanya)
@@ -910,6 +912,8 @@ export type NotifySettingsT = {
   vadeGecikme: boolean;
   bakimHatirlat: boolean;
   bakimGunOnce: number;
+  servisHatirlat: boolean;
+  servisGunOnce: number;
   teklifTakip: boolean;
   teklifTakipGun: number;
   gunlukOzet: boolean;
@@ -1050,6 +1054,11 @@ export type ServiceT = {
   garantiBitis: string;
   bakimTarihi: string;
   durum: string;
+  // Görevli ekip üyesi (firma sahibi ya da personel); boşsa atanmamış.
+  atananId?: string;
+  atananAd?: string;
+  atayanAd?: string;
+  atamaTarihi?: string;
   createdAt: string;
   updatedAt: string;
 };

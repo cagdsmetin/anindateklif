@@ -16,7 +16,9 @@ import { useApp } from '@/src/state/AppContext';
 import TopHeader from '@/src/components/TopHeader';
 import AnimatedPressable from '@/src/components/AnimatedPressable';
 import { BubbleButton, MotionScrollView, Reveal, ScreenHero, SoftIcon, alpha, hashColor, readableOn, themedStyles } from '@/src/components/motion';
-import { fill, useLanguage } from '@/src/lib/i18n';
+import { fill, statusLabel, useLanguage } from '@/src/lib/i18n';
+import QuickSearchBar from '@/src/components/QuickSearchBar';
+import { matchesQuery } from '@/src/lib/search';
 import { api, QuoteT } from '@/src/lib/api';
 import { ImportCustomer, pickCustomerFile } from '@/src/lib/customer-import';
 
@@ -44,7 +46,7 @@ const rangeCutoff = (range: DateRange): string | null => {
 };
 
 export default function CustomersScreen() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { customers, quotes, deleteCustomer, activeCompany, reloadCustomers, showToast } = useApp();
   const [importPreview, setImportPreview] = useState<{ fileName: string; customers: ImportCustomer[]; headerFound: boolean } | null>(null);
   const [importBusy, setImportBusy] = useState(false);
@@ -80,7 +82,9 @@ export default function CustomersScreen() {
   const [quotesFor, setQuotesFor] = useState<{ id: string; firma: string; ownQuotes: QuoteT[] } | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>('3m');
 
-  const enriched = useMemo(() => {
+  const [q, setQ] = useState('');
+  const [approvedOnly, setApprovedOnly] = useState(false);
+  const enrichedAll = useMemo(() => {
     return customers.map((c) => {
       const own = quotes.filter(
         (qq) =>
@@ -92,13 +96,38 @@ export default function CustomersScreen() {
       return { ...c, count: own.length, total, currency, ownQuotes: own };
     });
   }, [customers, quotes]);
+  // Hızlı arama: müşteri bilgileri + o müşteriye verilen tekliflerin proje adı / numarası.
+  const enriched = useMemo(() => {
+    if (!q.trim()) return enrichedAll;
+    return enrichedAll.filter((c) => matchesQuery(q, [
+      c.firma, c.yetkili, c.telefon, c.email, c.adres, c.il, c.ilce, c.vergiNo,
+      ...c.ownQuotes.flatMap((x) => [x.projeAdi, x.teklifNo]),
+    ]));
+  }, [enrichedAll, q]);
 
   const filteredModalQuotes = useMemo(() => {
     if (!quotesFor) return [];
     const cutoff = rangeCutoff(dateRange);
-    const list = cutoff ? quotesFor.ownQuotes.filter((qq) => (qq.tarih || '') >= cutoff) : quotesFor.ownQuotes;
+    let list = cutoff ? quotesFor.ownQuotes.filter((qq) => (qq.tarih || '') >= cutoff) : quotesFor.ownQuotes;
+    if (approvedOnly) list = list.filter((qq) => qq.durum === 'Onaylandı');
     return [...list].sort((a, b) => (b.tarih || '').localeCompare(a.tarih || ''));
-  }, [quotesFor, dateRange]);
+  }, [quotesFor, dateRange, approvedOnly]);
+
+  // Maliyet / kâr tablosu: yalnız maliyeti girilmiş teklifler, para birimine
+  // göre ayrı toplanır (farklı kurlar birbirine karıştırılmaz).
+  const profitSummary = useMemo(() => {
+    const by: Record<string, { tutar: number; maliyet: number; n: number }> = {};
+    let missing = 0;
+    filteredModalQuotes.forEach((x) => {
+      if (x.maliyet == null) { missing++; return; }
+      const cur = x.paraBirimi || 'TRY';
+      const row = (by[cur] = by[cur] || { tutar: 0, maliyet: 0, n: 0 });
+      row.tutar += x.genelToplam || 0;
+      row.maliyet += x.maliyet;
+      row.n++;
+    });
+    return { rows: Object.entries(by), missing };
+  }, [filteredModalQuotes]);
 
   const RANGE_OPTIONS: { id: DateRange; label: string }[] = [
     { id: '3m', label: t('customers.s012') },
@@ -121,6 +150,15 @@ export default function CustomersScreen() {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <TopHeader title={t('customers.s001')} />
+      {/* Hızlı arama: ekrana girer girmez en üstte, liste kayarken de sabit */}
+      <QuickSearchBar
+        testID="customers-search"
+        value={q}
+        onChangeText={setQ}
+        placeholder={t('quickSearch.customers')}
+        count={enriched.length}
+        countLabel={t('quickSearch.results')}
+      />
 
       <MotionScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 40 }}
@@ -158,7 +196,7 @@ export default function CustomersScreen() {
         {enriched.length === 0 ? (
           <View style={s.emptyBox}>
             <Ionicons name="people-outline" size={30} color={theme.colors.textMuted} />
-            <Text style={s.emptyTextBox}>{t('customers.s004')}</Text>
+            <Text style={s.emptyTextBox}>{q.trim() ? t('quickSearch.none') : t('customers.s004')}</Text>
           </View>
         ) : (
           enriched.map((c, idx) => {
@@ -171,10 +209,17 @@ export default function CustomersScreen() {
                 <View style={[s.cardStripe, { backgroundColor: tone }]} />
                 {/* Top row: avatar + name/phone + actions */}
                 <View style={s.topRow}>
+                  {/* Müşteriye dokununca: geçmiş projeleri + maliyet/kâr tablosu */}
+                  <TouchableOpacity
+                    style={s.cardTap}
+                    activeOpacity={0.75}
+                    onPress={() => { setDateRange('all'); setApprovedOnly(false); setQuotesFor({ id: c.id, firma: c.firma, ownQuotes: c.ownQuotes }); }}
+                    testID={`customer-open-projects-${c.id}`}
+                  >
                   <View style={[s.avatar, { backgroundColor: tone, boxShadow: `0 6px 14px ${alpha(tone, 0.35)}` }]}>
                     <Text style={[s.avatarLetter, { color: readableOn(tone) }]}>{letter}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={s.name} numberOfLines={1}>{c.firma || t('customers.s005')}</Text>
                     {c.telefon ? (
                       <Text style={s.phone} numberOfLines={1}>{c.telefon}</Text>
@@ -182,6 +227,7 @@ export default function CustomersScreen() {
                       <Text style={s.phoneMuted}>{t('customers.s006')}</Text>
                     )}
                   </View>
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => deleteCustomer(c.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -208,7 +254,7 @@ export default function CustomersScreen() {
                   <TouchableOpacity
                     style={{ flex: 1 }}
                     disabled={c.count === 0}
-                    onPress={() => { setDateRange('3m'); setQuotesFor({ id: c.id, firma: c.firma, ownQuotes: c.ownQuotes }); }}
+                    onPress={() => { setDateRange('3m'); setApprovedOnly(false); setQuotesFor({ id: c.id, firma: c.firma, ownQuotes: c.ownQuotes }); }}
                     testID={`customer-quote-count-${c.id}`}
                   >
                     <Text style={s.statLabel}>{t('customers.s007')}</Text>
@@ -239,7 +285,10 @@ export default function CustomersScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle} numberOfLines={1}>{t('customers.s010')} {quotesFor?.firma}</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.modalTitle} numberOfLines={1}>{quotesFor?.firma}</Text>
+                <Text style={s.modalSub}>{t('custProfit.title')} · {filteredModalQuotes.length}</Text>
+              </View>
               <TouchableOpacity onPress={() => setQuotesFor(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close" size={22} color={theme.colors.textMuted} />
               </TouchableOpacity>
@@ -256,29 +305,93 @@ export default function CustomersScreen() {
                   <Text style={[s.rangeChipText, dateRange === opt.id && s.rangeChipTextActive]}>{opt.label}</Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[s.rangeChip, approvedOnly && s.rangeChipActive]}
+                onPress={() => setApprovedOnly((v) => !v)}
+                testID="quote-approved-only"
+              >
+                <Text style={[s.rangeChipText, approvedOnly && s.rangeChipTextActive]}>{t('custProfit.approvedOnly')}</Text>
+              </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
               {filteredModalQuotes.length === 0 ? (
                 <Text style={s.modalEmpty}>{t('customers.s011')}</Text>
               ) : (
-                filteredModalQuotes.map((q) => (
-                  <TouchableOpacity
-                    key={q.id}
-                    style={s.quoteRow}
-                    onPress={() => { setQuotesFor(null); router.push({ pathname: '/preview', params: { quoteId: q.id } }); }}
-                    testID={`quote-row-${q.id}`}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.quoteRowNo} numberOfLines={1}>{q.teklifNo || '-'}</Text>
-                      <Text style={s.quoteRowDate}>{trDateShort(q.tarih)}{q.durum ? ` · ${q.durum}` : ''}</Text>
-                    </View>
-                    <Text style={s.quoteRowAmount}>
-                      {currencySymbol(q.paraBirimi)}{formatMoney(q.genelToplam || 0)}
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-                  </TouchableOpacity>
-                ))
+                <>
+                  <View style={s.profitBox} testID="customer-profit-table">
+                    <Text style={s.profitTitle}>{t('custProfit.summary')}</Text>
+                    {profitSummary.rows.length === 0 ? (
+                      <Text style={s.profitNote}>{t('custProfit.noCostYet')}</Text>
+                    ) : (
+                      <>
+                        {profitSummary.rows.map(([cur, r]) => {
+                          const kar = r.tutar - r.maliyet;
+                          const marj = r.tutar > 0 ? Math.round((kar / r.tutar) * 100) : 0;
+                          const tone = kar >= 0 ? theme.colors.greenText : theme.colors.redText;
+                          return (
+                            <View key={cur} style={s.profitRow} testID={`customer-profit-${cur}`}>
+                              <View style={s.profitCell}>
+                                <Text style={s.profitLabel}>{t('custProfit.amount')}</Text>
+                                <Text style={s.profitValue} numberOfLines={1} adjustsFontSizeToFit>{currencySymbol(cur)}{formatMoney(Math.round(r.tutar))}</Text>
+                              </View>
+                              <View style={s.profitCell}>
+                                <Text style={s.profitLabel}>{t('history.s035')}</Text>
+                                <Text style={s.profitValue} numberOfLines={1} adjustsFontSizeToFit>{currencySymbol(cur)}{formatMoney(Math.round(r.maliyet))}</Text>
+                              </View>
+                              <View style={s.profitCell}>
+                                <Text style={s.profitLabel}>{t('history.s036')} · %{marj}</Text>
+                                <Text style={[s.profitValue, { color: tone }]} numberOfLines={1} adjustsFontSizeToFit>{currencySymbol(cur)}{formatMoney(Math.round(kar))}</Text>
+                              </View>
+                            </View>
+                          );
+                        })}
+                        {profitSummary.missing > 0 ? (
+                          <Text style={s.profitNote}>{fill(t('custProfit.missing'), { n: profitSummary.missing })}</Text>
+                        ) : null}
+                      </>
+                    )}
+                  </View>
+
+                  {filteredModalQuotes.map((q) => {
+                    const kar = q.maliyet != null ? (q.genelToplam || 0) - q.maliyet : null;
+                    const sym = currencySymbol(q.paraBirimi);
+                    return (
+                      <TouchableOpacity
+                        key={q.id}
+                        style={s.projRow}
+                        onPress={() => { setQuotesFor(null); router.push({ pathname: '/preview', params: { quoteId: q.id } }); }}
+                        testID={`quote-row-${q.id}`}
+                      >
+                        <View style={s.projHead}>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={s.quoteRowNo} numberOfLines={1}>{q.projeAdi || q.teklifNo || '-'}</Text>
+                            <Text style={s.quoteRowDate} numberOfLines={1}>
+                              {[q.projeAdi ? q.teklifNo : '', trDateShort(q.tarih), q.durum ? statusLabel(lang, q.durum) : ''].filter(Boolean).join(' · ')}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+                        </View>
+                        <View style={s.projNums}>
+                          <View style={s.profitCell}>
+                            <Text style={s.profitLabel}>{t('custProfit.amount')}</Text>
+                            <Text style={s.projValue} numberOfLines={1} adjustsFontSizeToFit>{sym}{formatMoney(q.genelToplam || 0)}</Text>
+                          </View>
+                          <View style={s.profitCell}>
+                            <Text style={s.profitLabel}>{t('history.s035')}</Text>
+                            <Text style={s.projValue} numberOfLines={1} adjustsFontSizeToFit>{q.maliyet != null ? `${sym}${formatMoney(q.maliyet)}` : '—'}</Text>
+                          </View>
+                          <View style={s.profitCell}>
+                            <Text style={s.profitLabel}>{t('history.s036')}</Text>
+                            <Text style={[s.projValue, kar != null && { color: kar >= 0 ? theme.colors.greenText : theme.colors.redText }]} numberOfLines={1} adjustsFontSizeToFit>
+                              {kar != null ? `${sym}${formatMoney(kar)}` : '—'}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
               )}
             </ScrollView>
           </View>
@@ -416,6 +529,19 @@ const s = themedStyles(() => StyleSheet.create({
   },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
   modalTitle: { flex: 1, fontSize: 15, fontWeight: '900', color: theme.colors.text },
+  modalSub: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 2, fontWeight: '700' },
+  cardTap: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  profitBox: { backgroundColor: theme.colors.surfaceSoft, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, gap: 8 },
+  profitTitle: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.4, color: theme.colors.textMuted },
+  profitRow: { flexDirection: 'row', gap: 8 },
+  profitCell: { flex: 1, minWidth: 0 },
+  profitLabel: { fontSize: 10, fontWeight: '700', color: theme.colors.textMuted },
+  profitValue: { fontSize: 15, fontWeight: '900', color: theme.colors.text, marginTop: 2 },
+  profitNote: { fontSize: 11, color: theme.colors.textMuted, lineHeight: 15 },
+  projRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line, gap: 8 },
+  projHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  projNums: { flexDirection: 'row', gap: 8 },
+  projValue: { fontSize: 12.5, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   modalEmpty: { fontSize: 12.5, color: theme.colors.textMuted, textAlign: 'center', paddingVertical: 24 },
 
   rangeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },

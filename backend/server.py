@@ -1608,6 +1608,13 @@ class Service(BaseModel):
     garantiBitis: str = ""       # warranty end date (ISO), optional
     bakimTarihi: str = ""        # next scheduled maintenance date (ISO), optional
     durum: str = "Açık"          # Açık | Devam ediyor | Tamamlandı | İptal
+    # Görev ataması: işi yapacak ekip üyesinin (firma sahibi ya da personel)
+    # gerçek user_id'si; boşsa atanmamış. Ad, liste/e-posta için saklanır.
+    atananId: str = ""
+    atananAd: str = ""
+    atayanId: str = ""
+    atayanAd: str = ""
+    atamaTarihi: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -1623,10 +1630,17 @@ class ServiceCreate(BaseModel):
     garantiBitis: str = ""
     bakimTarihi: str = ""
     durum: str = "Açık"
+    # None = atamaya dokunma (alanı hiç göndermeyen eski istemciler mevcut
+    # atamayı silmesin); "" = atamayı kaldır.
+    atananId: Optional[str] = None
 
 
 class ServiceStatusUpdate(BaseModel):
     durum: str
+
+
+class ServiceAssignUpdate(BaseModel):
+    atananId: str = ""
 
 
 class QuoteItem(BaseModel):
@@ -2222,6 +2236,12 @@ async def remove_staff_member(company_id: str, member_user_id: str, user=Depends
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Personel bulunamadı")
+    # Ayrılan personelin üzerindeki servis görevleri sahipsiz kalsın ki
+    # yönetici "Atanmamış" altında görüp yeniden dağıtabilsin.
+    await db.services.update_many(
+        {"userId": user["user_id"], "companyId": company_id, "atananId": member_user_id},
+        {"$set": {"atananId": "", "atananAd": "", "atayanId": "", "atayanAd": "", "atamaTarihi": ""}},
+    )
     _schedule_tier_check(user["user_id"])
     return {"ok": True}
 
@@ -5275,12 +5295,75 @@ async def list_services(company_id: str, user=Depends(get_current_user)):
     return [Service(**d) for d in docs]
 
 
+async def _apply_service_assignment(user: Dict[str, Any], doc: Dict[str, Any], wanted: Optional[str]) -> bool:
+    """Servis kaydının görevlisini `wanted` yapar (doc yerinde güncellenir);
+    atama gerçekten değiştiyse True. Atamayı yönetici yapar; kısıtlı personel
+    yalnız sahipsiz bir işi kendi üstüne alabilir."""
+    current = doc.get("atananId", "")
+    if wanted is None or wanted == current:
+        return False
+    me = _self_id(user)
+    if not _is_manager(user) and not (wanted == me and not current):
+        return False
+    name = ""
+    if wanted:
+        owner_id = user["user_id"]
+        q = {"user_id": owner_id} if wanted == owner_id else {
+            "user_id": wanted, "staff_of_company_id": doc["companyId"], "staff_owner_user_id": owner_id}
+        member = await db.users.find_one(q, {"_id": 0})
+        if not member:
+            raise HTTPException(status_code=422, detail="Seçilen personel bu firmada bulunamadı")
+        name = await _team_display_name(member)
+    doc.update({
+        "atananId": wanted, "atananAd": name,
+        "atayanId": me if wanted else "", "atayanAd": (_actor_name(user) or _actor_email(user)) if wanted else "",
+        "atamaTarihi": utc_now_iso() if wanted else "",
+    })
+    return True
+
+
+def _service_line(doc: Dict[str, Any]) -> str:
+    who = doc.get("musFirma") or doc.get("musYetkili") or ""
+    when = f" · {_fmt_date_tr(doc['servisTarihi'])}" if doc.get("servisTarihi") else ""
+    return f"{doc.get('baslik', '')}{' – ' + who if who else ''}{when}"
+
+
+def _notify_service_assigned(user: Dict[str, Any], doc: Dict[str, Any]):
+    """Görev başkası tarafından atandıysa görevliye bildirim + push gönder."""
+    aid = doc.get("atananId", "")
+    if not aid or aid == _self_id(user):
+        return
+    who = _actor_name(user) or _actor_email(user) or "Yöneticiniz"
+    _bg(_notify_user(aid, f"servis-ata:{doc['id']}:{doc.get('atamaTarihi', '')}", "olay",
+                     "🔧 Size yeni bir servis görevi atandı", f"{_service_line(doc)} ({who})", "/services", kind="servis-atama"))
+
+
+def _notify_service_status(user: Dict[str, Any], doc: Dict[str, Any]):
+    """Durum değişince işin diğer tarafına haber ver: görevli değiştirdiyse
+    firma sahibine, başkası değiştirdiyse görevliye."""
+    me, aid = _self_id(user), doc.get("atananId", "")
+    if not aid:
+        return
+    to = user["user_id"] if me == aid else aid
+    if to == me:
+        return
+    who = _actor_name(user) or _actor_email(user) or ""
+    _bg(_notify_user(to, f"servis-durum:{doc['id']}:{doc['updatedAt']}", "olay",
+                     f"🔧 Servis görevi: {doc.get('durum', '')}", f"{_service_line(doc)}{' (' + who + ')' if who else ''}",
+                     "/services", kind="servis-durum"))
+
+
 @api_router.post("/services", response_model=Service)
 async def create_service(payload: ServiceCreate, user=Depends(get_current_user)):
     await _own_company(user, payload.companyId)
-    obj = Service(userId=user["user_id"], **payload.dict())
-    await db.services.insert_one(obj.dict())
-    return obj
+    data = payload.dict()
+    wanted = data.pop("atananId")
+    doc = Service(userId=user["user_id"], **data).dict()
+    assigned = await _apply_service_assignment(user, doc, wanted)
+    await db.services.insert_one(dict(doc))
+    if assigned:
+        _notify_service_assigned(user, doc)
+    return Service(**doc)
 
 
 @api_router.put("/services/{service_id}", response_model=Service)
@@ -5289,8 +5372,15 @@ async def update_service(service_id: str, payload: ServiceCreate, user=Depends(g
     doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Service not found")
-    updated = {**doc, **payload.dict(), "updatedAt": utc_now_iso()}
+    data = payload.dict()
+    wanted = data.pop("atananId")
+    updated = {**doc, **data, "updatedAt": utc_now_iso()}
+    assigned = await _apply_service_assignment(user, updated, wanted)
     await db.services.replace_one({"id": service_id, "userId": user["user_id"]}, updated)
+    if assigned:
+        _notify_service_assigned(user, updated)
+    elif updated.get("durum") != doc.get("durum"):
+        _notify_service_status(user, updated)
     return Service(**updated)
 
 
@@ -5299,9 +5389,28 @@ async def update_service_status(service_id: str, payload: ServiceStatusUpdate, u
     doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Service not found")
+    changed = doc.get("durum") != payload.durum
     doc["durum"] = payload.durum
     doc["updatedAt"] = utc_now_iso()
     await db.services.replace_one({"id": service_id, "userId": user["user_id"]}, doc)
+    if changed:
+        _notify_service_status(user, doc)
+    return Service(**doc)
+
+
+@api_router.patch("/services/{service_id}/assign", response_model=Service)
+async def assign_service(service_id: str, payload: ServiceAssignUpdate, user=Depends(get_current_user)):
+    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Service not found")
+    await _own_company(user, doc["companyId"])
+    if payload.atananId == doc.get("atananId", ""):
+        return Service(**doc)
+    if not await _apply_service_assignment(user, doc, payload.atananId):
+        raise HTTPException(status_code=403, detail="Görev atamasını sadece yöneticiler yapabilir")
+    doc["updatedAt"] = utc_now_iso()
+    await db.services.replace_one({"id": service_id, "userId": user["user_id"]}, doc)
+    _notify_service_assigned(user, doc)
     return Service(**doc)
 
 
@@ -9866,6 +9975,8 @@ class NotifySettings(BaseModel):
     vadeGecikme: bool = True
     bakimHatirlat: bool = True
     bakimGunOnce: int = 7
+    servisHatirlat: bool = True
+    servisGunOnce: int = 1
     teklifTakip: bool = True
     teklifTakipGun: int = 3
     gunlukOzet: bool = True
@@ -9952,6 +10063,9 @@ NOTIFY_TEXT = {
         "gecik_b": "Sayın {name},<br><br>{company} nezdindeki <b>{amount}</b> tutarındaki ödemenizin vadesi <b>{date}</b> tarihinde dolmuştur. En kısa sürede ödemenizi rica ederiz.<br><br>Ödemenizi yaptıysanız bu e-postayı dikkate almayınız.",
         "bakim_s": "Bakım zamanı yaklaşıyor – {company}",
         "bakim_b": "Sayın {name},<br><br><b>{title}</b> için periyodik bakım tarihiniz <b>{date}</b>. Uygun olduğunuz gün ve saati bize bildirirseniz randevunuzu oluşturalım.",
+        "servis_s": "Servis randevunuz – {company}",
+        "servis_b": "Sayın {name},<br><br><b>{title}</b> için servis randevunuz <b>{date}</b> tarihindedir.{tech}<br><br>Tarih size uygun değilse lütfen bize bildirin.",
+        "servis_tech": "<br>Görevli personelimiz: <b>{tech}</b>",
         "teklif_s": "Teklifimiz hakkında – {company}",
         "teklif_b": "Sayın {name},<br><br>{date} tarihinde ilettiğimiz <b>{no}</b> numaralı teklifimizi inceleme fırsatınız oldu mu? Sorularınız veya değişiklik talepleriniz için bize her zaman ulaşabilirsiniz.",
         "iban": "<br><br>Banka: {bank} – IBAN: <b>{iban}</b>",
@@ -9970,6 +10084,9 @@ NOTIFY_TEXT = {
         "gecik_b": "Dear {name},<br><br>Your payment of <b>{amount}</b> to {company} was due on <b>{date}</b>. We kindly ask you to settle it as soon as possible.<br><br>If you have already paid, please disregard this email.",
         "bakim_s": "Maintenance due soon – {company}",
         "bakim_b": "Dear {name},<br><br>Scheduled maintenance for <b>{title}</b> is due on <b>{date}</b>. Let us know a convenient day and time and we will book your appointment.",
+        "servis_s": "Your service appointment – {company}",
+        "servis_b": "Dear {name},<br><br>Your service appointment for <b>{title}</b> is on <b>{date}</b>.{tech}<br><br>If the date does not suit you, please let us know.",
+        "servis_tech": "<br>Your technician: <b>{tech}</b>",
         "teklif_s": "About our quote – {company}",
         "teklif_b": "Dear {name},<br><br>Have you had a chance to review quote <b>{no}</b> we sent on {date}? Feel free to contact us with any questions or changes.",
         "iban": "<br><br>Bank: {bank} – IBAN: <b>{iban}</b>",
@@ -9988,6 +10105,9 @@ NOTIFY_TEXT = {
         "gecik_b": "Gentile {name},<br><br>il pagamento di <b>{amount}</b> a {company} è scaduto il <b>{date}</b>. La preghiamo di provvedere al più presto.<br><br>Se ha già pagato, ignori questa email.",
         "bakim_s": "Manutenzione in scadenza – {company}",
         "bakim_b": "Gentile {name},<br><br>la manutenzione periodica di <b>{title}</b> è prevista per il <b>{date}</b>. Ci indichi giorno e ora preferiti e fisseremo l'appuntamento.",
+        "servis_s": "Il suo appuntamento di assistenza – {company}",
+        "servis_b": "Gentile {name},<br><br>l'intervento per <b>{title}</b> è previsto per il <b>{date}</b>.{tech}<br><br>Se la data non va bene, ce lo comunichi.",
+        "servis_tech": "<br>Tecnico incaricato: <b>{tech}</b>",
         "teklif_s": "Il nostro preventivo – {company}",
         "teklif_b": "Gentile {name},<br><br>ha avuto modo di esaminare il preventivo <b>{no}</b> inviato il {date}? Siamo a disposizione per domande o modifiche.",
         "iban": "<br><br>Banca: {bank} – IBAN: <b>{iban}</b>",
@@ -10152,6 +10272,17 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
                 sent += await _notify_wa_once(uid, cid, f"wa:bakim:{s['id']}:{target}", "bakim", wa, {
                     "1": s.get("musYetkili") or s.get("musFirma") or "", "2": cname, "3": s.get("baslik", ""), "4": _fmt_date_tr(target)})
 
+    if settings.get("servisHatirlat", True):
+        target = (today + timedelta(days=int(settings.get("servisGunOnce", 1)))).isoformat()
+        async for s in db.services.find({"userId": uid, "companyId": cid, "servisTarihi": target,
+                                         "durum": {"$in": ["Açık", "Devam ediyor"]}}, {"_id": 0}):
+            email = by_name.get((s.get("musFirma") or "").strip().casefold(), "")
+            tech = T["servis_tech"].format(tech=esc(s["atananAd"])) if s.get("atananAd") else ""
+            body = T["servis_b"].format(name=esc(s.get("musYetkili") or s.get("musFirma") or ""), title=esc(s.get("baslik", "")),
+                                        date=_fmt_date_tr(target), tech=tech)
+            sent += await _notify_once(uid, cid, f"servis:{s['id']}:{target}", "servis", company, email,
+                                       T["servis_s"].format(company=cname), _email_shell(company, body, lang))
+
     if settings.get("teklifTakip", True):
         qdate = (today - timedelta(days=int(settings.get("teklifTakipGun", 3)))).isoformat()
         async for q in db.quotes.find({"userId": uid, "companyId": cid, "durum": "Beklemede", "tarih": qdate, "deletedAt": None}, {"_id": 0}):
@@ -10180,7 +10311,7 @@ async def _run_notifications_for(settings: Dict[str, Any], today) -> int:
                 return f"<p style='margin:14px 0 4px'><b>{title}</b></p><ul style='margin:0;padding-left:18px'>" + "".join(f"<li>{r}</li>" for r in rows) + "</ul>"
             body = f"<p>{T['ozet_h'].format(date=_fmt_date_tr(tday))}</p>"
             body += ul(T["ozet_rem"], [esc(r.get("baslik", "")) for r in rems])
-            body += ul(T["ozet_srv"], [esc(f"{s.get('baslik', '')} – {s.get('musFirma', '')} {s.get('musTelefon', '')}") for s in srvs])
+            body += ul(T["ozet_srv"], [esc(f"{s.get('baslik', '')} – {s.get('musFirma', '')} {s.get('musTelefon', '')}" + (f" · {s['atananAd']}" if s.get("atananAd") else "")) for s in srvs])
             body += ul(T["ozet_due"], [esc(f"{d.get('musteriAdi', '')}: ") + _fmt_money(d.get("tutar", 0), d.get("paraBirimi", "TRY")) for d in dues])
             if over:
                 body += f"<p>{T['ozet_over']}: <b>{over}</b></p>"
@@ -11281,6 +11412,7 @@ ENGAGE_TEXT = {
         "morning_t": "☀️ Bugün sizi bekleyenler",
         "rem": "{n} hatırlatma", "srv": "{n} servis/bakım", "due": "{n} vadesi gelen tahsilat",
         "morning_m": "{items}. Günü planlamak için dokunun.",
+        "task_t": "🔧 Bugün {n} servis göreviniz var", "task_more": "+{n} görev daha",
         "sub_t": "⏰ Aboneliğiniz {d} gün içinde bitiyor", "sub_m": "Tekliflerinize kesintisiz devam etmek için aboneliğinizi yenileyin.",
         "pending_t": "📨 {n} teklif yanıt bekliyor", "pending_m": "3 günden eski bekleyen teklifleriniz var. Müşterinizi arayıp durumu sorun.",
         "stock_t": "📉 {n} üründe stok azaldı", "stock_m": "Minimum seviyenin altına düşen ürünler var: {names}.",
@@ -11292,6 +11424,7 @@ ENGAGE_TEXT = {
         "morning_t": "☀️ What's waiting for you today",
         "rem": "{n} reminder(s)", "srv": "{n} service visit(s)", "due": "{n} payment(s) due",
         "morning_m": "{items}. Tap to plan your day.",
+        "task_t": "🔧 You have {n} service job(s) today", "task_more": "+{n} more",
         "sub_t": "⏰ Your subscription ends in {d} day(s)", "sub_m": "Renew to keep sending quotes without interruption.",
         "pending_t": "📨 {n} quote(s) awaiting reply", "pending_m": "Some quotes are older than 3 days. Give your customer a call.",
         "stock_t": "📉 Low stock on {n} item(s)", "stock_m": "Below minimum: {names}.",
@@ -11303,6 +11436,7 @@ ENGAGE_TEXT = {
         "morning_t": "☀️ Cosa ti aspetta oggi",
         "rem": "{n} promemoria", "srv": "{n} interventi", "due": "{n} incassi in scadenza",
         "morning_m": "{items}. Tocca per pianificare la giornata.",
+        "task_t": "🔧 Oggi hai {n} interventi assegnati", "task_more": "+{n} altri",
         "sub_t": "⏰ L'abbonamento scade tra {d} giorni", "sub_m": "Rinnova per continuare senza interruzioni.",
         "pending_t": "📨 {n} preventivi in attesa", "pending_m": "Alcuni hanno più di 3 giorni. Chiama il cliente.",
         "stock_t": "📉 Scorte basse su {n} articoli", "stock_m": "Sotto il minimo: {names}.",
@@ -11343,6 +11477,28 @@ async def _engage_morning(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bo
         return False
     link = "/reminders" if rems else ("/services" if srvs else "/tahsilat")
     return await _notify_user(uid, f"sabah:{uid}:{tday}", "akilli", T["morning_t"], T["morning_m"].format(items=", ".join(parts)), link, kind="sabah")
+
+
+async def _engage_service_tasks(today) -> int:
+    """Bugün servis/bakım günü gelen işleri görevli personele hatırlatır.
+    Firma sahibi kendi işlerini zaten sabah özetinde görür, ona gönderilmez."""
+    tday = today.isoformat()
+    by_user: Dict[str, List[Dict[str, Any]]] = {}
+    async for s in db.services.find({"atananId": {"$nin": [None, ""]}, "durum": {"$in": ["Açık", "Devam ediyor"]},
+                                     "$or": [{"servisTarihi": tday}, {"bakimTarihi": tday}]}, {"_id": 0}):
+        if s["atananId"] != s.get("userId"):
+            by_user.setdefault(s["atananId"], []).append(s)
+    sent = 0
+    for aid, jobs in by_user.items():
+        if await db.user_notifications.find_one({"key": f"gorev:{aid}:{tday}"}, {"_id": 1}):
+            continue
+        T = ENGAGE_TEXT.get((await _notif_prefs(aid)).get("lang"), ENGAGE_TEXT["tr"])
+        lines = [f"{j.get('baslik', '')} – {j.get('musFirma') or j.get('musYetkili') or ''}".strip(" –") for j in jobs[:3]]
+        if len(jobs) > 3:
+            lines.append(T["task_more"].format(n=len(jobs) - 3))
+        sent += int(await _notify_user(aid, f"gorev:{aid}:{tday}", "akilli", T["task_t"].format(n=len(jobs)),
+                                       ", ".join(lines), "/services", kind="servis-gorev"))
+    return sent
 
 
 async def _engage_evening(u: Dict[str, Any], prefs: Dict[str, Any], today) -> bool:
@@ -11424,6 +11580,11 @@ async def _engage_tick(now_ist: Optional[datetime] = None) -> int:
                     sent += int(await _engage_evening(u, await _notif_prefs(uid), today))
         except Exception as e:
             logger.warning(f"[Engage] {uid}: {e}")
+    if in_morning:
+        try:
+            sent += await _engage_service_tasks(today)
+        except Exception as e:
+            logger.warning(f"[Engage] servis görevleri: {e}")
     return sent
 
 

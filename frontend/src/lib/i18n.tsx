@@ -230,7 +230,7 @@ const tr: Dict = {
   },
   quickSearch: {
     history: 'Müşteri, teklif no, proje, ürün, tutar ara...',
-    customers: 'Firma, yetkili, telefon, e-posta, etiket ara...',
+    customers: 'Firma, yetkili, telefon, e-posta, proje ara...',
     results: 'sonuç',
     none: 'Aramanızla eşleşen kayıt yok.',
   },
@@ -1959,7 +1959,7 @@ const en: Dict = {
   },
   quickSearch: {
     history: 'Search customer, quote no, project, item, amount...',
-    customers: 'Search company, contact, phone, email, tag...',
+    customers: 'Search company, contact, phone, email, project...',
     results: 'results',
     none: 'No records match your search.',
   },
@@ -3688,7 +3688,7 @@ const it: Dict = {
   },
   quickSearch: {
     history: 'Cerca cliente, n. preventivo, progetto, articolo, importo...',
-    customers: 'Cerca azienda, referente, telefono, e-mail, etichetta...',
+    customers: 'Cerca azienda, referente, telefono, e-mail, progetto...',
     results: 'risultati',
     none: 'Nessun risultato per la ricerca.',
   },

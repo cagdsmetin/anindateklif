@@ -5291,19 +5291,35 @@ async def delete_customer(customer_id: str, user=Depends(get_current_user)):
 @api_router.get("/services/{company_id}", response_model=List[Service])
 async def list_services(company_id: str, user=Depends(get_current_user)):
     await _own_company(user, company_id)
-    docs = await db.services.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).sort("createdAt", -1).to_list(2000)
+    q = {"companyId": company_id, "userId": user["user_id"]}
+    if not _is_manager(user):
+        # Kısıtlı personel yalnız kendisine atanan servis görevlerini görür.
+        q["atananId"] = _self_id(user)
+    docs = await db.services.find(q, {"_id": 0}).sort("createdAt", -1).to_list(2000)
     return [Service(**d) for d in docs]
+
+
+async def _own_service(user: Dict[str, Any], service_id: str) -> Dict[str, Any]:
+    """Servis kaydını getirir; kısıtlı personel için yalnız kendisine atanmışsa."""
+    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc or (not _is_manager(user) and doc.get("atananId", "") != _self_id(user)):
+        raise HTTPException(404, "Service not found")
+    return doc
 
 
 async def _apply_service_assignment(user: Dict[str, Any], doc: Dict[str, Any], wanted: Optional[str]) -> bool:
     """Servis kaydının görevlisini `wanted` yapar (doc yerinde güncellenir);
     atama gerçekten değiştiyse True. Atamayı yönetici yapar; kısıtlı personel
-    yalnız sahipsiz bir işi kendi üstüne alabilir."""
+    yalnız kendi açtığı kaydın görevlisi olur."""
     current = doc.get("atananId", "")
-    if wanted is None or wanted == current:
-        return False
     me = _self_id(user)
-    if not _is_manager(user) and not (wanted == me and not current):
+    if not _is_manager(user):
+        # Kısıtlı personelin açtığı kayıt kendi üstüne yazılır (yoksa listesinde
+        # göremez); mevcut bir atamayı değiştiremez.
+        if current:
+            return False
+        wanted = me
+    if wanted is None or wanted == current:
         return False
     name = ""
     if wanted:
@@ -5369,9 +5385,7 @@ async def create_service(payload: ServiceCreate, user=Depends(get_current_user))
 @api_router.put("/services/{service_id}", response_model=Service)
 async def update_service(service_id: str, payload: ServiceCreate, user=Depends(get_current_user)):
     await _own_company(user, payload.companyId)
-    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "Service not found")
+    doc = await _own_service(user, service_id)
     data = payload.dict()
     wanted = data.pop("atananId")
     updated = {**doc, **data, "updatedAt": utc_now_iso()}
@@ -5386,9 +5400,7 @@ async def update_service(service_id: str, payload: ServiceCreate, user=Depends(g
 
 @api_router.patch("/services/{service_id}/status", response_model=Service)
 async def update_service_status(service_id: str, payload: ServiceStatusUpdate, user=Depends(get_current_user)):
-    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "Service not found")
+    doc = await _own_service(user, service_id)
     changed = doc.get("durum") != payload.durum
     doc["durum"] = payload.durum
     doc["updatedAt"] = utc_now_iso()
@@ -5400,9 +5412,7 @@ async def update_service_status(service_id: str, payload: ServiceStatusUpdate, u
 
 @api_router.patch("/services/{service_id}/assign", response_model=Service)
 async def assign_service(service_id: str, payload: ServiceAssignUpdate, user=Depends(get_current_user)):
-    doc = await db.services.find_one({"id": service_id, "userId": user["user_id"]}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "Service not found")
+    doc = await _own_service(user, service_id)
     await _own_company(user, doc["companyId"])
     if payload.atananId == doc.get("atananId", ""):
         return Service(**doc)
@@ -5416,6 +5426,7 @@ async def assign_service(service_id: str, payload: ServiceAssignUpdate, user=Dep
 
 @api_router.delete("/services/{service_id}")
 async def delete_service(service_id: str, user=Depends(get_current_user)):
+    await _own_service(user, service_id)
     await db.services.delete_one({"id": service_id, "userId": user["user_id"]})
     return {"ok": True}
 

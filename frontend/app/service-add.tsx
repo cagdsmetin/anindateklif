@@ -52,7 +52,7 @@ export default function ServiceAddScreen() {
   const [atananId, setAtananId] = useState(editing?.atananId || '');
   const [members, setMembers] = useState<TeamDirectoryMemberT[]>([]);
   const { user: me } = useAuth();
-  // Atamayı yönetici yapar; kısıtlı personel yalnız kendini seçebilir.
+  // Atamayı yönetici yapar; kısıtlı personelin açtığı kayıt sunucuda kendi üstüne yazılır.
   const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
   const companyId = activeCompany?.id;
   useEffect(() => {
@@ -61,9 +61,7 @@ export default function ServiceAddScreen() {
     api.teamDirectory(companyId).then((m) => { if (alive) setMembers(m); }).catch(() => {});
     return () => { alive = false; };
   }, [companyId]);
-  const pickable = restricted
-    ? (editing?.atananId ? [] : members.filter((m) => m.userId === me?.user_id))
-    : members;
+  const pickable = restricted ? [] : members;
   const [busy, setBusy] = useState(false);
   const [errFirma, setErrFirma] = useState(false);
   const [errBaslik, setErrBaslik] = useState(false);

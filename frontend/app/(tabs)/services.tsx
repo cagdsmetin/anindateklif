@@ -46,7 +46,7 @@ export default function ServicesScreen() {
   const { t, lang } = useLanguage();
   const { services, activeCompany, deleteService, updateServiceStatus, assignService, showToast } = useApp();
   const { user: me } = useAuth();
-  // Atamayı yönetici yapar; kısıtlı personel yalnız sahipsiz işi üstlenebilir.
+  // Atamayı yönetici yapar; kısıtlı personel yalnız kendine atanan işleri görür.
   const restricted = !!me?.is_staff && me?.staff_role !== 'admin';
   const myId = me?.user_id || '';
   const insets = useSafeAreaInsets();
@@ -78,7 +78,7 @@ export default function ServicesScreen() {
       }, {}),
     };
   }, [services]);
-  const showTeam = members.length > 1 || services.some((s) => !!s.atananId);
+  const showTeam = !restricted && (members.length > 1 || services.some((s) => !!s.atananId));
 
   const doAssign = async (svc: ServiceT, atananId: string, okMsg: string) => {
     setAssignFor(null);
@@ -272,16 +272,12 @@ export default function ServicesScreen() {
                 </View>
               ) : null}
 
-              {showTeam ? (() => {
-                const canTake = restricted && !svc.atananId;
-                const tappable = !restricted || canTake;
-                return (
+              {showTeam ? (
                   <TouchableOpacity
                     testID={`svc-assign-${svc.id}`}
-                    disabled={!tappable}
                     activeOpacity={0.8}
                     style={[s.assignRow, !svc.atananId && s.assignRowEmpty]}
-                    onPress={() => (canTake ? doAssign(svc, myId, t('services.s035')) : setAssignFor(svc))}
+                    onPress={() => setAssignFor(svc)}
                   >
                     <Ionicons name={svc.atananId ? 'person-circle-outline' : 'person-add-outline'} size={15} color={svc.atananId ? theme.colors.primary : theme.colors.goldDark} />
                     <Text style={[s.assignText, !svc.atananId && { color: theme.colors.goldDark }]} numberOfLines={1}>
@@ -289,12 +285,9 @@ export default function ServicesScreen() {
                         ? `${t('services.s026')} ${svc.atananAd || '-'}${svc.atananId === myId ? ` (${t('services.s036')})` : ''}`
                         : t('services.s024')}
                     </Text>
-                    {tappable ? (
-                      <Text style={s.assignAction}>{canTake ? t('services.s033') : t('services.s027')}</Text>
-                    ) : null}
+                    <Text style={s.assignAction}>{t('services.s027')}</Text>
                   </TouchableOpacity>
-                );
-              })() : null}
+              ) : null}
 
               {svc.aciklama ? <Text style={s.desc} numberOfLines={2}>{svc.aciklama}</Text> : null}
 

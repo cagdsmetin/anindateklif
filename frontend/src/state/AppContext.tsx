@@ -612,6 +612,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // (PDF sunucudan dönen kayıttan üretiliyor, bkz. teklif.tsx).
         agCizim: it.agCizim ?? null,
         zipEkler: it.zipEkler ?? null,
+        // Katalog kaynağı ve alış fiyatı kopyası -- teklif maliyeti/kârı için
+        // (personelde alış boş gelir; sunucu katalogdan doldurur).
+        catalogItemId: it.catalogItemId || '',
+        alisBirimFiyat: it.alisBirimFiyat ?? null,
+        tedarikciId: it.tedarikciId || '',
       })),
       durum: quote.durum || 'Beklemede',
       kuponKodu: quote.kuponKodu || '',

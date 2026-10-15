@@ -21,7 +21,9 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, CatalogFileT, CatalogItemT, SystemField, SystemTypeDefT } from '@/src/lib/api';
+import { api, CatalogFileT, CatalogItemT, RatesT, SystemField, SystemTypeDefT, TedarikciT } from '@/src/lib/api';
+import { convertBetween } from '@/src/lib/tahsilat-utils';
+import { fmtMoney, fmtPct, karOf } from '@/src/lib/tedarikci';
 import { shareFileViaWhatsApp } from '@/src/lib/file-share';
 import { downloadFileWeb } from '@/src/lib/web-download';
 import * as Sharing from 'expo-sharing';
@@ -178,7 +180,20 @@ export default function CatalogScreen() {
   // Katalog ve Yapılandırıcı sadece firma sahibi tarafından yönetilir --
   // personel görüp teklifte kullanabilir ama ekleyip/düzenleyip/silemez.
   const isStaffUser = !!me?.is_staff;
+  // Alış fiyatı/kâr yalnız yöneticilere (backend kısıtlı personele boş döner).
+  const isManager = !me?.is_staff || me?.staff_role === 'admin';
   const insets = useSafeAreaInsets();
+  const [tedarikciler, setTedarikciler] = useState<TedarikciT[]>([]);
+  const [rates, setRates] = useState<RatesT | null>(null);
+  const [karPct, setKarPct] = useState('');
+  useEffect(() => {
+    if (!activeCompany || !isManager) return;
+    api.listTedarikciler(activeCompany.id).then(setTedarikciler).catch(() => {});
+    api.rates().then(setRates).catch(() => {});
+  }, [activeCompany, isManager]);
+  const tedName = (id?: string) => (id ? tedarikciler.find((x) => x.id === id)?.firma || '' : '');
+  // Alış fiyatını satış para birimine çevirip kârı hesaplar (kur yoksa null).
+  const alisInSale = (alis: number, alisCur: string, saleCur: string) => convertBetween(alis, alisCur || saleCur, saleCur, rates);
   const [showForm, setShowForm] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [editing, setEditing] = useState<CatalogItemT | null>(null);
@@ -443,7 +458,22 @@ export default function CatalogScreen() {
     stok: '',
     minStok: '',
     stokKodu: '',
+    alisFiyati: '',
+    alisParaBirimi: '',
+    tedarikciId: '',
   });
+  const alisFields = (it?: CatalogItemT) => ({
+    alisFiyati: it?.alisFiyati ? String(it.alisFiyati) : '',
+    alisParaBirimi: it?.alisParaBirimi || '',
+    tedarikciId: it?.tedarikciId || '',
+  });
+  // Personelin formu alış alanlarını hiç göstermez; boş gönderip yöneticinin
+  // girdiği değeri silmesin diye yalnız yöneticide gönderilir.
+  const alisPayload = () => (isManager ? {
+    alisFiyati: Number(f.alisFiyati.replace(',', '.')) || 0,
+    alisParaBirimi: f.alisParaBirimi,
+    tedarikciId: f.tedarikciId,
+  } : {});
   const stockFields = (it?: CatalogItemT) => ({
     stokTakip: !!it?.stokTakip,
     stok: it?.stokTakip ? String(it.stok ?? 0) : '',
@@ -459,7 +489,8 @@ export default function CatalogScreen() {
 
   const openNew = () => {
     setEditing(null);
-    setF({ kategori: 'Genel', urunAdi: '', aciklama: '', birim: 'Adet', birimFiyat: '', paraBirimi: 'USD', ...stockFields() });
+    setF({ kategori: 'Genel', urunAdi: '', aciklama: '', birim: 'Adet', birimFiyat: '', paraBirimi: 'USD', ...stockFields(), ...alisFields() });
+    setKarPct('');
     setShowForm(true);
   };
   const openEdit = (it: CatalogItemT) => {
@@ -472,7 +503,9 @@ export default function CatalogScreen() {
       birimFiyat: String(it.birimFiyat),
       paraBirimi: it.paraBirimi,
       ...stockFields(it),
+      ...alisFields(it),
     });
+    setKarPct('');
     setShowForm(true);
   };
   // Duplicates an existing catalog item into the "new item" form so the
@@ -488,8 +521,10 @@ export default function CatalogScreen() {
       birimFiyat: String(it.birimFiyat),
       paraBirimi: it.paraBirimi,
       ...stockFields(it),
+      ...alisFields(it),
       stok: it.stokTakip ? '0' : '',
     });
+    setKarPct('');
     setShowForm(true);
   };
 
@@ -508,6 +543,7 @@ export default function CatalogScreen() {
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
           ...stockPayload(),
+          ...alisPayload(),
         });
         showToast(t('catalog.s016'));
       } else {
@@ -519,6 +555,7 @@ export default function CatalogScreen() {
           birimFiyat: Number(f.birimFiyat) || 0,
           paraBirimi: f.paraBirimi,
           ...stockPayload(),
+          ...alisPayload(),
         });
         showToast(t('catalog.s017'));
       }
@@ -979,6 +1016,17 @@ export default function CatalogScreen() {
                 <Text style={s.catName} numberOfLines={2}>{c.urunAdi}</Text>
                 {c.aciklama ? <Text style={s.catDesc} numberOfLines={2}>{c.aciklama}</Text> : null}
                 <Text style={s.catPrice}>{fmt(c.birimFiyat, c.paraBirimi)} / {c.birim}</Text>
+                {isManager && c.alisFiyati ? (() => {
+                  const alis = alisInSale(c.alisFiyati, c.alisParaBirimi || '', c.paraBirimi);
+                  const k = alis != null ? karOf(c.birimFiyat, alis) : null;
+                  return (
+                    <Text style={s.alisTag} numberOfLines={1} testID={`alis-tag-${c.id}`}>
+                      {t('ted.alisShort')}: {fmtMoney(c.alisFiyati, c.alisParaBirimi || c.paraBirimi)}
+                      {k ? <Text style={{ color: k.kar >= 0 ? theme.colors.greenText : theme.colors.redText }}>{`  ·  ${t('ted.kar')}: ${fmtMoney(k.kar, c.paraBirimi)}${k.marj != null ? ` (%${fmtPct(k.marj)})` : ''}`}</Text> : null}
+                      {tedName(c.tedarikciId) ? `  ·  ${tedName(c.tedarikciId)}` : ''}
+                    </Text>
+                  );
+                })() : null}
                 {c.stokTakip ? (
                   <Text style={[s.stockTag, stockLow(c) && s.stockTagLow]} testID={`stock-tag-${c.id}`}>
                     {stockLow(c) ? '⚠ ' : ''}{t('stock.inStock')}: {fmtQty(c.stok ?? 0)} {c.birim}{c.stokKodu ? ` · ${c.stokKodu}` : ''}
@@ -1068,6 +1116,70 @@ export default function CatalogScreen() {
                   ))}
                 </View>
               </FieldGroup>
+              {isManager && (() => {
+                const sale = Number(f.birimFiyat) || 0;
+                const alisRaw = Number(f.alisFiyati.replace(',', '.')) || 0;
+                const alis = alisRaw ? alisInSale(alisRaw, f.alisParaBirimi, f.paraBirimi) : null;
+                const k = alis != null && sale ? karOf(sale, alis) : null;
+                const applyMarj = () => {
+                  const pct = Number(karPct.replace(',', '.'));
+                  if (alis == null || !(pct >= 0 && pct < 100)) return;
+                  // Marj satışa göre: satış = alış / (1 - marj)
+                  setF({ ...f, birimFiyat: String(Math.round((alis / (1 - pct / 100)) * 100) / 100) });
+                };
+                return (
+                  <View style={[s.stockBox, s.alisBox]} testID="cat-alis-box">
+                    <Text style={s.stockBoxT}>{t('ted.alisSection')}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                      <FieldGroup label={t('ted.alisFiyati')} flex={1.2}>
+                        <MotionInput style={s.input} keyboardType="numeric" value={f.alisFiyati} onChangeText={(v) => setF({ ...f, alisFiyati: v.replace(',', '.') })} placeholder="0" placeholderTextColor="#94a3b8" testID="cat-alis" />
+                      </FieldGroup>
+                      <FieldGroup label={t('ted.alisPb')} flex={1.4}>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          {['', 'USD', 'EUR', 'TRY'].map((cur) => {
+                            const on = f.alisParaBirimi === cur;
+                            return (
+                              <TouchableOpacity key={cur || 'same'} style={[s.chip, { paddingHorizontal: 8 }, on && s.chipA]} onPress={() => setF({ ...f, alisParaBirimi: cur })} testID={`cat-alis-pb-${cur || 'same'}`}>
+                                <Text style={[s.chipT, on && s.chipTA]} numberOfLines={1}>{cur || `= ${f.paraBirimi}`}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </FieldGroup>
+                    </View>
+                    <FieldGroup label={t('ted.tedarikci')}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                        {[{ id: '', firma: t('ted.tedarikciYok') }, ...tedarikciler].map((x) => {
+                          const on = f.tedarikciId === x.id;
+                          return (
+                            <TouchableOpacity key={x.id || 'none'} style={[s.chip, s.chipFit, on && s.chipA]} onPress={() => setF({ ...f, tedarikciId: x.id })} testID={`cat-ted-${x.id || 'none'}`}>
+                              <Text style={[s.chipT, on && s.chipTA]}>{x.firma}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                        <TouchableOpacity style={[s.chip, s.chipFit]} onPress={() => { setShowForm(false); router.push('/tedarikciler' as any); }}>
+                          <Text style={s.chipT}>+ {t('ted.newSupplier')}</Text>
+                        </TouchableOpacity>
+                      </ScrollView>
+                    </FieldGroup>
+                    {alisRaw > 0 && alis == null ? <Text style={s.hintMuted}>{t('ted.kurYok')}</Text> : null}
+                    {k ? (
+                      <Text style={[s.karLine, { color: k.kar >= 0 ? theme.colors.greenText : theme.colors.redText }]} testID="cat-kar">
+                        {t('ted.kar')}: {fmtMoney(k.kar, f.paraBirimi)}{k.marj != null ? `  ·  ${t('ted.marj')} %${fmtPct(k.marj)}` : ''}
+                      </Text>
+                    ) : null}
+                    {alis != null ? (
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                        <Text style={[s.hintMuted, { flex: 1, fontStyle: 'normal' }]}>{t('ted.karOnerisi')}</Text>
+                        <MotionInput style={[s.input, { width: 80, textAlign: 'center' }]} keyboardType="numeric" value={karPct} onChangeText={setKarPct} placeholder={t('ted.karPctPh')} placeholderTextColor="#94a3b8" testID="cat-marj" />
+                        <TouchableOpacity style={[s.chip, s.chipFit, s.chipA]} onPress={applyMarj} testID="cat-marj-apply">
+                          <Text style={[s.chipT, s.chipTA]}>{t('ted.uygula')}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })()}
               <View style={s.stockBox}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
@@ -1330,6 +1442,10 @@ const s = themedStyles(() => StyleSheet.create({
   catName: { fontSize: 14, fontWeight: '800', color: theme.colors.text, marginTop: 2 },
   catDesc: { fontSize: 11, color: theme.colors.textMuted, marginTop: 2 },
   catPrice: { fontSize: 12.5, color: theme.colors.textSoft, fontWeight: '700', marginTop: 4 },
+  chipFit: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', paddingHorizontal: 12 },
+  alisTag: { fontSize: 11, color: theme.colors.textMuted, fontWeight: '700', marginTop: 3 },
+  alisBox: { borderColor: theme.colors.lineDark },
+  karLine: { fontSize: 12.5, fontWeight: '900', marginTop: 4 },
   stockTag: { alignSelf: 'flex-start', marginTop: 6, fontSize: 11, fontWeight: '800', color: theme.colors.greenText, backgroundColor: theme.colors.greenSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, overflow: 'hidden' },
   stockTagLow: { color: theme.colors.redText, backgroundColor: theme.colors.redSoft },
   stockBox: { borderWidth: 1, borderColor: theme.colors.line, borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: theme.colors.surfaceSoft },

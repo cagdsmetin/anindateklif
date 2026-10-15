@@ -7,7 +7,7 @@ import { theme } from '@/src/lib/theme';
 import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
-import { api, CekDurum, CekSenetT, CekTur, CekYon, CustomerT, RatesT } from '@/src/lib/api';
+import { api, CekDurum, CekSenetT, CekTur, CekYon, CustomerT, RatesT, TedarikciT } from '@/src/lib/api';
 import { currentRateFor, sumToTRY } from '@/src/lib/tahsilat-utils';
 import { CEK_DURUMLAR, addDays, cekSenetCsv, daysUntil, isOpen, localToday, rowsToCekSenet } from '@/src/lib/cek-senet';
 import { pickSheetRows } from '@/src/lib/customer-import';
@@ -69,6 +69,9 @@ export default function CekSenetScreen() {
   const [tur, setTur] = useState<CekTur>('cek');
   const [kesideci, setKesideci] = useState('');
   const [customerId, setCustomerId] = useState('');
+  // Verilen çek kayıtlı bir tedarikçiye verildiyse: borcundan düşülebilir.
+  const [tedarikciId, setTedarikciId] = useState('');
+  const [tedarikciler, setTedarikciler] = useState<TedarikciT[]>([]);
   const [telefon, setTelefon] = useState('');
   const [showSuggest, setShowSuggest] = useState(false);
   const [tutar, setTutar] = useState('');
@@ -87,6 +90,9 @@ export default function CekSenetScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
   useEffect(() => { api.rates().then(setRates).catch(() => {}); }, []);
+  useEffect(() => {
+    if (activeCompany && !restricted) api.listTedarikciler(activeCompany.id).then(setTedarikciler).catch(() => {});
+  }, [activeCompany, restricted]);
 
   const today = localToday();
   const all = list || [];
@@ -116,16 +122,19 @@ export default function CekSenetScreen() {
 
   const suggestions = useMemo(() => {
     const q = kesideci.trim().toLowerCase();
-    if (!q || customerId) return [];
-    return customers.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 6);
-  }, [kesideci, customers, customerId]);
+    if (!q || customerId || tedarikciId) return [];
+    // Verilen çekte lehtar çoğunlukla tedarikçidir; alınan çekte müşteri.
+    const src: (CustomerT | TedarikciT)[] = yon === 'verilen' ? tedarikciler : customers;
+    return src.filter((c) => c.firma.toLowerCase().includes(q)).slice(0, 6);
+  }, [kesideci, customers, tedarikciler, yon, customerId, tedarikciId]);
 
-  const pickCustomer = (c: CustomerT) => {
-    setKesideci(c.firma); setCustomerId(c.id); setTelefon(c.telefon || ''); setShowSuggest(false);
+  const pickCustomer = (c: CustomerT | TedarikciT) => {
+    setKesideci(c.firma); setTelefon(c.telefon || ''); setShowSuggest(false);
+    if (yon === 'verilen') { setTedarikciId(c.id); setCustomerId(''); } else { setCustomerId(c.id); setTedarikciId(''); }
   };
 
   const resetForm = () => {
-    setKesideci(''); setCustomerId(''); setTelefon(''); setTutar(''); setVade(''); setBanka(''); setNo(''); setNotlar(''); setCariDus(true);
+    setKesideci(''); setCustomerId(''); setTedarikciId(''); setTelefon(''); setTutar(''); setVade(''); setBanka(''); setNo(''); setNotlar(''); setCariDus(true);
   };
 
   const refreshLinked = () => { reloadKasa().catch(() => {}); reloadTahsilat().catch(() => {}); };
@@ -140,7 +149,9 @@ export default function CekSenetScreen() {
     try {
       const created = await api.createCekSenet({
         companyId: activeCompany.id, yon, tur, customerId, kesideci: kesideci.trim(), telefon, tutar: amount, paraBirimi,
-        vadeTarihi: vade, banka, no, durum: 'portfoy', ciroEdilen: '', cariDus: yon === 'alinan' && cariDus && !!customerId,
+        vadeTarihi: vade, banka, no, durum: 'portfoy', ciroEdilen: '',
+        tedarikciId: yon === 'verilen' ? tedarikciId : '',
+        cariDus: cariDus && (yon === 'alinan' ? !!customerId : !!tedarikciId),
         notlar, kurTRY: currentRateFor(paraBirimi, rates),
       });
       setList((l) => [...(l || []), created]);
@@ -265,7 +276,7 @@ export default function CekSenetScreen() {
               <Text style={s.label}>{upper(tc('yonLabel'))}</Text>
               <View style={s.segRow}>
                 {(['alinan', 'verilen'] as CekYon[]).map((y) => (
-                  <TouchableOpacity key={y} style={[s.segBtn, yon === y && (y === 'alinan' ? s.segGreen : s.segRed)]} onPress={() => setYon(y)} testID={`cek-yon-${y}`}>
+                  <TouchableOpacity key={y} style={[s.segBtn, yon === y && (y === 'alinan' ? s.segGreen : s.segRed)]} onPress={() => { setYon(y); setCustomerId(''); setTedarikciId(''); }} testID={`cek-yon-${y}`}>
                     <Text style={[s.segText, yon === y && { color: y === 'alinan' ? theme.colors.greenText : theme.colors.redText }]}>{tc(y === 'alinan' ? 'alinanLong' : 'verilenLong')}</Text>
                   </TouchableOpacity>
                 ))}
@@ -284,7 +295,7 @@ export default function CekSenetScreen() {
               <View style={{ zIndex: 20 }}>
                 <MotionInput
                   style={s.input} value={kesideci} placeholder={tc('kesPh')} placeholderTextColor="#94a3b8"
-                  onChangeText={(v) => { setKesideci(v); setCustomerId(''); setShowSuggest(true); }}
+                  onChangeText={(v) => { setKesideci(v); setCustomerId(''); setTedarikciId(''); setShowSuggest(true); }}
                   onFocus={() => setShowSuggest(true)} onBlur={() => setTimeout(() => setShowSuggest(false), 150)}
                   testID="cek-kesideci"
                 />
@@ -292,7 +303,7 @@ export default function CekSenetScreen() {
                   <View style={s.suggestBox}>
                     {suggestions.map((c) => (
                       <TouchableOpacity key={c.id} style={s.suggestRow} onPress={() => pickCustomer(c)}>
-                        <Ionicons name="person-outline" size={14} color={theme.colors.primary} />
+                        <Ionicons name={yon === 'verilen' ? 'cube-outline' : 'person-outline'} size={14} color={theme.colors.primary} />
                         <Text style={s.suggestName} numberOfLines={1}>{c.firma}</Text>
                         {c.telefon ? <Text style={s.suggestSub}>{c.telefon}</Text> : null}
                       </TouchableOpacity>
@@ -349,6 +360,15 @@ export default function CekSenetScreen() {
                 </View>
               </View>
 
+              {yon === 'verilen' && !!tedarikciId && (
+                <TouchableOpacity style={s.checkRow} onPress={() => setCariDus((v) => !v)} testID="cek-ted-caridus">
+                  <Ionicons name={cariDus ? 'checkbox' : 'square-outline'} size={20} color={cariDus ? color : theme.colors.textMuted} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.checkTitle}>{t('ted.cekTedarikci')}</Text>
+                    <Text style={s.checkHint}>{t('ted.cekTedarikciHint')}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
               {yon === 'alinan' && !!customerId && (
                 <TouchableOpacity style={s.checkRow} onPress={() => setCariDus((v) => !v)} testID="cek-caridus">
                   <Ionicons name={cariDus ? 'checkbox' : 'square-outline'} size={20} color={cariDus ? color : theme.colors.textMuted} />

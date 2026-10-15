@@ -18,7 +18,7 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
       'nav.firma': 'Firma', 'nav.ekipSohbeti': 'Ekip Sohbeti', 'nav.personel': 'Personel', 'nav.hediyeKodu': 'Hediye Kodu',
       'nav.raporlar': 'Raporlar', 'nav.musteriOlarakGir': 'Musteri Olarak Gir', 'nav.personelTeklifleri': 'Personel Teklifleri',
       'nav.reklamIstihbarati': 'Reklam Istihbarati', 'nav.eFatura': 'e-Fatura', 'nav.sozlesmeler': 'Sozlesmeler',
-      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.cekSenet': 'Cek & Senet', 'nav.kira': 'Kira Takibi', 'nav.aidat': 'Site & Aidat', 'nav.seans': 'Seans Paketleri', 'nav.yorumlar': 'Yorum Yanitla',
+      'nav.kuponlar': 'Kuponlar', 'nav.prim': 'Personel Primi', 'nav.cekSenet': 'Cek & Senet', 'nav.tedarikci': 'Tedarikciler', 'nav.kira': 'Kira Takibi', 'nav.aidat': 'Site & Aidat', 'nav.seans': 'Seans Paketleri', 'nav.yorumlar': 'Yorum Yanitla',
     };
     return fallback[k] || k;
   });
@@ -48,6 +48,9 @@ export function buildNavItems(opts?: { restricted?: boolean; isOwner?: boolean; 
   // müşterilerinin hareketlerini ve kendi harcamalarını alır, silemez.
   items.push({ name: 'kasa', title: tt('nav.kasa'), icon: 'wallet', color: m.kasa });
   items.push({ name: 'tahsilat', title: tt('nav.tahsilat'), icon: 'cash', color: m.tahsilat });
+  // Tedarikçi carisi firmanın alış maliyetlerini gösterir: yalnız yöneticiler
+  // (backend'de de 403). Çekirdek madde, modül listesine bağlı değil.
+  if (!opts?.restricted) items.push({ name: 'tedarikciler', title: tt('nav.tedarikci'), icon: 'cube', color: m.tedarikci });
   // İsteğe bağlı modüller: firma "Modüller" ekranından açtıysa görünür
   // (bkz. src/lib/modules.ts). Çek & Senet, Kira ve Aidat firmanın tüm
   // finansını gösterdiği için yalnız yöneticilere; backend'de de 403.

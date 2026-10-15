@@ -516,7 +516,9 @@ export default function HistoryScreen() {
                       // ve Diğer Giderler (kar HARİÇ) toplamını öneri olarak
                       // otomatik dolduruyoruz -- kullanıcı istediği an bu değeri
                       // elle değiştirip kaydedebilir, bu manuel akışı bozmaz.
-                      const agSum = (it.agMaliyet || 0) + (it.agMontajBedeli || 0) + (it.agImalatBedeli || 0);
+                      // Katalogdan gelen kalemde alış fiyatı × adet de öneri olur.
+                      const agSum = (it.agMaliyet || 0) + (it.agMontajBedeli || 0) + (it.agImalatBedeli || 0)
+                        || (it.alisBirimFiyat != null ? it.alisBirimFiyat * (it.adet || 0) : 0);
                       if (agSum > 0) init[it.id] = String(Math.round(agSum * 100) / 100).replace('.', ',');
                     }
                   });

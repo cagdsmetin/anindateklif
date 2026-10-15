@@ -431,6 +431,16 @@ export const api = {
 
   // Çek & Senet portföyü
   listCekSenet: (companyId: string): Promise<CekSenetT[]> => req(`/cek-senet/${companyId}`),
+  listTedarikciler: (companyId: string): Promise<TedarikciT[]> => req(`/tedarikciler/${companyId}`),
+  createTedarikci: (data: TedarikciInput): Promise<TedarikciT> => req('/tedarikciler', { method: 'POST', body: JSON.stringify(data) }),
+  updateTedarikci: (id: string, data: TedarikciInput): Promise<TedarikciT> => req(`/tedarikciler/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTedarikci: (id: string) => req(`/tedarikciler/${id}`, { method: 'DELETE' }),
+  listTedarikciHareket: (companyId: string, tedarikciId?: string): Promise<TedarikciHareketT[]> =>
+    req(`/tedarikci-hareket/${companyId}` + (tedarikciId ? `?tedarikciId=${encodeURIComponent(tedarikciId)}` : '')),
+  createTedarikciHareket: (data: TedarikciHareketInput): Promise<TedarikciHareketT> => req('/tedarikci-hareket', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTedarikciHareket: (id: string) => req(`/tedarikci-hareket/${id}`, { method: 'DELETE' }),
+  setAlisOtoMaliyet: (companyId: string, acik: boolean): Promise<CompanyT> =>
+    req(`/companies/${companyId}/alis-oto-maliyet`, { method: 'PUT', body: JSON.stringify({ acik }) }),
   createCekSenet: (data: CekSenetInput): Promise<CekSenetT> => req('/cek-senet', { method: 'POST', body: JSON.stringify(data) }),
   importCekSenet: (companyId: string, items: Omit<CekSenetInput, 'companyId'>[]): Promise<{ imported: number; errors: { row: number; detail: string }[] }> =>
     req('/cek-senet/import', { method: 'POST', body: JSON.stringify({ companyId, items: items.map((x) => ({ ...x, companyId })) }) }, 60000),
@@ -822,6 +832,8 @@ export type CompanyT = {
   albertGenauClaimed?: boolean;
   // Zip Perde bayiliği -- sadece admin açar (bkz. adminSetZipPerdeEnabled).
   zipPerdeEnabled?: boolean;
+  // Katalogdaki alış fiyatı teklif maliyetine otomatik geçsin mi (varsayılan açık).
+  alisOtoMaliyet?: boolean;
 };
 
 export type LeadCompanyT = {
@@ -915,6 +927,11 @@ export type CatalogItemT = {
   vitrinde?: boolean;
   gorselVar?: boolean;
   gorselVer?: number;
+  // Tedarikçiden birim alış fiyatı; yalnız yöneticilere dolu gelir.
+  // alisParaBirimi boşsa satış para birimiyle aynıdır.
+  alisFiyati?: number;
+  alisParaBirimi?: string;
+  tedarikciId?: string;
 };
 
 export type StockMoveT = {
@@ -1183,6 +1200,7 @@ export type CekSenetT = {
   yon: CekYon; // alinan: müşteriden, tahsil edilecek · verilen: tedarikçiye, ödenecek
   tur: CekTur;
   customerId: string;
+  tedarikciId?: string; // verilen çek kayıtlı bir tedarikçiye verildiyse
   kesideci: string;
   telefon: string;
   tutar: number;
@@ -1200,6 +1218,43 @@ export type CekSenetT = {
 };
 
 export type CekSenetInput = Omit<CekSenetT, 'id' | 'durumTarihi' | 'createdAt'>;
+
+export type TedarikciT = {
+  id: string;
+  companyId: string;
+  firma: string;
+  yetkili: string;
+  telefon: string;
+  email: string;
+  adres: string;
+  vergiNo: string;
+  vergiDairesi: string;
+  iban: string;
+  vadeGun: number;
+  notlar: string;
+  createdAt: string;
+};
+export type TedarikciInput = Omit<TedarikciT, 'id' | 'createdAt'>;
+
+export type TedarikciHareketTur = 'alis' | 'odeme';
+export type TedarikciHareketT = {
+  id: string;
+  companyId: string;
+  tedarikciId: string;
+  tur: TedarikciHareketTur; // alis: tedarikçiye borçlandık · odeme: ona ödedik
+  tutar: number;
+  paraBirimi: string;
+  yontem: string;
+  belgeNo: string;
+  vadeTarihi: string;
+  notlar: string;
+  tarih: string;
+  kurTRY: number;
+  quoteId: string;
+  cekSenetId: string; // verilen bir çekten geldiyse (Çek & Senet'ten yönetilir)
+  createdAt: string;
+};
+export type TedarikciHareketInput = Omit<TedarikciHareketT, 'id' | 'createdAt' | 'cekSenetId'>;
 
 export type CustomerT = {
   id: string;
@@ -1293,6 +1348,12 @@ export type QuoteItemT = {
   zipEkler?: Record<string, string | boolean> | null;
   /** Zip Perde montaj bedeli, perde başına TL (fiyata EUR'ya çevrilip eklenir). */
   zipMontajTl?: number | null;
+  /** Katalogdan eklendiyse kaynak ürün ve o anki birim alış fiyatı (teklif para biriminde). */
+  catalogItemId?: string;
+  alisBirimFiyat?: number | null;
+  tedarikciId?: string;
+  /** maliyet alış fiyatından otomatik hesaplandı (elle girilince false olur). */
+  maliyetOto?: boolean;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };

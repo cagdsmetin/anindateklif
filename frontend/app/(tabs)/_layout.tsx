@@ -271,6 +271,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="yorumlar" options={{ href: null }} />
       <Tabs.Screen name="calendar" options={{ href: null }} />
       <Tabs.Screen name="customer-ledger" options={{ href: null }} />
+      <Tabs.Screen name="tedarikciler" options={{ href: null }} />
+      <Tabs.Screen name="tedarikci-cari" options={{ href: null }} />
       <Tabs.Screen name="borclu-musteriler" options={{ href: null }} />
       <Tabs.Screen name="subscription" options={{ href: null }} />
       <Tabs.Screen name="reports" options={{ href: null }} />

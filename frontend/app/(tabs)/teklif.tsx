@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -25,6 +26,7 @@ import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, QuoteItemT, QuoteT, QuoteEkT, RatesT, SystemTypeDefT, ZipPerdeTableT } from '@/src/lib/api';
 import { convertBetween, currentRateFor } from '@/src/lib/tahsilat-utils';
+import { fmtMoney, fmtPct, karOf } from '@/src/lib/tedarikci';
 import { convertFromEur, extractZipSize, isZipItem, loadZipKar, loadZipMontajTl, montajTlToEur, saveZipKar, saveZipMontajTl, zipAciklamaGuncelle, zipSecimOf, zipFiyat as hesaplaZipFiyat, zipLookup } from '@/src/lib/zip-perde';
 import ZipSecimSecici from '@/src/components/zip/ZipSecimSecici';
 import { zipCizimEsit, zipCizimModeli } from '@/src/lib/zip-cizim';
@@ -69,6 +71,26 @@ export default function EditorScreen() {
   const { t, lang } = useLanguage();
   const { activeCompany, catalog, customers, quotes, saveQuote, showToast, loading, setQuoteAttachments, updateCompany, editRequests, requestQuoteEditApproval, reloadEditRequests, pendingNewQuoteAttachments, clearPendingNewQuoteAttachments, pendingAlbertGenauItems, clearPendingAlbertGenauItems } = useApp();
   const { user } = useAuth();
+  // Alış fiyatı ve kâr yalnız yöneticilere görünür; PDF/link/müşteriye gitmez.
+  const isManager = !user?.is_staff || user?.staff_role === 'admin';
+  const { reloadCompanies } = useApp();
+  const [alisRates, setAlisRates] = useState<RatesT | null>(null);
+  const [otoMaliyet, setOtoMaliyet] = useState(activeCompany?.alisOtoMaliyet !== false);
+  useEffect(() => { setOtoMaliyet(activeCompany?.alisOtoMaliyet !== false); }, [activeCompany?.alisOtoMaliyet]);
+  useEffect(() => { api.rates().then(setAlisRates).catch(() => {}); }, []);
+  // Katalog ürününün alış fiyatı, teklifin para birimine çevrilmiş halde (kur yoksa null).
+  const catalogAlis = (catalogItemId: string | undefined, toCur: string, rates: RatesT | null = alisRates): number | null => {
+    const c = catalogItemId ? catalog.find((x) => x.id === catalogItemId) : undefined;
+    if (!c || !c.alisFiyati) return null;
+    const v = convertBetween(c.alisFiyati, c.alisParaBirimi || c.paraBirimi, toCur === 'TL' ? 'TRY' : toCur, rates);
+    return v == null ? null : Math.round(v * 10000) / 10000;
+  };
+  const toggleOtoMaliyet = async (v: boolean) => {
+    if (!activeCompany) return;
+    setOtoMaliyet(v);
+    try { await api.setAlisOtoMaliyet(activeCompany.id, v); reloadCompanies().catch(() => {}); }
+    catch (e: any) { setOtoMaliyet(!v); showToast(e?.message || ''); }
+  };
   const [savingDefaultNotes, setSavingDefaultNotes] = useState(false);
   const saveNotesAsDefault = async () => {
     if (!activeCompany) return;
@@ -493,6 +515,22 @@ export default function EditorScreen() {
   const araToplam = subtotal - iskontoTutar;
   const kdvTutar = (araToplam * kdvOr) / 100;
   const genelToplam = araToplam + kdvTutar;
+  // Kâr özeti (KDV hariç, iskonto sonrası). Kalem maliyeti: elle girilmişse o,
+  // yoksa alış × adet. Alışı olmayan kalemler sayılır ama kârı şişirmesin diye
+  // satışları da hesaba katılmaz.
+  const karOzet = useMemo(() => {
+    let alis = 0, satis = 0, count = 0, eksik = 0;
+    items.forEach((it) => {
+      const line = (Number(it.adet) || 0) * (Number(it.birimFiyat) || 0);
+      const manual = it.maliyet != null && !it.maliyetOto ? it.maliyet : null;
+      const cost = manual ?? (it.alisBirimFiyat != null ? it.alisBirimFiyat * (Number(it.adet) || 0) : null);
+      if (cost == null) { if (line) eksik += 1; return; }
+      alis += cost; satis += line; count += 1;
+    });
+    const net = satis * (1 - iskontoOr / 100);
+    const k = karOf(net, alis);
+    return { alis, kar: k.kar, marj: k.marj, count, eksik };
+  }, [items, iskontoOr]);
 
   const currentQuote = (): Partial<QuoteT> => ({
     teklifNo, tarih, gecerlilik, hazirlayanEmail, musFirma, musYetkili, musTelefon, musEmail, musAdres,
@@ -613,9 +651,23 @@ export default function EditorScreen() {
     setShowModeSheet(false);
   };
 
-  const addFromCatalog = (catId: string) => {
+  const addFromCatalog = async (catId: string) => {
     const c = catalog.find((x) => x.id === catId); if (!c) return;
-    const it = { ...makeItem('general'), urunAdi: c.urunAdi, birim: c.birim, birimFiyat: c.birimFiyat, aciklama: c.aciklama };
+    // Kur henüz gelmediyse (sayfa yeni açıldı) çeviriden önce bekle.
+    let rates = alisRates;
+    const needsRate = [c.paraBirimi, c.alisParaBirimi].some((x) => x && x !== (paraBirimi === 'TL' ? 'TRY' : paraBirimi));
+    if (!rates && needsRate) { rates = await api.rates().catch(() => null); if (rates) setAlisRates(rates); }
+    // Ürünün para birimi tekliften farklıysa satış fiyatı da güncel kurla
+    // çevrilir (önceden 75 USD'lik ürün TL teklife 75 ₺ olarak geçiyordu).
+    const toCur = paraBirimi === 'TL' ? 'TRY' : paraBirimi;
+    const conv = c.paraBirimi && c.paraBirimi !== toCur ? convertBetween(c.birimFiyat, c.paraBirimi, toCur, rates) : null;
+    const birimFiyat = conv != null ? Math.round(conv * 100) / 100 : c.birimFiyat;
+    const it = {
+      ...makeItem('general'), urunAdi: c.urunAdi, birim: c.birim, birimFiyat, aciklama: c.aciklama,
+      // Alış fiyatı teklif para birimine çevrilip kaleme kopyalanır; personel
+      // alışı görmediği için boş kalır ve kayıtta sunucu doldurur.
+      catalogItemId: c.id, alisBirimFiyat: isManager ? catalogAlis(c.id, paraBirimi, rates) : null, tedarikciId: c.tedarikciId || '',
+    };
     setItems((prev) => [...prev, it]);
     setExpandedItemId(it.id);
     setShowCatalogPicker(false); showToast('Kalem eklendi');
@@ -945,7 +997,11 @@ export default function EditorScreen() {
           <Row>
             <FGroup label={t('teklifPage.s040')} flex={1}>
               <View style={s.chipRow}>{['USD', 'EUR', 'TRY'].map((c) => (
-                <ChoiceChip key={c} testID={`cur-${c}`} label={c} selected={paraBirimi === c} onPress={() => { setParaBirimi(c); rememberDefault('paraBirimi', c); }} style={{ flex: 1 }} />
+                <ChoiceChip key={c} testID={`cur-${c}`} label={c} selected={paraBirimi === c} onPress={() => {
+                  setParaBirimi(c); rememberDefault('paraBirimi', c);
+                  // Para birimi değişince katalog kalemlerinin alış fiyatı yeni birime çevrilir.
+                  if (isManager && c !== paraBirimi) setItems((prev) => prev.map((x) => (x.catalogItemId ? { ...x, alisBirimFiyat: catalogAlis(x.catalogItemId, c) } : x)));
+                }} style={{ flex: 1 }} />
               ))}</View>
             </FGroup>
             <FGroup label={t('teklifPage.s041')} flex={1}>
@@ -1053,6 +1109,7 @@ export default function EditorScreen() {
               onMoveUp={() => moveItem(it.id, 'up')}
               onMoveDown={() => moveItem(it.id, 'down')}
               zip={zipTable ? { table: zipTable, rates: zipRates, kar: zipKar, onKarChange: onZipKarChange, montajTl: zipMontajTl, onMontajChange: onZipMontajChange } : null}
+              alisBirim={isManager && it.alisBirimFiyat != null ? it.alisBirimFiyat : null}
             />
             </Reveal>
           ))}
@@ -1220,6 +1277,34 @@ export default function EditorScreen() {
               <Text style={s.grandValue} numberOfLines={1}>{fmt(genelToplam, cur)}</Text>
             </View>
           </View>
+
+          {isManager && karOzet.count > 0 && (
+            <Reveal variant="up" distance={10}>
+              <View style={s.karCard} testID="teklif-kar-card">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="trending-up" size={16} color={theme.colors.greenText} />
+                  <Text style={s.karTitle}>{t('ted.teklifKar')}</Text>
+                  <Ionicons name="eye-off-outline" size={13} color={theme.colors.textMuted} style={{ marginLeft: 'auto' }} />
+                </View>
+                <Text style={s.karHint}>{t('ted.teklifKarHint')}</Text>
+                <TotRow label={t('ted.toplamAlis')} value={fmtMoney(karOzet.alis, cur)} />
+                <View style={s.totRow}>
+                  <Text style={[s.totLabel, { fontWeight: '900', color: theme.colors.text }]}>{t('ted.brutKar')}</Text>
+                  <Text style={[s.totVal, { color: karOzet.kar >= 0 ? theme.colors.greenText : theme.colors.redText }]} numberOfLines={1} testID="teklif-kar-value">
+                    {fmtMoney(karOzet.kar, cur)}{karOzet.marj != null ? `  (%${fmtPct(karOzet.marj)})` : ''}
+                  </Text>
+                </View>
+                {karOzet.eksik > 0 ? <Text style={s.karHint}>{t('ted.alisEksik').replace('{n}', String(karOzet.eksik))}</Text> : null}
+                <View style={s.karSwitchRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.karSwitchT}>{t('ted.otoMaliyet')}</Text>
+                    <Text style={s.karHint}>{t('ted.otoMaliyetHint')}</Text>
+                  </View>
+                  <Switch value={otoMaliyet} onValueChange={toggleOtoMaliyet} testID="teklif-oto-maliyet" />
+                </View>
+              </View>
+            </Reveal>
+          )}
 
           {/* İndirmeden/paylaşmadan sadece kaydetme -- bilgiler girildikten sonra
               PDF/WhatsApp akışına girmeden teklifi kayıt altına almak için. */}
@@ -1402,7 +1487,7 @@ function zipYakin(a: number, b: number) {
 
 function ItemCard({
   item, idx, currency, sistemTipleri, expanded, onToggleExpand, onChange, onRemove, onDuplicate, onOpenSystemPicker, onOpenSelectPicker, onUpdateSystemFieldValue, leaving,
-  canMoveUp, canMoveDown, onMoveUp, onMoveDown, zip,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown, zip, alisBirim,
 }: {
   item: QuoteItemT;
   idx: number;
@@ -1422,6 +1507,8 @@ function ItemCard({
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   zip?: { table: ZipPerdeTableT; rates: RatesT | null; kar: number; onKarChange: (pct: number) => void; montajTl: number; onMontajChange: (tl: number) => void } | null;
+  /** Birim alış fiyatı (yalnız yöneticiye verilir) -- satış fiyatının altında alış ve kâr gösterilir. */
+  alisBirim?: number | null;
 }) {
   const { t, lang } = useLanguage();
   const [cizimAcik, setCizimAcik] = useState(false);
@@ -1629,6 +1716,21 @@ function ItemCard({
             </TouchableOpacity>
           </View>
         </View>
+        {alisBirim != null && (() => {
+          const k = karOf(item.birimFiyat || 0, alisBirim);
+          const adet = item.adet || 0;
+          return (
+            <View style={itemStyles.alisRow} testID={`item-${idx}-alis`}>
+              <Ionicons name="pricetag-outline" size={11} color={theme.colors.textMuted} />
+              <Text style={itemStyles.alisText} numberOfLines={1}>
+                {t('ted.alisShort')}: {fmtMoney(alisBirim, currency)}
+                <Text style={{ color: k.kar >= 0 ? theme.colors.greenText : theme.colors.redText, fontWeight: '900' }}>
+                  {`  ·  ${t('ted.kar')}: ${fmtMoney(k.kar * adet, currency)}${k.marj != null ? ` (%${fmtPct(k.marj)})` : ''}`}
+                </Text>
+              </Text>
+            </View>
+          );
+        })()}
         {collapsed && (
           <Text style={itemStyles.collapsedSummary} numberOfLines={1} testID={`item-${idx}-summary`}>
             {summaryText}
@@ -2098,6 +2200,11 @@ const s = themedStyles(() => StyleSheet.create({
   miniTd: { fontSize: 10, color: theme.colors.text, lineHeight: 13 },
   miniTdBold: { fontSize: 10, color: theme.colors.text, fontWeight: '700', lineHeight: 13 },
   miniPlaceholder: { color: theme.colors.textMuted, fontStyle: 'italic' },
+  karCard: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.greenText, padding: 12, marginTop: 10, gap: 4, ...theme.shadow.sm },
+  karTitle: { fontSize: 13, fontWeight: '900', color: theme.colors.text },
+  karHint: { fontSize: 10.5, color: theme.colors.textMuted, lineHeight: 15 },
+  karSwitchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
+  karSwitchT: { fontSize: 12, fontWeight: '800', color: theme.colors.text },
   totalsCard: { backgroundColor: theme.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.line, padding: 8, marginTop: 12, ...theme.shadow.sm },
   totRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.line },
   totLabel: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '700' },
@@ -2161,6 +2268,8 @@ const itemStyles = themedStyles(() => StyleSheet.create({
   modeBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, borderWidth: 1 },
   modeBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   linePrice: { fontSize: 13, fontWeight: '900', color: theme.colors.text },
+  alisRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, alignSelf: 'flex-end' },
+  alisText: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted },
   // minHeight: 2 satırlık sabit yükseklik -- aynı satırdaki kutucuklardan
   // biri (ör. "CEPHE / GENİŞLİK") 2 satıra sarsa bile, altındaki input hep
   // "YÜKSEKLİK" gibi tek satırlık etiketli komşusuyla aynı hizada başlasın.

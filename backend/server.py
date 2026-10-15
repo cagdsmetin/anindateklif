@@ -1330,6 +1330,10 @@ class Company(BaseModel):
     # admini acar (bkz. /admin/companies/{id}/zip-perde-enabled), bu yuzden
     # CompanyCreate'de YOK.
     zipPerdeEnabled: bool = False
+    # Katalogdan eklenen kalemlerin alış fiyatı teklif maliyetine otomatik
+    # geçsin mi (bkz. _apply_alis_maliyet). CompanyCreate'de YOK: tam-kayıt
+    # PUT'u eski istemcilerde bunu sıfırlamasın diye ayrı uçtan değişir.
+    alisOtoMaliyet: bool = True
     createdAt: str = Field(default_factory=utc_now_iso)
     updatedAt: str = Field(default_factory=utc_now_iso)
 
@@ -1382,6 +1386,12 @@ class CatalogItem(BaseModel):
     stok: float = 0.0
     minStok: float = 0.0
     stokKodu: str = ""
+    # Tedarikçiden alış fiyatı (birim başına). alisParaBirimi boşsa satış
+    # para birimiyle aynıdır. Yalnız yöneticilere gönderilir (bkz.
+    # _catalog_out); teklife eklenince kalemin alisBirimFiyat'ına kopyalanır.
+    alisFiyati: float = 0.0
+    alisParaBirimi: str = ""
+    tedarikciId: str = ""
     createdAt: str = Field(default_factory=utc_now_iso)
 
 
@@ -1398,6 +1408,10 @@ class CatalogItemCreate(BaseModel):
     stok: Optional[float] = None
     minStok: Optional[float] = None
     stokKodu: Optional[str] = None
+    # None = dokunma (alış fiyatı olmayan Excel güncellemesi silmesin)
+    alisFiyati: Optional[float] = None
+    alisParaBirimi: Optional[str] = None
+    tedarikciId: Optional[str] = None
 
 
 class CatalogBulkCreate(BaseModel):
@@ -1499,6 +1513,7 @@ class KasaEntry(BaseModel):
     hesap: str = "Ana Kasa"  # hangi kasa/banka hesabı (Kasa ayarlarından tanımlanır)
     kdvOrani: float = 0.0  # >0 ise tutar KDV dahildir; KDV özetinde indirilecek/hesaplanan KDV'ye girer
     recurringId: Optional[str] = None  # tekrarlayan bir kuraldan otomatik oluşturulduysa kuralın id'si
+    tedarikciHareketId: str = ""  # tedarikçiye yapılan bir ödeme kaydından otomatik oluşturulduysa bağlantı
     # Kaydı giren/sahiplenen personelin gerçek user_id'si (bkz. _self_id);
     # boşsa firma sahibi/yönetici kaydıdır. Kısıtlı personel Kasa'da yalnız
     # kendi kayıtlarını görür (bkz. list_kasa).
@@ -1671,6 +1686,15 @@ class QuoteItem(BaseModel):
     # doldurulur (bkz. frontend history.tsx). Sadece bir öneri kaynağıdır;
     # `maliyet` alanı her zaman öncelikli kalır.
     agMaliyet: Optional[float] = None
+    # Katalogdan eklenen kalemin kaynağı ve o anki birim alış fiyatı (teklifin
+    # para birimine çevrilmiş kopya -- katalogda fiyat sonradan değişse de
+    # eski teklifin kârı bozulmaz). maliyetOto: `maliyet` bu alış fiyatından
+    # otomatik hesaplandı; adet değişince yeniden hesaplanır, elle girilen
+    # maliyet ise (maliyetOto=False) hiç ezilmez. Bkz. _apply_alis_maliyet.
+    catalogItemId: str = ""
+    alisBirimFiyat: Optional[float] = None
+    tedarikciId: str = ""
+    maliyetOto: bool = False
     agMontajBedeli: Optional[float] = None
     agImalatBedeli: Optional[float] = None
     # Kalemin cizim modeli (bkz. ag_geometry.py). Teklif PDF'indeki teknik
@@ -1969,6 +1993,18 @@ async def update_company(company_id: str, payload: CompanyCreate, user=Depends(g
     updated = {**doc, **payload.dict(), "userId": user["user_id"], "updatedAt": utc_now_iso()}
     await db.companies.replace_one({"id": company_id, "userId": user["user_id"]}, updated)
     return Company(**updated)
+
+
+class AlisOtoMaliyetUpdate(BaseModel):
+    acik: bool
+
+
+@api_router.put("/companies/{company_id}/alis-oto-maliyet", response_model=Company)
+async def set_alis_oto_maliyet(company_id: str, payload: AlisOtoMaliyetUpdate, user=Depends(get_current_user)):
+    _require_manager(user)
+    doc = await _own_company(user, company_id)
+    await db.companies.update_one({"id": company_id, "userId": user["user_id"]}, {"$set": {"alisOtoMaliyet": payload.acik}})
+    return Company(**{**doc, "alisOtoMaliyet": payload.acik})
 
 
 @api_router.delete("/companies/{company_id}")
@@ -2493,11 +2529,20 @@ async def list_team_conversations(company_id: str, scope: str = "mine", user=Dep
 
 
 # ============ CATALOG ROUTES ============
+def _catalog_out(user: Dict[str, Any], d: Dict[str, Any]) -> CatalogItem:
+    """Alış fiyatı ve tedarikçi yalnız yöneticilere gider; kısıtlı personel
+    ürünü teklifte kullanır ama firmanın maliyetini görmez."""
+    item = CatalogItem(**d)
+    if not _is_manager(user):
+        item.alisFiyati, item.alisParaBirimi, item.tedarikciId = 0.0, "", ""
+    return item
+
+
 @api_router.get("/catalog/{company_id}", response_model=List[CatalogItem])
 async def list_catalog(company_id: str, user=Depends(get_current_user)):
     await _own_company(user, company_id)
     docs = await db.catalog.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(2000)
-    return [CatalogItem(**d) for d in docs]
+    return [_catalog_out(user, d) for d in docs]
 
 
 # Hizmet/Ürün kataloğu ve Yapılandırıcı sadece firma sahibi tarafından
@@ -5186,6 +5231,198 @@ async def delete_tahsilat_entry(entry_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+
+# ============ TEDARİKÇİ CARİSİ ============
+# Müşteri carisinin (Tahsilat) ayna görüntüsü: "alis" tedarikçiye borçlandığımız
+# fatura/irsaliye, "odeme" ona yaptığımız ödeme. Bakiye = alış - ödeme
+# (pozitifse tedarikçiye borçluyuz). Elle girilen ödeme Kasa'ya otomatik gider
+# yazılır. Firmanın alış maliyetlerini gösterdiği için yalnız yöneticilere açık.
+TEDARIKCI_TURLER = ("alis", "odeme")
+
+
+class Tedarikci(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    firma: str
+    yetkili: str = ""
+    telefon: str = ""
+    email: str = ""
+    adres: str = ""
+    vergiNo: str = ""
+    vergiDairesi: str = ""
+    iban: str = ""
+    vadeGun: int = 0  # alış kaydında vade tarihini önermek için (0 = peşin)
+    notlar: str = ""
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class TedarikciCreate(BaseModel):
+    companyId: str
+    firma: str
+    yetkili: str = ""
+    telefon: str = ""
+    email: str = ""
+    adres: str = ""
+    vergiNo: str = ""
+    vergiDairesi: str = ""
+    iban: str = ""
+    vadeGun: int = 0
+    notlar: str = ""
+
+
+class TedarikciHareket(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: str
+    companyId: str
+    tedarikciId: str
+    tur: str  # "alis" | "odeme"
+    tutar: float = 0.0
+    paraBirimi: str = "TRY"
+    yontem: str = ""  # ödeme için: Nakit | Kart | Havale/EFT | Diğer
+    belgeNo: str = ""  # alış için fatura/irsaliye no
+    vadeTarihi: str = ""  # alış için YYYY-MM-DD (opsiyonel)
+    notlar: str = ""
+    tarih: str  # YYYY-MM-DD
+    kurTRY: float = 0.0
+    quoteId: str = ""  # alış bir teklif için yapıldıysa
+    createdAt: str = Field(default_factory=utc_now_iso)
+
+
+class TedarikciHareketCreate(BaseModel):
+    companyId: str
+    tedarikciId: str
+    tur: str
+    tutar: float
+    paraBirimi: str = "TRY"
+    yontem: str = ""
+    belgeNo: str = ""
+    vadeTarihi: str = ""
+    notlar: str = ""
+    tarih: str
+    kurTRY: float = 0.0
+    quoteId: str = ""
+
+
+def _clean_tedarikci(payload: TedarikciCreate) -> Dict[str, Any]:
+    data = {k: (v.strip()[:500] if isinstance(v, str) else v) for k, v in payload.dict().items()}
+    if not data["firma"]:
+        raise HTTPException(status_code=422, detail="Tedarikçi adı gerekli")
+    data["vadeGun"] = max(0, min(int(data.get("vadeGun") or 0), 365))
+    return data
+
+
+@api_router.get("/tedarikciler/{company_id}", response_model=List[Tedarikci])
+async def list_tedarikciler(company_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, company_id)
+    docs = await db.tedarikciler.find({"companyId": company_id, "userId": user["user_id"]}, {"_id": 0}).to_list(3000)
+    return [Tedarikci(**d) for d in docs]
+
+
+@api_router.post("/tedarikciler", response_model=Tedarikci)
+async def create_tedarikci(payload: TedarikciCreate, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    data = _clean_tedarikci(payload)
+    if await db.tedarikciler.find_one({"companyId": data["companyId"], "userId": user["user_id"], "firma": data["firma"]}, {"_id": 1}):
+        raise HTTPException(status_code=409, detail="Bu isimde bir tedarikçi zaten kayıtlı")
+    obj = Tedarikci(userId=user["user_id"], **data)
+    await db.tedarikciler.insert_one(obj.dict())
+    return obj
+
+
+@api_router.put("/tedarikciler/{tedarikci_id}", response_model=Tedarikci)
+async def update_tedarikci(tedarikci_id: str, payload: TedarikciCreate, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    doc = await db.tedarikciler.find_one({"id": tedarikci_id, "userId": user["user_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    updated = {**doc, **_clean_tedarikci(payload)}
+    await db.tedarikciler.replace_one({"id": tedarikci_id, "userId": user["user_id"]}, updated)
+    return Tedarikci(**updated)
+
+
+@api_router.delete("/tedarikciler/{tedarikci_id}")
+async def delete_tedarikci(tedarikci_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    # Hareketi olan tedarikçi silinmez: cari geçmişi ve Kasa bağlantıları
+    # sahipsiz kalmasın. Önce hareketler silinmeli.
+    if await db.tedarikci_hareket.find_one({"userId": uid, "tedarikciId": tedarikci_id}, {"_id": 1}):
+        raise HTTPException(status_code=409, detail="Bu tedarikçinin cari hareketleri var; önce hareketleri silin")
+    await db.tedarikciler.delete_one({"id": tedarikci_id, "userId": uid})
+    await db.catalog.update_many({"userId": uid, "tedarikciId": tedarikci_id}, {"$set": {"tedarikciId": ""}})
+    return {"ok": True}
+
+
+@api_router.get("/tedarikci-hareket/{company_id}", response_model=List[TedarikciHareket])
+async def list_tedarikci_hareket(company_id: str, tedarikciId: Optional[str] = None, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, company_id)
+    q: Dict[str, Any] = {"companyId": company_id, "userId": user["user_id"]}
+    if tedarikciId:
+        q["tedarikciId"] = tedarikciId
+    docs = await db.tedarikci_hareket.find(q, {"_id": 0}).to_list(10000)
+    return [TedarikciHareket(**d) for d in docs]
+
+
+@api_router.post("/tedarikci-hareket", response_model=TedarikciHareket)
+async def create_tedarikci_hareket(payload: TedarikciHareketCreate, user=Depends(get_current_user)):
+    _require_manager(user)
+    await _own_company(user, payload.companyId)
+    uid = user["user_id"]
+    if payload.tur not in TEDARIKCI_TURLER:
+        raise HTTPException(status_code=422, detail="Tür alış ya da ödeme olmalı")
+    if not payload.tutar or payload.tutar <= 0:
+        raise HTTPException(status_code=422, detail="Tutar sıfırdan büyük olmalı")
+    for name, val, required in (("Tarih", payload.tarih, True), ("Vade tarihi", payload.vadeTarihi, False)):
+        if val or required:
+            try:
+                datetime.strptime(val or "", "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(status_code=422, detail=f"{name} YYYY-AA-GG olmalı")
+    ted = await db.tedarikciler.find_one({"id": payload.tedarikciId, "userId": uid, "companyId": payload.companyId}, {"_id": 0})
+    if not ted:
+        raise HTTPException(status_code=404, detail="Tedarikçi bulunamadı")
+    data = payload.dict()
+    if data["tur"] == "alis":
+        data["yontem"] = ""
+    else:
+        data["yontem"] = data["yontem"] or "Nakit"
+        data["vadeTarihi"] = ""
+    obj = TedarikciHareket(userId=uid, **data)
+    await db.tedarikci_hareket.insert_one(obj.dict())
+    # Tedarikçiye gerçekten para çıktığında Kasa'ya da gider olarak işlenir
+    # (müşteri tahsilatının Kasa'ya gelir yazılmasının tersi).
+    if obj.tur == "odeme":
+        kasa_doc = KasaEntry(
+            userId=uid,
+            companyId=obj.companyId,
+            tur="gider",
+            kategori="Tedarikçi Ödemesi",
+            tutar=obj.tutar,
+            paraBirimi=obj.paraBirimi,
+            yontem=obj.yontem,
+            notlar=f"{ted['firma']} - ödeme" + (f" ({obj.notlar})" if obj.notlar else ""),
+            tarih=obj.tarih,
+            tedarikciHareketId=obj.id,
+            kurTRY=obj.kurTRY,
+        )
+        await db.kasa.insert_one(kasa_doc.dict())
+    return obj
+
+
+@api_router.delete("/tedarikci-hareket/{hareket_id}")
+async def delete_tedarikci_hareket(hareket_id: str, user=Depends(get_current_user)):
+    _require_manager(user)
+    uid = user["user_id"]
+    await db.kasa.delete_many({"userId": uid, "tedarikciHareketId": hareket_id})
+    await db.tedarikci_hareket.delete_one({"id": hareket_id, "userId": uid})
+    return {"ok": True}
+
+
 # ============ CUSTOMER ROUTES ============
 @api_router.get("/customers/{company_id}", response_model=List[Customer])
 async def list_customers(company_id: str, user=Depends(get_current_user)):
@@ -5512,6 +5749,70 @@ async def list_quotes(company_id: str, user=Depends(get_current_user)):
     return [Quote(**d) for d in docs if _can_see_quote(user, d)]
 
 
+def _convert_cur(amount: float, frm: str, to: str, rates: Optional["RatesResponse"]) -> Optional[float]:
+    """TRY üzerinden basit kur çevirisi; kur yoksa None (çağıran karar verir)."""
+    frm, to = (frm or "TRY").upper(), (to or "TRY").upper()
+    if frm == to:
+        return amount
+    to_try = {"TRY": 1.0, "USD": getattr(rates, "usd_try", None), "EUR": getattr(rates, "eur_try", None)}
+    a, b = to_try.get(frm), to_try.get(to)
+    if not a or not b:
+        return None
+    return amount * a / b
+
+
+async def _apply_alis_maliyet(user: Dict[str, Any], data: Dict[str, Any], prev_items: Optional[List[Dict[str, Any]]] = None) -> bool:
+    """Katalogdan gelen kalemlerin alış fiyatını teklif maliyetine geçirir.
+    - Kısıtlı personel alış fiyatını görmez (bkz. _catalog_out), bu yüzden
+      onun gönderdiği alış alanlarına güvenilmez: önceki kayıttan korunur ya
+      da katalogdan sunucuda doldurulur.
+    - Firma ayarı açıksa (alisOtoMaliyet) maliyeti boş ya da daha önce
+      otomatik hesaplanmış kalemlerin maliyeti = alış × adet olur; elle
+      girilen maliyete dokunulmaz.
+    Kalem maliyetlerinden en az biri değiştiyse True döner (çağıran
+    Quote.maliyet toplamını yeniden hesaplar)."""
+    items = data.get("items") or []
+    prev_by_id = {p.get("id"): p for p in (prev_items or [])}
+    manager = _is_manager(user)
+    cur = data.get("paraBirimi") or "TRY"
+    rates = None
+    for it in items:
+        prev = prev_by_id.get(it.get("id"))
+        # İstemci kalem maliyetini göndermez (Geçmiş'ten ayrı uçla girilir);
+        # düzenleme kaydında önceki maliyet ve kaynağı korunur.
+        if prev and it.get("maliyet") is None and prev.get("maliyet") is not None:
+            it["maliyet"], it["maliyetOto"] = prev.get("maliyet"), bool(prev.get("maliyetOto"))
+        if not manager:
+            it["alisBirimFiyat"] = prev.get("alisBirimFiyat") if prev else None
+            it["tedarikciId"] = (prev or {}).get("tedarikciId", "")
+        if it.get("catalogItemId") and it.get("alisBirimFiyat") is None:
+            cat = await db.catalog.find_one({"id": it["catalogItemId"], "userId": user["user_id"]}, {"_id": 0})
+            if cat and float(cat.get("alisFiyati") or 0) > 0:
+                if rates is None:
+                    try:
+                        rates = await get_rates()
+                    except Exception:
+                        rates = RatesResponse()
+                conv = _convert_cur(float(cat["alisFiyati"]), cat.get("alisParaBirimi") or cat.get("paraBirimi") or "TRY", cur, rates)
+                if conv is not None:
+                    it["alisBirimFiyat"] = round(conv, 4)
+                    it["tedarikciId"] = it.get("tedarikciId") or cat.get("tedarikciId", "")
+    company = await db.companies.find_one({"id": data.get("companyId"), "userId": user["user_id"]}, {"_id": 0, "alisOtoMaliyet": 1})
+    auto = (company or {}).get("alisOtoMaliyet", True)
+    changed = False
+    for it in items:
+        alis = it.get("alisBirimFiyat")
+        if alis is not None and auto and (it.get("maliyet") is None or it.get("maliyetOto")):
+            m = round(float(alis) * float(it.get("adet") or 0), 2)
+            if it.get("maliyet") != m or not it.get("maliyetOto"):
+                changed = True
+            it["maliyet"], it["maliyetOto"] = m, True
+        elif it.get("maliyetOto") and (alis is None or not auto):
+            it["maliyet"], it["maliyetOto"] = None, False
+            changed = True
+    return changed
+
+
 @api_router.post("/quotes", response_model=Quote)
 async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     await _own_company(user, payload.companyId)
@@ -5519,6 +5820,8 @@ async def create_quote(payload: QuoteCreate, user=Depends(get_current_user)):
     data = payload.dict()
     items = [QuoteItem(**it) if isinstance(it, dict) else it for it in data.get("items", [])]
     data["items"] = [it.dict() for it in items]
+    if await _apply_alis_maliyet(user, data):
+        _recompute_quote_maliyet(data)
     subtotal, iskontoTutar, kdvTutar, genelToplam = compute_totals(items, data["iskonto"], data["kdvOrani"])
     data["araToplam"] = subtotal - iskontoTutar
     data["iskontoTutar"] = iskontoTutar
@@ -5656,7 +5959,10 @@ async def update_quote(quote_id: str, payload: QuoteCreate, user=Depends(get_cur
     data["genelToplam"] = genelToplam
     data["updatedAt"] = utc_now_iso()
     data["kuponKodu"] = (data.get("kuponKodu") or "").strip().upper()[:40]
+    alis_changed = await _apply_alis_maliyet(user, data, doc.get("items"))
     updated = {**doc, **data}
+    if alis_changed:
+        _recompute_quote_maliyet(updated)
     await db.quotes.replace_one({"id": quote_id, "userId": user["user_id"]}, updated)
     if data["kuponKodu"] and data["kuponKodu"] != (doc.get("kuponKodu") or ""):
         await _consume_coupon(user, payload.companyId, data["kuponKodu"])
@@ -5830,6 +6136,8 @@ async def update_quote_item_maliyet(quote_id: str, payload: QuoteItemMaliyetUpda
     found = False
     for it in items:
         if it.get("id") == payload.itemId:
+            if it.get("maliyet") != payload.maliyet:
+                it["maliyetOto"] = False  # elle girildi: alış fiyatı artık ezmesin
             it["maliyet"] = payload.maliyet
             found = True
             break
@@ -8565,7 +8873,7 @@ async def move_catalog_stock(item_id: str, payload: StockMoveCreate, user=Depend
     doc.update({"stok": sonraki, "stokTakip": True})
     default_note = {"giris": "Stok girişi", "cikis": "Stok çıkışı", "duzeltme": "Sayım düzeltmesi"}[payload.tip]
     await _log_stock_move(user, doc, payload.tip, delta, onceki, sonraki, payload.aciklama.strip() or default_note)
-    return CatalogItem(**doc)
+    return _catalog_out(user, doc)
 
 
 @api_router.get("/stock-moves/{company_id}", response_model=List[StockMove])

@@ -395,6 +395,16 @@ export const api = {
   createTahsilatEntry: (data: any) => req('/tahsilat', { method: 'POST', body: JSON.stringify(data) }),
   deleteTahsilatEntry: (id: string) => req(`/tahsilat/${id}`, { method: 'DELETE' }),
 
+  listTedarikciler: (companyId: string): Promise<TedarikciT[]> => req(`/tedarikciler/${companyId}`),
+  createTedarikci: (data: TedarikciInput): Promise<TedarikciT> => req('/tedarikciler', { method: 'POST', body: JSON.stringify(data) }),
+  updateTedarikci: (id: string, data: TedarikciInput): Promise<TedarikciT> => req(`/tedarikciler/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTedarikci: (id: string) => req(`/tedarikciler/${id}`, { method: 'DELETE' }),
+  listTedarikciHareket: (companyId: string, tedarikciId?: string): Promise<TedarikciHareketT[]> =>
+    req(`/tedarikci-hareket/${companyId}` + (tedarikciId ? `?tedarikciId=${encodeURIComponent(tedarikciId)}` : '')),
+  createTedarikciHareket: (data: TedarikciHareketInput): Promise<TedarikciHareketT> => req('/tedarikci-hareket', { method: 'POST', body: JSON.stringify(data) }),
+  deleteTedarikciHareket: (id: string) => req(`/tedarikci-hareket/${id}`, { method: 'DELETE' }),
+  setAlisOtoMaliyet: (companyId: string, acik: boolean): Promise<CompanyT> =>
+    req(`/companies/${companyId}/alis-oto-maliyet`, { method: 'PUT', body: JSON.stringify({ acik }) }),
   // Customers
   listCustomers: (companyId: string) => req(`/customers/${companyId}`),
   createCustomer: (data: any) => req('/customers', { method: 'POST', body: JSON.stringify(data) }),
@@ -779,6 +789,8 @@ export type CompanyT = {
   albertGenauClaimed?: boolean;
   // Zip Perde bayiliği -- sadece admin açar (bkz. adminSetZipPerdeEnabled).
   zipPerdeEnabled?: boolean;
+  // Katalogdaki alış fiyatı teklif maliyetine otomatik geçsin mi (varsayılan açık).
+  alisOtoMaliyet?: boolean;
 };
 
 export type LeadCompanyT = {
@@ -869,6 +881,11 @@ export type CatalogItemT = {
   stok?: number;
   minStok?: number;
   stokKodu?: string;
+  // Tedarikçiden birim alış fiyatı; yalnız yöneticilere dolu gelir.
+  // alisParaBirimi boşsa satış para birimiyle aynıdır.
+  alisFiyati?: number;
+  alisParaBirimi?: string;
+  tedarikciId?: string;
 };
 
 export type StockMoveT = {
@@ -1027,6 +1044,42 @@ export type TahsilatEntryT = {
   personelId?: string; // müşteriden sorumlu personel (boşsa teklif/müşteri üzerinden çözülür)
 };
 
+export type TedarikciT = {
+  id: string;
+  companyId: string;
+  firma: string;
+  yetkili: string;
+  telefon: string;
+  email: string;
+  adres: string;
+  vergiNo: string;
+  vergiDairesi: string;
+  iban: string;
+  vadeGun: number;
+  notlar: string;
+  createdAt: string;
+};
+export type TedarikciInput = Omit<TedarikciT, 'id' | 'createdAt'>;
+
+export type TedarikciHareketTur = 'alis' | 'odeme';
+export type TedarikciHareketT = {
+  id: string;
+  companyId: string;
+  tedarikciId: string;
+  tur: TedarikciHareketTur; // alis: tedarikçiye borçlandık · odeme: ona ödedik
+  tutar: number;
+  paraBirimi: string;
+  yontem: string;
+  belgeNo: string;
+  vadeTarihi: string;
+  notlar: string;
+  tarih: string;
+  kurTRY: number;
+  quoteId: string;
+  createdAt: string;
+};
+export type TedarikciHareketInput = Omit<TedarikciHareketT, 'id' | 'createdAt'>;
+
 export type CustomerT = {
   id: string;
   companyId: string;
@@ -1118,6 +1171,12 @@ export type QuoteItemT = {
   zipEkler?: Record<string, string | boolean> | null;
   /** Zip Perde montaj bedeli, perde başına TL (fiyata EUR'ya çevrilip eklenir). */
   zipMontajTl?: number | null;
+  /** Katalogdan eklendiyse kaynak ürün ve o anki birim alış fiyatı (teklif para biriminde). */
+  catalogItemId?: string;
+  alisBirimFiyat?: number | null;
+  tedarikciId?: string;
+  /** maliyet alış fiyatından otomatik hesaplandı (elle girilince false olur). */
+  maliyetOto?: boolean;
 };
 
 export type QuoteEkT = { id: string; baslik: string; icerik: string };

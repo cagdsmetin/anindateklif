@@ -153,7 +153,8 @@ export function profitAnalysis(quotes: QuoteT[], rates: RatesT | null, start: st
       p.ciro += satirTRY;
       p.adet += it.adet || 0;
       if (it.maliyet != null) {
-        const mm = toTRY((it.maliyet || 0) * (it.adet || 0)) || 0;
+        // Kalem maliyeti satır toplamıdır (adetle zaten çarpılmış).
+        const mm = toTRY(it.maliyet || 0) || 0;
         p.kar = (p.kar || 0) + (satirTRY - mm);
       }
     });

@@ -532,7 +532,7 @@ export default function HistoryScreen() {
                 <Ionicons name="calculator-outline" size={13} color={theme.colors.textMuted} />
                 {quote.maliyet != null ? (
                   <Text style={s.maliyetText} numberOfLines={1}>
-                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: (quote.genelToplam - quote.maliyet) >= 0 ? theme.colors.greenText : theme.colors.redText, fontWeight: '900' }}>{fmt(quote.genelToplam - quote.maliyet, quote.paraBirimi)}</Text>
+                    {t('history.s035')}: {fmt(quote.maliyet, quote.paraBirimi)}  •  {t('history.s036')}: <Text style={{ color: ((quote.araToplam || 0) - quote.maliyet) >= 0 ? theme.colors.greenText : theme.colors.redText, fontWeight: '900' }}>{fmt((quote.araToplam || 0) - quote.maliyet, quote.paraBirimi)}</Text>
                   </Text>
                 ) : (
                   <Text style={s.maliyetTextMuted}>{t('history.s037')}</Text>
@@ -724,7 +724,8 @@ export default function HistoryScreen() {
               const total = itemsTotal + ekstraTotal;
               const anyEntered = items.some((it) => (maliyetItemInputs[it.id] || '').trim() !== '')
                 || ekstraMaliyetRows.some((r) => r.aciklama.trim() !== '' || (r.tutar || '').trim() !== '');
-              const kar = activeQuote.genelToplam - total;
+              // Kâr KDV hariç: iskonto sonrası ara toplam - maliyet (KDV devlete gider).
+              const kar = (activeQuote.araToplam || 0) - total;
               return (
                 <>
                   <ScrollView style={{ maxHeight: 320, width: '100%' }} showsVerticalScrollIndicator={false}>

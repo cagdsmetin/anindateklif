@@ -122,7 +122,7 @@ export default function CustomersScreen() {
       if (x.maliyet == null) { missing++; return; }
       const cur = x.paraBirimi || 'TRY';
       const row = (by[cur] = by[cur] || { tutar: 0, maliyet: 0, n: 0 });
-      row.tutar += x.genelToplam || 0;
+      row.tutar += x.araToplam || 0; // KDV hariç ciro
       row.maliyet += x.maliyet;
       row.n++;
     });
@@ -354,7 +354,7 @@ export default function CustomersScreen() {
                   </View>
 
                   {filteredModalQuotes.map((q) => {
-                    const kar = q.maliyet != null ? (q.genelToplam || 0) - q.maliyet : null;
+                    const kar = q.maliyet != null ? (q.araToplam || 0) - q.maliyet : null;
                     const sym = currencySymbol(q.paraBirimi);
                     return (
                       <TouchableOpacity

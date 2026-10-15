@@ -273,6 +273,8 @@ def _iyzico_options():
 
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# Ucuz ve hizli model; gerekirse Railway'de CLAUDE_MODEL ile degistirilebilir
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-haiku-5-5")
 _anthropic_client = None
 if ANTHROPIC_API_KEY:
     try:
@@ -7408,7 +7410,7 @@ async def ai_find_leads(payload: LeadAiFillRequest, user=Depends(get_current_use
     try:
         resp = await asyncio.to_thread(
             _anthropic_client.messages.create,
-            model="claude-sonnet-5",
+            model=CLAUDE_MODEL,
             max_tokens=3000,
             system=LEAD_FINDER_SYSTEM_PROMPT,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 6}],
@@ -8201,7 +8203,7 @@ async def assistant_chat(payload: AssistantChatRequest, user=Depends(get_current
     try:
         resp = await asyncio.to_thread(
             _anthropic_client.messages.create,
-            model="claude-sonnet-5",
+            model=CLAUDE_MODEL,
             max_tokens=1024,
             system=ASSISTANT_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message + context_note}],
@@ -8444,7 +8446,7 @@ async def contract_ai_draft(payload: ContractAiRequest, user=Depends(get_current
     try:
         resp = await asyncio.to_thread(
             _anthropic_client.messages.create,
-            model="claude-sonnet-5",
+            model=CLAUDE_MODEL,
             max_tokens=8000,
             system=CONTRACT_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": "\n".join(parts)}],
@@ -8796,7 +8798,7 @@ async def ai_review_reply(payload: ReviewReplyRequest, user=Depends(get_current_
     try:
         resp = await asyncio.to_thread(
             _anthropic_client.messages.create,
-            model="claude-sonnet-5",
+            model=CLAUDE_MODEL,
             max_tokens=700,
             system=REVIEW_REPLY_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": "\n".join(parts)}],

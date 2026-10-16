@@ -7,7 +7,7 @@
 .ust{position:sticky;top:0;z-index:5;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--cizgi)}
 .ust .kap{display:flex;align-items:center;gap:20px;min-height:64px;flex-wrap:wrap}
 .marka{display:flex;align-items:center;gap:10px;color:var(--beyaz)!important;text-decoration:none;font-weight:800;font-size:18px}.marka img{border-radius:8px}.marka b{color:var(--turuncu)}
-.ust nav{display:flex;gap:18px;flex:1}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
+.ust nav{display:flex;gap:18px;flex:1}.ust nav a{white-space:nowrap}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
 .ust-eylem{display:flex;gap:14px;align-items:center}
 .dugme{display:inline-block;background:var(--mavi);color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
 .dugme.buyuk{padding:14px 24px;font-size:17px;border-radius:12px;margin:4px 6px 4px 0}.dugme.ikincil{background:transparent;border:1px solid var(--cizgi)}
@@ -41,3 +41,22 @@ table.fiyat{display:table}s{color:var(--soluk);font-size:13px}
 .alt .kap{display:grid;grid-template-columns:2fr 1fr 1.4fr 1fr;gap:24px}.alt h2{font-size:14px;margin:0 0 8px;color:var(--soluk);text-transform:uppercase;letter-spacing:.06em}
 .alt a{display:block;margin:4px 0;font-size:14px;text-decoration:none}.alt p{color:var(--soluk);font-size:14px}.telif{display:block!important;font-size:13px;color:var(--soluk);margin-top:20px}
 @media (max-width:720px){.ust nav{order:3;flex-basis:100%;overflow-x:auto;padding-bottom:8px}.alt .kap{grid-template-columns:1fr 1fr}.giris-metni{font-size:17px}}
+.arac{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:22px;align-items:start;margin:18px 0}
+.arac-form fieldset{border:1px solid var(--cizgi);border-radius:14px;padding:12px 14px;margin:0 0 12px}.arac-form legend{color:#fff;font-weight:700;padding:0 6px}
+.arac-form label{display:block;font-size:13px;color:var(--soluk);margin:6px 0}
+.arac-form input,.arac-form select,.arac-form textarea{display:block;width:100%;margin-top:4px;background:var(--kart);border:1px solid var(--cizgi);border-radius:9px;color:#fff;padding:9px 10px;font:inherit;font-size:15px}
+.arac-form input[type=checkbox],.arac-form input[type=radio]{display:inline;width:auto;margin:0 6px 0 0}.arac-form .onay,.secim label{color:var(--metin);font-size:14px}
+.ikili{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.satir{display:grid;grid-template-columns:2.4fr .8fr .8fr 1.1fr 34px;gap:6px;margin-bottom:6px}.satir input{margin:0;padding:8px}.satir button{background:transparent;border:1px solid var(--cizgi);border-radius:8px;color:var(--soluk);font-size:18px;cursor:pointer}
+button.dugme{border:0;cursor:pointer;font:inherit;font-weight:700}
+.onizleme-kap{position:sticky;top:80px}
+.belge{background:#fff;color:#1E293B;border-radius:12px;padding:28px;font-size:13px;line-height:1.5;box-shadow:0 20px 50px rgba(0,0,0,.4);min-height:560px}
+.belge table{display:table;width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px}.belge th{background:#1E3A8A;color:#fff}.belge td,.belge th{border:1px solid #CBD5E1;padding:6px 8px}
+.belge .sag{text-align:right}.b-ust{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #1E3A8A;padding-bottom:12px;margin-bottom:10px}.b-logo{max-height:56px;max-width:160px;display:block;margin-bottom:6px}
+.b-baslik{font-size:18px;color:#1E3A8A}.b-toplam{width:60%!important;margin-left:auto!important}.b-gen td{font-weight:800;font-size:14px;background:#EFF6FF}.bos{text-align:center;color:#94A3B8}
+.b-not p{margin:4px 0}.b-imza{margin-top:36px;text-align:right;color:#475569}.b-alt{margin-top:24px;text-align:center;font-size:10px;color:#94A3B8}
+.kdv{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.kdv .secim{grid-column:1/-1;display:flex;gap:18px}
+@media (max-width:860px){.arac{grid-template-columns:1fr}.onizleme-kap{position:static}.belge{padding:16px}}
+@media print{@page{size:A4;margin:14mm}body.statik{background:#fff!important}.ust,.alt,.kirinti,h1,.giris-metni,.arac-form,.cta,section.dar,.dar{display:none!important}
+.arac{display:block;margin:0}.onizleme-kap{position:static}.belge{box-shadow:none;padding:0;min-height:0;border-radius:0}
+.belge th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.b-gen td{-webkit-print-color-adjust:exact;print-color-adjust:exact}}

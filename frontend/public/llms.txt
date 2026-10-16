@@ -38,12 +38,40 @@
 - [İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek](https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html): İngilizce fiyat teklifinde kullanılan başlıklar ve kalıp cümleler: quotation, unit price, VAT, validity, payment terms. Türkçe karşılıklarıyla tablo ve örnek e-posta.
 - [Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber](https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html): Müşteri cari hesabı nedir, alacak ve tahsilat nasıl takip edilir? Excel ile cari takip, sık yapılan hatalar ve teklif-tahsilat-kasa akışını tek yerde tutmak.
 
+## Ücretsiz araçlar
+- [Online fiyat teklifi oluşturucu](https://www.anindateklif.co/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
+- [KDV hesaplama](https://www.anindateklif.co/kdv-hesaplama.html): KDV dahil/hariç tutar hesaplama
+
+## Sektörel teklif örnekleri
+- [Perde Teklif Formu: Stor, Zebra, Zip Perde Teklifi Örneği](https://www.anindateklif.co/sektor/perde-teklif-formu.html): Stor, zebra, tül, fon ve zip perde için teklif formu: ölçü (en×boy), m² hesabı, mekanizma, motor ve montaj kalemleri. Ücretsiz perde teklif şablonu (Excel).
+- [Pergola ve Gölgelendirme Teklifi: Bioklimatik Pergola Teklif Örneği](https://www.anindateklif.co/sektor/pergola-golgelendirme-teklifi.html): Bioklimatik pergola, tente, rolling roof, zip perde ve giyotin cam teklifinde hangi kalemler olmalı? Ölçü, modül, motor, aydınlatma, statik ve montaj kalemleriyle örnek.
+- [Alüminyum ve PVC Doğrama Teklif Formu Örneği](https://www.anindateklif.co/sektor/aluminyum-pvc-dograma-teklifi.html): Pencere, kapı ve doğrama işleri için teklif formu: poz numarası, ölçü, profil serisi, cam tipi, aksesuar, söküm ve montaj kalemleri. Ücretsiz doğrama teklif şablonu.
+- [Cam Balkon Teklifi Örneği: Katlanır, Sürme ve Giyotin Cam](https://www.anindateklif.co/sektor/cam-balkon-teklifi.html): Katlanır, sürme ve giyotin cam balkon teklifi için kalemler: metretül/m², cam kalınlığı, ray sistemi, kanat sayısı, motor, montaj ve garanti. Ücretsiz şablon.
+- [Boya Badana Teklif Örneği: m² Hesabı ve Kalemler](https://www.anindateklif.co/sektor/boya-badana-teklifi.html): Boya badana teklifinde duvar ve tavan m² hesabı, kat sayısı, boya markası ve tipi, alçı-zımpara, koruma ve temizlik kalemleri. Ücretsiz boya teklif şablonu.
+- [İnşaat Teklif Formu Örneği: Metraj ve Keşif Özeti](https://www.anindateklif.co/sektor/insaat-teklif-formu.html): İnşaat ve taahhüt işleri için teklif formu: iş kalemi, poz, metraj, birim fiyat, keşif özeti, hakediş ve ödeme koşulları. Ücretsiz inşaat teklif şablonu (Excel).
+- [Teknik Servis Teklifi ve Servis Formu: Klima, Kombi, Beyaz Eşya](https://www.anindateklif.co/sektor/teknik-servis-teklifi.html): Klima, kombi ve beyaz eşya servisleri için teklif ve servis formu: arıza tespiti, parça, işçilik, yol ücreti, garanti. Servis kayıtlarını ve tahsilatı takip etme.
+- [Mutfak Dolabı ve Mobilya Teklifi Örneği: Metretül ve Kalemler](https://www.anindateklif.co/sektor/mutfak-dolabi-mobilya-teklifi.html): Mutfak dolabı, gardırop ve özel mobilya teklifi: alt-üst dolap metretülü, kapak malzemesi, tezgâh, aksesuar, ankastre montaj ve nakliye kalemleri.
+- [Elektrik ve Tesisat Teklifi Örneği: Nokta, Metre ve Malzeme](https://www.anindateklif.co/sektor/elektrik-tesisat-teklifi.html): Elektrik ve sıhhi tesisat işleri için teklif: priz/anahtar nokta sayısı, kablo metrajı, pano, boru ve armatür kalemleri, malzeme-işçilik ayrımı.
+- [Su Arıtma Teklifi ve Servis Takibi: Filtre Değişimi, Bakım, Müşteri Takibi](https://www.anindateklif.co/sektor/su-aritma-teklif-ve-servis-takibi.html): Su arıtma cihazı satış teklifi, filtre değişim ve periyodik bakım takibi, müşteri servis geçmişi ve tahsilat. Su arıtma firmaları için teklif ve takip rehberi.
+- [Klima Montaj Teklifi Örneği: Cihaz, Bakır Boru, İşçilik](https://www.anindateklif.co/sektor/klima-montaj-teklifi.html): Klima satış ve montaj teklifi kalemleri: cihaz (BTU, enerji sınıfı), standart montaj, ek bakır boru metrajı, dış ünite askı aparatı, gider hattı, bakım.
+- [Asansör Fiyat Teklifi Örneği: Kalemler ve Bakım Sözleşmesi](https://www.anindateklif.co/sektor/asansor-teklifi.html): Asansör montaj, modernizasyon ve bakım teklifinde yer alan kalemler: durak sayısı, kapasite, kabin, makine, kumanda, kapılar, yıllık bakım ve garanti.
+- [Mantolama Teklifi Örneği: Dış Cephe Isı Yalıtımı m² Kalemleri](https://www.anindateklif.co/sektor/mantolama-dis-cephe-teklifi.html): Mantolama (dış cephe ısı yalıtımı) teklifinde levha tipi ve kalınlığı, yapıştırma, dübel, file, sıva, boya, iskele ve m² hesabı nasıl yazılır?
+- [Çatı Yapım ve Tamir Teklifi Örneği: Kalemler ve Metraj](https://www.anindateklif.co/sektor/cati-teklifi.html): Çatı yapımı, aktarma ve tamir teklifinde ahşap/çelik konstrüksiyon, OSB, su yalıtımı, kiremit/shingle, dere ve yağmur oluğu kalemleri ve m² hesabı.
+- [Parke ve Seramik Döşeme Teklifi Örneği: m², Fire, İşçilik](https://www.anindateklif.co/sektor/parke-seramik-zemin-teklifi.html): Laminat parke, masif parke ve seramik döşeme teklifi: m² hesabı, fire payı, şilte, süpürgelik, eşik, söküm ve tesviye kalemleri.
+- [Kamera Sistemi Teklifi Örneği: Güvenlik Kamerası ve Kayıt Cihazı](https://www.anindateklif.co/sektor/kamera-guvenlik-sistemi-teklifi.html): Güvenlik kamerası teklifinde kamera tipi ve çözünürlük, kayıt cihazı (NVR/DVR), disk, kablo metrajı, PoE switch, montaj ve uzaktan izleme kurulumu kalemleri.
+- [Temizlik Hizmeti Teklifi Örneği: Ofis, İnşaat Sonrası, Site Temizliği](https://www.anindateklif.co/sektor/temizlik-hizmeti-teklifi.html): Ofis, apartman, inşaat sonrası ve ev temizliği teklifi: m², personel sayısı, saat, periyot, malzeme ve aylık sözleşme kalemleri.
+- [Evden Eve Nakliyat Teklifi Örneği: Ekspertiz, Paketleme, Asansör](https://www.anindateklif.co/sektor/nakliyat-teklifi.html): Nakliyat teklifinde oda sayısı ve hacim (m³), mesafe, kat ve asansör durumu, paketleme, mobilya demontaj-montaj, sigorta ve ödeme koşulları.
+- [Web Tasarım Teklifi Örneği: Kapsam, Sayfa, Bakım ve Ödeme](https://www.anindateklif.co/sektor/web-tasarim-teklifi.html): Web sitesi ve ajans hizmetleri teklifi: kapsam, sayfa sayısı, tasarım, yazılım, içerik, alan adı-hosting, revizyon hakkı, bakım ve ödeme planı.
+
 ## Kaynaklar
 - [Ücretsiz fiyat teklifi şablonu (Excel)](https://www.anindateklif.co/sablon/fiyat-teklifi-sablonu.xlsx)
 - [Tüm içerik tek dosyada](https://www.anindateklif.co/llms-full.txt)
 
 ## İletişim
 - E-posta: ncagdasm@gmail.com
+- Instagram: https://www.instagram.com/anindateklif.co/
+- YouTube: https://www.youtube.com/@anindateklif
+- LinkedIn: https://www.linkedin.com/company/anindateklif
 
 ## English summary
 Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: 5 quotes per month; paid plans from 50 TRY/week or 2000 TRY/year for teams of up to 5.

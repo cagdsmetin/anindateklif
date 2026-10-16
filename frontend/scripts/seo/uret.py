@@ -13,6 +13,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 from ortak import (AD, ALT, APP_ID, DESTEK_EPOSTA, GUNCELLEME, ORG_ID, PLANLAR, SITE, UCRETSIZ_TEKLIF, UST,
                    cta, e, html_metne, kirinti, ld, kurulus, sayfa, sss_html, sss_sema, tl, uygulama)
 from yazilar import YAZILAR
+from sektorler import SEKTORLER
+from araclar import ARAC_CSS, KDV_GOVDE, TEKLIF_OLUSTUR_GOVDE
 
 KOK = os.path.join(os.path.dirname(__file__), "..", "..", "public")
 
@@ -61,7 +63,7 @@ GENEL_SSS = [
 def ana_icerik():
     oz = "".join(f"<li><h3>{e(b)}</h3><p>{e(a)}</p></li>" for b, a in OZELLIKLER)
     ad = "".join(f"<li><span>{i + 1}</span><h3>{e(b)}</h3><p>{e(a)}</p></li>" for i, (b, a) in enumerate(ADIMLAR))
-    km = "".join(f"<li>{e(k)}</li>" for k in KIMLER)
+    sk = "".join(f'<li><a href="/sektor/{x["slug"]}.html">{e(x["ad"])}</a></li>' for x in SEKTORLER)
     rh = "".join(f'<li><a href="/rehber/{y["slug"]}.html">{e(y["h1"][0].upper() + y["h1"][1:])}</a></li>' for y in YAZILAR[:6])
     return f"""<div id="seo-icerik">
 {UST}
@@ -75,7 +77,8 @@ def ana_icerik():
 </div></section>
 <section class="kap"><h2>3 adımda teklif hazır</h2><ol class="adimlar">{ad}</ol></section>
 <section class="kap" id="ozellikler"><h2>Tek uygulamada hepsi bir arada</h2><ul class="izgara">{oz}</ul><p><a href="/ozellikler.html">Tüm özellikler →</a></p></section>
-<section class="kap"><h2>Kimler kullanıyor?</h2><ul class="etiketler">{km}</ul></section>
+<section class="kap"><h2>Sektörünüze göre teklif örnekleri</h2><ul class="etiketler">{sk}</ul><p><a href="/sektorler.html">Tüm sektörler →</a></p></section>
+<section class="kap"><h2>Ücretsiz araçlar</h2><ul class="liste"><li><a href="/teklif-olustur.html">Online fiyat teklifi oluşturucu</a> — kayıt olmadan PDF teklif hazırlayın</li><li><a href="/kdv-hesaplama.html">KDV hesaplama</a> — KDV dahil ve hariç tutar</li><li><a href="/rehber/fiyat-teklifi-ornegi.html">Fiyat teklifi şablonu (Excel)</a></li></ul></section>
 <section class="kap"><h2>Fiyatlar</h2><p>Ücretsiz planda ayda {UCRETSIZ_TEKLIF} teklif. Sınırsız teklif için {k0} ekiplerde <strong>haftalık {tl(h0)}</strong> veya <strong>yıllık {tl(y0)}</strong> (liste fiyatı {tl(l0)}). <a href="/fiyatlar.html">Tüm planlar →</a></p></section>
 <section class="kap">{sss_html(GENEL_SSS)}</section>
 <section class="kap"><h2>Rehber</h2><ul class="liste">{rh}</ul></section>
@@ -249,8 +252,81 @@ def yazi_sayfasi(y):
                  og_tur="article")
 
 
+def sektor_sayfasi(x):
+    yol = f"/sektor/{x['slug']}.html"
+    xlsx = f"/sablon/{x['slug']}.xlsx"
+    satir = "".join(f"<tr><td>{e(a)}</td><td>{e(b)}</td><td>{e(n)}</td></tr>" for a, b, n in x["kalemler"])
+    ipu = "".join(f"<li>{e(i)}</li>" for i in x["ipuclari"])
+    diger = [y for y in SEKTORLER if y["slug"] != x["slug"]]
+    dg = "".join(f'<li><a href="/sektor/{y["slug"]}.html">{e(y["ad"])}</a></li>' for y in diger)
+    govde = f"""<article class="kap dar">
+<nav class="kirinti" aria-label="Konum"><a href="/">Ana sayfa</a> › <a href="/sektorler.html">Sektörler</a> › {e(x['ad'])}</nav>
+<h1>{e(x['h1'])}</h1>
+<p class="kunye">Anında Teklif Ekibi · Güncelleme: <time datetime="{GUNCELLEME}">16 Ekim 2026</time></p>
+<div class="kisa-cevap"><strong>Kısa cevap:</strong> {e(x['kisa'])}</div>
+<h2>{e(x['ad'])} teklifinde yer alan kalemler</h2>
+<table><thead><tr><th>Kalem</th><th>Birim</th><th>Not</th></tr></thead><tbody>{satir}</tbody></table>
+<p class="kucuk">Fiyatlar bölgeye, malzemeye ve işin koşullarına göre değiştiği için rakam verilmemiştir.</p>
+<h2>Ücretsiz {e(x['ad'].lower())} teklif şablonu</h2>
+<p>Bu kalemlerle hazırlanmış, toplam ve KDV'yi kendisi hesaplayan Excel şablonu: <a class="indir" href="{xlsx}" download>{x['slug']}.xlsx</a>. Kayıt olmadan tarayıcıda PDF teklif hazırlamak için <a href="/teklif-olustur.html">online teklif oluşturucuyu</a> kullanabilirsiniz.</p>
+<h2>Teklifte unutulmaması gerekenler</h2><ul>{ipu}</ul>
+<p>Her teklifte olması gereken genel bilgiler (firma ve müşteri bilgisi, KDV, geçerlilik süresi, ödeme koşulları) için <a href="/rehber/fiyat-teklifi-nasil-hazirlanir.html">fiyat teklifi nasıl hazırlanır</a> rehberine bakın.</p>
+<h2>Anında Teklif ile {e(x['ad'].lower())} teklifi</h2>
+<p>{e(x['uygulama'])} Teklif logolu PDF olarak oluşur ve WhatsApp'tan tek dokunuşla gönderilir; onaylanan teklif müşterinin cari hesabına geçer.</p>
+{sss_html(x['sss'])}
+{cta()}
+<nav class="ilgili" aria-label="Diğer sektörler"><h2>Diğer sektörler</h2><ul class="etiketler">{dg}</ul></nav>
+</article>"""
+    makale = {"@type": "Article", "@id": SITE + yol + "#yazi", "headline": x["baslik"], "description": x["aciklama"],
+              "inLanguage": "tr", "datePublished": GUNCELLEME, "dateModified": GUNCELLEME,
+              "author": {"@type": "Organization", "name": "Anında Teklif Ekibi", "url": SITE + "/"},
+              "publisher": {"@id": ORG_ID}, "mainEntityOfPage": SITE + yol, "image": SITE + "/og.png", "about": {"@id": APP_ID}}
+    return sayfa(yol, x["baslik"], x["aciklama"], govde,
+                 [makale, kirinti([("Ana sayfa", "/"), ("Sektörler", "/sektorler.html"), (x["ad"], yol)]), sss_sema(x["sss"])],
+                 og_tur="article")
+
+
+def sektor_dizini():
+    kart = "".join(f'<li><a href="/sektor/{x["slug"]}.html"><h2>{e(x["ad"])}</h2><p>{e(x["aciklama"])}</p></a></li>' for x in SEKTORLER)
+    govde = f"""<div class="kap dar">
+<nav class="kirinti" aria-label="Konum"><a href="/">Ana sayfa</a> › Sektörler</nav>
+<h1>Sektörlere göre teklif örnekleri ve şablonları</h1>
+<p class="giris-metni">Her sektörün teklifinde farklı kalemler ve birimler kullanılır. Sektörünüzü seçin; örnek kalem listesini, ipuçlarını ve ücretsiz Excel şablonunu alın. Genel bir örnek için <a href="/rehber/tadilat-teklif-ornegi.html">tadilat teklif örneği</a> ve <a href="/rehber/fiyat-teklifi-ornegi.html">fiyat teklifi örneği</a> sayfalarına bakın.</p>
+<ul class="kartlar">{kart}</ul>
+{cta()}
+</div>"""
+    liste = {"@type": "ItemList", "itemListElement": [
+        {"@type": "ListItem", "position": i + 1, "url": f"{SITE}/sektor/{x['slug']}.html", "name": x["baslik"]} for i, x in enumerate(SEKTORLER)]}
+    return sayfa("/sektorler.html", "Sektörlere Göre Teklif Örnekleri ve Excel Şablonları | Anında Teklif",
+                 "Perde, pergola, doğrama, cam balkon, inşaat, tadilat, teknik servis, su arıtma, klima ve daha fazla sektör için teklif örnekleri, kalem listeleri ve ücretsiz Excel şablonları.",
+                 govde, [kirinti([("Ana sayfa", "/"), ("Sektörler", "/sektorler.html")]), liste])
+
+
+def arac_sayfasi(yol, baslik, aciklama, govde, ad, sss=None):
+    app = {"@type": "WebApplication", "@id": SITE + yol + "#arac", "name": ad, "url": SITE + yol, "applicationCategory": "BusinessApplication",
+           "operatingSystem": "Web", "isAccessibleForFree": True, "inLanguage": "tr", "publisher": {"@id": ORG_ID},
+           "offers": {"@type": "Offer", "price": "0", "priceCurrency": "TRY"}}
+    sema = [app, kirinti([("Ana sayfa", "/"), (ad, yol)])]
+    if sss:
+        sema.append(sss_sema(sss)); govde += f'<div class="kap dar">{sss_html(sss)}</div>'
+    return sayfa(yol, baslik, aciklama, govde, sema)
+
+
+TEKLIF_SSS = [
+    ("Online teklif oluşturucu ücretsiz mi?", "Evet, kayıt olmadan ve ücretsiz kullanılır. Bilgileriniz sunucuya gönderilmez, yalnızca kendi tarayıcınızda saklanır."),
+    ("Teklifi PDF olarak nasıl indiririm?", "\"PDF olarak indir\" düğmesine basın ve açılan yazdırma penceresinde hedef olarak \"PDF olarak kaydet\"i seçin. Telefonda paylaş menüsünden de PDF kaydedebilirsiniz."),
+    ("Logomu ekleyebilir miyim?", "Evet. Logo dosyanızı seçtiğinizde teklifin üst kısmına eklenir; dosya cihazınızdan çıkmaz."),
+    ("Teklifleri kaydedip müşteriye WhatsApp'tan gönderebilir miyim?", "Online araç tek teklif içindir. Teklifleri saklamak, müşteriye WhatsApp'tan göndermek ve onay-tahsilat takibi için ücretsiz Anında Teklif hesabı açabilirsiniz."),
+]
+KDV_SSS = [
+    ("KDV dahil fiyattan KDV nasıl çıkarılır?", "KDV dahil tutar (1 + KDV oranı)'na bölünür: %20 KDV'de 1.200 ÷ 1,20 = 1.000 TL KDV hariç tutardır; aradaki 200 TL KDV'dir."),
+    ("Türkiye'de KDV oranları nedir?", "Genel oran %20, indirimli oranlar %10 ve %1'dir. Hangi oranın uygulanacağı mal veya hizmete göre değişir."),
+]
+
+
 # ------------------------------------------------------ makine okur dosyalar
-STATIK = ["/", "/ozellikler.html", "/fiyatlar.html", "/sss.html", "/rehber.html"] + [f"/rehber/{y['slug']}.html" for y in YAZILAR]
+STATIK = (["/", "/ozellikler.html", "/fiyatlar.html", "/teklif-olustur.html", "/kdv-hesaplama.html", "/sektorler.html", "/sss.html", "/rehber.html"]
+          + [f"/sektor/{x['slug']}.html" for x in SEKTORLER] + [f"/rehber/{y['slug']}.html" for y in YAZILAR])
 
 
 def robots():
@@ -297,7 +373,7 @@ Sitemap: {SITE}/sitemap.xml
 
 
 def sitemap():
-    oncelik = {"/": "1.0", "/fiyatlar.html": "0.9", "/ozellikler.html": "0.9", "/rehber.html": "0.8", "/sss.html": "0.7"}
+    oncelik = {"/teklif-olustur.html": "0.9", "/sektorler.html": "0.8", "/kdv-hesaplama.html": "0.7", "/": "1.0", "/fiyatlar.html": "0.9", "/ozellikler.html": "0.9", "/rehber.html": "0.8", "/sss.html": "0.7"}
     url = "".join(f"<url><loc>{SITE}{y}</loc><lastmod>{GUNCELLEME}</lastmod><priority>{oncelik.get(y, '0.7')}</priority></url>\n" for y in STATIK)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url}</urlset>\n'
 
@@ -306,6 +382,7 @@ def llms():
     satir = "\n".join(f"- [{y['baslik']}]({SITE}/rehber/{y['slug']}.html): {y['aciklama']}" for y in YAZILAR)
     plan = "\n".join(f"- {k}: haftalık {tl(h)}, yıllık {tl(y)} (liste fiyatı {tl(l)})" for k, h, y, l in PLANLAR)
     oz = "\n".join(f"- **{b}:** {a}" for b, a in OZELLIKLER)
+    sek = "\n".join(f"- [{x['baslik']}]({SITE}/sektor/{x['slug']}.html): {x['aciklama']}" for x in SEKTORLER)
     return f"""# Anında Teklif
 
 > Anında Teklif ({SITE}), Türkiye'deki ustalar, bayiler ve küçük işletmeler için bir teklif hazırlama programıdır: saniyeler içinde logolu PDF fiyat teklifi hazırlar, WhatsApp ile gönderir; müşteri, cari hesap, kasa ve tahsilat takibini aynı yerde toplar. Web, iOS ve Android'de çalışır; Türkçe, İngilizce ve İtalyanca destekler. Ücretsiz planda ayda {UCRETSIZ_TEKLIF} teklif hazırlanabilir.
@@ -328,12 +405,22 @@ def llms():
 ## Rehber
 {satir}
 
+## Ücretsiz araçlar
+- [Online fiyat teklifi oluşturucu]({SITE}/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
+- [KDV hesaplama]({SITE}/kdv-hesaplama.html): KDV dahil/hariç tutar hesaplama
+
+## Sektörel teklif örnekleri
+{sek}
+
 ## Kaynaklar
 - [Ücretsiz fiyat teklifi şablonu (Excel)]({SITE}/sablon/fiyat-teklifi-sablonu.xlsx)
 - [Tüm içerik tek dosyada]({SITE}/llms-full.txt)
 
 ## İletişim
 - E-posta: {DESTEK_EPOSTA}
+- Instagram: https://www.instagram.com/anindateklif.co/
+- YouTube: https://www.youtube.com/@anindateklif
+- LinkedIn: https://www.linkedin.com/company/anindateklif
 
 ## English summary
 Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: {UCRETSIZ_TEKLIF} quotes per month; paid plans from {h0} TRY/week or {y0} TRY/year for teams of up to 5.
@@ -354,10 +441,15 @@ def llms_full():
         metin = re.sub(r"\n{3,}", "\n\n", metin)
         sss = "".join(f"\n**{s}** {html_metne(c)}\n" for s, c in y["sss"])
         parca.append(f"\n---\n\n# {y['baslik']}\nKaynak: {SITE}/rehber/{y['slug']}.html\n\n**Kısa cevap:** {html_metne(y['kisa'])}\n{metin}\n{sss}")
+    for x in SEKTORLER:
+        kal = "\n".join(f"- {a} ({b}){' — ' + n if n else ''}" for a, b, n in x["kalemler"])
+        ipu = "\n".join(f"- {i}" for i in x["ipuclari"])
+        sss = "".join(f"\n**{q}** {html_metne(c)}\n" for q, c in x["sss"])
+        parca.append(f"\n---\n\n# {x['baslik']}\nKaynak: {SITE}/sektor/{x['slug']}.html\n\n**Kısa cevap:** {x['kisa']}\n\n## Kalemler\n{kal}\n\n## Dikkat edilecekler\n{ipu}\n\n{x['uygulama']}\n{sss}")
     return "".join(parca)
 
 
-def excel_sablonu():
+def excel_sablonu(kalemler=None, baslik="FİYAT TEKLİFİ", kaynak="/rehber/fiyat-teklifi-ornegi.html"):
     import io
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -370,7 +462,7 @@ def excel_sablonu():
         ws.column_dimensions[sut].width = gen
     ws["A1"] = "FİRMA ADINIZ"; ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = "Adres · Telefon · E-posta · Vergi dairesi / No"
-    ws["E1"] = "FİYAT TEKLİFİ"; ws["E1"].font = Font(bold=True, size=14, color="2563EB")
+    ws["E1"] = baslik; ws["E1"].font = Font(bold=True, size=14, color="2563EB")
     ws["E2"] = "Teklif no:"; ws["F2"] = "2026-0001"
     ws["E3"] = "Tarih:"; ws["F3"] = "=TODAY()"; ws["F3"].number_format = "DD.MM.YYYY"
     ws["A5"] = "Sayın:"; ws["B5"] = "Müşteri adı / unvanı"
@@ -387,7 +479,11 @@ def excel_sablonu():
             ws.cell(row=r, column=c).border = kenar
         ws.cell(row=r, column=5).number_format = "#,##0.00"
         ws.cell(row=r, column=6).number_format = "#,##0.00"
-    ws["B9"] = "Örnek kalem — silip kendi kaleminizi yazın"; ws["C9"] = 1; ws["D9"] = "adet"; ws["E9"] = 1000
+    if kalemler:
+        for i, (ad, birim, _) in enumerate(kalemler[:15]):
+            ws.cell(row=9 + i, column=2, value=ad); ws.cell(row=9 + i, column=4, value=birim)
+    else:
+        ws["B9"] = "Örnek kalem — silip kendi kaleminizi yazın"; ws["C9"] = 1; ws["D9"] = "adet"; ws["E9"] = 1000
     ws["E25"] = "Ara toplam"; ws["F25"] = "=SUM(F9:F23)"
     ws["D26"] = "KDV %"; ws["E26"] = 20; ws["F26"] = "=F25*E26/100"
     ws["E27"] = "GENEL TOPLAM"; ws["F27"] = "=F25+F26"
@@ -401,7 +497,7 @@ def excel_sablonu():
               "Kaşe / İmza:"]
     for i, n in enumerate(notlar):
         ws.cell(row=29 + i, column=1, value=n)
-    ws.cell(row=36, column=1, value=f"Bu şablon {SITE}/rehber/fiyat-teklifi-ornegi.html adresinden ücretsiz indirilmiştir. "
+    ws.cell(row=36, column=1, value=f"Bu şablon {SITE}{kaynak} adresinden ücretsiz indirilmiştir. "
                                      "Teklifleri saniyeler içinde PDF olarak hazırlayıp WhatsApp'tan göndermek için: anindateklif.co").font = Font(italic=True, color="64748B", size=9)
     ws.print_area = "A1:F36"
     ws.page_setup.fitToWidth = 1
@@ -418,7 +514,7 @@ CSS = """:root{--bg:#0B1220;--yumusak:#111A2E;--kart:#1A2338;--cizgi:#243049;--m
 .ust{position:sticky;top:0;z-index:5;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--cizgi)}
 .ust .kap{display:flex;align-items:center;gap:20px;min-height:64px;flex-wrap:wrap}
 .marka{display:flex;align-items:center;gap:10px;color:var(--beyaz)!important;text-decoration:none;font-weight:800;font-size:18px}.marka img{border-radius:8px}.marka b{color:var(--turuncu)}
-.ust nav{display:flex;gap:18px;flex:1}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
+.ust nav{display:flex;gap:18px;flex:1}.ust nav a{white-space:nowrap}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
 .ust-eylem{display:flex;gap:14px;align-items:center}
 .dugme{display:inline-block;background:var(--mavi);color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
 .dugme.buyuk{padding:14px 24px;font-size:17px;border-radius:12px;margin:4px 6px 4px 0}.dugme.ikincil{background:transparent;border:1px solid var(--cizgi)}
@@ -463,7 +559,17 @@ def main():
     yaz("rehber.html", rehber_dizini())
     for y in YAZILAR:
         yaz(f"rehber/{y['slug']}.html", yazi_sayfasi(y))
-    yaz("seo.css", CSS)
+    yaz("sektorler.html", sektor_dizini())
+    for x in SEKTORLER:
+        yaz(f"sektor/{x['slug']}.html", sektor_sayfasi(x))
+        yaz(f"sablon/{x['slug']}.xlsx", excel_sablonu(x["kalemler"], f"{x['ad'].upper()} TEKLİFİ", f"/sektor/{x['slug']}.html"), ikili=True)
+    yaz("teklif-olustur.html", arac_sayfasi("/teklif-olustur.html", "Ücretsiz Online Fiyat Teklifi Oluşturucu (PDF) | Anında Teklif",
+        "Kayıt olmadan ücretsiz fiyat teklifi hazırlayın: logo ekleyin, kalemleri girin, KDV ve toplam otomatik hesaplansın, PDF olarak indirin.",
+        TEKLIF_OLUSTUR_GOVDE, "Online fiyat teklifi oluşturucu", TEKLIF_SSS))
+    yaz("kdv-hesaplama.html", arac_sayfasi("/kdv-hesaplama.html", "KDV Hesaplama: KDV Dahil ve Hariç Tutar (%20, %10, %1) | Anında Teklif",
+        "KDV dahil fiyattan KDV hariç tutarı, KDV hariç fiyattan KDV dahil tutarı hesaplayın. %20, %10, %1 ve özel oran; formüller ve örnekler.",
+        KDV_GOVDE, "KDV hesaplama", KDV_SSS))
+    yaz("seo.css", CSS + ARAC_CSS)
     # `serve -s` her uzantısız yolu SPA'ya yönlendirdiği için statik sayfalar .html
     # adresle sunulur; cleanUrls açıkken /x.html → /x 301'i SPA'ya düşürürdü.
     yaz("serve.json", '{\n  "cleanUrls": false\n}\n')

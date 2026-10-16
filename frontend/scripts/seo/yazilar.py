@@ -130,7 +130,7 @@ YAZILAR = [
         "sss": [
             ("Ücretsiz teklif hazırlama programı var mı?", "Evet. Anında Teklif'in ücretsiz planıyla kredi kartı girmeden ayda 5 PDF teklif hazırlayabilirsiniz. Daha fazlası için haftalık veya yıllık abonelik vardır."),
             ("Teklif programı telefondan kullanılabilir mi?", "Anında Teklif iOS ve Android uygulaması olarak ve web tarayıcısından çalışır; aynı hesapla telefon ve bilgisayardan aynı verilere erişilir."),
-            ("Excel'deki ürün listemi teklif programına aktarabilir miyim?", "Anında Teklif'te ürün ve hizmetlerinizi kataloğa ekleyip teklif hazırlarken seçebilirsiniz. Toplu aktarım seçenekleri için destek ekibine yazabilirsiniz."),
+            ("Excel'deki ürün listemi teklif programına aktarabilir miyim?", "Evet. Anında Teklif kataloğuna ürün ve hizmetlerinizi Excel veya CSV dosyasından toplu olarak aktarabilir, teklif hazırlarken listeden seçebilirsiniz."),
         ],
     },
     {

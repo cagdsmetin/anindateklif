@@ -38,12 +38,40 @@
 - [İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek](https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html): İngilizce fiyat teklifinde kullanılan başlıklar ve kalıp cümleler: quotation, unit price, VAT, validity, payment terms. Türkçe karşılıklarıyla tablo ve örnek e-posta.
 - [Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber](https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html): Müşteri cari hesabı nedir, alacak ve tahsilat nasıl takip edilir? Excel ile cari takip, sık yapılan hatalar ve teklif-tahsilat-kasa akışını tek yerde tutmak.
 
+## Ücretsiz araçlar
+- [Online fiyat teklifi oluşturucu](https://www.anindateklif.co/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
+- [KDV hesaplama](https://www.anindateklif.co/kdv-hesaplama.html): KDV dahil/hariç tutar hesaplama
+
+## Sektörel teklif örnekleri
+- [Perde Teklif Formu: Stor, Zebra, Zip Perde Teklifi Örneği](https://www.anindateklif.co/sektor/perde-teklif-formu.html): Stor, zebra, tül, fon ve zip perde için teklif formu: ölçü (en×boy), m² hesabı, mekanizma, motor ve montaj kalemleri. Ücretsiz perde teklif şablonu (Excel).
+- [Pergola ve Gölgelendirme Teklifi: Bioklimatik Pergola Teklif Örneği](https://www.anindateklif.co/sektor/pergola-golgelendirme-teklifi.html): Bioklimatik pergola, tente, rolling roof, zip perde ve giyotin cam teklifinde hangi kalemler olmalı? Ölçü, modül, motor, aydınlatma, statik ve montaj kalemleriyle örnek.
+- [Alüminyum ve PVC Doğrama Teklif Formu Örneği](https://www.anindateklif.co/sektor/aluminyum-pvc-dograma-teklifi.html): Pencere, kapı ve doğrama işleri için teklif formu: poz numarası, ölçü, profil serisi, cam tipi, aksesuar, söküm ve montaj kalemleri. Ücretsiz doğrama teklif şablonu.
+- [Cam Balkon Teklifi Örneği: Katlanır, Sürme ve Giyotin Cam](https://www.anindateklif.co/sektor/cam-balkon-teklifi.html): Katlanır, sürme ve giyotin cam balkon teklifi için kalemler: metretül/m², cam kalınlığı, ray sistemi, kanat sayısı, motor, montaj ve garanti. Ücretsiz şablon.
+- [Boya Badana Teklif Örneği: m² Hesabı ve Kalemler](https://www.anindateklif.co/sektor/boya-badana-teklifi.html): Boya badana teklifinde duvar ve tavan m² hesabı, kat sayısı, boya markası ve tipi, alçı-zımpara, koruma ve temizlik kalemleri. Ücretsiz boya teklif şablonu.
+- [İnşaat Teklif Formu Örneği: Metraj ve Keşif Özeti](https://www.anindateklif.co/sektor/insaat-teklif-formu.html): İnşaat ve taahhüt işleri için teklif formu: iş kalemi, poz, metraj, birim fiyat, keşif özeti, hakediş ve ödeme koşulları. Ücretsiz inşaat teklif şablonu (Excel).
+- [Teknik Servis Teklifi ve Servis Formu: Klima, Kombi, Beyaz Eşya](https://www.anindateklif.co/sektor/teknik-servis-teklifi.html): Klima, kombi ve beyaz eşya servisleri için teklif ve servis formu: arıza tespiti, parça, işçilik, yol ücreti, garanti. Servis kayıtlarını ve tahsilatı takip etme.
+- [Mutfak Dolabı ve Mobilya Teklifi Örneği: Metretül ve Kalemler](https://www.anindateklif.co/sektor/mutfak-dolabi-mobilya-teklifi.html): Mutfak dolabı, gardırop ve özel mobilya teklifi: alt-üst dolap metretülü, kapak malzemesi, tezgâh, aksesuar, ankastre montaj ve nakliye kalemleri.
+- [Elektrik ve Tesisat Teklifi Örneği: Nokta, Metre ve Malzeme](https://www.anindateklif.co/sektor/elektrik-tesisat-teklifi.html): Elektrik ve sıhhi tesisat işleri için teklif: priz/anahtar nokta sayısı, kablo metrajı, pano, boru ve armatür kalemleri, malzeme-işçilik ayrımı.
+- [Su Arıtma Teklifi ve Servis Takibi: Filtre Değişimi, Bakım, Müşteri Takibi](https://www.anindateklif.co/sektor/su-aritma-teklif-ve-servis-takibi.html): Su arıtma cihazı satış teklifi, filtre değişim ve periyodik bakım takibi, müşteri servis geçmişi ve tahsilat. Su arıtma firmaları için teklif ve takip rehberi.
+- [Klima Montaj Teklifi Örneği: Cihaz, Bakır Boru, İşçilik](https://www.anindateklif.co/sektor/klima-montaj-teklifi.html): Klima satış ve montaj teklifi kalemleri: cihaz (BTU, enerji sınıfı), standart montaj, ek bakır boru metrajı, dış ünite askı aparatı, gider hattı, bakım.
+- [Asansör Fiyat Teklifi Örneği: Kalemler ve Bakım Sözleşmesi](https://www.anindateklif.co/sektor/asansor-teklifi.html): Asansör montaj, modernizasyon ve bakım teklifinde yer alan kalemler: durak sayısı, kapasite, kabin, makine, kumanda, kapılar, yıllık bakım ve garanti.
+- [Mantolama Teklifi Örneği: Dış Cephe Isı Yalıtımı m² Kalemleri](https://www.anindateklif.co/sektor/mantolama-dis-cephe-teklifi.html): Mantolama (dış cephe ısı yalıtımı) teklifinde levha tipi ve kalınlığı, yapıştırma, dübel, file, sıva, boya, iskele ve m² hesabı nasıl yazılır?
+- [Çatı Yapım ve Tamir Teklifi Örneği: Kalemler ve Metraj](https://www.anindateklif.co/sektor/cati-teklifi.html): Çatı yapımı, aktarma ve tamir teklifinde ahşap/çelik konstrüksiyon, OSB, su yalıtımı, kiremit/shingle, dere ve yağmur oluğu kalemleri ve m² hesabı.
+- [Parke ve Seramik Döşeme Teklifi Örneği: m², Fire, İşçilik](https://www.anindateklif.co/sektor/parke-seramik-zemin-teklifi.html): Laminat parke, masif parke ve seramik döşeme teklifi: m² hesabı, fire payı, şilte, süpürgelik, eşik, söküm ve tesviye kalemleri.
+- [Kamera Sistemi Teklifi Örneği: Güvenlik Kamerası ve Kayıt Cihazı](https://www.anindateklif.co/sektor/kamera-guvenlik-sistemi-teklifi.html): Güvenlik kamerası teklifinde kamera tipi ve çözünürlük, kayıt cihazı (NVR/DVR), disk, kablo metrajı, PoE switch, montaj ve uzaktan izleme kurulumu kalemleri.
+- [Temizlik Hizmeti Teklifi Örneği: Ofis, İnşaat Sonrası, Site Temizliği](https://www.anindateklif.co/sektor/temizlik-hizmeti-teklifi.html): Ofis, apartman, inşaat sonrası ve ev temizliği teklifi: m², personel sayısı, saat, periyot, malzeme ve aylık sözleşme kalemleri.
+- [Evden Eve Nakliyat Teklifi Örneği: Ekspertiz, Paketleme, Asansör](https://www.anindateklif.co/sektor/nakliyat-teklifi.html): Nakliyat teklifinde oda sayısı ve hacim (m³), mesafe, kat ve asansör durumu, paketleme, mobilya demontaj-montaj, sigorta ve ödeme koşulları.
+- [Web Tasarım Teklifi Örneği: Kapsam, Sayfa, Bakım ve Ödeme](https://www.anindateklif.co/sektor/web-tasarim-teklifi.html): Web sitesi ve ajans hizmetleri teklifi: kapsam, sayfa sayısı, tasarım, yazılım, içerik, alan adı-hosting, revizyon hakkı, bakım ve ödeme planı.
+
 ## Kaynaklar
 - [Ücretsiz fiyat teklifi şablonu (Excel)](https://www.anindateklif.co/sablon/fiyat-teklifi-sablonu.xlsx)
 - [Tüm içerik tek dosyada](https://www.anindateklif.co/llms-full.txt)
 
 ## İletişim
 - E-posta: ncagdasm@gmail.com
+- Instagram: https://www.instagram.com/anindateklif.co/
+- YouTube: https://www.youtube.com/@anindateklif
+- LinkedIn: https://www.linkedin.com/company/anindateklif
 
 ## English summary
 Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: 5 quotes per month; paid plans from 50 TRY/week or 2000 TRY/year for teams of up to 5.
@@ -265,7 +293,7 @@ Anında Teklif web tarayıcısında ve iOS/Android uygulamasında çalışan bir
 
 **Teklif programı telefondan kullanılabilir mi?** Anında Teklif iOS ve Android uygulaması olarak ve web tarayıcısından çalışır; aynı hesapla telefon ve bilgisayardan aynı verilere erişilir.
 
-**Excel'deki ürün listemi teklif programına aktarabilir miyim?** Anında Teklif'te ürün ve hizmetlerinizi kataloğa ekleyip teklif hazırlarken seçebilirsiniz. Toplu aktarım seçenekleri için destek ekibine yazabilirsiniz.
+**Excel'deki ürün listemi teklif programına aktarabilir miyim?** Evet. Anında Teklif kataloğuna ürün ve hizmetlerinizi Excel veya CSV dosyasından toplu olarak aktarabilir, teklif hazırlarken listeden seçebilirsiniz.
 
 ---
 
@@ -548,3 +576,447 @@ Anında Teklif'te onaylanan teklif müşterinin cari hesabına bağlanır; tahsi
 **Ücretsiz cari hesap takip programı var mı?** Excel ile basit takip yapılabilir. Anında Teklif'in ücretsiz planında teklif, müşteri, cari ve tahsilat takibi birlikte kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır.
 
 **Tahsilat takibi nasıl yapılır?** Her satış müşterinin cari hesabına borç, her ödeme alacak olarak yazılır; vadesi geçen bakiyeler düzenli olarak listelenip müşteriye hatırlatılır.
+
+---
+
+# Perde Teklif Formu: Stor, Zebra, Zip Perde Teklifi Örneği
+Kaynak: https://www.anindateklif.co/sektor/perde-teklif-formu.html
+
+**Kısa cevap:** Perde teklifinde her pencere ayrı satırda yazılır: mekân, perde tipi, kumaş/renk kodu, en×boy ölçüsü, hesaplanan m² (minimum m² uygulanıyorsa belirtilerek), mekanizma veya motor, birim fiyat ve tutar. Montaj, ölçü alma ve motor/kumanda kalemleri ayrıca gösterilir.
+
+## Kalemler
+- Stor / zebra perde (mekân, kumaş kodu) (m²) — En×boy ve minimum m² kuralı yazılmalı
+- Tül ve fon perde (pile oranı) (mt) — Pile oranı (ör. 1:2,5) fiyatı doğrudan etkiler
+- Zip perde (dış mekân) (m² / adet) — Kasa rengi, kumaş tipi, kılavuz tipi
+- Motor ve kumanda (adet) — Kanal sayısı, akıllı ev uyumu
+- Korniş / ray / mekanizma (mt / adet)
+- Ölçü alma ve montaj (iş / adet) — Yüksek kat, iskele gerekiyorsa ayrıca
+
+## Dikkat edilecekler
+- Ölçünün kim tarafından alındığını yazın; müşteri ölçüsüyle üretilen perdede sorumluluk müşteridedir.
+- Minimum m² (ör. 1 m² altı 1 m² sayılır) kuralınız varsa satırda gösterin.
+- Kumaş kodu ve renk numarasını yazın; numune onayı alındığını not edin.
+- Motorlu sistemlerde elektrik hattının teklife dahil olup olmadığını belirtin.
+
+Anında Teklif'in katalog yapılandırıcısında perde tiplerini tanımlarsınız; en ve boy girildiğinde m² ve fiyat otomatik hesaplanır, minimum m² ve opsiyonlar (motor, kumanda) teklife satır olarak eklenir.
+
+**Perde fiyatı nasıl hesaplanır?** Stor ve zebra perdede genellikle en×boy ile m² hesaplanır ve m² birim fiyatıyla çarpılır; tül ve fon perdede pile oranına göre kumaş metrajı esas alınır. Mekanizma, motor ve montaj ayrıca eklenir.
+
+**Perde teklifinde montaj dahil mi yazılmalı?** Dahil ise "montaj dahildir", değilse montaj ayrı satırda veya "teklife dahil değildir" notuyla açıkça yazılmalıdır.
+
+---
+
+# Pergola ve Gölgelendirme Teklifi: Bioklimatik Pergola Teklif Örneği
+Kaynak: https://www.anindateklif.co/sektor/pergola-golgelendirme-teklifi.html
+
+**Kısa cevap:** Pergola ve gölgelendirme teklifinde sistem tipi (bioklimatik, rolling roof, tente), ölçüler (en×açılım×yükseklik) ve modül sayısı, kolon/kiriş, motor ve otomasyon, LED aydınlatma, yan kapama (zip perde, cam) ve montaj ayrı kalemler olarak yazılır; renk (RAL), garanti ve zemin/statik koşulları not edilir.
+
+## Kalemler
+- Bioklimatik pergola (modül, lamel tipi) (m² / modül) — En × açılım × yükseklik, RAL rengi
+- Kolon / kiriş / ek taşıyıcı (adet / mt) — Zemin ve statik koşula göre
+- Motor, otomasyon, yağmur/rüzgâr sensörü (adet)
+- LED aydınlatma (lamel / çevre) (mt / adet)
+- Yan kapama: zip perde / giyotin cam (m² / adet) — Her cephe ayrı satır
+- Montaj ve nakliye (iş) — Vinç / iskele gerekiyorsa ayrıca
+
+## Dikkat edilecekler
+- Ölçüleri çizimle birlikte verin; açılım yönü ve lamel yönünü belirtin.
+- Zemin ankrajı, belediye/site yönetimi izinlerinin müşteriye ait olduğunu yazın.
+- Döviz bazlı malzemede kur şartını ve kısa geçerlilik süresini belirtin.
+- Garanti süresini sistem, motor ve işçilik için ayrı ayrı yazın.
+
+Anında Teklif'te sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en, açılım ve opsiyonlar girildiğinde fiyat hesaplanır. Bayilik kullanan firmalar için üretici fiyat listesine bağlı modüller de bulunur.
+
+**Bioklimatik pergola teklifi neye göre hesaplanır?** Genellikle sistemin m² veya modül fiyatı esas alınır; kolon sayısı, motor ve otomasyon, aydınlatma, yan kapama ve montaj ayrıca eklenir.
+
+**Pergola teklifinde geçerlilik süresi ne olmalı?** Alüminyum ve ithal motor gibi döviz bazlı kalemler nedeniyle kısa (ör. 7 gün) tutulması veya kur şartı eklenmesi yaygındır.
+
+---
+
+# Alüminyum ve PVC Doğrama Teklif Formu Örneği
+Kaynak: https://www.anindateklif.co/sektor/aluminyum-pvc-dograma-teklifi.html
+
+**Kısa cevap:** Doğrama teklifinde her pencere/kapı poz numarasıyla ayrı satırdadır: mekân, açılım tipi (sabit, açılır, vasistas, sürme), en×boy, profil serisi ve rengi, cam tipi (ısıcam, Low-E, temperli), aksesuar ve adet. Eski doğrama sökümü, denizlik, pervaz ve montaj ayrı kalemlerdir.
+
+## Kalemler
+- Poz 1 – Salon pencere (açılım tipi) (adet / m²) — En×boy, profil serisi, renk
+- Cam (ısıcam / Low-E / temperli) (m²) — Cam kalınlığı ve tipi
+- Aksesuar (kol, menteşe, sineklik) (adet)
+- Eski doğrama sökümü (adet / iş)
+- Denizlik / pervaz / harpuşta (mt)
+- Montaj ve silikon (iş)
+
+## Dikkat edilecekler
+- Poz numaralarını ölçü krokisiyle eşleştirin; montajda karışıklığı önler.
+- Profil markası ve serisini yazın; "muadil" kullanacaksanız belirtin.
+- Kesin ölçünün yerinde tekrar alınacağını not edin.
+
+Anında Teklif'te pozları katalogdan seçip ölçüleri girersiniz; m² ve fiyat otomatik hesaplanır, aynı poz farklı ölçülerle kolayca çoğaltılır.
+
+**Doğrama teklifi m² ile mi adet ile mi verilir?** İkisi de kullanılır. Çoğu firma m² fiyatı üzerinden hesaplar, müşteriye ise poz bazında adet ve tutar gösterir; minimum m² kuralı varsa belirtilmelidir.
+
+---
+
+# Cam Balkon Teklifi Örneği: Katlanır, Sürme ve Giyotin Cam
+Kaynak: https://www.anindateklif.co/sektor/cam-balkon-teklifi.html
+
+**Kısa cevap:** Cam balkon teklifinde sistem tipi (katlanır/isicamlı katlanır, sürme, giyotin), toplam en (mt) ve yükseklik ya da m², kanat sayısı, cam kalınlığı ve tipi, profil rengi, alt-üst ray, (giyotinde) motor ve kumanda, montaj ve garanti ayrı ayrı yazılır.
+
+## Kalemler
+- Cam balkon sistemi (tip, kanat sayısı) (mt / m²) — Toplam en × yükseklik
+- Cam (temperli, kalınlık / ısıcam) (m²)
+- Ray, profil, fitil, kilit (mt / adet) — Profil rengi
+- Motor ve kumanda (giyotin) (adet)
+- Montaj (iş) — Yüksek kat ise iskele/ip erişimi
+
+## Dikkat edilecekler
+- Köşe dönüşlerini ve parapet durumunu yazın.
+- Site yönetimi ve dış cephe izinlerinin müşteriye ait olduğunu belirtin.
+
+Anında Teklif'te cam balkon sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en ve yükseklik girildiğinde tutar hesaplanır.
+
+**Cam balkon fiyatı neye göre hesaplanır?** Genellikle metretül veya m² üzerinden; sistem tipi, cam tipi ve kalınlığı, kanat sayısı, motor ve montaj koşulları fiyatı belirler.
+
+---
+
+# Boya Badana Teklif Örneği: m² Hesabı ve Kalemler
+Kaynak: https://www.anindateklif.co/sektor/boya-badana-teklifi.html
+
+**Kısa cevap:** Boya teklifinde duvar ve tavan alanları m² olarak ayrı yazılır; boya tipi ve markası, kat sayısı, astar, alçı/macun tamiri, zımpara, eşya koruma ve temizlik ayrı kalemlerdir. Malzemenin dahil olup olmadığı açıkça belirtilir.
+
+## Kalemler
+- Duvar boyası (marka, tip, 2 kat) (m²) — Malzeme dahil / hariç
+- Tavan boyası (m²)
+- Astar (m²)
+- Alçı / macun tamiri, zımpara (m² / iş)
+- Kapı, pervaz, kalorifer boyası (adet)
+- Koruma ve temizlik (iş)
+
+## Dikkat edilecekler
+- m² hesabında kapı-pencere boşluklarının düşülüp düşülmediğini yazın.
+- Renk sayısı ve koyu renk farkı varsa belirtin.
+
+Anında Teklif'te oda ölçülerini girerek m²'yi ve tutarı hesaplatır, teklifi sahada müşterinin yanındayken PDF olarak gönderirsiniz.
+
+**Boya badana teklifi nasıl hesaplanır?** Boyanacak duvar ve tavan m²'si çıkarılır, kat sayısı ve boya tipine göre m² birim fiyatıyla çarpılır; tamir, astar, koruma gibi işler ayrıca eklenir.
+
+---
+
+# İnşaat Teklif Formu Örneği: Metraj ve Keşif Özeti
+Kaynak: https://www.anindateklif.co/sektor/insaat-teklif-formu.html
+
+**Kısa cevap:** İnşaat teklif formu iş kalemlerinden oluşan bir keşif özetidir: her satırda iş tanımı (varsa poz no), birim (m³, m², mt, ton, adet), metraj, birim fiyat ve tutar bulunur; kaba ve ince işler gruplanır, ara toplam, KDV ve genel toplam verilir. Hakediş, ödeme, süre ve fiyat farkı koşulları ayrıca yazılır.
+
+## Kalemler
+- Hafriyat (m³)
+- Betonarme betonu (sınıf) (m³)
+- İnşaat demiri (ton)
+- Kalıp (m²)
+- Duvar örme (m²)
+- Sıva / şap / yalıtım (m²)
+
+## Dikkat edilecekler
+- Kalemleri kaba iş, ince iş, tesisat gibi gruplara ayırın ve grup ara toplamı verin.
+- Metrajın projeye göre mi yerinde ölçüye göre mi olduğunu yazın.
+- Hakediş dönemini ve fiyat farkı (malzeme artışı) koşulunu belirtin.
+
+Anında Teklif'te kalemleri gruplar hâlinde girip metrajları yazarsınız; ara toplamlar, KDV ve genel toplam otomatik hesaplanır, keşif PDF olarak gönderilir.
+
+**İnşaat teklif formunda neler olmalı?** İş tanımı, birim, metraj, birim fiyat ve tutar sütunları; grup ara toplamları, KDV, genel toplam; hakediş, ödeme, süre, fiyat farkı ve teklife dahil olmayan işler.
+
+**Keşif özeti ile teklif farkı nedir?** Keşif özeti iş kalemlerinin metraj ve tutar dökümüdür; teklif ise bu dökümün üzerine ödeme, süre ve koşulların eklenip müşteriye sunulmuş hâlidir.
+
+---
+
+# Teknik Servis Teklifi ve Servis Formu: Klima, Kombi, Beyaz Eşya
+Kaynak: https://www.anindateklif.co/sektor/teknik-servis-teklifi.html
+
+**Kısa cevap:** Teknik servis teklifinde arıza tespiti, değişecek parçalar (adet ve parça kodu), işçilik (saat veya iş), yol/servis ücreti ve parça-işçilik garantisi ayrı satırlarda yazılır. Müşteri onayı alınmadan parça değişimi yapılmayacağı not edilir.
+
+## Kalemler
+- Arıza tespiti / keşif (iş)
+- Yedek parça (parça kodu) (adet) — Orijinal / muadil
+- İşçilik (saat / iş)
+- Yol / servis ücreti (sefer)
+- Periyodik bakım (adet) — Klima, kombi bakımı
+
+## Dikkat edilecekler
+- Parçanın orijinal mi muadil mi olduğunu ve garanti süresini yazın.
+- Onaysız ek işlem yapılmayacağını belirtin; onayı yazılı alın.
+
+Anında Teklif'te teklif onaylandığında servis görevi oluşturup personele atayabilir, servis geçmişini müşteri kartında, tahsilatı cari hesapta takip edebilirsiniz.
+
+**Servis takip programı ile teklif programı aynı şey mi?** Farklı ihtiyaçlardır ama birlikte kullanılır: teklif fiyatı onaylatır, servis takibi işin kime atandığını ve durumunu izler. Anında Teklif ikisini ve tahsilatı tek uygulamada toplar.
+
+---
+
+# Mutfak Dolabı ve Mobilya Teklifi Örneği: Metretül ve Kalemler
+Kaynak: https://www.anindateklif.co/sektor/mutfak-dolabi-mobilya-teklifi.html
+
+**Kısa cevap:** Mutfak teklifinde alt ve üst dolap metretül olarak, gövde ve kapak malzemesi (MDF lam, lake, akrilik), tezgâh (mt ve malzeme), menteşe-ray-aksesuar, kulp, ankastre montajı, nakliye ve montaj ayrı yazılır; çizim/3B görsel teklife eklenir.
+
+## Kalemler
+- Alt dolap (gövde / kapak malzemesi) (mt)
+- Üst dolap (mt)
+- Boy dolabı (adet)
+- Tezgâh (malzeme) (mt)
+- Menteşe, ray, aksesuar, kulp (adet / set) — Marka
+- Nakliye ve montaj (iş) — Ankastre montajı dahil mi?
+
+## Dikkat edilecekler
+- Çizim veya 3B görseli teklife ekleyin; ölçü onayını yazılı alın.
+- Beyaz eşya ve ankastrenin teklife dahil olup olmadığını belirtin.
+
+Anında Teklif'te metretül ve malzemeye göre fiyatlanan ürünlerinizi katalogda tanımlar, teklife görsel ekleyip PDF olarak gönderirsiniz.
+
+**Mutfak dolabı fiyatı nasıl hesaplanır?** Çoğunlukla alt ve üst dolap metretülü üzerinden; kapak ve gövde malzemesi, aksesuar, tezgâh ve montaj fiyatı belirler.
+
+---
+
+# Elektrik ve Tesisat Teklifi Örneği: Nokta, Metre ve Malzeme
+Kaynak: https://www.anindateklif.co/sektor/elektrik-tesisat-teklifi.html
+
+**Kısa cevap:** Tesisat teklifinde işler nokta (priz, anahtar, aydınlatma, su çıkışı) ve metre (kablo, boru) üzerinden yazılır; pano, sigorta, kaçak akım rölesi, armatür gibi malzemeler adetle, işçilik ayrı satırda gösterilir. Malzemenin markası ve dahil olup olmadığı belirtilir.
+
+## Kalemler
+- Priz / anahtar / aydınlatma noktası (nokta)
+- Kablo çekimi (kesit) (mt)
+- Pano, sigorta, kaçak akım rölesi (adet)
+- Temiz / pis su boru tesisatı (mt / nokta)
+- Armatür / vitrifiye montajı (adet)
+- Kırım ve tamir (iş) — Sıva ve boya dahil mi?
+
+## Dikkat edilecekler
+- Kırım sonrası sıva-boya tamirinin dahil olup olmadığını yazın.
+- Malzeme markasını ve standartlara uygunluğu belirtin.
+
+Anında Teklif'te nokta ve metre bazlı kalemleri katalogdan seçip miktarı girersiniz; malzeme ve işçilik ayrı satırlar olarak toplanır.
+
+**Elektrik tesisatı teklifi nasıl verilir?** Genellikle nokta başı fiyat (priz, anahtar, aydınlatma) ve metre başı kablo fiyatı üzerinden; pano ve malzemeler adetle eklenir, işçilik ayrıca gösterilir.
+
+---
+
+# Su Arıtma Teklifi ve Servis Takibi: Filtre Değişimi, Bakım, Müşteri Takibi
+Kaynak: https://www.anindateklif.co/sektor/su-aritma-teklif-ve-servis-takibi.html
+
+**Kısa cevap:** Su arıtma firmasında teklif; cihaz modeli ve kademe sayısı, montaj, ilk filtre seti ve garanti kalemlerinden oluşur. Satıştan sonra asıl iş servis takibidir: her müşterinin cihaz modeli, montaj tarihi, son filtre değişimi ve bir sonraki bakım tarihi kayıt altında tutulup zamanında hatırlatılmalıdır.
+
+## Kalemler
+- Su arıtma cihazı (model, kademe) (adet) — Tezgâh altı / üstü, pompalı
+- Montaj ve bağlantı aparatları (iş)
+- Filtre seti (sediment, karbon, membran) (set / adet) — Değişim periyodu
+- Periyodik bakım (adet)
+- Yol / servis ücreti (sefer)
+
+## Dikkat edilecekler
+- Filtre değişim periyodunu teklife ve servis kaydına yazın.
+- Garanti kapsamını (cihaz, pompa, membran) ayrı belirtin.
+- Bakım tarihi gelen müşteriyi önceden arayın; tekrar satışın kaynağı budur.
+
+Anında Teklif'te teklif, müşteri kartı, servis görevleri ve hatırlatmalar birlikte çalışır: bakım tarihini hatırlatma olarak kurar, servisi personele atar, ödemeyi cari hesaba işlersiniz.
+
+**Su arıtma müşteri takibi nasıl yapılır?** Her müşteri için cihaz modeli, montaj ve son filtre değişim tarihi kaydedilir; bir sonraki bakım tarihi için hatırlatma kurulur ve servis sonrası tahsilat cari hesaba işlenir.
+
+**Ücretsiz su arıtma servis takip programı var mı?** Anında Teklif'in ücretsiz planında müşteri, teklif, servis ve hatırlatma özellikleri kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır.
+
+---
+
+# Klima Montaj Teklifi Örneği: Cihaz, Bakır Boru, İşçilik
+Kaynak: https://www.anindateklif.co/sektor/klima-montaj-teklifi.html
+
+**Kısa cevap:** Klima teklifinde cihaz (marka, model, BTU, enerji sınıfı), standart montaj kapsamı (ör. ilk 3 metre bakır boru), ek bakır boru metresi, dış ünite askı/konsol, gider hattı, elektrik hattı ve yükseklik/iskele farkı ayrı yazılır.
+
+## Kalemler
+- Klima cihazı (BTU, model) (adet)
+- Standart montaj (adet) — Kapsamı yazın
+- Ek bakır boru (mt)
+- Dış ünite askı aparatı / konsol (adet)
+- Gider ve elektrik hattı (mt)
+- Periyodik bakım (adet)
+
+## Dikkat edilecekler
+- Standart montajın kaç metre boru ve hangi işleri kapsadığını yazın.
+- Yüksek kat veya ip erişimi gerekiyorsa farkı ayrı gösterin.
+
+Anında Teklif'te cihaz ve montaj kalemlerini katalogdan seçer, ek boru metresini girersiniz; teklif PDF olarak gider, montaj servis görevi olarak personele atanır.
+
+**Klima montaj teklifine neler yazılır?** Cihaz bilgisi, standart montajın kapsamı, ek bakır boru metrajı, askı aparatı, gider ve elektrik hattı, varsa iskele farkı ve garanti koşulları.
+
+---
+
+# Asansör Fiyat Teklifi Örneği: Kalemler ve Bakım Sözleşmesi
+Kaynak: https://www.anindateklif.co/sektor/asansor-teklifi.html
+
+**Kısa cevap:** Asansör teklifinde kapasite (kişi/kg), durak ve kat sayısı, hız, makine ve kumanda tipi, kabin ve kapı özellikleri, montaj, belgelendirme süreçleri ve garanti yazılır; bakım için aylık/yıllık bakım bedeli ayrı bir teklif veya sözleşme olarak verilir.
+
+## Kalemler
+- Asansör sistemi (kapasite, durak) (adet) — Makine dairesiz / makine daireli
+- Kabin ve kapılar (adet)
+- Kumanda ve elektrik (set)
+- Montaj (iş)
+- Yıllık bakım (ay / yıl) — Ayrı sözleşme
+
+## Dikkat edilecekler
+- Kuyu ölçülerinin ve inşai işlerin kime ait olduğunu yazın.
+- Yürürlükteki mevzuata göre gerekli belgelendirme ve kontrol süreçlerini belirtin.
+
+Anında Teklif'te montaj teklifini ve yıllık bakım sözleşmesini aynı müşteri kartında tutar, bakım tarihlerini hatırlatma ve servis görevi olarak takip edersiniz.
+
+**Asansör bakım teklifi nasıl verilir?** Genellikle aylık bakım bedeli üzerinden yıllık sözleşme olarak verilir; parça değişimleri ve arıza çağrıları kapsamı ayrıca yazılır.
+
+---
+
+# Mantolama Teklifi Örneği: Dış Cephe Isı Yalıtımı m² Kalemleri
+Kaynak: https://www.anindateklif.co/sektor/mantolama-dis-cephe-teklifi.html
+
+**Kısa cevap:** Mantolama teklifi cephe m²'si üzerinden verilir; yalıtım levhası tipi (EPS, XPS, taş yünü) ve kalınlığı, yapıştırıcı, dübel, file, ince sıva, dekoratif kaplama/boya, köşe ve denizlik profilleri ile iskele kurulumu ayrı kalemlerdir. Pencere boşluklarının düşülüp düşülmediği belirtilir.
+
+## Kalemler
+- Yalıtım levhası (tip, kalınlık) (m²)
+- Yapıştırma, dübel, file, sıva (m²) — Sistem olarak
+- Dekoratif kaplama / boya (m²)
+- Köşe, denizlik, söve profilleri (mt)
+- İskele kurulum ve söküm (m² / iş)
+
+## Dikkat edilecekler
+- Kat maliklerinin onayı ve yönetim kararının müşteriye ait olduğunu yazın.
+- Kullanılan sistemin bileşenlerini (levha, yapıştırıcı, file) marka ile belirtin.
+
+Anında Teklif'te cephe ölçülerini girip m²'yi hesaplatır, uzun teklifleri apartman yönetimine PDF olarak gönderir ve hakediş tahsilatlarını cari hesapta izlersiniz.
+
+**Mantolama fiyatı nasıl hesaplanır?** Cephe m²'si üzerinden; levha tipi ve kalınlığı, kaplama türü, iskele ve bina yüksekliği fiyatı belirler.
+
+---
+
+# Çatı Yapım ve Tamir Teklifi Örneği: Kalemler ve Metraj
+Kaynak: https://www.anindateklif.co/sektor/cati-teklifi.html
+
+**Kısa cevap:** Çatı teklifinde çatı alanı m² olarak hesaplanır; söküm, konstrüksiyon (ahşap veya çelik), OSB/kaplama tahtası, su yalıtım örtüsü, kiremit/shingle/sandviç panel, mahya, dere, yağmur oluğu ve iniş boruları ayrı kalem olarak yazılır.
+
+## Kalemler
+- Eski çatı sökümü (m²)
+- Konstrüksiyon (ahşap / çelik) (m² / m³)
+- OSB / kaplama (m²)
+- Su yalıtım örtüsü (m²)
+- Kiremit / shingle / panel (m²)
+- Oluk ve iniş borusu (mt)
+
+## Dikkat edilecekler
+- Çürük ahşap çıkarsa nasıl fiyatlanacağını önceden yazın.
+- Moloz atımı ve vinç ihtiyacını belirtin.
+
+Anında Teklif'te çatı alanını ve kalemleri girip teklifi hazırlar, keşif fotoğraflarını teklife ekleyerek müşteriye gönderirsiniz.
+
+**Çatı aktarma teklifi neleri kapsar?** Kiremitlerin sökülüp yalıtım örtüsünün yenilenmesi, kırık kiremit değişimi ve yeniden döşeme; çürük ahşap değişimi genellikle ayrı fiyatlanır.
+
+---
+
+# Parke ve Seramik Döşeme Teklifi Örneği: m², Fire, İşçilik
+Kaynak: https://www.anindateklif.co/sektor/parke-seramik-zemin-teklifi.html
+
+**Kısa cevap:** Zemin kaplama teklifinde net alan m² olarak hesaplanır ve malzemeye fire payı (ör. %5–10) eklendiği belirtilir; parkede şilte, süpürgelik ve eşik profili; seramikte yapıştırıcı, derz dolgu ve köşe profili ile eski kaplama sökümü ve zemin tesviyesi ayrı kalemlerdir.
+
+## Kalemler
+- Laminat / masif parke (marka, sınıf) (m²) — Fire payı
+- Seramik / porselen (ebat) (m²)
+- Şilte / yapıştırıcı / derz (m²)
+- Süpürgelik ve eşik profili (mt / adet)
+- Söküm ve tesviye (m²)
+
+## Dikkat edilecekler
+- Fire payının malzeme fiyatına mı eklendiğini yoksa ayrı mı gösterildiğini yazın.
+- Kapı altı kesimi ve mobilya taşıma durumunu belirtin.
+
+Anında Teklif'te oda ölçülerinden m²'yi hesaplatıp fire payını kural olarak ekleyebilir, teklifi sahada hazırlayabilirsiniz.
+
+**Parke teklifinde fire payı ne kadar?** Odanın şekline ve döşeme yönüne göre genellikle %5–10 arasında öngörülür; teklifte açıkça yazılması önerilir.
+
+---
+
+# Kamera Sistemi Teklifi Örneği: Güvenlik Kamerası ve Kayıt Cihazı
+Kaynak: https://www.anindateklif.co/sektor/kamera-guvenlik-sistemi-teklifi.html
+
+**Kısa cevap:** Kamera sistemi teklifinde kamera sayısı ve tipi (iç/dış, dome/bullet, çözünürlük, gece görüş), kayıt cihazı ve kanal sayısı, sabit disk kapasitesi (kaç gün kayıt), kablo metrajı, PoE switch, montaj ve telefondan izleme kurulumu ayrı kalemlerdir.
+
+## Kalemler
+- IP kamera (tip, çözünürlük) (adet)
+- Kayıt cihazı (NVR, kanal) (adet)
+- Sabit disk (TB) (adet) — Kayıt süresi
+- Kablo ve kanal (mt)
+- PoE switch / adaptör (adet)
+- Montaj ve uzaktan izleme kurulumu (iş)
+
+## Dikkat edilecekler
+- Disk kapasitesine göre kaç günlük kayıt tutulacağını yazın.
+- Kişisel verilerin korunması yükümlülükleri için müşteriyi bilgilendirin.
+
+Anında Teklif'te kamera paketlerini katalogda tanımlar, kamera adedi ve kablo metrajını girerek teklifi hazırlarsınız; kurulum servis görevi olarak atanır.
+
+**Kamera sistemi teklifinde neler olmalı?** Kamera adedi ve özellikleri, kayıt cihazı, disk kapasitesi, kablo metrajı, switch, montaj, uzaktan izleme kurulumu ve garanti.
+
+---
+
+# Temizlik Hizmeti Teklifi Örneği: Ofis, İnşaat Sonrası, Site Temizliği
+Kaynak: https://www.anindateklif.co/sektor/temizlik-hizmeti-teklifi.html
+
+**Kısa cevap:** Temizlik teklifi işin türüne göre m², personel×saat veya aylık sabit bedel üzerinden verilir; periyot (günlük, haftalık), personel sayısı ve çalışma saatleri, malzemenin kime ait olduğu, cam/dış cephe gibi ek işler ve sözleşme süresi yazılır.
+
+## Kalemler
+- İnşaat sonrası temizlik (m²)
+- Periyodik ofis / site temizliği (ay) — Gün ve saat
+- Personel (kişi × saat)
+- Cam ve dış cephe temizliği (m² / iş)
+- Temizlik malzemesi (ay) — Dahil / hariç
+
+## Dikkat edilecekler
+- Kapsam listesini (hangi alan, hangi sıklıkta) teklife ekleyin.
+- Sözleşme süresi ve fesih koşullarını yazın.
+
+Anında Teklif'te aylık sözleşmeli müşterileri, tekliflerini ve aylık tahsilatlarını tek ekranda takip edersiniz.
+
+**Temizlik teklifi nasıl hesaplanır?** Tek seferlik işler çoğunlukla m² veya personel×saat, periyodik işler aylık sabit bedel üzerinden hesaplanır; malzeme ve ek işler ayrıca yazılır.
+
+---
+
+# Evden Eve Nakliyat Teklifi Örneği: Ekspertiz, Paketleme, Asansör
+Kaynak: https://www.anindateklif.co/sektor/nakliyat-teklifi.html
+
+**Kısa cevap:** Nakliyat teklifi ekspertiz sonrası verilir: eşya hacmi (m³) veya oda sayısı, çıkış ve varış adresleri ile mesafe, kat ve dış cephe asansörü ihtiyacı, paketleme malzemesi ve işçiliği, mobilya demontaj/montajı, taşıma sigortası ve taşınma tarihi yazılır.
+
+## Kalemler
+- Taşıma (araç, mesafe) (sefer / km)
+- Paketleme malzemesi ve işçilik (iş)
+- Mobilya demontaj / montaj (adet / iş)
+- Dış cephe asansörü (kat / iş)
+- Taşıma sigortası (poliçe)
+
+## Dikkat edilecekler
+- Teklifin ekspertizle belirlenen eşya listesine göre olduğunu yazın.
+- Kırılabilir ve değerli eşyalar için sorumluluk ve sigorta kapsamını belirtin.
+
+Anında Teklif'te ekspertiz sırasında kalemleri telefondan girip teklifi müşteriye anında gönderir, kapora ve kalan ödemeyi takip edersiniz.
+
+**Nakliyat fiyatı neye göre belirlenir?** Eşya hacmi, mesafe, kat ve asansör durumu, paketleme ve demontaj ihtiyacı, sigorta ve tarihe göre.
+
+---
+
+# Web Tasarım Teklifi Örneği: Kapsam, Sayfa, Bakım ve Ödeme
+Kaynak: https://www.anindateklif.co/sektor/web-tasarim-teklifi.html
+
+**Kısa cevap:** Web tasarım teklifinde proje kapsamı (sayfa listesi, özellikler), tasarım ve yazılım, içerik girişi, alan adı ve barındırma, revizyon hakkı sayısı, teslim takvimi, sonraki bakım/destek bedeli ve aşamalı ödeme planı açıkça yazılır.
+
+## Kalemler
+- Tasarım (sayfa sayısı) (adet / iş)
+- Yazılım / entegrasyon (iş / saat)
+- İçerik girişi (sayfa)
+- Alan adı ve barındırma (yıl)
+- Bakım ve destek (ay)
+- Revizyon (ek) (saat) — Dahil revizyon sayısı
+
+## Dikkat edilecekler
+- Dahil revizyon sayısını ve ek revizyonun saat ücretini yazın.
+- Fikri hakların ödeme tamamlandığında devredileceğini belirtin.
+
+Anında Teklif'te hizmet paketlerinizi katalogda tutar, teklifi kurumsal PDF şablonla gönderir, aylık bakım tahsilatlarını cari hesapta izlersiniz.
+
+**Web tasarım teklifinde neler olmalı?** Kapsam ve sayfa listesi, teslim takvimi, revizyon hakkı, alan adı-hosting, bakım bedeli, ödeme planı ve fikri haklar.

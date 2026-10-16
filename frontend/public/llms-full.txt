@@ -1,0 +1,550 @@
+# Anında Teklif
+
+> Anında Teklif (https://www.anindateklif.co), Türkiye'deki ustalar, bayiler ve küçük işletmeler için bir teklif hazırlama programıdır: saniyeler içinde logolu PDF fiyat teklifi hazırlar, WhatsApp ile gönderir; müşteri, cari hesap, kasa ve tahsilat takibini aynı yerde toplar. Web, iOS ve Android'de çalışır; Türkçe, İngilizce ve İtalyanca destekler. Ücretsiz planda ayda 5 teklif hazırlanabilir.
+
+## Özellikler
+- **Profesyonel PDF teklifler:** Klasik, modern, kurumsal ve daha fazla şablondan seçin; logonuz ve firma bilgilerinizle saniyeler içinde PDF fiyat teklifi oluşturun.
+- **WhatsApp ile tek dokunuşta gönderim:** Teklifi WhatsApp'tan doğrudan müşterinize gönderin; e-posta ve indirme seçenekleri de hazır.
+- **Teklif durumu ve müşteri geçmişi:** Tüm müşterilerinizi, geçmiş tekliflerinizi ve durumlarını (onaylandı, beklemede, reddedildi) tek listede takip edin.
+- **Kasa, tahsilat ve cari hesap:** Gelir-gider kayıtlarını tutun; müşteri bazında alacak-borç durumunu ve cari hesapları anlık görün.
+- **Katalog ve ölçüye göre fiyat:** Ürün ve hizmetlerinizi katalogda saklayın; en-boy ve metraja göre fiyatı otomatik hesaplayan yapılandırıcıyı kullanın.
+- **Ekip yönetimi:** Personelinizi davet edin, yetkilerini belirleyin, ekip içi sohbetle iletişimi uygulamada tutun.
+- **Türkçe, İngilizce, İtalyanca:** Uygulamayı ve teklifleri kendi dilinizde ya da müşterinizin dilinde hazırlayın.
+- **Web, iOS ve Android:** Sahada telefondan, ofiste bilgisayardan aynı hesapla çalışın; verileriniz bulutta.
+
+## Fiyatlar (Türk lirası, 2026-10-16)
+- Ücretsiz plan: ayda 5 teklif, kredi kartı gerekmez
+- 1–5 kişi: haftalık 50 TL, yıllık 2.000 TL (liste fiyatı 2.400 TL)
+- 6–10 kişi: haftalık 70 TL, yıllık 2.800 TL (liste fiyatı 3.400 TL)
+- 11–30 kişi: haftalık 80 TL, yıllık 3.200 TL (liste fiyatı 3.900 TL)
+- 31+ kişi: haftalık 110 TL, yıllık 4.400 TL (liste fiyatı 5.300 TL)
+- Fiyat ekipteki kişi sayısına göre belirlenir; tek abonelik tüm ekibi kapsar.
+
+## Sayfalar
+- [Ana sayfa](https://www.anindateklif.co/): Ürün tanıtımı ve hesap açma
+- [Özellikler](https://www.anindateklif.co/ozellikler.html): Tüm özellikler ve teklif akışı
+- [Fiyatlar](https://www.anindateklif.co/fiyatlar.html): Planlar ve abonelik fiyatları
+- [Sık sorulan sorular](https://www.anindateklif.co/sss.html)
+- [Gizlilik politikası](https://www.anindateklif.co/privacy)
+
+## Rehber
+- [Fiyat Teklifi Nasıl Hazırlanır? 9 Adımda Profesyonel Teklif](https://www.anindateklif.co/rehber/fiyat-teklifi-nasil-hazirlanir.html): Fiyat teklifinde hangi bilgiler olmalı? Firma bilgisi, kalemler, KDV, geçerlilik süresi, ödeme ve teslim koşullarıyla 9 adımda profesyonel teklif hazırlama rehberi.
+- [Fiyat Teklifi Örneği ve Ücretsiz Excel Şablonu (2026)](https://www.anindateklif.co/rehber/fiyat-teklifi-ornegi.html): Hazır fiyat teklifi örneği: başlık, kalem tablosu, KDV, geçerlilik ve ödeme koşulları. Ücretsiz Excel teklif şablonunu indirin veya PDF teklifi uygulamada saniyeler içinde oluşturun.
+- [Teklif Hazırlama Programı: Excel, Word mü Uygulama mı?](https://www.anindateklif.co/rehber/teklif-hazirlama-programi.html): Ücretsiz teklif hazırlama programı mı, Excel şablonu mu, Word mü? Artıları-eksileri, karşılaştırma tablosu ve bir teklif programında olması gereken özellikler.
+- [Proforma Fatura Nedir? Fiyat Teklifi ve Faturadan Farkı](https://www.anindateklif.co/rehber/proforma-fatura-nedir.html): Proforma fatura nedir, ne zaman kesilir, nasıl hazırlanır? Proforma fatura, fiyat teklifi ve gerçek fatura arasındaki farklar tablo halinde.
+- [Fiyat Teklifi Geçerlilik Süresi Nasıl Belirlenir?](https://www.anindateklif.co/rehber/fiyat-teklifi-gecerlilik-suresi.html): Fiyat teklifine geçerlilik süresi neden yazılır, kaç gün olmalı, süre yazılmazsa ne olur? Döviz ve malzeme fiyatı değişimlerine karşı teklif koşulları.
+- [WhatsApp ile Fiyat Teklifi Gönderme: Doğru Yöntem](https://www.anindateklif.co/rehber/whatsapp-ile-teklif-gonderme.html): Müşteriye WhatsApp'tan profesyonel teklif göndermek: PDF mi mesaj mı, hangi mesaj metni, takip ve onay nasıl alınır? Örnek mesajlar.
+- [Tadilat Teklif Örneği: Kalem Kalem Tadilat Fiyat Teklifi](https://www.anindateklif.co/rehber/tadilat-teklif-ornegi.html): Daire, mutfak, banyo ve boya tadilatı için teklif örneği: hangi kalemler, hangi birimler, dahil olmayanlar ve ödeme planı. Tadilat ustaları için hazır kontrol listesi.
+- [İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek](https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html): İngilizce fiyat teklifinde kullanılan başlıklar ve kalıp cümleler: quotation, unit price, VAT, validity, payment terms. Türkçe karşılıklarıyla tablo ve örnek e-posta.
+- [Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber](https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html): Müşteri cari hesabı nedir, alacak ve tahsilat nasıl takip edilir? Excel ile cari takip, sık yapılan hatalar ve teklif-tahsilat-kasa akışını tek yerde tutmak.
+
+## Kaynaklar
+- [Ücretsiz fiyat teklifi şablonu (Excel)](https://www.anindateklif.co/sablon/fiyat-teklifi-sablonu.xlsx)
+- [Tüm içerik tek dosyada](https://www.anindateklif.co/llms-full.txt)
+
+## İletişim
+- E-posta: ncagdasm@gmail.com
+
+## English summary
+Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: 5 quotes per month; paid plans from 50 TRY/week or 2000 TRY/year for teams of up to 5.
+
+---
+
+# Sık sorulan sorular
+
+## Anında Teklif nedir?
+Anında Teklif; ustaların, bayilerin ve küçük işletmelerin saniyeler içinde logolu PDF fiyat teklifi hazırlayıp WhatsApp ile göndermesini, müşteri, cari hesap, kasa ve tahsilatı aynı yerde takip etmesini sağlayan bir teklif hazırlama uygulamasıdır. Web tarayıcısında, iOS ve Android'de çalışır.
+
+## Anında Teklif ücretsiz mi?
+Evet, ücretsiz planla kredi kartı girmeden ayda 5 teklif hazırlayabilirsiniz. Sınırsız kullanım için 1–5 kişi ekiplerde haftalık 50 TL veya yıllık 2.000 TL abonelik vardır. Ayrıntılar fiyatlar sayfasında.
+
+## Teklifleri WhatsApp'tan gönderebilir miyim?
+Evet. Teklif kaydedildiğinde PDF otomatik oluşur ve tek dokunuşla müşterinin WhatsApp'ına gönderilir. E-posta ve indirme seçenekleri de vardır.
+
+## Telefondan kullanılabilir mi?
+Evet. Anında Teklif web tarayıcısında, iPhone/iPad ve Android'de çalışır; aynı hesapla tüm cihazlarda aynı verilere erişirsiniz.
+
+## Ekibimle birlikte kullanabilir miyim?
+Evet. Personelinizi davet edip yetkilerini belirleyebilirsiniz. Abonelik fiyatı ekipteki kişi sayısına göre belirlenir ve tek abonelik tüm ekibi kapsar.
+
+## Ölçüye göre fiyat hesaplıyor mu?
+Evet. Katalogdaki ürünler için en-boy, metraj veya adede göre fiyatı otomatik hesaplayan yapılandırıcı vardır; perde, cam, doğrama, pergola gibi ölçülü işlerde zaman kazandırır.
+
+## Teklifleri İngilizce hazırlayabilir miyim?
+Evet. Teklifler Türkçe, İngilizce veya İtalyanca hazırlanabilir.
+
+## Verilerim güvende mi?
+Verileriniz bulutta saklanır ve her gece yedeklenir. Kişisel verilerin işlenmesi hakkında ayrıntılar gizlilik politikasında.
+
+---
+
+# Fiyat Teklifi Nasıl Hazırlanır? 9 Adımda Profesyonel Teklif
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-nasil-hazirlanir.html
+
+**Kısa cevap:** İyi bir fiyat teklifi; firma ve müşteri bilgilerini, teklif numarası ile tarihini, her kalemin miktar-birim fiyat-tutarını, KDV'nin dahil mi hariç mi olduğunu, genel toplamı, geçerlilik süresini, ödeme ve teslim koşullarını içerir; PDF olarak, logolu ve imzalı/kaşeli şekilde gönderilir.
+## 1. Firma bilgilerinizi ve logonuzu en üste koyun
+
+Teklifin üst kısmında firma unvanı, logo, adres, telefon, e-posta ve varsa vergi dairesi/numarası bulunmalı. Müşteri teklifi aylar sonra açtığında kime ulaşacağını tek bakışta görmeli.
+
+## 2. Müşteriyi ve konuyu net yazın
+
+Müşterinin adı veya firma unvanı, yetkili kişi, telefon ve teklifin konusu (ör. "Teras için bioklimatik pergola", "3+1 daire boya-badana") yazılmalı. Konu satırı, müşterinin aynı anda aldığı diğer tekliflerle sizinkini karıştırmamasını sağlar.
+
+## 3. Teklif numarası ve tarih verin
+
+Her teklife benzersiz bir numara (ör. 2026-0142) ve düzenleme tarihi verin. Revizyon yaptığınızda numarayı koruyup "Rev. 2" ekleyin; telefonda "142 numaralı teklif" demek iki tarafa da zaman kazandırır.
+
+## 4. Kalemleri tek tek, ölçülebilir şekilde yazın
+
+Her satırda ürün/hizmet adı, kısa açıklama, miktar, birim (adet, m², mt, saat), birim fiyat ve satır tutarı olmalı. "Malzeme + işçilik: 45.000 TL" gibi toplu satırlar müşteride güvensizlik yaratır ve pazarlıkta elinizi zayıflatır.
+
+## 5. KDV'yi açıkça belirtin
+
+Fiyatların KDV hariç mi KDV dahil mi olduğunu yazın ve ara toplam, KDV tutarı ve genel toplamı ayrı satırlarda gösterin. Türkiye'de genel KDV oranı %20'dir; bazı mal ve hizmetlerde farklı oranlar uygulanır, kaleminize uyan oranı muhasebecinizle teyit edin.
+
+## 6. Geçerlilik süresini yazın
+
+"Bu teklif düzenleme tarihinden itibaren 15 gün geçerlidir" gibi bir cümle, döviz ve malzeme fiyatı dalgalanmalarına karşı sizi korur. Ayrıntılar için fiyat teklifi geçerlilik süresi yazımıza bakın.
+
+## 7. Ödeme ve teslim koşullarını ekleyin
+
+- Ödeme planı: ör. %40 peşin, %60 teslimde
+- Ödeme yöntemi: havale/EFT, kredi kartı, çek
+- Teslim veya montaj süresi: ör. sipariş onayından itibaren 15 iş günü
+- Garanti süresi ve kapsamı
+- Teklife dahil olmayanlar: nakliye, iskele, elektrik bağlantısı vb.
+
+## 8. Görsel ve teknik detay ekleyin
+
+Ürün fotoğrafı, ölçülü çizim veya renk seçeneği teklifin kabul oranını artırır. Teknik ölçüye göre fiyat değişen işlerde (perde, pergola, cam, doğrama) ölçüleri teklifte göstermek sonradan çıkabilecek "ben bunu sanmıştım" tartışmalarını önler.
+
+## 9. PDF olarak gönderin ve takip edin
+
+Word veya Excel dosyası açıldığı cihazda bozulabilir ve değiştirilebilir; PDF her ekranda aynı görünür. Teklifi gönderdikten sonra 2–3 gün içinde müşteriyi arayıp sorularını sormak, kabul oranını belirgin şekilde artırır. Hangi teklifin beklemede, hangisinin onaylandığını bir listede tutun.
+
+## Teklifi daha hızlı hazırlamak için
+
+Her teklifi sıfırdan Excel'de hazırlamak hem zaman alır hem de hesap hatasına açıktır. Anında Teklif ile kataloğunuzdaki ürünleri seçer, ölçüleri girersiniz; logonuzla PDF teklif saniyeler içinde oluşur ve WhatsApp'tan tek dokunuşla müşteriye gider. Teklifin durumu (onaylandı, beklemede, reddedildi) ve müşterinin cari hesabı da aynı yerde tutulur.
+
+**Fiyat teklifinde mutlaka olması gerekenler nelerdir?** Firma ve müşteri bilgileri, teklif numarası ve tarihi, kalemlerin miktar-birim fiyat-tutarı, KDV bilgisi, genel toplam, geçerlilik süresi, ödeme ve teslim koşulları.
+
+**Fiyat teklifi Word'de mi, Excel'de mi, PDF olarak mı gönderilmeli?** Hazırlarken Excel veya bir teklif programı kullanılabilir; müşteriye her zaman PDF gönderilmesi önerilir, çünkü PDF her cihazda aynı görünür ve kolayca değiştirilemez.
+
+**Fiyat teklifinde KDV dahil mi yazılmalı?** İkisi de olabilir; önemli olan açıkça belirtmektir. Kurumsal müşterilerde genellikle KDV hariç fiyat ve ayrı KDV satırı, bireysel müşterilerde KDV dahil toplam tercih edilir.
+
+**Teklif gönderdikten sonra ne yapılmalı?** Birkaç gün içinde müşteriyi arayıp soruları yanıtlayın, revizyon gerekiyorsa aynı numarayla revize edin ve teklifin durumunu kayıt altında tutun.
+
+---
+
+# Fiyat Teklifi Örneği ve Ücretsiz Excel Şablonu (2026)
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-ornegi.html
+
+**Kısa cevap:** Bir fiyat teklifi örneği; üstte firma ve müşteri bilgileri, ortada miktar-birim fiyat-tutar sütunlu kalem tablosu, altta ara toplam, KDV ve genel toplam, en sonda geçerlilik süresi ile ödeme-teslim koşullarından oluşur. Aşağıdaki örneği ve ücretsiz Excel şablonunu kullanabilirsiniz.
+## Örnek fiyat teklifi
+
+ÖRNEK YAPI DEKORASYONAtatürk Cad. No:1, İstanbul · 0212 000 00 00
+FİYAT TEKLİFİNo: 2026-0142Tarih: 16.10.2026
+
+Sayın: Ayşe Yılmaz  ·  Konu: Salon ve koridor boya-badana, parke yenileme
+
+# | Açıklama | Miktar | Birim fiyat | Tutar | 
+
+1 | İç cephe boya (2 kat, silikonlu) | 120 m² | 180 TL | 21.600 TL | 
+
+2 | Alçı tamiri ve zımpara | 1 iş | 4.500 TL | 4.500 TL | 
+
+3 | Laminat parke (8 mm) + işçilik | 35 m² | 650 TL | 22.750 TL | 
+
+4 | Süpürgelik | 40 mt | 90 TL | 3.600 TL | 
+
+Ara toplam | 52.450 TL | 
+
+KDV (%20) | 10.490 TL | 
+
+Genel toplam | 62.940 TL | 
+
+Teklif 15 gün geçerlidir. Ödeme: %40 sipariş onayında, %60 iş tesliminde. Süre: onaydan itibaren 7 iş günü. Mobilya taşıma teklife dahil değildir.
+
+Rakamlar yalnızca örnektir; gerçek piyasa fiyatı değildir.
+
+## Ücretsiz fiyat teklifi şablonu (Excel)
+
+Formülleri hazır, KDV ve genel toplamı kendisi hesaplayan şablonu indirip kendi bilgilerinizle doldurabilirsiniz: fiyat-teklifi-sablonu.xlsx. Word yerine Excel öneriyoruz, çünkü satır tutarlarını ve toplamları elle hesaplamak en sık yapılan teklif hatasıdır.
+
+## Örnekteki her bölüm neden var?
+
+- Teklif numarası ve tarih: revizyonları ve telefon görüşmelerini kolaylaştırır.
+
+- Konu satırı: müşteri birden çok teklif karşılaştırırken sizinkini ayırt eder.
+
+- Birim ve miktar: m², mt, adet gibi birimler fiyatın neye göre oluştuğunu gösterir; pazarlığı kaleme taşır, toplam fiyata değil.
+
+- KDV satırı: "KDV dahil mi?" sorusunu baştan kapatır.
+
+- Dahil olmayanlar: sonradan çıkan "bu da mı ücretli?" tartışmalarını önler.
+
+## Sektöre göre örnek kalemler
+
+Sektör | Tipik kalemler ve birimler | 
+
+Tadilat / dekorasyon | Boya (m²), seramik (m²), alçıpan (m²), söküm (iş), moloz atımı (sefer) | 
+
+Perde, pergola, gölgelendirme | Sistem (m² veya adet), motor (adet), kumanda, montaj (iş) | 
+
+Alüminyum / PVC doğrama | Pencere/kapı (m² veya adet), cam (m²), aksesuar, montaj | 
+
+Teknik servis | Arıza tespiti (iş), parça (adet), işçilik (saat), yol (sefer) | 
+
+Ajans / serbest çalışan | Tasarım (adet), saatlik danışmanlık (saat), aylık yönetim (ay) | 
+
+Tadilat işleri için ayrıntılı bir liste tadilat teklif örneği yazımızda.
+
+## Şablon yerine uygulama
+
+Excel şablonu birkaç teklif için yeterlidir; ancak müşteri sayısı arttıkça "hangi teklif onaylandı, kim ödeme yaptı" sorusu kâğıt üzerinde kaybolur. Anında Teklif'te aynı teklifi kataloğunuzdan kalem seçerek oluşturur, logolu PDF'i WhatsApp'tan gönderir; onaylanan teklif müşterinin cari hesabına ve tahsilat takibine bağlanır.
+
+**Fiyat teklifi şablonu ücretsiz mi?** Evet. Bu sayfadaki Excel şablonunu ücretsiz indirip kullanabilirsiniz. Anında Teklif uygulamasında da ayda 5 teklife kadar ücretsiz PDF teklif hazırlayabilirsiniz.
+
+**Fiyat teklifi örneği Word'de hazırlanabilir mi?** Hazırlanabilir, ancak Word tablolarında toplamları elle hesaplamanız gerekir. Hesap hatasını önlemek için Excel şablonu veya bir teklif programı daha güvenlidir; müşteriye her durumda PDF gönderin.
+
+**İngilizce fiyat teklifi örneği var mı?** Evet, İngilizce fiyat teklifi (quotation) rehberimizde başlıkların ve sık kullanılan cümlelerin İngilizce karşılıkları var.
+
+---
+
+# Teklif Hazırlama Programı: Excel, Word mü Uygulama mı?
+Kaynak: https://www.anindateklif.co/rehber/teklif-hazirlama-programi.html
+
+**Kısa cevap:** Ayda birkaç teklif hazırlıyorsanız Excel şablonu yeterlidir. Teklif sayısı arttıysa, birden fazla kişi teklif veriyorsa veya teklifleri telefondan WhatsApp ile göndermek istiyorsanız; katalog, otomatik hesaplama, PDF çıktı, teklif durumu ve müşteri/cari takibi olan bir teklif hazırlama programı zaman ve hata açısından daha verimlidir.
+## Karşılaştırma: Word, Excel ve teklif programı
+
+ | Word | Excel | Teklif programı | 
+
+Başlangıç maliyeti | Düşük | Düşük | Ücretsiz plan / abonelik | 
+
+Otomatik toplam ve KDV | Yok | Formülle | Var | 
+
+Ürün kataloğu ve fiyat listesi | Yok | Ayrı sayfada, elle | Var | 
+
+Telefondan hazırlama | Zor | Zor | Var | 
+
+Logolu PDF ve WhatsApp'tan gönderme | Elle dışa aktarım | Elle dışa aktarım | Tek dokunuş | 
+
+Teklif durumu (onay/bekliyor/red) | Yok | Elle liste | Var | 
+
+Müşteri, cari ve tahsilat | Yok | Ayrı dosyalar | Aynı yerde | 
+
+Ekipte ortak kullanım | Dosya paylaşımı | Dosya paylaşımı | Kullanıcı ve yetki | 
+
+## Bir teklif programında olması gerekenler
+
+- Hızlı kalem girişi: kayıtlı ürün/hizmetlerden seçim, tekrar eden kalemleri yeniden yazmamak.
+
+- Ölçüye göre fiyat: m², mt veya en×boy girildiğinde fiyatı otomatik hesaplama (perde, cam, doğrama, pergola gibi işlerde kritik).
+
+- Kurumsal PDF: logo, firma bilgileri, birden fazla şablon seçeneği.
+
+- Paylaşım: WhatsApp, e-posta ve indirme.
+
+- Takip: teklif durumu, müşteri geçmişi, hatırlatmalar.
+
+- Para tarafı: kasa, tahsilat ve müşteri cari hesabı; onaylanan teklifin alacağa dönüşmesi.
+
+- Ekip: personel daveti ve yetkilendirme; kim hangi teklifi verdi görünürlüğü.
+
+- Her cihaz: sahada telefondan, ofiste bilgisayardan aynı veriye erişim.
+
+## "Ücretsiz teklif programı" ararken dikkat
+
+İndirilen eski masaüstü programları çoğu zaman tek bilgisayara bağlıdır, yedeklenmez ve telefondan kullanılamaz. Bulut tabanlı bir uygulamanın ücretsiz planı, işinizin büyüyüp büyümediğini görmeden para ödemeden başlamanızı sağlar.
+
+## Anında Teklif nasıl çalışır?
+
+Anında Teklif web tarayıcısında ve iOS/Android uygulamasında çalışan bir teklif hazırlama programıdır. Kalemleri katalogdan seçer veya ölçüleri girersiniz, logolu PDF otomatik oluşur, WhatsApp'tan gönderirsiniz. Ücretsiz planda ayda 5 teklif hazırlanabilir; abonelik fiyatları fiyatlar sayfasında.
+
+**Ücretsiz teklif hazırlama programı var mı?** Evet. Anında Teklif'in ücretsiz planıyla kredi kartı girmeden ayda 5 PDF teklif hazırlayabilirsiniz. Daha fazlası için haftalık veya yıllık abonelik vardır.
+
+**Teklif programı telefondan kullanılabilir mi?** Anında Teklif iOS ve Android uygulaması olarak ve web tarayıcısından çalışır; aynı hesapla telefon ve bilgisayardan aynı verilere erişilir.
+
+**Excel'deki ürün listemi teklif programına aktarabilir miyim?** Anında Teklif'te ürün ve hizmetlerinizi kataloğa ekleyip teklif hazırlarken seçebilirsiniz. Toplu aktarım seçenekleri için destek ekibine yazabilirsiniz.
+
+---
+
+# Proforma Fatura Nedir? Fiyat Teklifi ve Faturadan Farkı
+Kaynak: https://www.anindateklif.co/rehber/proforma-fatura-nedir.html
+
+**Kısa cevap:** Proforma fatura, satış gerçekleşmeden önce alıcıya gönderilen ve faturanın nasıl olacağını gösteren ön faturadır. Vergi belgesi değildir, muhasebe kaydına girmez ve KDV doğurmaz; genellikle peşin ödeme, ithalat-ihracat, akreditif ve kredi başvurusu için istenir. Fiyat teklifine çok benzer, ancak alıcı satın almaya karar vermiş olduğunda kesilir.
+## Proforma fatura, fiyat teklifi ve fatura karşılaştırması
+
+ | Fiyat teklifi | Proforma fatura | Fatura (e-Fatura/e-Arşiv) | 
+
+Ne zaman? | Satış görüşmesi aşamasında | Alıcı karar verdikten sonra, satıştan önce | Mal teslimi / hizmet ifasıyla | 
+
+Amacı | Fiyat ve koşulları önermek | Ödeme, ithalat, kredi işlemleri için ön belge | Satışı belgelemek | 
+
+Vergi belgesi mi? | Hayır | Hayır | Evet | 
+
+Muhasebe kaydı | Yok | Yok | Var | 
+
+Değiştirilebilir mi? | Revize edilebilir | Yeniden düzenlenebilir | Ancak iade/iptal prosedürüyle | 
+
+## Proforma fatura ne zaman istenir?
+
+- Müşteri peşin ödeme yapacaksa ve şirketinde ödeme onayı için belge gerekiyorsa
+
+- İthalat ve ihracatta gümrük, banka ve akreditif işlemlerinde
+
+- Kredi veya teşvik başvurusunda yatırım tutarını göstermek için
+
+- Büyük alımlarda satın alma birimlerinin iç onay süreçlerinde
+
+## Proforma faturada olması gerekenler
+
+Satıcı ve alıcı bilgileri, "PROFORMA FATURA" başlığı, belge numarası ve tarihi, mal/hizmet tanımı, miktar, birim fiyat, KDV, toplam, ödeme ve teslim şekli, geçerlilik süresi. Dış ticarette ayrıca teslim şekli (Incoterms, ör. FOB, CIF), menşei, ağırlık ve ambalaj bilgisi eklenir.
+
+## Proforma fatura nasıl hazırlanır?
+
+Pratikte proforma fatura, onaylanmış bir fiyat teklifinin başlığı değiştirilmiş hâlidir. Teklif şablonunuzu kullanıp başlığı "Proforma Fatura" yapmanız ve vergi belgesi olmadığını not düşmeniz yeterlidir. Fiyat teklifi örneğimizdeki yapı birebir kullanılabilir.
+
+Bu yazı genel bilgilendirme amaçlıdır; vergi ve muhasebe uygulamaları için mali müşavirinize danışın.
+
+**Proforma fatura resmi belge midir?** Hayır. Proforma fatura bir ön bilgi belgesidir; vergi belgesi değildir, muhasebeye kaydedilmez ve KDV doğurmaz. Satış gerçekleştiğinde ayrıca gerçek fatura düzenlenir.
+
+**Proforma faturaya KDV yazılır mı?** Alıcının ödeyeceği toplamı göstermek için KDV tutarı yazılabilir; ancak proforma fatura KDV beyanına konu olmaz.
+
+**Proforma fatura ile fiyat teklifi aynı şey mi?** Benzer içeriğe sahiptirler. Fiyat teklifi satış görüşmesi aşamasında öneri olarak, proforma fatura ise alıcı karar verdikten sonra ödeme veya resmi işlemler için gönderilir.
+
+---
+
+# Fiyat Teklifi Geçerlilik Süresi Nasıl Belirlenir?
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-gecerlilik-suresi.html
+
+**Kısa cevap:** Fiyat teklifinin geçerlilik süresi, teklif verenin o fiyatla bağlı kaldığı süredir. Fiyatları sık değişen işlerde 3–7 gün, çoğu hizmet ve imalat işinde 15–30 gün yaygındır. Süreyi teklifte açıkça yazmak, döviz ve malzeme fiyatı artışlarına karşı sizi korur ve müşterinin karar vermesini hızlandırır.
+## Geçerlilik süresi neden önemli?
+
+Türk Borçlar Kanunu'na göre bir öneriyi belirli bir süre vererek yapan kişi, bu süre bitene kadar önerisiyle bağlıdır (TBK m.3). Süre yazılmamışsa bağlılık, karşı tarafın makul sürede yanıt vermesinin beklenebileceği ana kadar devam eder; bu "makul süre" ise tartışmaya açıktır. Açık bir tarih yazmak belirsizliği ortadan kaldırır.
+
+## Hangi iş için kaç gün?
+
+İş türü | Yaygın geçerlilik süresi | 
+
+Döviz bazlı ürünler, ithal malzeme, metal | 3–7 gün veya "kur değişiminde güncellenir" şartı | 
+
+Tadilat, montaj, imalat | 15 gün | 
+
+Hizmet, danışmanlık, yazılım | 30 gün | 
+
+Kamu ihaleleri | İhale dokümanında belirtilen süre | 
+
+Bunlar yaygın uygulamalardır, kural değildir; kendi maliyet riskinize göre belirleyin.
+
+## Teklife yazılabilecek örnek cümleler
+
+- "Bu teklif düzenleme tarihinden itibaren 15 (on beş) gün geçerlidir."
+
+- "Fiyatlar teklif tarihindeki döviz kuru esas alınarak hazırlanmıştır; sipariş tarihindeki kur farkı fiyata yansıtılır."
+
+- "Geçerlilik süresi sonunda fiyatlar yeniden teyit edilmelidir."
+
+- "Stoklarla sınırlıdır."
+
+## Süre dolunca ne yapılmalı?
+
+Süresi geçmiş bir teklifle sipariş gelirse, yeni fiyatı yazılı olarak teyit edin veya revize teklif gönderin. Revize teklifte aynı numarayı koruyup "Rev. 2" eklemek takip kolaylığı sağlar. Anında Teklif'te teklifler tarih ve durumlarıyla listelendiği için süresi yaklaşan bekleyen teklifleri görüp müşteriyi zamanında arayabilirsiniz.
+
+Bu yazı genel bilgilendirme amaçlıdır, hukuki danışmanlık yerine geçmez.
+
+**Fiyat teklifi geçerlilik süresi kaç gün olmalı?** Kesin bir kural yoktur. Fiyatı sık değişen ürünlerde 3–7 gün, tadilat ve imalat işlerinde 15 gün, hizmet işlerinde 30 gün yaygındır.
+
+**Teklifte geçerlilik süresi yazmazsam ne olur?** Teklif, karşı tarafın makul sürede yanıt vermesinin beklenebileceği ana kadar bağlayıcı kabul edilebilir; bu süre belirsiz olduğu için tartışmaya yol açabilir. Süreyi açıkça yazmak önerilir.
+
+**Süresi dolan teklif geçersiz mi olur?** Süre dolduktan sonra teklif veren o fiyatla bağlı değildir; müşteri kabul etmek isterse fiyatın yeniden teyit edilmesi veya revize teklif gönderilmesi gerekir.
+
+---
+
+# WhatsApp ile Fiyat Teklifi Gönderme: Doğru Yöntem
+Kaynak: https://www.anindateklif.co/rehber/whatsapp-ile-teklif-gonderme.html
+
+**Kısa cevap:** WhatsApp'ta teklifi düz mesaj veya ekran görüntüsü olarak değil, logolu PDF dosyası olarak gönderin; yanına müşterinin adı, teklifin konusu, toplam tutar ve geçerlilik süresini içeren kısa bir mesaj yazın. Onayı yazılı olarak ("Onaylıyorum" mesajı) alın ve teklifin durumunu kayıt altına alın.
+## Neden PDF?
+
+Ekran görüntüsü bulanıklaşır, düz mesaj kaybolur, Excel dosyası telefonda bozuk açılır. PDF her telefonda aynı görünür, müşteri tarafından iletilebilir ve arşivlenebilir. Müşteri teklifi eşine, ortağına veya muhasebesine kolayca iletebilir; bu da karar sürecini hızlandırır.
+
+## Örnek mesaj metinleri
+
+Merhaba Ayşe Hanım, görüştüğümüz salon boya ve parke işinin teklifini ekte gönderiyorum. Toplam 62.940 TL (KDV dahil), teklif 15 gün geçerlidir. Sorunuz olursa buradan yazabilirsiniz. İyi günler, Mehmet — Örnek Yapı
+
+Merhaba, 3 gün önce gönderdiğimiz 2026-0142 numaralı teklifle ilgili sorunuz var mı? İsterseniz kalemlerde düzenleme yapabiliriz.
+
+## İyi uygulamalar
+
+- Teklifi gönderdiğiniz numarayı firma numaranız yapın; WhatsApp Business profilinde adres ve çalışma saatleri bulunsun.
+
+- Mesajda toplam tutarı ve geçerlilik süresini tekrar edin; müşteri dosyayı açmadan özü görsün.
+
+- Onayı yazılı alın; sesli mesaj veya telefon onayını mesajla teyit edin.
+
+- 2–3 gün içinde nazik bir takip mesajı atın.
+
+- Müşterinin kişisel verilerini yalnızca iş amacıyla kullanın ve izinsiz toplu mesaj göndermeyin.
+
+## Tek dokunuşla gönderme
+
+Anında Teklif'te teklif kaydedildiğinde PDF otomatik oluşur; "WhatsApp'tan gönder" ile müşterinin numarasına dosya ve mesaj hazır şekilde açılır. Müşteri onay verdiğinde teklifi "onaylandı" olarak işaretlersiniz; teklif cari hesaba ve tahsilat takibine geçer.
+
+**WhatsApp'tan gönderilen teklif geçerli midir?** Teklif bir öneridir; hangi kanaldan gönderildiğinden bağımsız olarak içeriği ve müşterinin yazılı kabulü önemlidir. Onayın yazılı mesajla alınması ve saklanması önerilir.
+
+**WhatsApp'tan PDF teklif nasıl gönderilir?** Teklifi PDF olarak kaydedin, WhatsApp sohbetinde ataç simgesinden Belge'yi seçip dosyayı ekleyin. Anında Teklif'te bu adım tek dokunuşla yapılır.
+
+---
+
+# Tadilat Teklif Örneği: Kalem Kalem Tadilat Fiyat Teklifi
+Kaynak: https://www.anindateklif.co/rehber/tadilat-teklif-ornegi.html
+
+**Kısa cevap:** Tadilat teklifinde işler mahal mahal (salon, mutfak, banyo) ve kalem kalem (söküm, alçı, boya, seramik, tesisat) ayrılmalı; her kalemde metraj (m², mt, adet), birim fiyat ve malzemenin markası/sınıfı yazılmalıdır. Moloz atımı, nakliye ve öngörülemeyen işler için dahil olmayanlar listesi ve aşamalı ödeme planı eklenmelidir.
+## Mahal ve iş kalemi listesi
+
+Mahal | Sık kullanılan kalemler | Birim | 
+
+Genel | Koruma örtüsü, söküm, moloz torbası ve atım | iş / sefer | 
+
+Duvar ve tavan | Alçı, saten alçı, astar, iç cephe boya, kartonpiyer | m², mt | 
+
+Zemin | Şap, seramik, laminat parke, süpürgelik | m², mt | 
+
+Banyo | Seramik söküm-döşeme, su yalıtımı, vitrifiye, armatür, duşakabin | m², adet | 
+
+Mutfak | Dolap (mt), tezgâh (mt), ankastre montaj, fayans | mt, adet | 
+
+Tesisat | Elektrik hattı/priz, sıhhi tesisat, kombi bağlantısı | nokta, adet | 
+
+Doğrama | İç kapı, PVC/alüminyum pencere, pervaz | adet, m² | 
+
+## Teklife mutlaka yazın
+
+- Malzeme sınıfı: "silikonlu iç cephe boya", "1. sınıf seramik 60×60" gibi; marka belirtilmezse "muadil" ibaresi.
+
+- Metraj yöntemi: ölçünün yerinde alındığı ve kesin metrajın iş sonunda hesaplanacağı.
+
+- Dahil olmayanlar: mobilya taşıma, apartman yönetimi izinleri, öngörülemeyen gizli hasar (çürük tesisat vb.).
+
+- Ödeme planı: ör. %30 başlangıç, %40 kaba işler bitiminde, %30 teslimde.
+
+- Süre ve garanti: iş günü cinsinden süre, işçilik garantisi.
+
+## Örnek tablo
+
+Kalem tablosunun yapısı için fiyat teklifi örneği sayfamızdaki tabloyu ve ücretsiz Excel şablonunu kullanabilirsiniz.
+
+## Sahada teklif
+
+Tadilatta keşif ve teklif çoğu zaman aynı gün yapılır. Anında Teklif ile ölçüyü yerinde alıp telefondan kalemleri seçer, logolu PDF teklifi müşteri evdeyken WhatsApp'tan gönderebilirsiniz; "akşam hazırlayıp gönderirim" derken işi rakibe kaptırmazsınız.
+
+**Tadilat teklifi nasıl hazırlanır?** Mahal mahal keşif yapılır, her iş kalemi için metraj alınır, birim fiyatlarla çarpılır; malzeme sınıfı, dahil olmayanlar, ödeme planı, süre ve garanti eklenerek PDF olarak gönderilir.
+
+**Tadilat teklifinde malzeme dahil mi yazılmalı?** Her kalemde malzemenin dahil olup olmadığı açıkça yazılmalıdır. Malzemeyi müşteri alacaksa "yalnız işçilik" ibaresi kullanılır.
+
+---
+
+# İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek
+Kaynak: https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html
+
+**Kısa cevap:** İngilizce fiyat teklifine genellikle "Quotation" veya "Price Quote" başlığı verilir. Kalem tablosunda Description, Quantity, Unit Price ve Amount sütunları; altında Subtotal, VAT ve Total satırları; sonunda Validity (geçerlilik), Payment Terms (ödeme koşulları) ve Delivery Time (teslim süresi) bulunur.
+## Türkçe – İngilizce teklif terimleri
+
+Türkçe | İngilizce | 
+
+Fiyat teklifi | Quotation / Price quote | 
+
+Teklif no / tarih | Quote No. / Date | 
+
+Açıklama | Description | 
+
+Miktar / Birim | Quantity / Unit | 
+
+Birim fiyat / Tutar | Unit price / Amount | 
+
+Ara toplam / KDV / Genel toplam | Subtotal / VAT / Grand total | 
+
+Geçerlilik süresi | Validity / Valid until | 
+
+Ödeme koşulları | Payment terms | 
+
+Teslim süresi / şekli | Delivery time / Delivery terms (Incoterms) | 
+
+Teklife dahil değildir | Not included / Exclusions | 
+
+Proforma fatura | Proforma invoice | 
+
+## Sık kullanılan cümleler
+
+- "Please find attached our quotation for …" — Ekte … için teklifimizi bulabilirsiniz.
+
+- "This quotation is valid for 30 days from the date of issue." — Teklif düzenleme tarihinden itibaren 30 gün geçerlidir.
+
+- "Prices are exclusive of VAT." — Fiyatlara KDV dahil değildir.
+
+- "Payment terms: 50% advance, 50% before shipment." — Ödeme: %50 peşin, %50 sevkiyattan önce.
+
+- "Delivery time: 3–4 weeks after order confirmation." — Teslim: sipariş onayından sonra 3–4 hafta.
+
+- "Should you have any questions, please do not hesitate to contact us." — Sorunuz olursa bize ulaşmaktan çekinmeyin.
+
+## Kur ve para birimi
+
+Yabancı müşteriye teklifte para birimini (USD, EUR) açıkça yazın; ihracatta teslim şeklini Incoterms ile (EXW, FOB, CIF) belirtin. Satış kesinleşince çoğu zaman proforma fatura istenir.
+
+## Teklifi müşterinin dilinde hazırlamak
+
+Anında Teklif'te teklif dili Türkçe, İngilizce veya İtalyanca seçilebilir; aynı kalemlerden müşterinin diline göre PDF oluşturulur.
+
+**Fiyat teklifinin İngilizcesi nedir?** En yaygın karşılık "quotation"dır; "price quote", "quote" ve resmi tekliflerde "offer" da kullanılır. Bağlayıcı olmayan tahminler için "estimate" denir.
+
+**Quotation ile invoice farkı nedir?** Quotation satış öncesi fiyat önerisidir; invoice satış gerçekleştikten sonra düzenlenen faturadır. Arada ödeme için proforma invoice kullanılabilir.
+
+---
+
+# Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber
+Kaynak: https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html
+
+**Kısa cevap:** Cari hesap, bir müşteriyle aranızdaki borç-alacak hareketlerinin tamamıdır: onaylanan teklif veya satış müşteriyi borçlandırır, her tahsilat alacaktan düşer, aradaki fark müşterinin bakiyesidir. Düzenli tahsilat için her müşterinin bakiyesini, vadesini ve son ödeme tarihini görebileceğiniz tek bir liste tutun.
+## Cari hesabın temel mantığı
+
+Tarih | İşlem | Borç | Alacak | Bakiye | 
+
+01.10 | Onaylanan teklif 2026-0142 | 62.940 TL |  | 62.940 TL | 
+
+01.10 | Peşinat (havale) |  | 25.000 TL | 37.940 TL | 
+
+12.10 | Teslimde ödeme (kart) |  | 30.000 TL | 7.940 TL | 
+
+Bu örnekte müşterinin 7.940 TL borcu kalmıştır. Tahsilatı kolaylaştıran şey, bu tabloyu her müşteri için güncel ve tek bakışta görebilmektir.
+
+## Excel ile takipte sık yapılan hatalar
+
+- Teklif bir dosyada, ödemeler başka dosyada; ikisi eşleşmiyor.
+
+- Kısmi ödemeler not alınmıyor, bakiye yanlış çıkıyor.
+
+- Vadesi geçen alacaklar kimse bakmadığı için fark edilmiyor.
+
+- Dosya tek bilgisayarda; sahadaki personel güncel bakiyeyi göremiyor.
+
+## İyi bir tahsilat düzeni
+
+- Her onaylanan teklifi aynı gün müşterinin cari hesabına işleyin.
+
+- Peşinat ve kalan ödeme vadelerini teklifte yazın, cari hesapta da tutun.
+
+- Her tahsilatı ödeme yöntemiyle (nakit, havale, kart, çek) kaydedin; kasa da güncellensin.
+
+- Haftada bir "borçlu müşteriler" listesine bakın ve hatırlatma gönderin.
+
+## Teklif, cari ve kasa aynı yerde
+
+Anında Teklif'te onaylanan teklif müşterinin cari hesabına bağlanır; tahsilatlar kasaya ve müşteri bakiyesine aynı anda işlenir, borçlu müşteriler ayrı listede görünür. Bu bir ön muhasebe aracıdır; resmi defter ve beyannameler için mali müşavirinizle çalışmaya devam edin.
+
+**Cari hesap nedir?** Bir müşteri veya tedarikçiyle aranızdaki borç ve alacak hareketlerinin kaydıdır; satışlar borç, tahsilatlar alacak olarak işlenir ve aradaki fark bakiyedir.
+
+**Ücretsiz cari hesap takip programı var mı?** Excel ile basit takip yapılabilir. Anında Teklif'in ücretsiz planında teklif, müşteri, cari ve tahsilat takibi birlikte kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır.
+
+**Tahsilat takibi nasıl yapılır?** Her satış müşterinin cari hesabına borç, her ödeme alacak olarak yazılır; vadesi geçen bakiyeler düzenli olarak listelenip müşteriye hatırlatılır.

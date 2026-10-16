@@ -1,0 +1,49 @@
+# Anında Teklif
+
+> Anında Teklif (https://www.anindateklif.co), Türkiye'deki ustalar, bayiler ve küçük işletmeler için bir teklif hazırlama programıdır: saniyeler içinde logolu PDF fiyat teklifi hazırlar, WhatsApp ile gönderir; müşteri, cari hesap, kasa ve tahsilat takibini aynı yerde toplar. Web, iOS ve Android'de çalışır; Türkçe, İngilizce ve İtalyanca destekler. Ücretsiz planda ayda 5 teklif hazırlanabilir.
+
+## Özellikler
+- **Profesyonel PDF teklifler:** Klasik, modern, kurumsal ve daha fazla şablondan seçin; logonuz ve firma bilgilerinizle saniyeler içinde PDF fiyat teklifi oluşturun.
+- **WhatsApp ile tek dokunuşta gönderim:** Teklifi WhatsApp'tan doğrudan müşterinize gönderin; e-posta ve indirme seçenekleri de hazır.
+- **Teklif durumu ve müşteri geçmişi:** Tüm müşterilerinizi, geçmiş tekliflerinizi ve durumlarını (onaylandı, beklemede, reddedildi) tek listede takip edin.
+- **Kasa, tahsilat ve cari hesap:** Gelir-gider kayıtlarını tutun; müşteri bazında alacak-borç durumunu ve cari hesapları anlık görün.
+- **Katalog ve ölçüye göre fiyat:** Ürün ve hizmetlerinizi katalogda saklayın; en-boy ve metraja göre fiyatı otomatik hesaplayan yapılandırıcıyı kullanın.
+- **Ekip yönetimi:** Personelinizi davet edin, yetkilerini belirleyin, ekip içi sohbetle iletişimi uygulamada tutun.
+- **Türkçe, İngilizce, İtalyanca:** Uygulamayı ve teklifleri kendi dilinizde ya da müşterinizin dilinde hazırlayın.
+- **Web, iOS ve Android:** Sahada telefondan, ofiste bilgisayardan aynı hesapla çalışın; verileriniz bulutta.
+
+## Fiyatlar (Türk lirası, 2026-10-16)
+- Ücretsiz plan: ayda 5 teklif, kredi kartı gerekmez
+- 1–5 kişi: haftalık 50 TL, yıllık 2.000 TL (liste fiyatı 2.400 TL)
+- 6–10 kişi: haftalık 70 TL, yıllık 2.800 TL (liste fiyatı 3.400 TL)
+- 11–30 kişi: haftalık 80 TL, yıllık 3.200 TL (liste fiyatı 3.900 TL)
+- 31+ kişi: haftalık 110 TL, yıllık 4.400 TL (liste fiyatı 5.300 TL)
+- Fiyat ekipteki kişi sayısına göre belirlenir; tek abonelik tüm ekibi kapsar.
+
+## Sayfalar
+- [Ana sayfa](https://www.anindateklif.co/): Ürün tanıtımı ve hesap açma
+- [Özellikler](https://www.anindateklif.co/ozellikler.html): Tüm özellikler ve teklif akışı
+- [Fiyatlar](https://www.anindateklif.co/fiyatlar.html): Planlar ve abonelik fiyatları
+- [Sık sorulan sorular](https://www.anindateklif.co/sss.html)
+- [Gizlilik politikası](https://www.anindateklif.co/privacy)
+
+## Rehber
+- [Fiyat Teklifi Nasıl Hazırlanır? 9 Adımda Profesyonel Teklif](https://www.anindateklif.co/rehber/fiyat-teklifi-nasil-hazirlanir.html): Fiyat teklifinde hangi bilgiler olmalı? Firma bilgisi, kalemler, KDV, geçerlilik süresi, ödeme ve teslim koşullarıyla 9 adımda profesyonel teklif hazırlama rehberi.
+- [Fiyat Teklifi Örneği ve Ücretsiz Excel Şablonu (2026)](https://www.anindateklif.co/rehber/fiyat-teklifi-ornegi.html): Hazır fiyat teklifi örneği: başlık, kalem tablosu, KDV, geçerlilik ve ödeme koşulları. Ücretsiz Excel teklif şablonunu indirin veya PDF teklifi uygulamada saniyeler içinde oluşturun.
+- [Teklif Hazırlama Programı: Excel, Word mü Uygulama mı?](https://www.anindateklif.co/rehber/teklif-hazirlama-programi.html): Ücretsiz teklif hazırlama programı mı, Excel şablonu mu, Word mü? Artıları-eksileri, karşılaştırma tablosu ve bir teklif programında olması gereken özellikler.
+- [Proforma Fatura Nedir? Fiyat Teklifi ve Faturadan Farkı](https://www.anindateklif.co/rehber/proforma-fatura-nedir.html): Proforma fatura nedir, ne zaman kesilir, nasıl hazırlanır? Proforma fatura, fiyat teklifi ve gerçek fatura arasındaki farklar tablo halinde.
+- [Fiyat Teklifi Geçerlilik Süresi Nasıl Belirlenir?](https://www.anindateklif.co/rehber/fiyat-teklifi-gecerlilik-suresi.html): Fiyat teklifine geçerlilik süresi neden yazılır, kaç gün olmalı, süre yazılmazsa ne olur? Döviz ve malzeme fiyatı değişimlerine karşı teklif koşulları.
+- [WhatsApp ile Fiyat Teklifi Gönderme: Doğru Yöntem](https://www.anindateklif.co/rehber/whatsapp-ile-teklif-gonderme.html): Müşteriye WhatsApp'tan profesyonel teklif göndermek: PDF mi mesaj mı, hangi mesaj metni, takip ve onay nasıl alınır? Örnek mesajlar.
+- [Tadilat Teklif Örneği: Kalem Kalem Tadilat Fiyat Teklifi](https://www.anindateklif.co/rehber/tadilat-teklif-ornegi.html): Daire, mutfak, banyo ve boya tadilatı için teklif örneği: hangi kalemler, hangi birimler, dahil olmayanlar ve ödeme planı. Tadilat ustaları için hazır kontrol listesi.
+- [İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek](https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html): İngilizce fiyat teklifinde kullanılan başlıklar ve kalıp cümleler: quotation, unit price, VAT, validity, payment terms. Türkçe karşılıklarıyla tablo ve örnek e-posta.
+- [Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber](https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html): Müşteri cari hesabı nedir, alacak ve tahsilat nasıl takip edilir? Excel ile cari takip, sık yapılan hatalar ve teklif-tahsilat-kasa akışını tek yerde tutmak.
+
+## Kaynaklar
+- [Ücretsiz fiyat teklifi şablonu (Excel)](https://www.anindateklif.co/sablon/fiyat-teklifi-sablonu.xlsx)
+- [Tüm içerik tek dosyada](https://www.anindateklif.co/llms-full.txt)
+
+## İletişim
+- E-posta: ncagdasm@gmail.com
+
+## English summary
+Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: 5 quotes per month; paid plans from 50 TRY/week or 2000 TRY/year for teams of up to 5.

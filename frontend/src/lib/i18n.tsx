@@ -1565,6 +1565,9 @@ const tr: Dict = {
     s046: 'Logonuz ve firma bilgilerinizle hazırlanan şık PDF teklifi saniyeler içinde görün.',
     s047: "WhatsApp'tan Gönderin",
     s048: 'Tek dokunuşla müşterinize iletin, durumunu (onaylandı/bekliyor) tek yerden takip edin.',
+    s049: 'Fiyatlar',
+    s050: 'Rehber',
+    s051: 'SSS',
   },
   supportBubble: {
     s001: 'Nasıl yardımcı olabiliriz?',
@@ -3294,6 +3297,9 @@ const en: Dict = {
     s046: 'See a polished quote with your logo and company details, ready in seconds.',
     s047: 'Send It on WhatsApp',
     s048: 'Deliver it to your customer with one tap, and track its status (approved/pending) from one place.',
+    s049: 'Pricing',
+    s050: 'Guides',
+    s051: 'FAQ',
   },
   supportBubble: {
     s001: 'How can we help?',
@@ -5023,6 +5029,9 @@ const it: Dict = {
     s046: 'Guarda un preventivo curato con il tuo logo e i dati aziendali, pronto in pochi secondi.',
     s047: 'Invialo su WhatsApp',
     s048: 'Consegnalo al cliente con un tocco e segui il suo stato (approvato/in attesa) da un unico posto.',
+    s049: 'Prezzi',
+    s050: 'Guide',
+    s051: 'FAQ',
   },
   supportBubble: {
     s001: 'Come possiamo aiutarti?',

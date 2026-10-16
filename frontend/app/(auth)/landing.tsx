@@ -30,6 +30,12 @@ import { theme } from '@/src/lib/theme';
 // ölçeği büyütüldü. Marka renkleri (lacivert/mavi/altın) bilinçli olarak
 // korundu -- bunlar zaten uygulamanın kendi kimliği (bkz. auth-theme.ts),
 // register/login/splash ile aynı kimlikte kalması gerekiyordu.
+const SEO_LINKS: [string, string][] = [
+  ['/fiyatlar.html', 'landing.s049'],
+  ['/rehber.html', 'landing.s050'],
+  ['/sss.html', 'landing.s051'],
+];
+
 function useIsDesktop() {
   const { width } = useWindowDimensions();
   return Platform.OS === 'web' && width >= 960;
@@ -280,6 +286,11 @@ export default function LandingScreen() {
           <View style={[s.footer, isDesktop && s.footerDesktop]}>
             <Text style={s.footerText}>© {year} {t('landing.s038')}</Text>
             <View style={s.footerLinks}>
+              {/* Statik tanıtım/rehber sayfaları (public/*.html, scripts/seo/uret.py) --
+                  gerçek <a> bağlantısı olsun ki arama motorları JS çizdikten sonra da bulsun. */}
+              {Platform.OS === 'web' && SEO_LINKS.map(([href, key]) => (
+                <Text key={href} style={s.footerLink} {...({ href } as any)}>{t(key)}</Text>
+              ))}
               <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={s.footerLink}>{t('landing.s039')}</Text>
               </TouchableOpacity>
@@ -591,6 +602,6 @@ const s = themedStyles(() => StyleSheet.create({
   },
   footerDesktop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerText: { color: authTheme.textMuted, fontSize: 12 },
-  footerLinks: { flexDirection: 'row', gap: 18 },
+  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18 },
   footerLink: { color: authTheme.textSoft, fontSize: 12, fontWeight: '700' },
 }));

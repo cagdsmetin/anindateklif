@@ -1,0 +1,39 @@
+# Anında Teklif — tüm arama motorları ve yapay zekâ tarayıcıları tanıtım ve rehber sayfalarını okuyabilir.
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /join
+Disallow: /wizard
+Disallow: /splash
+Disallow: /preview
+Disallow: /subscription-result
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://www.anindateklif.co/sitemap.xml

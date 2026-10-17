@@ -228,14 +228,25 @@ def rehber_dizini():
                  govde, [kirinti([("Ana sayfa", "/"), ("Rehber", "/rehber.html")]), liste])
 
 
+AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+
+
+def tr_tarih(iso):
+    y, a, g = iso.split("-")
+    return f"{int(g)} {AYLAR[int(a) - 1]} {y}"
+
+
 def yazi_sayfasi(y):
     yol = f"/rehber/{y['slug']}.html"
-    ilgili = [x for x in YAZILAR if x["slug"] != y["slug"]][:4]
+    tarih = y.get("tarih", GUNCELLEME)
+    # Listedeki komşular: eski yazılar da yenilere bağlantı versin.
+    i, n = YAZILAR.index(y), len(YAZILAR)
+    ilgili = [YAZILAR[(i + k) % n] for k in (1, 2, -1, -2)]
     ilg = "".join(f'<li><a href="/rehber/{x["slug"]}.html">{e(x["h1"][0].upper() + x["h1"][1:])}</a></li>' for x in ilgili)
     govde = f"""<article class="kap dar">
 <nav class="kirinti" aria-label="Konum"><a href="/">Ana sayfa</a> › <a href="/rehber.html">Rehber</a> › {e(y['h1'])}</nav>
 <h1>{e(y['h1'][0].upper() + y['h1'][1:])}</h1>
-<p class="kunye">Anında Teklif Ekibi · Güncelleme: <time datetime="{GUNCELLEME}">16 Ekim 2026</time></p>
+<p class="kunye">Anında Teklif Ekibi · Güncelleme: <time datetime="{tarih}">{tr_tarih(tarih)}</time></p>
 <div class="kisa-cevap"><strong>Kısa cevap:</strong> {y['kisa']}</div>
 {y['govde']}
 {sss_html(y['sss'])}
@@ -243,7 +254,7 @@ def yazi_sayfasi(y):
 <nav class="ilgili" aria-label="İlgili yazılar"><h2>İlgili yazılar</h2><ul class="liste">{ilg}</ul></nav>
 </article>"""
     makale = {"@type": "Article", "@id": SITE + yol + "#yazi", "headline": y["baslik"], "description": y["aciklama"],
-              "inLanguage": "tr", "datePublished": GUNCELLEME, "dateModified": GUNCELLEME,
+              "inLanguage": "tr", "datePublished": tarih, "dateModified": tarih,
               "author": {"@type": "Organization", "name": "Anında Teklif Ekibi", "url": SITE + "/"},
               "publisher": {"@id": ORG_ID}, "mainEntityOfPage": SITE + yol, "image": SITE + "/og.png",
               "about": {"@id": APP_ID}}
@@ -374,7 +385,9 @@ Sitemap: {SITE}/sitemap.xml
 
 def sitemap():
     oncelik = {"/teklif-olustur.html": "0.9", "/sektorler.html": "0.8", "/kdv-hesaplama.html": "0.7", "/": "1.0", "/fiyatlar.html": "0.9", "/ozellikler.html": "0.9", "/rehber.html": "0.8", "/sss.html": "0.7"}
-    url = "".join(f"<url><loc>{SITE}{y}</loc><lastmod>{GUNCELLEME}</lastmod><priority>{oncelik.get(y, '0.7')}</priority></url>\n" for y in STATIK)
+    tarih = {f"/rehber/{y['slug']}.html": y.get("tarih", GUNCELLEME) for y in YAZILAR}
+    tarih["/rehber.html"] = max(tarih.values())
+    url = "".join(f"<url><loc>{SITE}{y}</loc><lastmod>{tarih.get(y, GUNCELLEME)}</lastmod><priority>{oncelik.get(y, '0.7')}</priority></url>\n" for y in STATIK)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url}</urlset>\n'
 
 
@@ -505,6 +518,38 @@ def excel_sablonu(kalemler=None, baslik="FİYAT TEKLİFİ", kaynak="/rehber/fiya
     return b.getvalue()
 
 
+
+def karsilastirma_sablonu():
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Border, Font, PatternFill, Side
+    wb = Workbook(); ws = wb.active; ws.title = "Karşılaştırma"
+    ince = Side(style="thin", color="CBD5E1"); kenar = Border(left=ince, right=ince, top=ince, bottom=ince)
+    ws["A1"] = "FİYAT TEKLİFİ KARŞILAŞTIRMA TABLOSU"; ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = "Talep / konu:"; ws["A3"] = "Tarih:"; ws["B3"] = "=TODAY()"; ws["B3"].number_format = "DD.MM.YYYY"
+    bas = ["Kalem", "Miktar", "A birim fiyat", "A tutar", "B birim fiyat", "B tutar", "C birim fiyat", "C tutar"]
+    for i, (b, gen) in enumerate(zip(bas, [36, 9, 14, 14, 14, 14, 14, 14])):
+        h = ws.cell(row=5, column=i + 1, value=b); h.font = Font(bold=True, color="FFFFFF"); h.fill = PatternFill("solid", fgColor="1E3A8A"); h.border = kenar
+        ws.column_dimensions[h.column_letter].width = gen
+    ws["C4"] = "Tedarikçi A:"; ws["E4"] = "Tedarikçi B:"; ws["G4"] = "Tedarikçi C:"
+    for r in range(6, 21):
+        for c, kaynak in ((4, "C"), (6, "E"), (8, "G")):
+            ws.cell(row=r, column=c, value=f'=IF(OR(B{r}="",{kaynak}{r}=""),"",B{r}*{kaynak}{r})')
+        for c in range(1, 9):
+            ws.cell(row=r, column=c).border = kenar
+            if c > 2: ws.cell(row=r, column=c).number_format = "#,##0.00"
+    satirlar = [("Ara toplam", "=SUM({c}6:{c}20)"), ("Nakliye / montaj", ""), ("İskonto", ""), ("Toplam (KDV hariç)", "={c}21+{c}22-{c}23"),
+                ("KDV %", ""), ("Toplam (KDV dahil)", "={c}24*(1+{c}25/100)"), ("Ödeme vadesi (gün)", ""), ("Teslim süresi (iş günü)", ""), ("Garanti", ""), ("Not", "")]
+    for i, (ad, form) in enumerate(satirlar):
+        r = 21 + i; ws.cell(row=r, column=1, value=ad).font = Font(bold=ad.startswith("Toplam"))
+        for c in ("D", "F", "H"):
+            if form: ws[f"{c}{r}"] = form.format(c=c)
+            if ad == "KDV %": ws[f"{c}{r}"] = 20
+            ws[f"{c}{r}"].number_format = "#,##0.00"
+    ws.cell(row=32, column=1, value=f"Şablon: {SITE}/rehber/fiyat-teklifi-karsilastirma-tablosu.html").font = Font(italic=True, color="64748B", size=9)
+    b = io.BytesIO(); wb.save(b); return b.getvalue()
+
+
 CSS = """:root{--bg:#0B1220;--yumusak:#111A2E;--kart:#1A2338;--cizgi:#243049;--mavi:#3B82F6;--turuncu:#DA7756;--metin:#E2E8F0;--soluk:#94A3B8;--beyaz:#fff}
 *{box-sizing:border-box}
 #seo-icerik,.statik{font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--metin);background:var(--bg)}
@@ -578,6 +623,7 @@ def main():
     yaz("llms.txt", llms())
     yaz("llms-full.txt", llms_full())
     yaz("sablon/fiyat-teklifi-sablonu.xlsx", excel_sablonu(), ikili=True)
+    yaz("sablon/fiyat-teklifi-karsilastirma-tablosu.xlsx", karsilastirma_sablonu(), ikili=True)
     print(f"{len(STATIK)} sayfa + robots/sitemap/llms üretildi → {os.path.abspath(KOK)}")
 
 

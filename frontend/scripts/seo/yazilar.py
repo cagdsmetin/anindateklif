@@ -342,3 +342,271 @@ YAZILAR = [
         ],
     },
 ]
+
+
+# 2026-10-18 eklenen yazılar (kalan arama kümeleri: teklif mektubu, teklif
+# maili, teklif alma formu, karşılaştırma tablosu, müşteri/teklif/kasa takibi,
+# ön muhasebe farkı, ödeme hatırlatma).
+YAZILAR += [
+    {
+        "slug": "teklif-mektubu-nedir",
+        "tarih": "2026-10-18",
+        "baslik": "Teklif Mektubu Nedir? Örnek, Nasıl Doldurulur, Farkı Ne?",
+        "h1": "Teklif mektubu nedir ve nasıl hazırlanır?",
+        "aciklama": "Teklif mektubu nedir, fiyat teklifinden farkı ne, ihalede nasıl doldurulur? Teklif mektubunda bulunan bilgiler, sık yapılan hatalar ve örnek metin.",
+        "kisa": "Teklif mektubu, bir işi veya malı belirli bir bedelle yapmayı/vermeyi resmî olarak taahhüt ettiğiniz, imzalı ve tarihli yazıdır. Kamu ihalelerinde idarenin ihale dokümanındaki standart form kullanılır ve bedel rakam ile yazıyla yazılır; özel sektörde ise fiyat teklifinin üst yazısı olarak işin kapsamını, toplam bedeli, geçerlilik süresini ve imzayı içerir.",
+        "govde": """
+<h2>Teklif mektubu ile fiyat teklifi farkı</h2>
+<table><thead><tr><th></th><th>Fiyat teklifi</th><th>Teklif mektubu</th></tr></thead><tbody>
+<tr><td>Biçim</td><td>Kalem kalem fiyat tablosu</td><td>Resmî yazı / standart form</td></tr>
+<tr><td>Kullanım</td><td>Günlük satış, usta ve bayi işleri</td><td>İhaleler, kurumsal alımlar, sözleşme öncesi taahhüt</td></tr>
+<tr><td>Bedel</td><td>Kalemlerin toplamı</td><td>Toplam bedel, çoğunlukla rakam ve yazıyla</td></tr>
+<tr><td>Ek</td><td>Koşullar, görseller</td><td>Birim fiyat cetveli veya fiyat teklifi ekte</td></tr>
+</tbody></table>
+<h2>Teklif mektubunda bulunan bilgiler</h2>
+<ul>
+<li>Muhatap kurum veya firma ve işin adı (ihalede ihale kayıt numarası)</li>
+<li>İşin dokümanlarının okunup kabul edildiği beyanı</li>
+<li>Toplam teklif bedeli: rakam ve yazıyla, KDV hariç/dahil bilgisiyle</li>
+<li>Teklifin geçerlilik süresi</li>
+<li>Teklif verenin unvanı, adresi, vergi bilgileri, tarih, kaşe ve yetkili imzası</li>
+</ul>
+<h2>Kamu ihalelerinde dikkat</h2>
+<p>Kamu ihalelerinde teklif mektubunun biçimi idare tarafından belirlenir; ihale dokümanında verilen standart formun dışına çıkmak, rakam ile yazı arasındaki uyumsuzluk, eksik imza veya yetki belgesi teklifin değerlendirme dışı kalmasına yol açabilir. İhale türüne göre birim fiyat teklif cetveli veya götürü bedel esastır. Her zaman ilgili ihalenin dokümanını ve güncel mevzuatı esas alın.</p>
+<h2>Özel sektör için örnek teklif mektubu metni</h2>
+<div class="mesaj" style="background:#fff">Sayın Yetkili,<br><br>Firmanızın … tarihli talebi üzerine, … işinin aşağıda ve ekteki fiyat teklifinde belirtilen kapsam ve koşullarla yapılması için toplam bedelimiz KDV hariç 250.000 TL (İkiyüzellibin Türk lirası)'dir. Teklifimiz düzenleme tarihinden itibaren 30 gün geçerlidir.<br><br>Saygılarımızla,<br>Firma unvanı · Kaşe · İmza · Tarih</div>
+<p class="kucuk">Tutar örnektir.</p>
+<p>Ekteki kalem kalem fiyat teklifini <a href="/rehber/fiyat-teklifi-ornegi.html">fiyat teklifi örneği</a> yapısında hazırlayabilirsiniz.</p>
+<p class="uyari">Bu yazı genel bilgilendirme amaçlıdır; ihaleye katılırken ihale dokümanını ve mevzuatı esas alın.</p>
+""",
+        "sss": [
+            ("Teklif mektubu nedir?", "Bir işi veya malı belirli bir bedelle yapmayı ya da vermeyi taahhüt eden, imzalı ve tarihli resmî teklif yazısıdır. İhalelerde idarenin belirlediği standart form kullanılır."),
+            ("Teklif mektubunda bedel nasıl yazılır?", "Genellikle rakam ve yazıyla birlikte yazılır; ikisinin birbirini tutması gerekir. KDV'nin dahil olup olmadığı da belirtilir."),
+            ("Teklif mektubu nereden alınır?", "Kamu ihalelerinde ihale dokümanının ekinde standart form olarak verilir. Özel sektörde firmalar kendi antetli kâğıtlarında hazırlar."),
+        ],
+    },
+    {
+        "slug": "fiyat-teklifi-maili-nasil-yazilir",
+        "tarih": "2026-10-18",
+        "baslik": "Fiyat Teklifi Maili Nasıl Yazılır? Gönderme ve İsteme Örnekleri",
+        "h1": "Fiyat teklifi maili nasıl yazılır?",
+        "aciklama": "Müşteriye fiyat teklifi gönderme maili ve tedarikçiden fiyat teklifi isteme (teklif alma) maili örnekleri: konu satırı, gövde metni, ekler ve takip maili.",
+        "kisa": "Fiyat teklifi maili kısa olmalıdır: konu satırında teklifin konusu ve numarası, gövdede kişiye hitap, teklifin özeti (toplam tutar, KDV durumu, geçerlilik süresi), ekte PDF teklif ve bir sonraki adım (soru, onay, görüşme) yer alır. Teklif isterken ise ihtiyacınızı, miktarı, teknik detayları, teslim yerini ve son yanıt tarihini net yazın.",
+        "govde": """
+<h2>Müşteriye fiyat teklifi gönderme maili</h2>
+<p><strong>Konu:</strong> Salon boya ve parke işi – Fiyat teklifi (No: 2026-0142)</p>
+<div class="mesaj" style="background:#fff">Merhaba Ayşe Hanım,<br><br>Görüşmemize istinaden salon ve koridor boya-badana ile parke yenileme işinin fiyat teklifini ekte bilgilerinize sunuyorum. Toplam tutar KDV dahil 62.940 TL olup teklif 15 gün geçerlidir. İş, onayınızdan sonra 7 iş günü içinde tamamlanır.<br><br>Sorularınızı bu e-postaya yanıt olarak ya da 0532 … numarasından iletebilirsiniz.<br><br>İyi çalışmalar,<br>Mehmet Kaya · Örnek Yapı Dekorasyon</div>
+<h2>Tedarikçiden fiyat teklifi isteme (teklif alma) maili</h2>
+<p><strong>Konu:</strong> Fiyat teklifi talebi – 120 m² iç cephe boyası</p>
+<div class="mesaj" style="background:#fff">Merhaba,<br><br>Aşağıdaki ürünler için fiyat teklifinizi rica ederiz:<br>– Silikonlu iç cephe boyası, beyaz, 15 lt: 10 adet<br>– Astar, 15 lt: 4 adet<br><br>Teslim yeri: Kadıköy/İstanbul · İstenen teslim tarihi: 25 Ekim<br>Lütfen fiyatların KDV durumu, ödeme koşulları ve teslim süresiyle birlikte 21 Ekim'e kadar iletiniz.<br><br>Teşekkürler,<br>Mehmet Kaya · Örnek Yapı Dekorasyon</div>
+<p>Birden fazla tedarikçiden teklif aldığınızda yanıtları <a href="/rehber/fiyat-teklifi-karsilastirma-tablosu.html">teklif karşılaştırma tablosunda</a> yan yana koyun. Düzenli alım yapıyorsanız <a href="/rehber/fiyat-teklifi-talep-formu.html">fiyat teklifi talep formu</a> kullanmak işinizi kolaylaştırır.</p>
+<h2>Takip maili</h2>
+<div class="mesaj" style="background:#fff">Merhaba Ayşe Hanım, 3 gün önce ilettiğimiz 2026-0142 numaralı teklifle ilgili sorunuz var mı? İsterseniz kalemlerde düzenleme yapabilir veya kısa bir görüşme ayarlayabiliriz.</div>
+<h2>Sık yapılan hatalar</h2>
+<ul><li>Teklifi PDF yerine düzenlenebilir Word/Excel dosyası olarak göndermek</li><li>Konu satırını boş bırakmak veya "Teklif" yazıp geçmek</li><li>Toplam tutarı ve geçerlilik süresini sadece ekte bırakmak</li><li>Takip etmemek: çoğu teklif ilk takip mesajından sonra yanıtlanır</li></ul>
+<p>Anında Teklif'te teklif PDF'i otomatik oluşur; e-posta, WhatsApp veya indirme ile tek adımda gönderilir ve hangi teklifin yanıt beklediğini listeden görürsünüz.</p>
+""",
+        "sss": [
+            ("Fiyat teklifi maili nasıl başlar?", "Kişiye adıyla hitap edip görüşmeye veya talebe atıfla başlanır: \"Görüşmemize istinaden … işinin fiyat teklifini ekte bilgilerinize sunarım.\""),
+            ("Fiyat teklifi isteme maili nasıl yazılır?", "Ürün/hizmet, miktar, teknik özellikler, teslim yeri ve tarihi açıkça yazılır; KDV durumu, ödeme koşulları ve teslim süresiyle birlikte teklif istenir ve son yanıt tarihi belirtilir."),
+            ("Teklif mailine yanıt gelmezse ne yapılmalı?", "2–3 gün sonra kısa ve nazik bir takip maili veya mesajı gönderin; düzenleme ya da görüşme teklif edin."),
+        ],
+    },
+    {
+        "slug": "fiyat-teklifi-talep-formu",
+        "tarih": "2026-10-18",
+        "baslik": "Fiyat Teklifi Talep Formu (Teklif Alma Formu) Örneği",
+        "h1": "Fiyat teklifi talep formu nasıl hazırlanır?",
+        "aciklama": "Tedarikçilerden fiyat teklifi istemek için talep formu (teklif alma formu): hangi bilgiler istenir, örnek alanlar, son tarih ve teklifleri karşılaştırma.",
+        "kisa": "Fiyat teklifi talep formu, tedarikçilere aynı bilgileri vererek karşılaştırılabilir teklifler almanızı sağlar. Formda talep eden firma ve kişi, ürün/hizmet listesi (tanım, miktar, birim, teknik özellik), teslim yeri ve tarihi, istenen ödeme koşulu, KDV ve döviz tercihi ile tekliflerin son gönderim tarihi yer alır.",
+        "govde": """
+<h2>Talep formundaki alanlar</h2>
+<table><thead><tr><th>Bölüm</th><th>İçerik</th></tr></thead><tbody>
+<tr><td>Talep eden</td><td>Firma, yetkili kişi, telefon, e-posta, talep no ve tarih</td></tr>
+<tr><td>Kalemler</td><td>Sıra no, tanım, teknik özellik/marka tercihi, miktar, birim</td></tr>
+<tr><td>Teslim</td><td>Teslim yeri, istenen tarih, nakliye ve montaj dahil mi</td></tr>
+<tr><td>Ticari koşullar</td><td>Ödeme vadesi, para birimi, KDV hariç/dahil, teklif geçerlilik süresi</td></tr>
+<tr><td>Son tarih</td><td>Tekliflerin en geç gönderileceği tarih ve adres</td></tr>
+</tbody></table>
+<h2>Neden standart form?</h2>
+<p>Serbest metinle teklif istendiğinde her tedarikçi farklı birim, farklı KDV durumu ve farklı teslim koşuluyla yanıt verir; teklifler karşılaştırılamaz hâle gelir. Aynı formu herkese göndermek, gelen yanıtları <a href="/rehber/fiyat-teklifi-karsilastirma-tablosu.html">karşılaştırma tablosuna</a> doğrudan aktarmanızı sağlar.</p>
+<h2>İpuçları</h2>
+<ul><li>Muadil ürün kabul edip etmediğinizi yazın.</li><li>Tekliflerin kalem bazında birim fiyatla verilmesini isteyin.</li><li>Teslim süresini "iş günü" olarak isteyin.</li><li>E-postayla göndermek için <a href="/rehber/fiyat-teklifi-maili-nasil-yazilir.html">teklif isteme maili örneğimize</a> bakın.</li></ul>
+<p>Siz teklif veren tarafsanız, müşterinizden gelen talep formuna yanıtı <a href="/teklif-olustur.html">online teklif oluşturucuda</a> ya da Anında Teklif'te kalem kalem hazırlayabilirsiniz.</p>
+""",
+        "sss": [
+            ("Teklif alma formu ile fiyat teklifi farkı nedir?", "Teklif alma (talep) formunu alıcı hazırlar ve ne istediğini anlatır; fiyat teklifini satıcı hazırlar ve bu talebe fiyatla yanıt verir."),
+            ("Fiyat teklifi talep formunda son tarih gerekli mi?", "Evet. Tekliflerin aynı dönemde toplanması ve karşılaştırılabilmesi için son gönderim tarihi yazılmalıdır."),
+        ],
+    },
+    {
+        "slug": "fiyat-teklifi-karsilastirma-tablosu",
+        "tarih": "2026-10-18",
+        "baslik": "Fiyat Teklifi Karşılaştırma Tablosu (Ücretsiz Excel Şablonu)",
+        "h1": "Fiyat teklifi karşılaştırma tablosu nasıl hazırlanır?",
+        "aciklama": "Birden fazla tedarikçiden gelen teklifleri yan yana karşılaştırma tablosu: birim fiyat, KDV, nakliye, vade, teslim süresi ve toplam maliyet. Ücretsiz Excel şablonu.",
+        "kisa": "Teklif karşılaştırma tablosunda satırlara kalemler, sütunlara tedarikçiler yazılır; her tedarikçi için birim fiyat ve tutar, altına KDV, nakliye/montaj, ödeme vadesi ve teslim süresi eklenir. Karar yalnızca en düşük toplama göre değil; aynı kapsam, KDV durumu, vade ve teslim süresi eşitlenerek verilir.",
+        "govde": """
+<h2>Örnek karşılaştırma</h2>
+<table><thead><tr><th>Kalem</th><th>Miktar</th><th>Tedarikçi A</th><th>Tedarikçi B</th><th>Tedarikçi C</th></tr></thead><tbody>
+<tr><td>İç cephe boyası 15 lt</td><td>10</td><td>21.000 TL</td><td>19.500 TL</td><td>20.200 TL</td></tr>
+<tr><td>Astar 15 lt</td><td>4</td><td>4.800 TL</td><td>5.200 TL</td><td>4.600 TL</td></tr>
+<tr><td>Nakliye</td><td></td><td>Dahil</td><td>1.500 TL</td><td>Dahil</td></tr>
+<tr><td><strong>Toplam (KDV hariç)</strong></td><td></td><td><strong>25.800 TL</strong></td><td><strong>26.200 TL</strong></td><td><strong>24.800 TL</strong></td></tr>
+<tr><td>Ödeme vadesi</td><td></td><td>30 gün</td><td>Peşin</td><td>15 gün</td></tr>
+<tr><td>Teslim süresi</td><td></td><td>2 iş günü</td><td>1 iş günü</td><td>5 iş günü</td></tr>
+</tbody></table>
+<p class="kucuk">Rakamlar örnektir.</p>
+<p>Bu örnekte en düşük toplam C'dedir; ancak iş acilse B'nin teslim süresi, nakit akışı önemliyse A'nın 30 günlük vadesi daha değerli olabilir.</p>
+<h2>Ücretsiz Excel şablonu</h2>
+<p>Üç tedarikçiyi yan yana koyan, tutarları ve toplamları kendisi hesaplayan şablon: <a class="indir" href="/sablon/fiyat-teklifi-karsilastirma-tablosu.xlsx" download>fiyat-teklifi-karsilastirma-tablosu.xlsx</a>.</p>
+<h2>Karşılaştırmadan önce eşitlenecekler</h2>
+<ul><li>KDV dahil/hariç durumu</li><li>Para birimi ve kur tarihi</li><li>Nakliye, montaj, kurulum dahil mi</li><li>Marka/model ve garanti süresi aynı mı</li><li>Teklif geçerlilik tarihleri</li></ul>
+<p>Teklifleri tek tip almak için <a href="/rehber/fiyat-teklifi-talep-formu.html">fiyat teklifi talep formu</a> kullanın.</p>
+""",
+        "sss": [
+            ("Teklif karşılaştırma tablosu nasıl yapılır?", "Kalemler satırlara, tedarikçiler sütunlara yazılır; her tedarikçinin birim fiyat ve tutarları girilir, altına KDV, nakliye, vade ve teslim süresi eklenir; toplamlar aynı koşullara getirilerek karşılaştırılır."),
+            ("En ucuz teklif her zaman seçilmeli mi?", "Hayır. Kapsam, kalite, garanti, ödeme vadesi ve teslim süresi eşit değilse en düşük toplam yanıltıcı olabilir."),
+        ],
+    },
+    {
+        "slug": "musteri-takip-programi",
+        "tarih": "2026-10-18",
+        "baslik": "Müşteri Takip Programı: Excel mi, Ücretsiz Uygulama mı?",
+        "h1": "Müşteri takip programı nasıl seçilir?",
+        "aciklama": "Küçük işletmeler için müşteri takip programı: Excel ile müşteri takibi, ücretsiz programlar, CRM ve teklif-cari-servis takibini birleştiren uygulamalar karşılaştırması.",
+        "kisa": "Küçük bir işletmede müşteri takibi; iletişim bilgilerini, verilen teklifleri ve durumlarını, yapılan işleri ve servisleri, borç-alacak bakiyesini ve bir sonraki temas tarihini tek yerde tutmaktır. Az müşteride Excel yeterlidir; müşteri sayısı ve ekip büyüdükçe teklif, cari hesap ve hatırlatmaları birleştiren bir uygulama daha az hata ve daha çok tekrar satış sağlar.",
+        "govde": """
+<h2>Müşteri kartında olması gerekenler</h2>
+<ul><li>Ad/unvan, telefon, e-posta, adres, vergi bilgileri</li><li>Verilen teklifler ve durumları (onaylandı, beklemede, reddedildi)</li><li>Yapılan işler, servis ve bakım geçmişi</li><li>Cari hesap: borç, alacak, bakiye, vade</li><li>Notlar ve bir sonraki temas/bakım tarihi</li></ul>
+<h2>Excel ile müşteri takibi</h2>
+<p>Bir sayfada müşteri listesi, ayrı sayfalarda teklifler ve ödemeler tutulabilir; filtre ve DÜŞEYARA ile bağlanır. Sorunları: dosya tek kişide ve tek cihazda kalır, teklif ile ödeme elle eşleştirilir, hatırlatma yoktur, sahadaki personel güncel bilgiyi göremez.</p>
+<h2>CRM mi, teklif odaklı uygulama mı?</h2>
+<table><thead><tr><th>İhtiyaç</th><th>Genel CRM</th><th>Teklif + cari odaklı uygulama</th></tr></thead><tbody>
+<tr><td>Satış hunisi, kampanya</td><td>Güçlü</td><td>Temel</td></tr>
+<tr><td>Kalem kalem PDF teklif</td><td>Çoğunlukla ek modül</td><td>Çekirdek özellik</td></tr>
+<tr><td>Cari hesap ve tahsilat</td><td>Çoğunlukla yok</td><td>Var</td></tr>
+<tr><td>Servis/bakım hatırlatma</td><td>Değişir</td><td>Var</td></tr>
+<tr><td>Kurulum ve öğrenme</td><td>Uzun</td><td>Kısa</td></tr>
+</tbody></table>
+<h2>Anında Teklif ile müşteri takibi</h2>
+<p>Anında Teklif'te her müşterinin kartında teklifleri, servis görevleri ve cari hesabı birlikte görünür; ödeme vadesi, bakım zamanı ve servis randevusu için otomatik e-posta hatırlatmaları kurulabilir, tarihler takviminize aktarılır. Müşteri listenizi Excel'den içe aktararak başlayabilirsiniz. Ücretsiz planda ayda 5 teklif hazırlanır.</p>
+""",
+        "sss": [
+            ("Ücretsiz müşteri takip programı var mı?", "Evet. Anında Teklif'in ücretsiz planında müşteri kartları, teklifler, cari hesap ve hatırlatmalar kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır."),
+            ("Excel ile müşteri takibi yeterli mi?", "Az sayıda müşteri ve tek kullanıcı için yeterlidir. Teklif, ödeme ve hatırlatmaları eşleştirmek gerektiğinde ve ekipte birden fazla kişi çalıştığında hata riski artar."),
+        ],
+    },
+    {
+        "slug": "teklif-takibi-nasil-yapilir",
+        "tarih": "2026-10-18",
+        "baslik": "Teklif Takibi Nasıl Yapılır? Kabul Oranını Artıran 7 Adım",
+        "h1": "Teklif takibi nasıl yapılır?",
+        "aciklama": "Verilen tekliflerin takibi: teklif durumları, takip zamanlaması, takip mesajları, kaybedilen tekliflerin nedenleri ve teklif kabul oranını ölçme.",
+        "kisa": "Teklif takibi, gönderilen her teklifin durumunu (gönderildi, beklemede, onaylandı, reddedildi) kaydetmek, belirli günlerde müşteriyle yeniden temas kurmak ve sonuçları ölçmektir. Gönderimden 2–3 gün sonra ilk takip, geçerlilik süresi bitmeden ikinci takip yapmak ve kaybedilen tekliflerin nedenini not etmek kabul oranını artırır.",
+        "govde": """
+<h2>7 adımda teklif takibi</h2>
+<ol>
+<li><strong>Her teklifi kaydedin:</strong> numara, müşteri, tutar, tarih, geçerlilik.</li>
+<li><strong>Durum verin:</strong> beklemede, onaylandı, reddedildi.</li>
+<li><strong>İlk takip:</strong> 2–3 gün sonra kısa bir mesaj veya arama.</li>
+<li><strong>Soruyu bulun:</strong> fiyat mı, süre mi, kapsam mı? Revize teklif önerin.</li>
+<li><strong>Geçerlilik bitmeden ikinci takip:</strong> "Teklifimiz cuma gününe kadar geçerli" hatırlatması.</li>
+<li><strong>Kayıp nedenini not edin:</strong> fiyat, rakip, erteleme, iptal.</li>
+<li><strong>Ölçün:</strong> aylık teklif sayısı, onaylanan teklif oranı, ortalama karar süresi.</li>
+</ol>
+<h2>Teklif kabul oranı nasıl hesaplanır?</h2>
+<p>Kabul oranı = onaylanan teklif sayısı ÷ sonuçlanan (onaylanan + reddedilen) teklif sayısı. Örneğin ayda 40 tekliften 30'u sonuçlandı ve 12'si onaylandıysa kabul oranı %40'tır. Oranı tutarla da hesaplayın; küçük işleri kazanıp büyükleri kaybediyor olabilirsiniz.</p>
+<h2>Takip mesajı örnekleri</h2>
+<p>E-posta ve WhatsApp takip metinleri için <a href="/rehber/fiyat-teklifi-maili-nasil-yazilir.html">fiyat teklifi maili</a> ve <a href="/rehber/whatsapp-ile-teklif-gonderme.html">WhatsApp ile teklif gönderme</a> yazılarına bakın.</p>
+<h2>Teklif takip programı</h2>
+<p>Anında Teklif'te her teklifin durumu listede görünür; bekleyen teklifleri filtreler, onaylananları tek dokunuşla cari hesaba aktarır, raporlarda teklif ve kazanç toplamlarını izlersiniz. Ekipte kim hangi teklifi verdi de görünür.</p>
+""",
+        "sss": [
+            ("Teklif gönderdikten kaç gün sonra takip edilmeli?", "Genellikle 2–3 gün sonra ilk takip, geçerlilik süresi dolmadan önce ikinci takip yapılır."),
+            ("Teklif takip programı ücretsiz var mı?", "Anında Teklif'in ücretsiz planında teklif durumu takibi kullanılabilir; ayda 5 teklif sınırı vardır."),
+        ],
+    },
+    {
+        "slug": "on-muhasebe-ve-teklif-programi-farki",
+        "tarih": "2026-10-18",
+        "baslik": "Ön Muhasebe Programı mı, Teklif Programı mı? Farkları",
+        "h1": "Ön muhasebe programı ile teklif programı arasındaki fark",
+        "aciklama": "Ön muhasebe programı ve teklif hazırlama programı ne işe yarar, farkları neler, hangisi hangi işletmeye uygun? Fatura, stok, teklif, cari ve tahsilat karşılaştırması.",
+        "kisa": "Ön muhasebe programı satış sonrası işlere odaklanır: fatura, stok, cari, banka-kasa ve muhasebeciye veri aktarımı. Teklif programı satış öncesine odaklanır: hızlı ve profesyonel teklif hazırlama, gönderme, onay takibi ve onaylanan işin tahsilatı. Sahada teklif veren usta, bayi ve hizmet işletmeleri için teklif programı günlük işi hızlandırır; yoğun stok ve fatura trafiği olan işletmelerin ise ön muhasebe programına ihtiyacı vardır.",
+        "govde": """
+<h2>Karşılaştırma</h2>
+<table><thead><tr><th>Özellik</th><th>Ön muhasebe programı</th><th>Teklif programı</th></tr></thead><tbody>
+<tr><td>Odak</td><td>Satış sonrası kayıt</td><td>Satış öncesi ve satışın kapanması</td></tr>
+<tr><td>Fiyat teklifi</td><td>Basit teklif/proforma</td><td>Şablonlu PDF, ölçüye göre fiyat, WhatsApp</td></tr>
+<tr><td>Fatura / e-Fatura</td><td>Çekirdek özellik</td><td>Değişir</td></tr>
+<tr><td>Stok takibi</td><td>Güçlü</td><td>Katalog düzeyinde</td></tr>
+<tr><td>Cari ve tahsilat</td><td>Var</td><td>Var (teklifle bağlantılı)</td></tr>
+<tr><td>Sahada telefondan kullanım</td><td>Değişir</td><td>Öncelikli</td></tr>
+</tbody></table>
+<h2>Hangi işletmeye hangisi?</h2>
+<ul>
+<li><strong>Usta, montajcı, bayi, servis:</strong> günde birkaç teklif veriyor, sahada çalışıyorsa teklif programı.</li>
+<li><strong>Mağaza, toptancı:</strong> yoğun stok ve fatura varsa ön muhasebe programı.</li>
+<li><strong>İkisi birden:</strong> teklif programında satışı kapatıp faturayı muhasebe tarafında kesmek yaygın bir düzendir.</li>
+</ul>
+<h2>Anında Teklif nerede durur?</h2>
+<p>Anında Teklif bir teklif programıdır; teklif, müşteri, cari hesap, kasa ve tahsilatı birlikte tutar. Resmî defter ve beyanname işleri için mali müşavirinizle ve onun kullandığı muhasebe sistemiyle çalışmaya devam edersiniz.</p>
+""",
+        "sss": [
+            ("Teklif programı ön muhasebe yerine geçer mi?", "Tam olarak geçmez. Teklif programı satış öncesini ve tahsilatı hızlandırır; yoğun stok, fatura ve muhasebe entegrasyonu ihtiyacı varsa ön muhasebe programı da gerekir."),
+            ("Küçük bir usta ön muhasebe programı kullanmalı mı?", "Fatura ve stok yükü azsa çoğu zaman teklif, cari ve tahsilatı tutan bir uygulama yeterlidir; resmî kayıtlar mali müşavir tarafından tutulur."),
+        ],
+    },
+    {
+        "slug": "kasa-takibi-nasil-yapilir",
+        "tarih": "2026-10-18",
+        "baslik": "Kasa Takibi Nasıl Yapılır? Excel Kasa Defteri ve Uygulama",
+        "h1": "Kasa takibi nasıl yapılır?",
+        "aciklama": "Küçük işletmelerde kasa takibi: günlük kasa defteri, gelir-gider kayıtları, nakit-kart-havale ayrımı, gün sonu kontrolü ve Excel kasa takip tablosu örneği.",
+        "kisa": "Kasa takibi; her para girişini (tahsilat) ve çıkışını (gider) tarih, açıklama, tutar, ödeme yöntemi ve ilgili müşteri/tedarikçiyle birlikte kaydetmek ve gün sonunda kayıtlı bakiye ile eldeki nakdi karşılaştırmaktır. Nakit, kart ve havale ayrı izlenir; müşteri tahsilatları aynı anda müşterinin cari hesabından düşülür.",
+        "govde": """
+<h2>Kasa defteri örneği</h2>
+<table><thead><tr><th>Tarih</th><th>Açıklama</th><th>Yöntem</th><th>Giriş</th><th>Çıkış</th><th>Bakiye</th></tr></thead><tbody>
+<tr><td>18.10</td><td>Devreden</td><td></td><td></td><td></td><td>5.000 TL</td></tr>
+<tr><td>18.10</td><td>Ayşe Yılmaz – peşinat</td><td>Havale</td><td>25.000 TL</td><td></td><td>30.000 TL</td></tr>
+<tr><td>18.10</td><td>Malzeme alımı</td><td>Kart</td><td></td><td>8.400 TL</td><td>21.600 TL</td></tr>
+<tr><td>18.10</td><td>Yakıt</td><td>Nakit</td><td></td><td>1.200 TL</td><td>20.400 TL</td></tr>
+</tbody></table>
+<p class="kucuk">Rakamlar örnektir.</p>
+<h2>Kurallar</h2>
+<ul><li>Her hareketi aynı gün kaydedin.</li><li>Nakit, kart ve havaleyi ayrı izleyin; gün sonu nakit sayımını kayıtla karşılaştırın.</li><li>Müşteri tahsilatını hem kasaya hem müşteri cari hesabına işleyin.</li><li>Giderleri kategorilere ayırın (malzeme, yakıt, kira, maaş).</li><li>Belgeleri (fiş, fatura) saklayın ve mali müşavirinize iletin.</li></ul>
+<h2>Excel mi, uygulama mı?</h2>
+<p>Excel'de tarih-açıklama-yöntem-giriş-çıkış sütunları ve bakiye formülü (önceki bakiye + giriş − çıkış) yeterlidir. Sorun, tahsilatın müşteri hesabıyla eşleşmemesidir. Anında Teklif'te tahsilat kaydı kasaya ve müşterinin cari hesabına aynı anda işlenir; aylık nakit durumu ve borçlu müşteriler ayrı ekranda görünür. Ayrıntı için <a href="/rehber/cari-hesap-ve-tahsilat-takibi.html">cari hesap ve tahsilat takibi</a> yazısına bakın.</p>
+""",
+        "sss": [
+            ("Kasa defteri nasıl tutulur?", "Her giriş ve çıkış tarih, açıklama, ödeme yöntemi ve tutarla kaydedilir; bakiye önceki bakiye + giriş − çıkış olarak hesaplanır ve gün sonunda fiili nakitle karşılaştırılır."),
+            ("Ücretsiz kasa takip programı var mı?", "Excel ile basit kasa defteri tutulabilir. Anında Teklif'in ücretsiz planında kasa, tahsilat ve cari hesap birlikte kullanılabilir."),
+        ],
+    },
+    {
+        "slug": "odeme-hatirlatma-mesaji",
+        "tarih": "2026-10-18",
+        "baslik": "Ödeme Hatırlatma Mesajı Örnekleri (WhatsApp ve E-posta)",
+        "h1": "Ödeme hatırlatma mesajı nasıl yazılır?",
+        "aciklama": "Müşteriye kibar ödeme hatırlatma mesajı örnekleri: vadesi yaklaşan, vadesi geçen ve kısmi ödeme için WhatsApp ve e-posta metinleri; zamanlama ve dikkat edilecekler.",
+        "kisa": "Ödeme hatırlatma mesajı kısa, kibar ve net olmalıdır: müşterinin adı, firma adınız, tutar, vade tarihi, ödeme bilgisi (IBAN) ve iletişim yolu. Vade gelmeden 1–3 gün önce nazik bir hatırlatma, vade geçtikten sonra ise tarih ve tutarı içeren ikinci bir mesaj gönderilir; tehditkâr dilden kaçınılır.",
+        "govde": """
+<h2>Vadesi yaklaşan ödeme</h2>
+<div class="mesaj">Merhaba Ayşe Hanım, Örnek Yapı olarak 25 Ekim vadeli 37.940 TL tutarındaki ödemenizi hatırlatmak isteriz. IBAN: TR.. Sorunuz olursa buradan yazabilirsiniz. İyi günler dileriz.</div>
+<h2>Vadesi geçen ödeme</h2>
+<div class="mesaj">Merhaba Ayşe Hanım, 25 Ekim vadeli 37.940 TL ödemeniz kayıtlarımızda henüz görünmüyor. Ödemeyi yaptıysanız dekontu iletebilir misiniz? Bir aksilik varsa ödeme planı için görüşebiliriz.</div>
+<h2>Kısmi ödeme sonrası</h2>
+<div class="mesaj">Merhaba Ayşe Hanım, 30.000 TL ödemeniz için teşekkür ederiz. Kalan bakiye 7.940 TL'dir; teslimde ödenmesini rica ederiz.</div>
+<p class="kucuk">İsim ve tutarlar örnektir.</p>
+<h2>Dikkat edilecekler</h2>
+<ul><li>Hatırlatmayı mesai saatlerinde gönderin.</li><li>Tutar ve tarihi cari hesap kaydıyla kontrol edin; yanlış hatırlatma güveni zedeler.</li><li>Ödeme bilgisini (IBAN, alıcı adı) mesaja ekleyin.</li><li>Ödeme gelince teşekkür mesajı gönderin.</li></ul>
+<h2>Otomatik hatırlatma</h2>
+<p>Anında Teklif'te müşterinin cari hesabındaki vadeye göre ödeme hatırlatması firma adınızla e-postayla otomatik gönderilebilir (IBAN tanımlıysa eklenir); aynı metni WhatsApp'tan da tek dokunuşla iletebilirsiniz. Bakım ve servis randevuları için de hatırlatma kurulabilir.</p>
+""",
+        "sss": [
+            ("Kibar ödeme hatırlatma mesajı nasıl yazılır?", "Müşterinin adı, firma adı, tutar, vade tarihi ve ödeme bilgisiyle kısa bir mesaj yazılır; \"hatırlatmak isteriz\" gibi nazik bir dil kullanılır ve soru için iletişim yolu bırakılır."),
+            ("Ödeme hatırlatması ne zaman gönderilmeli?", "Vadeden 1–3 gün önce ilk hatırlatma, vade geçtikten sonra birkaç gün içinde ikinci hatırlatma yaygın bir düzendir."),
+        ],
+    },
+]

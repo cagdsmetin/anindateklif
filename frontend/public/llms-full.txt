@@ -37,6 +37,15 @@
 - [Tadilat Teklif Örneği: Kalem Kalem Tadilat Fiyat Teklifi](https://www.anindateklif.co/rehber/tadilat-teklif-ornegi.html): Daire, mutfak, banyo ve boya tadilatı için teklif örneği: hangi kalemler, hangi birimler, dahil olmayanlar ve ödeme planı. Tadilat ustaları için hazır kontrol listesi.
 - [İngilizce Fiyat Teklifi (Quotation) Nasıl Yazılır? Örnek](https://www.anindateklif.co/rehber/ingilizce-fiyat-teklifi.html): İngilizce fiyat teklifinde kullanılan başlıklar ve kalıp cümleler: quotation, unit price, VAT, validity, payment terms. Türkçe karşılıklarıyla tablo ve örnek e-posta.
 - [Cari Hesap ve Tahsilat Takibi: Küçük İşletmeler İçin Rehber](https://www.anindateklif.co/rehber/cari-hesap-ve-tahsilat-takibi.html): Müşteri cari hesabı nedir, alacak ve tahsilat nasıl takip edilir? Excel ile cari takip, sık yapılan hatalar ve teklif-tahsilat-kasa akışını tek yerde tutmak.
+- [Teklif Mektubu Nedir? Örnek, Nasıl Doldurulur, Farkı Ne?](https://www.anindateklif.co/rehber/teklif-mektubu-nedir.html): Teklif mektubu nedir, fiyat teklifinden farkı ne, ihalede nasıl doldurulur? Teklif mektubunda bulunan bilgiler, sık yapılan hatalar ve örnek metin.
+- [Fiyat Teklifi Maili Nasıl Yazılır? Gönderme ve İsteme Örnekleri](https://www.anindateklif.co/rehber/fiyat-teklifi-maili-nasil-yazilir.html): Müşteriye fiyat teklifi gönderme maili ve tedarikçiden fiyat teklifi isteme (teklif alma) maili örnekleri: konu satırı, gövde metni, ekler ve takip maili.
+- [Fiyat Teklifi Talep Formu (Teklif Alma Formu) Örneği](https://www.anindateklif.co/rehber/fiyat-teklifi-talep-formu.html): Tedarikçilerden fiyat teklifi istemek için talep formu (teklif alma formu): hangi bilgiler istenir, örnek alanlar, son tarih ve teklifleri karşılaştırma.
+- [Fiyat Teklifi Karşılaştırma Tablosu (Ücretsiz Excel Şablonu)](https://www.anindateklif.co/rehber/fiyat-teklifi-karsilastirma-tablosu.html): Birden fazla tedarikçiden gelen teklifleri yan yana karşılaştırma tablosu: birim fiyat, KDV, nakliye, vade, teslim süresi ve toplam maliyet. Ücretsiz Excel şablonu.
+- [Müşteri Takip Programı: Excel mi, Ücretsiz Uygulama mı?](https://www.anindateklif.co/rehber/musteri-takip-programi.html): Küçük işletmeler için müşteri takip programı: Excel ile müşteri takibi, ücretsiz programlar, CRM ve teklif-cari-servis takibini birleştiren uygulamalar karşılaştırması.
+- [Teklif Takibi Nasıl Yapılır? Kabul Oranını Artıran 7 Adım](https://www.anindateklif.co/rehber/teklif-takibi-nasil-yapilir.html): Verilen tekliflerin takibi: teklif durumları, takip zamanlaması, takip mesajları, kaybedilen tekliflerin nedenleri ve teklif kabul oranını ölçme.
+- [Ön Muhasebe Programı mı, Teklif Programı mı? Farkları](https://www.anindateklif.co/rehber/on-muhasebe-ve-teklif-programi-farki.html): Ön muhasebe programı ve teklif hazırlama programı ne işe yarar, farkları neler, hangisi hangi işletmeye uygun? Fatura, stok, teklif, cari ve tahsilat karşılaştırması.
+- [Kasa Takibi Nasıl Yapılır? Excel Kasa Defteri ve Uygulama](https://www.anindateklif.co/rehber/kasa-takibi-nasil-yapilir.html): Küçük işletmelerde kasa takibi: günlük kasa defteri, gelir-gider kayıtları, nakit-kart-havale ayrımı, gün sonu kontrolü ve Excel kasa takip tablosu örneği.
+- [Ödeme Hatırlatma Mesajı Örnekleri (WhatsApp ve E-posta)](https://www.anindateklif.co/rehber/odeme-hatirlatma-mesaji.html): Müşteriye kibar ödeme hatırlatma mesajı örnekleri: vadesi yaklaşan, vadesi geçen ve kısmi ödeme için WhatsApp ve e-posta metinleri; zamanlama ve dikkat edilecekler.
 
 ## Ücretsiz araçlar
 - [Online fiyat teklifi oluşturucu](https://www.anindateklif.co/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
@@ -576,6 +585,363 @@ Anında Teklif'te onaylanan teklif müşterinin cari hesabına bağlanır; tahsi
 **Ücretsiz cari hesap takip programı var mı?** Excel ile basit takip yapılabilir. Anında Teklif'in ücretsiz planında teklif, müşteri, cari ve tahsilat takibi birlikte kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır.
 
 **Tahsilat takibi nasıl yapılır?** Her satış müşterinin cari hesabına borç, her ödeme alacak olarak yazılır; vadesi geçen bakiyeler düzenli olarak listelenip müşteriye hatırlatılır.
+
+---
+
+# Teklif Mektubu Nedir? Örnek, Nasıl Doldurulur, Farkı Ne?
+Kaynak: https://www.anindateklif.co/rehber/teklif-mektubu-nedir.html
+
+**Kısa cevap:** Teklif mektubu, bir işi veya malı belirli bir bedelle yapmayı/vermeyi resmî olarak taahhüt ettiğiniz, imzalı ve tarihli yazıdır. Kamu ihalelerinde idarenin ihale dokümanındaki standart form kullanılır ve bedel rakam ile yazıyla yazılır; özel sektörde ise fiyat teklifinin üst yazısı olarak işin kapsamını, toplam bedeli, geçerlilik süresini ve imzayı içerir.
+## Teklif mektubu ile fiyat teklifi farkı
+
+ | Fiyat teklifi | Teklif mektubu | 
+
+Biçim | Kalem kalem fiyat tablosu | Resmî yazı / standart form | 
+
+Kullanım | Günlük satış, usta ve bayi işleri | İhaleler, kurumsal alımlar, sözleşme öncesi taahhüt | 
+
+Bedel | Kalemlerin toplamı | Toplam bedel, çoğunlukla rakam ve yazıyla | 
+
+Ek | Koşullar, görseller | Birim fiyat cetveli veya fiyat teklifi ekte | 
+
+## Teklif mektubunda bulunan bilgiler
+
+- Muhatap kurum veya firma ve işin adı (ihalede ihale kayıt numarası)
+
+- İşin dokümanlarının okunup kabul edildiği beyanı
+
+- Toplam teklif bedeli: rakam ve yazıyla, KDV hariç/dahil bilgisiyle
+
+- Teklifin geçerlilik süresi
+
+- Teklif verenin unvanı, adresi, vergi bilgileri, tarih, kaşe ve yetkili imzası
+
+## Kamu ihalelerinde dikkat
+
+Kamu ihalelerinde teklif mektubunun biçimi idare tarafından belirlenir; ihale dokümanında verilen standart formun dışına çıkmak, rakam ile yazı arasındaki uyumsuzluk, eksik imza veya yetki belgesi teklifin değerlendirme dışı kalmasına yol açabilir. İhale türüne göre birim fiyat teklif cetveli veya götürü bedel esastır. Her zaman ilgili ihalenin dokümanını ve güncel mevzuatı esas alın.
+
+## Özel sektör için örnek teklif mektubu metni
+
+Sayın Yetkili,Firmanızın … tarihli talebi üzerine, … işinin aşağıda ve ekteki fiyat teklifinde belirtilen kapsam ve koşullarla yapılması için toplam bedelimiz KDV hariç 250.000 TL (İkiyüzellibin Türk lirası)'dir. Teklifimiz düzenleme tarihinden itibaren 30 gün geçerlidir.Saygılarımızla,Firma unvanı · Kaşe · İmza · Tarih
+
+Tutar örnektir.
+
+Ekteki kalem kalem fiyat teklifini fiyat teklifi örneği yapısında hazırlayabilirsiniz.
+
+Bu yazı genel bilgilendirme amaçlıdır; ihaleye katılırken ihale dokümanını ve mevzuatı esas alın.
+
+**Teklif mektubu nedir?** Bir işi veya malı belirli bir bedelle yapmayı ya da vermeyi taahhüt eden, imzalı ve tarihli resmî teklif yazısıdır. İhalelerde idarenin belirlediği standart form kullanılır.
+
+**Teklif mektubunda bedel nasıl yazılır?** Genellikle rakam ve yazıyla birlikte yazılır; ikisinin birbirini tutması gerekir. KDV'nin dahil olup olmadığı da belirtilir.
+
+**Teklif mektubu nereden alınır?** Kamu ihalelerinde ihale dokümanının ekinde standart form olarak verilir. Özel sektörde firmalar kendi antetli kâğıtlarında hazırlar.
+
+---
+
+# Fiyat Teklifi Maili Nasıl Yazılır? Gönderme ve İsteme Örnekleri
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-maili-nasil-yazilir.html
+
+**Kısa cevap:** Fiyat teklifi maili kısa olmalıdır: konu satırında teklifin konusu ve numarası, gövdede kişiye hitap, teklifin özeti (toplam tutar, KDV durumu, geçerlilik süresi), ekte PDF teklif ve bir sonraki adım (soru, onay, görüşme) yer alır. Teklif isterken ise ihtiyacınızı, miktarı, teknik detayları, teslim yerini ve son yanıt tarihini net yazın.
+## Müşteriye fiyat teklifi gönderme maili
+
+Konu: Salon boya ve parke işi – Fiyat teklifi (No: 2026-0142)
+
+Merhaba Ayşe Hanım,Görüşmemize istinaden salon ve koridor boya-badana ile parke yenileme işinin fiyat teklifini ekte bilgilerinize sunuyorum. Toplam tutar KDV dahil 62.940 TL olup teklif 15 gün geçerlidir. İş, onayınızdan sonra 7 iş günü içinde tamamlanır.Sorularınızı bu e-postaya yanıt olarak ya da 0532 … numarasından iletebilirsiniz.İyi çalışmalar,Mehmet Kaya · Örnek Yapı Dekorasyon
+
+## Tedarikçiden fiyat teklifi isteme (teklif alma) maili
+
+Konu: Fiyat teklifi talebi – 120 m² iç cephe boyası
+
+Merhaba,Aşağıdaki ürünler için fiyat teklifinizi rica ederiz:– Silikonlu iç cephe boyası, beyaz, 15 lt: 10 adet– Astar, 15 lt: 4 adetTeslim yeri: Kadıköy/İstanbul · İstenen teslim tarihi: 25 EkimLütfen fiyatların KDV durumu, ödeme koşulları ve teslim süresiyle birlikte 21 Ekim'e kadar iletiniz.Teşekkürler,Mehmet Kaya · Örnek Yapı Dekorasyon
+
+Birden fazla tedarikçiden teklif aldığınızda yanıtları teklif karşılaştırma tablosunda yan yana koyun. Düzenli alım yapıyorsanız fiyat teklifi talep formu kullanmak işinizi kolaylaştırır.
+
+## Takip maili
+
+Merhaba Ayşe Hanım, 3 gün önce ilettiğimiz 2026-0142 numaralı teklifle ilgili sorunuz var mı? İsterseniz kalemlerde düzenleme yapabilir veya kısa bir görüşme ayarlayabiliriz.
+
+## Sık yapılan hatalar
+
+- Teklifi PDF yerine düzenlenebilir Word/Excel dosyası olarak göndermek
+- Konu satırını boş bırakmak veya "Teklif" yazıp geçmek
+- Toplam tutarı ve geçerlilik süresini sadece ekte bırakmak
+- Takip etmemek: çoğu teklif ilk takip mesajından sonra yanıtlanır
+
+Anında Teklif'te teklif PDF'i otomatik oluşur; e-posta, WhatsApp veya indirme ile tek adımda gönderilir ve hangi teklifin yanıt beklediğini listeden görürsünüz.
+
+**Fiyat teklifi maili nasıl başlar?** Kişiye adıyla hitap edip görüşmeye veya talebe atıfla başlanır: "Görüşmemize istinaden … işinin fiyat teklifini ekte bilgilerinize sunarım."
+
+**Fiyat teklifi isteme maili nasıl yazılır?** Ürün/hizmet, miktar, teknik özellikler, teslim yeri ve tarihi açıkça yazılır; KDV durumu, ödeme koşulları ve teslim süresiyle birlikte teklif istenir ve son yanıt tarihi belirtilir.
+
+**Teklif mailine yanıt gelmezse ne yapılmalı?** 2–3 gün sonra kısa ve nazik bir takip maili veya mesajı gönderin; düzenleme ya da görüşme teklif edin.
+
+---
+
+# Fiyat Teklifi Talep Formu (Teklif Alma Formu) Örneği
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-talep-formu.html
+
+**Kısa cevap:** Fiyat teklifi talep formu, tedarikçilere aynı bilgileri vererek karşılaştırılabilir teklifler almanızı sağlar. Formda talep eden firma ve kişi, ürün/hizmet listesi (tanım, miktar, birim, teknik özellik), teslim yeri ve tarihi, istenen ödeme koşulu, KDV ve döviz tercihi ile tekliflerin son gönderim tarihi yer alır.
+## Talep formundaki alanlar
+
+Bölüm | İçerik | 
+
+Talep eden | Firma, yetkili kişi, telefon, e-posta, talep no ve tarih | 
+
+Kalemler | Sıra no, tanım, teknik özellik/marka tercihi, miktar, birim | 
+
+Teslim | Teslim yeri, istenen tarih, nakliye ve montaj dahil mi | 
+
+Ticari koşullar | Ödeme vadesi, para birimi, KDV hariç/dahil, teklif geçerlilik süresi | 
+
+Son tarih | Tekliflerin en geç gönderileceği tarih ve adres | 
+
+## Neden standart form?
+
+Serbest metinle teklif istendiğinde her tedarikçi farklı birim, farklı KDV durumu ve farklı teslim koşuluyla yanıt verir; teklifler karşılaştırılamaz hâle gelir. Aynı formu herkese göndermek, gelen yanıtları karşılaştırma tablosuna doğrudan aktarmanızı sağlar.
+
+## İpuçları
+
+- Muadil ürün kabul edip etmediğinizi yazın.
+- Tekliflerin kalem bazında birim fiyatla verilmesini isteyin.
+- Teslim süresini "iş günü" olarak isteyin.
+- E-postayla göndermek için teklif isteme maili örneğimize bakın.
+
+Siz teklif veren tarafsanız, müşterinizden gelen talep formuna yanıtı online teklif oluşturucuda ya da Anında Teklif'te kalem kalem hazırlayabilirsiniz.
+
+**Teklif alma formu ile fiyat teklifi farkı nedir?** Teklif alma (talep) formunu alıcı hazırlar ve ne istediğini anlatır; fiyat teklifini satıcı hazırlar ve bu talebe fiyatla yanıt verir.
+
+**Fiyat teklifi talep formunda son tarih gerekli mi?** Evet. Tekliflerin aynı dönemde toplanması ve karşılaştırılabilmesi için son gönderim tarihi yazılmalıdır.
+
+---
+
+# Fiyat Teklifi Karşılaştırma Tablosu (Ücretsiz Excel Şablonu)
+Kaynak: https://www.anindateklif.co/rehber/fiyat-teklifi-karsilastirma-tablosu.html
+
+**Kısa cevap:** Teklif karşılaştırma tablosunda satırlara kalemler, sütunlara tedarikçiler yazılır; her tedarikçi için birim fiyat ve tutar, altına KDV, nakliye/montaj, ödeme vadesi ve teslim süresi eklenir. Karar yalnızca en düşük toplama göre değil; aynı kapsam, KDV durumu, vade ve teslim süresi eşitlenerek verilir.
+## Örnek karşılaştırma
+
+Kalem | Miktar | Tedarikçi A | Tedarikçi B | Tedarikçi C | 
+
+İç cephe boyası 15 lt | 10 | 21.000 TL | 19.500 TL | 20.200 TL | 
+
+Astar 15 lt | 4 | 4.800 TL | 5.200 TL | 4.600 TL | 
+
+Nakliye |  | Dahil | 1.500 TL | Dahil | 
+
+Toplam (KDV hariç) |  | 25.800 TL | 26.200 TL | 24.800 TL | 
+
+Ödeme vadesi |  | 30 gün | Peşin | 15 gün | 
+
+Teslim süresi |  | 2 iş günü | 1 iş günü | 5 iş günü | 
+
+Rakamlar örnektir.
+
+Bu örnekte en düşük toplam C'dedir; ancak iş acilse B'nin teslim süresi, nakit akışı önemliyse A'nın 30 günlük vadesi daha değerli olabilir.
+
+## Ücretsiz Excel şablonu
+
+Üç tedarikçiyi yan yana koyan, tutarları ve toplamları kendisi hesaplayan şablon: fiyat-teklifi-karsilastirma-tablosu.xlsx.
+
+## Karşılaştırmadan önce eşitlenecekler
+
+- KDV dahil/hariç durumu
+- Para birimi ve kur tarihi
+- Nakliye, montaj, kurulum dahil mi
+- Marka/model ve garanti süresi aynı mı
+- Teklif geçerlilik tarihleri
+
+Teklifleri tek tip almak için fiyat teklifi talep formu kullanın.
+
+**Teklif karşılaştırma tablosu nasıl yapılır?** Kalemler satırlara, tedarikçiler sütunlara yazılır; her tedarikçinin birim fiyat ve tutarları girilir, altına KDV, nakliye, vade ve teslim süresi eklenir; toplamlar aynı koşullara getirilerek karşılaştırılır.
+
+**En ucuz teklif her zaman seçilmeli mi?** Hayır. Kapsam, kalite, garanti, ödeme vadesi ve teslim süresi eşit değilse en düşük toplam yanıltıcı olabilir.
+
+---
+
+# Müşteri Takip Programı: Excel mi, Ücretsiz Uygulama mı?
+Kaynak: https://www.anindateklif.co/rehber/musteri-takip-programi.html
+
+**Kısa cevap:** Küçük bir işletmede müşteri takibi; iletişim bilgilerini, verilen teklifleri ve durumlarını, yapılan işleri ve servisleri, borç-alacak bakiyesini ve bir sonraki temas tarihini tek yerde tutmaktır. Az müşteride Excel yeterlidir; müşteri sayısı ve ekip büyüdükçe teklif, cari hesap ve hatırlatmaları birleştiren bir uygulama daha az hata ve daha çok tekrar satış sağlar.
+## Müşteri kartında olması gerekenler
+
+- Ad/unvan, telefon, e-posta, adres, vergi bilgileri
+- Verilen teklifler ve durumları (onaylandı, beklemede, reddedildi)
+- Yapılan işler, servis ve bakım geçmişi
+- Cari hesap: borç, alacak, bakiye, vade
+- Notlar ve bir sonraki temas/bakım tarihi
+
+## Excel ile müşteri takibi
+
+Bir sayfada müşteri listesi, ayrı sayfalarda teklifler ve ödemeler tutulabilir; filtre ve DÜŞEYARA ile bağlanır. Sorunları: dosya tek kişide ve tek cihazda kalır, teklif ile ödeme elle eşleştirilir, hatırlatma yoktur, sahadaki personel güncel bilgiyi göremez.
+
+## CRM mi, teklif odaklı uygulama mı?
+
+İhtiyaç | Genel CRM | Teklif + cari odaklı uygulama | 
+
+Satış hunisi, kampanya | Güçlü | Temel | 
+
+Kalem kalem PDF teklif | Çoğunlukla ek modül | Çekirdek özellik | 
+
+Cari hesap ve tahsilat | Çoğunlukla yok | Var | 
+
+Servis/bakım hatırlatma | Değişir | Var | 
+
+Kurulum ve öğrenme | Uzun | Kısa | 
+
+## Anında Teklif ile müşteri takibi
+
+Anında Teklif'te her müşterinin kartında teklifleri, servis görevleri ve cari hesabı birlikte görünür; ödeme vadesi, bakım zamanı ve servis randevusu için otomatik e-posta hatırlatmaları kurulabilir, tarihler takviminize aktarılır. Müşteri listenizi Excel'den içe aktararak başlayabilirsiniz. Ücretsiz planda ayda 5 teklif hazırlanır.
+
+**Ücretsiz müşteri takip programı var mı?** Evet. Anında Teklif'in ücretsiz planında müşteri kartları, teklifler, cari hesap ve hatırlatmalar kullanılabilir; ücretsiz planda ayda 5 teklif sınırı vardır.
+
+**Excel ile müşteri takibi yeterli mi?** Az sayıda müşteri ve tek kullanıcı için yeterlidir. Teklif, ödeme ve hatırlatmaları eşleştirmek gerektiğinde ve ekipte birden fazla kişi çalıştığında hata riski artar.
+
+---
+
+# Teklif Takibi Nasıl Yapılır? Kabul Oranını Artıran 7 Adım
+Kaynak: https://www.anindateklif.co/rehber/teklif-takibi-nasil-yapilir.html
+
+**Kısa cevap:** Teklif takibi, gönderilen her teklifin durumunu (gönderildi, beklemede, onaylandı, reddedildi) kaydetmek, belirli günlerde müşteriyle yeniden temas kurmak ve sonuçları ölçmektir. Gönderimden 2–3 gün sonra ilk takip, geçerlilik süresi bitmeden ikinci takip yapmak ve kaybedilen tekliflerin nedenini not etmek kabul oranını artırır.
+## 7 adımda teklif takibi
+
+- Her teklifi kaydedin: numara, müşteri, tutar, tarih, geçerlilik.
+
+- Durum verin: beklemede, onaylandı, reddedildi.
+
+- İlk takip: 2–3 gün sonra kısa bir mesaj veya arama.
+
+- Soruyu bulun: fiyat mı, süre mi, kapsam mı? Revize teklif önerin.
+
+- Geçerlilik bitmeden ikinci takip: "Teklifimiz cuma gününe kadar geçerli" hatırlatması.
+
+- Kayıp nedenini not edin: fiyat, rakip, erteleme, iptal.
+
+- Ölçün: aylık teklif sayısı, onaylanan teklif oranı, ortalama karar süresi.
+
+## Teklif kabul oranı nasıl hesaplanır?
+
+Kabul oranı = onaylanan teklif sayısı ÷ sonuçlanan (onaylanan + reddedilen) teklif sayısı. Örneğin ayda 40 tekliften 30'u sonuçlandı ve 12'si onaylandıysa kabul oranı %40'tır. Oranı tutarla da hesaplayın; küçük işleri kazanıp büyükleri kaybediyor olabilirsiniz.
+
+## Takip mesajı örnekleri
+
+E-posta ve WhatsApp takip metinleri için fiyat teklifi maili ve WhatsApp ile teklif gönderme yazılarına bakın.
+
+## Teklif takip programı
+
+Anında Teklif'te her teklifin durumu listede görünür; bekleyen teklifleri filtreler, onaylananları tek dokunuşla cari hesaba aktarır, raporlarda teklif ve kazanç toplamlarını izlersiniz. Ekipte kim hangi teklifi verdi de görünür.
+
+**Teklif gönderdikten kaç gün sonra takip edilmeli?** Genellikle 2–3 gün sonra ilk takip, geçerlilik süresi dolmadan önce ikinci takip yapılır.
+
+**Teklif takip programı ücretsiz var mı?** Anında Teklif'in ücretsiz planında teklif durumu takibi kullanılabilir; ayda 5 teklif sınırı vardır.
+
+---
+
+# Ön Muhasebe Programı mı, Teklif Programı mı? Farkları
+Kaynak: https://www.anindateklif.co/rehber/on-muhasebe-ve-teklif-programi-farki.html
+
+**Kısa cevap:** Ön muhasebe programı satış sonrası işlere odaklanır: fatura, stok, cari, banka-kasa ve muhasebeciye veri aktarımı. Teklif programı satış öncesine odaklanır: hızlı ve profesyonel teklif hazırlama, gönderme, onay takibi ve onaylanan işin tahsilatı. Sahada teklif veren usta, bayi ve hizmet işletmeleri için teklif programı günlük işi hızlandırır; yoğun stok ve fatura trafiği olan işletmelerin ise ön muhasebe programına ihtiyacı vardır.
+## Karşılaştırma
+
+Özellik | Ön muhasebe programı | Teklif programı | 
+
+Odak | Satış sonrası kayıt | Satış öncesi ve satışın kapanması | 
+
+Fiyat teklifi | Basit teklif/proforma | Şablonlu PDF, ölçüye göre fiyat, WhatsApp | 
+
+Fatura / e-Fatura | Çekirdek özellik | Değişir | 
+
+Stok takibi | Güçlü | Katalog düzeyinde | 
+
+Cari ve tahsilat | Var | Var (teklifle bağlantılı) | 
+
+Sahada telefondan kullanım | Değişir | Öncelikli | 
+
+## Hangi işletmeye hangisi?
+
+- Usta, montajcı, bayi, servis: günde birkaç teklif veriyor, sahada çalışıyorsa teklif programı.
+
+- Mağaza, toptancı: yoğun stok ve fatura varsa ön muhasebe programı.
+
+- İkisi birden: teklif programında satışı kapatıp faturayı muhasebe tarafında kesmek yaygın bir düzendir.
+
+## Anında Teklif nerede durur?
+
+Anında Teklif bir teklif programıdır; teklif, müşteri, cari hesap, kasa ve tahsilatı birlikte tutar. Resmî defter ve beyanname işleri için mali müşavirinizle ve onun kullandığı muhasebe sistemiyle çalışmaya devam edersiniz.
+
+**Teklif programı ön muhasebe yerine geçer mi?** Tam olarak geçmez. Teklif programı satış öncesini ve tahsilatı hızlandırır; yoğun stok, fatura ve muhasebe entegrasyonu ihtiyacı varsa ön muhasebe programı da gerekir.
+
+**Küçük bir usta ön muhasebe programı kullanmalı mı?** Fatura ve stok yükü azsa çoğu zaman teklif, cari ve tahsilatı tutan bir uygulama yeterlidir; resmî kayıtlar mali müşavir tarafından tutulur.
+
+---
+
+# Kasa Takibi Nasıl Yapılır? Excel Kasa Defteri ve Uygulama
+Kaynak: https://www.anindateklif.co/rehber/kasa-takibi-nasil-yapilir.html
+
+**Kısa cevap:** Kasa takibi; her para girişini (tahsilat) ve çıkışını (gider) tarih, açıklama, tutar, ödeme yöntemi ve ilgili müşteri/tedarikçiyle birlikte kaydetmek ve gün sonunda kayıtlı bakiye ile eldeki nakdi karşılaştırmaktır. Nakit, kart ve havale ayrı izlenir; müşteri tahsilatları aynı anda müşterinin cari hesabından düşülür.
+## Kasa defteri örneği
+
+Tarih | Açıklama | Yöntem | Giriş | Çıkış | Bakiye | 
+
+18.10 | Devreden |  |  |  | 5.000 TL | 
+
+18.10 | Ayşe Yılmaz – peşinat | Havale | 25.000 TL |  | 30.000 TL | 
+
+18.10 | Malzeme alımı | Kart |  | 8.400 TL | 21.600 TL | 
+
+18.10 | Yakıt | Nakit |  | 1.200 TL | 20.400 TL | 
+
+Rakamlar örnektir.
+
+## Kurallar
+
+- Her hareketi aynı gün kaydedin.
+- Nakit, kart ve havaleyi ayrı izleyin; gün sonu nakit sayımını kayıtla karşılaştırın.
+- Müşteri tahsilatını hem kasaya hem müşteri cari hesabına işleyin.
+- Giderleri kategorilere ayırın (malzeme, yakıt, kira, maaş).
+- Belgeleri (fiş, fatura) saklayın ve mali müşavirinize iletin.
+
+## Excel mi, uygulama mı?
+
+Excel'de tarih-açıklama-yöntem-giriş-çıkış sütunları ve bakiye formülü (önceki bakiye + giriş − çıkış) yeterlidir. Sorun, tahsilatın müşteri hesabıyla eşleşmemesidir. Anında Teklif'te tahsilat kaydı kasaya ve müşterinin cari hesabına aynı anda işlenir; aylık nakit durumu ve borçlu müşteriler ayrı ekranda görünür. Ayrıntı için cari hesap ve tahsilat takibi yazısına bakın.
+
+**Kasa defteri nasıl tutulur?** Her giriş ve çıkış tarih, açıklama, ödeme yöntemi ve tutarla kaydedilir; bakiye önceki bakiye + giriş − çıkış olarak hesaplanır ve gün sonunda fiili nakitle karşılaştırılır.
+
+**Ücretsiz kasa takip programı var mı?** Excel ile basit kasa defteri tutulabilir. Anında Teklif'in ücretsiz planında kasa, tahsilat ve cari hesap birlikte kullanılabilir.
+
+---
+
+# Ödeme Hatırlatma Mesajı Örnekleri (WhatsApp ve E-posta)
+Kaynak: https://www.anindateklif.co/rehber/odeme-hatirlatma-mesaji.html
+
+**Kısa cevap:** Ödeme hatırlatma mesajı kısa, kibar ve net olmalıdır: müşterinin adı, firma adınız, tutar, vade tarihi, ödeme bilgisi (IBAN) ve iletişim yolu. Vade gelmeden 1–3 gün önce nazik bir hatırlatma, vade geçtikten sonra ise tarih ve tutarı içeren ikinci bir mesaj gönderilir; tehditkâr dilden kaçınılır.
+## Vadesi yaklaşan ödeme
+
+Merhaba Ayşe Hanım, Örnek Yapı olarak 25 Ekim vadeli 37.940 TL tutarındaki ödemenizi hatırlatmak isteriz. IBAN: TR.. Sorunuz olursa buradan yazabilirsiniz. İyi günler dileriz.
+
+## Vadesi geçen ödeme
+
+Merhaba Ayşe Hanım, 25 Ekim vadeli 37.940 TL ödemeniz kayıtlarımızda henüz görünmüyor. Ödemeyi yaptıysanız dekontu iletebilir misiniz? Bir aksilik varsa ödeme planı için görüşebiliriz.
+
+## Kısmi ödeme sonrası
+
+Merhaba Ayşe Hanım, 30.000 TL ödemeniz için teşekkür ederiz. Kalan bakiye 7.940 TL'dir; teslimde ödenmesini rica ederiz.
+
+İsim ve tutarlar örnektir.
+
+## Dikkat edilecekler
+
+- Hatırlatmayı mesai saatlerinde gönderin.
+- Tutar ve tarihi cari hesap kaydıyla kontrol edin; yanlış hatırlatma güveni zedeler.
+- Ödeme bilgisini (IBAN, alıcı adı) mesaja ekleyin.
+- Ödeme gelince teşekkür mesajı gönderin.
+
+## Otomatik hatırlatma
+
+Anında Teklif'te müşterinin cari hesabındaki vadeye göre ödeme hatırlatması firma adınızla e-postayla otomatik gönderilebilir (IBAN tanımlıysa eklenir); aynı metni WhatsApp'tan da tek dokunuşla iletebilirsiniz. Bakım ve servis randevuları için de hatırlatma kurulabilir.
+
+**Kibar ödeme hatırlatma mesajı nasıl yazılır?** Müşterinin adı, firma adı, tutar, vade tarihi ve ödeme bilgisiyle kısa bir mesaj yazılır; "hatırlatmak isteriz" gibi nazik bir dil kullanılır ve soru için iletişim yolu bırakılır.
+
+**Ödeme hatırlatması ne zaman gönderilmeli?** Vadeden 1–3 gün önce ilk hatırlatma, vade geçtikten sonra birkaç gün içinde ikinci hatırlatma yaygın bir düzendir.
 
 ---
 

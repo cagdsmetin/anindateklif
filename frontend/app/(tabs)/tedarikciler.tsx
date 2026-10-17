@@ -8,10 +8,11 @@ import { useApp } from '@/src/state/AppContext';
 import { useAuth } from '@/src/state/AuthContext';
 import TopHeader from '@/src/components/TopHeader';
 import { api, RatesT, TedarikciHareketT, TedarikciInput, TedarikciT } from '@/src/lib/api';
-import { sumToTRY } from '@/src/lib/tahsilat-utils';
+import { currentRateFor, sumToTRY } from '@/src/lib/tahsilat-utils';
 import { computeTedarikciBalances, fmtMoney, localToday } from '@/src/lib/tedarikci';
+import { DebtStrip, PillButton, PillTabs, ScrollFill, TedStage } from '@/src/components/tedarikci/Stage';
 import { fill, translate, upper, useLanguage } from '@/src/lib/i18n';
-import { BubbleButton, MotionInput, MotionScrollView, Reveal, ScreenHero, alpha, compactNumber, hashColor, themedStyles } from '@/src/components/motion';
+import { BorderBeam, BubbleButton, MotionInput, MotionScrollView, Reveal, TiltOnScroll, alpha, compactNumber, themedStyles } from '@/src/components/motion';
 
 // Tedarikçiler: kart bilgileri + her tedarikçinin cari bakiyesi (alış -
 // ödeme). Karta dokununca tedarikçi carisi (tedarikci-cari.tsx) açılır.
@@ -75,6 +76,33 @@ export default function TedarikcilerScreen() {
       gecmis: Object.values(balances).filter((b) => b.hasOverdue).length,
     };
   }, [balances, rates]);
+
+  // Tedarikçi başına alış / ödeme toplamı (TL karşılığı): kartlardaki "ödenen" çubuğu için.
+  const flows = useMemo(() => {
+    const out: Record<string, { alis: number; odeme: number }> = {};
+    hareket.forEach((h) => {
+      const k = h.paraBirimi === 'TRY' ? 1 : (h.kurTRY || currentRateFor(h.paraBirimi, rates) || 0);
+      const f = (out[h.tedarikciId] = out[h.tedarikciId] || { alis: 0, odeme: 0 });
+      if (h.tur === 'alis') f.alis += h.tutar * k; else f.odeme += h.tutar * k;
+    });
+    return out;
+  }, [hareket, rates]);
+
+  // Borç şeridi: açık borcu olan tedarikçiler, büyükten küçüğe; tek renk ailesi.
+  const strip = useMemo(() => {
+    const tones = ['#F97316', '#FDE68A', '#B45309', '#FDBA74', '#7C2D12', '#FED7AA'];
+    return all
+      .map((x) => ({ id: x.id, label: x.firma, value: sumToTRY((balances[x.id]?.balances || []).filter((y) => y.bakiye > 0), rates) ?? 0 }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .map((x, i) => ({ ...x, color: tones[i % tones.length] }));
+  }, [all, balances, rates]);
+
+  const counts = useMemo(() => ({
+    tumu: all.length,
+    borclu: all.filter((x) => balances[x.id]?.balances.some((y) => y.bakiye > 0)).length,
+    gecmis: all.filter((x) => balances[x.id]?.hasOverdue).length,
+  }), [all, balances]);
 
   const shown = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR');
@@ -147,36 +175,27 @@ export default function TedarikcilerScreen() {
       <TopHeader title={tt('title')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <MotionScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32, width: '100%', maxWidth: 880, alignSelf: 'center' }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <ScreenHero
-            icon="cube"
-            title={tt('title')}
-            subtitle={activeCompany.sirketAdi}
-            color={color}
-            stats={[
-              { label: tt('totalDebt'), value: stats.borc, format: (n) => `₺${compactNumber(n, unit)}`, tone: '#FCA5A5' },
-              { label: tt('supplierCount'), value: all.length, tone: '#FDE68A' },
-            ]}
-          />
-
-          <View style={s.miniRow}>
-            {[
-              { k: 'borclu', v: stats.borclu, c: '#D97706', icon: 'wallet-outline' as const },
-              { k: 'gecmis', v: stats.gecmis, c: theme.colors.red, icon: 'time-outline' as const },
-            ].map((x) => (
-              <View key={x.k} style={s.miniCard} testID={`ted-stat-${x.k}`}>
-                <Ionicons name={x.icon} size={15} color={x.v ? x.c : theme.colors.textMuted} />
-                <Text style={[s.miniVal, x.v ? { color: x.c } : null]}>{x.v}</Text>
-                <Text style={s.miniLabel} numberOfLines={2}>{tt('stat_' + x.k)}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={s.actions}>
-            <TouchableOpacity style={[s.actBtn, { backgroundColor: color, borderColor: color }]} onPress={openNew} testID="ted-new">
-              <Ionicons name={formOpen && !editId ? 'close' : 'add'} size={16} color="#fff" />
-              <Text style={[s.actText, { color: '#fff' }]}>{formOpen && !editId ? tt('cancel') : tt('newSupplier')}</Text>
-            </TouchableOpacity>
-          </View>
+          <TedStage
+            testID="ted-stage"
+            eyebrow={activeCompany.sirketAdi}
+            title={tt('totalDebt')}
+            value={stats.borc}
+            format={(n) => (n >= 1e6 ? `₺${compactNumber(n, unit)}` : fmtMoney(n))}
+            sub={
+              <Text style={s.stageSub}>
+                {fill(tt('stageSub'), { n: all.length, b: stats.borclu })}
+                {stats.gecmis ? <Text style={s.stageWarn}>{`  ·  ${fill(tt('stageOverdue'), { n: stats.gecmis })}`}</Text> : null}
+              </Text>
+            }
+            actions={
+              <>
+                <PillButton variant="light" icon={formOpen && !editId ? 'close' : 'add'} label={formOpen && !editId ? tt('cancel') : tt('newSupplier')} onPress={openNew} testID="ted-new" />
+                {stats.gecmis ? <PillButton variant="ghost" icon="time-outline" label={tt('viewOverdue')} onPress={() => setFilter('gecmis')} testID="ted-show-overdue" /> : null}
+              </>
+            }
+          >
+            <DebtStrip segments={strip} emptyLabel={tt('stripEmpty')} onPress={(id) => router.push({ pathname: '/tedarikci-cari', params: { tedarikciId: id } } as any)} />
+          </TedStage>
 
           {formOpen && (
             <Reveal variant="up" distance={12}>
@@ -236,12 +255,17 @@ export default function TedarikcilerScreen() {
             <Ionicons name="search" size={16} color={theme.colors.textMuted} />
             <MotionInput style={s.searchInput} value={query} onChangeText={setQuery} placeholder={tt('searchPh')} placeholderTextColor="#94a3b8" testID="ted-search" />
           </View>
-          <View style={[s.chipRow, { marginTop: 10, marginBottom: 10 }]}>
-            {(['tumu', 'borclu', 'gecmis'] as Filter[]).map((fl) => (
-              <TouchableOpacity key={fl} style={[s.chip, filter === fl && { backgroundColor: color, borderColor: color }]} onPress={() => setFilter(fl)} testID={`ted-filter-${fl}`}>
-                <Text style={[s.chipText, filter === fl && { color: '#fff' }]}>{tt('f_' + fl)}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={{ marginTop: 10, marginBottom: 12 }}>
+            <PillTabs<Filter>
+              testIDPrefix="ted-filter"
+              value={filter}
+              onChange={setFilter}
+              items={[
+                { key: 'tumu', label: tt('f_tumu'), count: counts.tumu },
+                { key: 'borclu', label: tt('f_borclu'), count: counts.borclu, tone: '#D97706' },
+                { key: 'gecmis', label: tt('f_gecmis'), count: counts.gecmis, tone: theme.colors.red },
+              ]}
+            />
           </View>
 
           {list == null ? (
@@ -255,41 +279,59 @@ export default function TedarikcilerScreen() {
           ) : (
             shown.map((x, i) => {
               const b = balances[x.id];
-              const tint = hashColor(x.firma);
+              const fl = flows[x.id];
+              const paid = fl && fl.alis > 0 ? Math.min(1, fl.odeme / fl.alis) : null;
+              const open = !!b?.balances.some((y) => y.bakiye > 0);
+              const card = (
+                <TouchableOpacity activeOpacity={0.88} onPress={() => openCari(x)} style={[s.item, b?.hasOverdue && s.itemBeam]} testID={`ted-item-${x.id}`}>
+                  <View style={s.itemTop}>
+                    <View style={s.avatar}>
+                      <Text style={s.avatarText}>{x.firma.trim().charAt(0).toLocaleUpperCase('tr-TR')}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.itemName} numberOfLines={1}>{x.firma}</Text>
+                      <Text style={s.meta} numberOfLines={1}>
+                        {[x.yetkili, x.telefon].filter(Boolean).join(' · ') || tt('noContact')}
+                        {x.vadeGun ? ` · ${fill(tt('vadeGunShort'), { n: x.vadeGun })}` : ''}
+                      </Text>
+                    </View>
+                    <Ionicons name="arrow-forward" size={16} color={theme.colors.textMuted} />
+                  </View>
+                  <View style={s.amountRow}>
+                    <View style={{ flex: 1 }}>
+                      {b && b.balances.length ? b.balances.map((y) => (
+                        <Text key={y.paraBirimi} style={[s.amount, { color: y.bakiye > 0 ? theme.colors.text : theme.colors.green }]} numberOfLines={1}>{fmtMoney(y.bakiye, y.paraBirimi)}</Text>
+                      )) : <Text style={[s.amount, { color: theme.colors.textMuted }]}>{tt('settled')}</Text>}
+                      <Text style={[s.amountLabel, b?.hasOverdue && { color: theme.colors.redText }]}>
+                        {b?.hasOverdue ? tt('overdue') : open ? tt('weOwe') : b ? fill(tt('moveCount'), { n: b.count }) : tt('noMoves')}
+                      </Text>
+                    </View>
+                    <View style={s.cardActions}>
+                      <TouchableOpacity onPress={() => openEdit(x)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.iconBtn} testID={`ted-${x.id}-edit`}>
+                        <Ionicons name="create-outline" size={16} color={theme.colors.textSoft} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => remove(x)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.iconBtn} testID={`ted-${x.id}-delete`}>
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.red} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  {paid != null ? (
+                    <View style={{ marginTop: 12 }}>
+                      <ScrollFill ratio={paid} color={paid >= 1 ? theme.colors.green : color} track={theme.colors.surfaceSoft} />
+                      <Text style={s.paidText}>{fill(tt('paidPct'), { n: Math.round(paid * 100) })}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              );
               return (
-                <Reveal key={x.id} variant={i % 2 === 0 ? 'left' : 'right'} distance={14}>
-                  <TouchableOpacity activeOpacity={0.85} onPress={() => openCari(x)} style={[s.item, b?.hasOverdue && { borderColor: alpha(theme.colors.red, 0.5) }]} testID={`ted-item-${x.id}`}>
-                    <View style={s.itemTop}>
-                      <View style={[s.avatar, { backgroundColor: alpha(tint, 0.16) }]}>
-                        <Text style={[s.avatarText, { color: tint }]}>{x.firma.trim().charAt(0).toLocaleUpperCase('tr-TR')}</Text>
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={s.itemName} numberOfLines={1}>{x.firma}</Text>
-                        <Text style={s.meta} numberOfLines={1}>
-                          {[x.yetkili, x.telefon].filter(Boolean).join(' · ') || tt('noContact')}
-                          {x.vadeGun ? ` · ${fill(tt('vadeGunShort'), { n: x.vadeGun })}` : ''}
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        {b && b.balances.length ? b.balances.map((y) => (
-                          <Text key={y.paraBirimi} style={[s.amount, { color: y.bakiye > 0 ? theme.colors.red : theme.colors.green }]}>{fmtMoney(y.bakiye, y.paraBirimi)}</Text>
-                        )) : <Text style={[s.amount, { color: theme.colors.textMuted }]}>{tt('settled')}</Text>}
-                        {b?.hasOverdue ? <Text style={s.overdue}>{tt('overdue')}</Text> : null}
-                      </View>
-                    </View>
-                    <View style={s.itemFoot}>
-                      <Text style={s.meta}>{b ? fill(tt('moveCount'), { n: b.count }) : tt('noMoves')}</Text>
-                      <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => openEdit(x)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`ted-${x.id}-edit`}>
-                          <Ionicons name="create-outline" size={17} color={theme.colors.textSoft} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => remove(x)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID={`ted-${x.id}-delete`}>
-                          <Ionicons name="trash-outline" size={17} color={theme.colors.red} />
-                        </TouchableOpacity>
-                        <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                <Reveal key={x.id} variant="up" distance={18} index={i} stagger={60}>
+                  <TiltOnScroll maxRotate={2} minScale={0.985} lift={6}>
+                    {b?.hasOverdue ? (
+                      <BorderBeam radius={18} width={1.5} colors={[theme.colors.red, '#F97316', 'transparent']} background={theme.colors.surface} style={{ marginBottom: 12 }}>
+                        {card}
+                      </BorderBeam>
+                    ) : <View style={{ marginBottom: 12 }}>{card}</View>}
+                  </TiltOnScroll>
                 </Reveal>
               );
             })
@@ -325,14 +367,20 @@ const s = themedStyles(() => StyleSheet.create({
   chip: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.lineDark, backgroundColor: theme.colors.surface },
   chipText: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted },
   emptyBox: { marginTop: 4, backgroundColor: theme.colors.surface, borderWidth: 1.5, borderStyle: 'dashed', borderColor: theme.colors.lineDark, borderRadius: 12, padding: 26, alignItems: 'center', gap: 8 },
-  item: { backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.line, padding: 12, marginBottom: 10, ...theme.shadow.sm },
-  itemTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 16, fontWeight: '900' },
-  itemName: { fontSize: 14, fontWeight: '800', color: theme.colors.text },
-  meta: { fontSize: 11, color: theme.colors.textMuted, marginTop: 3 },
-  amount: { fontSize: 14, fontWeight: '900' },
-  overdue: { fontSize: 10, fontWeight: '800', color: theme.colors.redText, marginTop: 2 },
-  itemFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.line },
+  stageSub: { fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.62)' },
+  stageWarn: { color: '#FCA5A5', fontWeight: '800' },
+  item: { backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.line, padding: 16, ...theme.shadow.sm },
+  itemBeam: { borderColor: 'transparent', shadowOpacity: 0 },
+  itemTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 40, height: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.text },
+  avatarText: { fontSize: 16, fontWeight: '900', color: theme.colors.bg },
+  itemName: { fontSize: 15, fontWeight: '900', color: theme.colors.text, letterSpacing: -0.3 },
+  meta: { fontSize: 11.5, color: theme.colors.textMuted, marginTop: 3 },
+  amountRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 14 },
+  amount: { fontSize: 26, fontWeight: '900', letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  amountLabel: { fontSize: 11.5, fontWeight: '700', color: theme.colors.textMuted, marginTop: 2 },
+  cardActions: { flexDirection: 'row', gap: 8 },
+  iconBtn: { width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surfaceSoft, borderWidth: 1, borderColor: theme.colors.line },
+  paidText: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted, marginTop: 6, fontVariant: ['tabular-nums'] },
   foot: { fontSize: 11, color: theme.colors.textMuted, marginTop: 12, textAlign: 'center' },
 }));

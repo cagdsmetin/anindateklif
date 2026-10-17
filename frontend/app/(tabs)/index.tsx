@@ -513,6 +513,11 @@ export default function PanelScreen() {
     { key: 'firma', icon: 'business', label: t('panel.s074'), color: theme.colors.modules.firma, onPress: () => router.push('/(tabs)/company') },
     { key: 'mesaj', icon: 'chatbubbles', label: t('panel.s075'), color: theme.colors.modules.mesaj, onPress: () => router.push('/(tabs)/team-chat' as any) },
   ];
+  // Tedarikçi carisi alış maliyetlerini gösterir: yalnız yöneticilere, Tahsilat'ın yanına.
+  if (!user?.is_staff || user?.staff_role === 'admin') {
+    modules.splice(modules.findIndex((x) => x.key === 'tahsilat') + 1, 0,
+      { key: 'tedarikci', icon: 'cube', label: t('nav.tedarikci'), color: theme.colors.modules.tedarikci, onPress: () => router.push('/(tabs)/tedarikciler' as any) });
+  }
   if (!user?.is_staff) {
     modules.push({ key: 'personel', icon: 'person-add', label: t('panel.s076'), color: theme.colors.gold, onPress: () => router.push('/(tabs)/personel' as any) });
   }

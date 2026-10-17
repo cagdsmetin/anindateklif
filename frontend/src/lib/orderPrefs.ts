@@ -48,10 +48,16 @@ async function writeRaw(key: string, value: string): Promise<void> {
 function reconcile(defaultNames: string[], saved: string[] | null): string[] {
   if (!saved || saved.length === 0) return defaultNames;
   const defaultSet = new Set(defaultNames);
-  const savedValid = saved.filter((n) => defaultSet.has(n));
-  const savedSet = new Set(savedValid);
-  const missing = defaultNames.filter((n) => !savedSet.has(n));
-  return [...savedValid, ...missing];
+  const out = saved.filter((n) => defaultSet.has(n));
+  // Sonradan eklenen öğeler (kaydedilmiş sıralamada yok) listenin sonuna değil,
+  // varsayılan sıradaki komşusunun hemen arkasına girsin -- yoksa yeni bir
+  // modül uzun menünün en dibinde kalıp gözden kaçıyor.
+  defaultNames.forEach((n, i) => {
+    if (out.includes(n)) return;
+    const prev = defaultNames.slice(0, i).reverse().find((p) => out.includes(p));
+    out.splice(prev ? out.indexOf(prev) + 1 : 0, 0, n);
+  });
+  return out;
 }
 
 export function useOrderedNames(storageKey: string, defaultNames: string[]) {

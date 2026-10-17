@@ -52,7 +52,7 @@ SEKTORLER = [
             "Döviz bazlı malzemede kur şartını ve kısa geçerlilik süresini belirtin.",
             "Garanti süresini sistem, motor ve işçilik için ayrı ayrı yazın.",
         ],
-        "uygulama": "Anında Teklif'te sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en, açılım ve opsiyonlar girildiğinde fiyat hesaplanır. Bayilik kullanan firmalar için üretici fiyat listesine bağlı modüller de bulunur.",
+        "uygulama": "Anında Teklif'te sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en, açılım ve opsiyonlar girildiğinde fiyat hesaplanır. Albert Genau bayileri için ayrıca BIOFLEX, VERTIFLEX, AIRFLEX ve BC sistemlerinde malzeme listesini ve fiyatı otomatik hesaplayan bir modül vardır (ayrıntılar: Albert Genau bayileri sayfası).",
         "sss": [
             ("Bioklimatik pergola teklifi neye göre hesaplanır?", "Genellikle sistemin m² veya modül fiyatı esas alınır; kolon sayısı, motor ve otomasyon, aydınlatma, yan kapama ve montaj ayrıca eklenir."),
             ("Pergola teklifinde geçerlilik süresi ne olmalı?", "Alüminyum ve ithal motor gibi döviz bazlı kalemler nedeniyle kısa (ör. 7 gün) tutulması veya kur şartı eklenmesi yaygındır."),

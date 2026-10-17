@@ -47,6 +47,9 @@
 - [Kasa Takibi Nasıl Yapılır? Excel Kasa Defteri ve Uygulama](https://www.anindateklif.co/rehber/kasa-takibi-nasil-yapilir.html): Küçük işletmelerde kasa takibi: günlük kasa defteri, gelir-gider kayıtları, nakit-kart-havale ayrımı, gün sonu kontrolü ve Excel kasa takip tablosu örneği.
 - [Ödeme Hatırlatma Mesajı Örnekleri (WhatsApp ve E-posta)](https://www.anindateklif.co/rehber/odeme-hatirlatma-mesaji.html): Müşteriye kibar ödeme hatırlatma mesajı örnekleri: vadesi yaklaşan, vadesi geçen ve kısmi ödeme için WhatsApp ve e-posta metinleri; zamanlama ve dikkat edilecekler.
 
+## Albert Genau bayileri için
+- [Albert Genau bayileri için teklif programı](https://www.anindateklif.co/albert-genau-bayileri.html): BIOFLEX bioklimatik pergola, VERTIFLEX, AIRFLEX ve BC ailesindeki 39 alt sistemde ölçüye göre malzeme listesi, fiyat ve teknik çizim hesaplayan modül; 243 kalem yedek parça kataloğu; merkezden güncellenen fiyat listesi. Erişim bayilik doğrulamasından sonra açılır.
+
 ## Ücretsiz araçlar
 - [Online fiyat teklifi oluşturucu](https://www.anindateklif.co/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
 - [KDV hesaplama](https://www.anindateklif.co/kdv-hesaplama.html): KDV dahil/hariç tutar hesaplama
@@ -991,7 +994,7 @@ Kaynak: https://www.anindateklif.co/sektor/pergola-golgelendirme-teklifi.html
 - Döviz bazlı malzemede kur şartını ve kısa geçerlilik süresini belirtin.
 - Garanti süresini sistem, motor ve işçilik için ayrı ayrı yazın.
 
-Anında Teklif'te sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en, açılım ve opsiyonlar girildiğinde fiyat hesaplanır. Bayilik kullanan firmalar için üretici fiyat listesine bağlı modüller de bulunur.
+Anında Teklif'te sistemlerinizi ölçüye göre fiyatlanan ürünler olarak tanımlarsınız; en, açılım ve opsiyonlar girildiğinde fiyat hesaplanır. Albert Genau bayileri için ayrıca BIOFLEX, VERTIFLEX, AIRFLEX ve BC sistemlerinde malzeme listesini ve fiyatı otomatik hesaplayan bir modül vardır (ayrıntılar: Albert Genau bayileri sayfası).
 
 **Bioklimatik pergola teklifi neye göre hesaplanır?** Genellikle sistemin m² veya modül fiyatı esas alınır; kolon sayısı, motor ve otomasyon, aydınlatma, yan kapama ve montaj ayrıca eklenir.
 

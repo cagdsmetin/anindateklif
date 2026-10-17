@@ -14,6 +14,7 @@ from ortak import (AD, ALT, APP_ID, DESTEK_EPOSTA, GUNCELLEME, ORG_ID, PLANLAR, 
                    cta, e, html_metne, kirinti, ld, kurulus, sayfa, sss_html, sss_sema, tl, uygulama)
 from yazilar import YAZILAR
 from sektorler import SEKTORLER
+from ag import AG_ACIKLAMA, AG_BASLIK, AG_SLUG, AG_SSS, ag_govde
 from araclar import ARAC_CSS, KDV_GOVDE, TEKLIF_OLUSTUR_GOVDE
 
 KOK = os.path.join(os.path.dirname(__file__), "..", "..", "public")
@@ -77,6 +78,7 @@ def ana_icerik():
 </div></section>
 <section class="kap"><h2>3 adımda teklif hazır</h2><ol class="adimlar">{ad}</ol></section>
 <section class="kap" id="ozellikler"><h2>Tek uygulamada hepsi bir arada</h2><ul class="izgara">{oz}</ul><p><a href="/ozellikler.html">Tüm özellikler →</a></p></section>
+<section class="kap"><aside class="cta" style="text-align:left"><p class="rozet">Albert Genau bayileri için</p><h2>Albert Genau sistemlerinde ölçüyü girin, teklif hazır</h2><p>BIOFLEX bioklimatik pergola, VERTIFLEX, AIRFLEX ve BC sistemlerinde malzeme listesi, fiyat ve teknik çizim otomatik hesaplanır; kârınızı ekleyip PDF teklifi gönderirsiniz.</p><a class="dugme buyuk" href="/albert-genau-bayileri.html">Albert Genau modülünü inceleyin</a></aside></section>
 <section class="kap"><h2>Sektörünüze göre teklif örnekleri</h2><ul class="etiketler">{sk}</ul><p><a href="/sektorler.html">Tüm sektörler →</a></p></section>
 <section class="kap"><h2>Ücretsiz araçlar</h2><ul class="liste"><li><a href="/teklif-olustur.html">Online fiyat teklifi oluşturucu</a> — kayıt olmadan PDF teklif hazırlayın</li><li><a href="/kdv-hesaplama.html">KDV hesaplama</a> — KDV dahil ve hariç tutar</li><li><a href="/rehber/fiyat-teklifi-ornegi.html">Fiyat teklifi şablonu (Excel)</a></li></ul></section>
 <section class="kap"><h2>Fiyatlar</h2><p>Ücretsiz planda ayda {UCRETSIZ_TEKLIF} teklif. Sınırsız teklif için {k0} ekiplerde <strong>haftalık {tl(h0)}</strong> veya <strong>yıllık {tl(y0)}</strong> (liste fiyatı {tl(l0)}). <a href="/fiyatlar.html">Tüm planlar →</a></p></section>
@@ -283,7 +285,7 @@ def sektor_sayfasi(x):
 <h2>Teklifte unutulmaması gerekenler</h2><ul>{ipu}</ul>
 <p>Her teklifte olması gereken genel bilgiler (firma ve müşteri bilgisi, KDV, geçerlilik süresi, ödeme koşulları) için <a href="/rehber/fiyat-teklifi-nasil-hazirlanir.html">fiyat teklifi nasıl hazırlanır</a> rehberine bakın.</p>
 <h2>Anında Teklif ile {e(x['ad'].lower())} teklifi</h2>
-<p>{e(x['uygulama'])} Teklif logolu PDF olarak oluşur ve WhatsApp'tan tek dokunuşla gönderilir; onaylanan teklif müşterinin cari hesabına geçer.</p>
+<p>{e(x['uygulama'])} Teklif logolu PDF olarak oluşur ve WhatsApp'tan tek dokunuşla gönderilir; onaylanan teklif müşterinin cari hesabına geçer.</p>{'<p><strong>Albert Genau bayisi misiniz?</strong> <a href="/albert-genau-bayileri.html">Albert Genau modülünü inceleyin →</a></p>' if x['slug'] in ('pergola-golgelendirme-teklifi', 'cam-balkon-teklifi', 'perde-teklif-formu') else ''}
 {sss_html(x['sss'])}
 {cta()}
 <nav class="ilgili" aria-label="Diğer sektörler"><h2>Diğer sektörler</h2><ul class="etiketler">{dg}</ul></nav>
@@ -336,7 +338,7 @@ KDV_SSS = [
 
 
 # ------------------------------------------------------ makine okur dosyalar
-STATIK = (["/", "/ozellikler.html", "/fiyatlar.html", "/teklif-olustur.html", "/kdv-hesaplama.html", "/sektorler.html", "/sss.html", "/rehber.html"]
+STATIK = (["/", "/albert-genau-bayileri.html", "/ozellikler.html", "/fiyatlar.html", "/teklif-olustur.html", "/kdv-hesaplama.html", "/sektorler.html", "/sss.html", "/rehber.html"]
           + [f"/sektor/{x['slug']}.html" for x in SEKTORLER] + [f"/rehber/{y['slug']}.html" for y in YAZILAR])
 
 
@@ -384,9 +386,10 @@ Sitemap: {SITE}/sitemap.xml
 
 
 def sitemap():
-    oncelik = {"/teklif-olustur.html": "0.9", "/sektorler.html": "0.8", "/kdv-hesaplama.html": "0.7", "/": "1.0", "/fiyatlar.html": "0.9", "/ozellikler.html": "0.9", "/rehber.html": "0.8", "/sss.html": "0.7"}
+    oncelik = {"/albert-genau-bayileri.html": "0.9", "/teklif-olustur.html": "0.9", "/sektorler.html": "0.8", "/kdv-hesaplama.html": "0.7", "/": "1.0", "/fiyatlar.html": "0.9", "/ozellikler.html": "0.9", "/rehber.html": "0.8", "/sss.html": "0.7"}
     tarih = {f"/rehber/{y['slug']}.html": y.get("tarih", GUNCELLEME) for y in YAZILAR}
     tarih["/rehber.html"] = max(tarih.values())
+    tarih["/albert-genau-bayileri.html"] = tarih["/"] = "2026-10-18"
     url = "".join(f"<url><loc>{SITE}{y}</loc><lastmod>{tarih.get(y, GUNCELLEME)}</lastmod><priority>{oncelik.get(y, '0.7')}</priority></url>\n" for y in STATIK)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url}</urlset>\n'
 
@@ -417,6 +420,9 @@ def llms():
 
 ## Rehber
 {satir}
+
+## Albert Genau bayileri için
+- [Albert Genau bayileri için teklif programı]({SITE}/albert-genau-bayileri.html): BIOFLEX bioklimatik pergola, VERTIFLEX, AIRFLEX ve BC ailesindeki 39 alt sistemde ölçüye göre malzeme listesi, fiyat ve teknik çizim hesaplayan modül; 243 kalem yedek parça kataloğu; merkezden güncellenen fiyat listesi. Erişim bayilik doğrulamasından sonra açılır.
 
 ## Ücretsiz araçlar
 - [Online fiyat teklifi oluşturucu]({SITE}/teklif-olustur.html): Kayıt olmadan tarayıcıda PDF teklif hazırlama
@@ -604,6 +610,9 @@ def main():
     yaz("rehber.html", rehber_dizini())
     for y in YAZILAR:
         yaz(f"rehber/{y['slug']}.html", yazi_sayfasi(y))
+    yaz(AG_SLUG.lstrip("/"), sayfa(AG_SLUG, AG_BASLIK, AG_ACIKLAMA, ag_govde(cta, sss_html, e, DESTEK_EPOSTA),
+        [{**uygulama(), "featureList": uygulama()["featureList"] + ["Albert Genau bayileri için BIOFLEX, VERTIFLEX, AIRFLEX ve BC sistemlerinde malzeme listesi ve fiyat hesaplama"]},
+         kirinti([("Ana sayfa", "/"), ("Albert Genau bayileri", AG_SLUG)]), sss_sema(AG_SSS)]))
     yaz("sektorler.html", sektor_dizini())
     for x in SEKTORLER:
         yaz(f"sektor/{x['slug']}.html", sektor_sayfasi(x))

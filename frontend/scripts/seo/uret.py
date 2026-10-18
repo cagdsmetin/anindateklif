@@ -381,6 +381,27 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
 Sitemap: {SITE}/sitemap.xml
 """
 
@@ -440,6 +461,7 @@ def llms():
 - Instagram: https://www.instagram.com/anindateklif.co/
 - YouTube: https://www.youtube.com/@anindateklif
 - LinkedIn: https://www.linkedin.com/company/anindateklif
+- Facebook: https://www.facebook.com/profile.php?id=61595007682378
 
 ## English summary
 Anında Teklif ("Instant Quote") is a quoting app for tradespeople, dealers and small businesses in Turkey: create branded PDF price quotes in seconds, send them via WhatsApp, and track customers, accounts receivable, cash and collections in one place. Web, iOS and Android; Turkish, English and Italian. Free plan: {UCRETSIZ_TEKLIF} quotes per month; paid plans from {h0} TRY/week or {y0} TRY/year for teams of up to 5.

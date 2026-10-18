@@ -36,4 +36,25 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
 Sitemap: https://www.anindateklif.co/sitemap.xml

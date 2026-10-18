@@ -14,6 +14,7 @@ SOSYAL = [
     "https://www.instagram.com/anindateklif.co/",
     "https://www.youtube.com/@anindateklif",
     "https://www.linkedin.com/company/anindateklif",
+    "https://www.facebook.com/profile.php?id=61595007682378",
 ]
 WEB_ID = SITE + "/#site"
 APP_ID = SITE + "/#uygulama"
@@ -136,7 +137,7 @@ ALT = """<footer class="alt"><div class="kap">
 <div><h2>Ürün</h2><a href="/ozellikler.html">Özellikler</a><a href="/albert-genau-bayileri.html">Albert Genau bayileri</a><a href="/fiyatlar.html">Fiyatlar</a><a href="/sss.html">Sık sorulan sorular</a><a href="/register">Ücretsiz hesap aç</a></div>
 <div><h2>Rehber</h2><a href="/rehber/fiyat-teklifi-nasil-hazirlanir.html">Fiyat teklifi nasıl hazırlanır?</a><a href="/rehber/fiyat-teklifi-ornegi.html">Fiyat teklifi örneği</a><a href="/rehber/proforma-fatura-nedir.html">Proforma fatura nedir?</a><a href="/rehber.html">Tüm yazılar</a></div>
 <div><h2>Ücretsiz araçlar</h2><a href="/teklif-olustur.html">Online teklif oluşturucu</a><a href="/kdv-hesaplama.html">KDV hesaplama</a><a href="/sektorler.html">Sektörel teklif örnekleri</a></div>
-<div><h2>İletişim</h2><a href="mailto:%s">%s</a><a href="/privacy">Gizlilik politikası</a><a href="https://www.instagram.com/anindateklif.co/" rel="me">Instagram</a><a href="https://www.youtube.com/@anindateklif" rel="me">YouTube</a><a href="https://www.linkedin.com/company/anindateklif" rel="me">LinkedIn</a></div>
+<div><h2>İletişim</h2><a href="mailto:%s">%s</a><a href="/privacy">Gizlilik politikası</a><a href="https://www.instagram.com/anindateklif.co/" rel="me">Instagram</a><a href="https://www.youtube.com/@anindateklif" rel="me">YouTube</a><a href="https://www.linkedin.com/company/anindateklif" rel="me">LinkedIn</a><a href="https://www.facebook.com/profile.php?id=61595007682378" rel="me">Facebook</a></div>
 </div><p class="telif kap">© 2026 Anında Teklif</p></footer>""" % (DESTEK_EPOSTA, DESTEK_EPOSTA)
 
 

@@ -209,7 +209,7 @@ const AG_TEXT_MUTED = '#9BA2AE';
 export default function AlbertGenauScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeCompany, showToast, toast, addPendingNewQuoteAttachment, addPendingAlbertGenauItem } = useApp();
+  const { activeCompany, showToast, toast, addPendingNewQuoteAttachment, addPendingAlbertGenauItem, albertDuzenle, setAlbertDuzenle } = useApp();
   const { user: me } = useAuth();
   const isStaffUser = !!me?.is_staff;
   // Bu ekranın kendi geri-tuşlu üst çubuğu var (TopHeader değil), bu yüzden
@@ -228,6 +228,11 @@ export default function AlbertGenauScreen() {
   // backend calculate_airflex_module -- bayiden alınan gerçek mühendislik
   // kuralları: sabit dikme 1000mm + hareketli dikme 850mm kesim, panel
   // takımları adet×2, kapı/kilit istenirse sabit 1 adet, cam ayrı hesaplanır).
+  // Tür listeleri (sunucudan) geldi mi -- "Albert'te Düzenle" geri yüklemesi
+  // bunları bekler; yoksa geçerlilik efektleri tipi listenin ilkine çeker.
+  const [turlerYuklu, setTurlerYuklu] = useState<Record<string, boolean>>({});
+  const turHazir = (k: string) => setTurlerYuklu((p) => (p[k] ? p : { ...p, [k]: true }));
+  const turlerHazir = !!(turlerYuklu.geo && turlerYuklu.vf && turlerYuklu.kb && turlerYuklu.bc);
   const [family, setFamily] = useState<'geometric' | 'airflex_modul' | 'vertiflex' | 'kis_bahcesi' | 'bc' | 'yedek_parca'>('geometric');
   const partsListSystems = meta.partsListSystems && meta.partsListSystems.length ? meta.partsListSystems : FALLBACK_PARTS_LIST_SYSTEMS;
   const vertiflexTypes = meta.vertiflexTypes && meta.vertiflexTypes.length ? meta.vertiflexTypes : [{ id: 'vertiflex_mono08', label: 'VERTIFLEX MONO 08' }];
@@ -258,7 +263,7 @@ export default function AlbertGenauScreen() {
   const [vfCamFiyatlari, setVfCamFiyatlari] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    api.albertGenauVertiflexTypes(activeCompany?.id).then(setVfMeta).catch(() => {});
+    api.albertGenauVertiflexTypes(activeCompany?.id).then(setVfMeta).catch(() => {}).finally(() => turHazir('vf'));
   }, [activeCompany?.id]);
 
   // Secili tip meta listesinde yoksa (varsayilan vfTip artik gecerli degilse,
@@ -325,7 +330,7 @@ export default function AlbertGenauScreen() {
   const [kbCamFiyatlari, setKbCamFiyatlari] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    api.albertGenauKisBahcesiTypes(activeCompany?.id).then(setKbMeta).catch(() => {});
+    api.albertGenauKisBahcesiTypes(activeCompany?.id).then(setKbMeta).catch(() => {}).finally(() => turHazir('kb'));
   }, [activeCompany?.id]);
 
   // vfTip senkronunun aynisi: secili tip meta listesinde yoksa secici hicbir
@@ -377,7 +382,7 @@ export default function AlbertGenauScreen() {
   const [bcCamFiyatlari, setBcCamFiyatlari] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    api.albertGenauBcTypes(activeCompany?.id).then(setBcMeta).catch(() => {});
+    api.albertGenauBcTypes(activeCompany?.id).then(setBcMeta).catch(() => {}).finally(() => turHazir('bc'));
   }, [activeCompany?.id]);
 
   // vfTip senkronunun aynisi -- BC'de ayrica kanat/bayrak/cam alanlari tamamen
@@ -635,7 +640,7 @@ export default function AlbertGenauScreen() {
   }, [derinlik, meta.depthValuesMm]);
 
   useEffect(() => {
-    api.albertGenauTypes(activeCompany?.id).then(setMeta).catch(() => {});
+    api.albertGenauTypes(activeCompany?.id).then(setMeta).catch(() => {}).finally(() => turHazir('geo'));
   }, [activeCompany?.id]);
 
   // Satış fiyatının (₺) altında canlı kurla $ / € karşılığını göstermek için
@@ -1187,6 +1192,147 @@ export default function AlbertGenauScreen() {
     : family === 'geometric' ? pergolaCizim.model
     : null;
 
+  // --- "Albert'te Düzenle": teklifteki kalemi seçimleriyle geri açma ------
+  // Ekrandaki tüm girdiler tek sözlükte: teklife eklenirken kalemle saklanır
+  // (agGirdi), teklifteki "Albert'te Düzenle" ile buraya geri yüklenir.
+  // Aile/tip alanları önce, kalanlar SONRA yazılır: tip değişince çalışan
+  // sıfırlama efektleri (yukarıda) geri yüklenen değerleri ezmesin diye.
+  const GIRDI_TIP: Record<string, [unknown, (v: any) => void]> = {
+    family: [family, setFamily], tip: [tip, setTip], vfTip: [vfTip, setVfTip], kbTip: [kbTip, setKbTip], bcTip: [bcTip, setBcTip],
+  };
+  const GIRDI_ALAN: Record<string, [unknown, (v: any) => void]> = {
+    genislik: [genislik, setGenislik], derinlik: [derinlik, setDerinlik], yukseklik: [yukseklik, setYukseklik],
+    cornerFlat: [cornerFlat, setCornerFlat], somfy: [somfy, setSomfy], noWallBracket: [noWallBracket, setNoWallBracket],
+    finish: [finish, setFinish], ledOption: [ledOption, setLedOption], ledMidSupport: [ledMidSupport, setLedMidSupport],
+    kopuk: [kopuk, setKopuk], odemeTipi: [odemeTipi, setOdemeTipi],
+    alisIskontoPct: [alisIskontoPct, setAlisIskontoPct], montajBedeli: [montajBedeli, setMontajBedeli],
+    imalatBedeli: [imalatBedeli, setImalatBedeli], karMarjiPct: [karMarjiPct, setKarMarjiPct],
+    vfGenislik: [vfGenislik, setVfGenislik], vfYukseklik: [vfYukseklik, setVfYukseklik], vfPanelSayisi: [vfPanelSayisi, setVfPanelSayisi],
+    vfMotor: [vfMotor, setVfMotor], vfKumandaKanal: [vfKumandaKanal, setVfKumandaKanal], vfSecumaxTaraf: [vfSecumaxTaraf, setVfSecumaxTaraf],
+    vfInoxZincirli: [vfInoxZincirli, setVfInoxZincirli], vfAlicisiz: [vfAlicisiz, setVfAlicisiz], vfSuTahliyeli: [vfSuTahliyeli, setVfSuTahliyeli],
+    vfElektromekanikSetAdet: [vfElektromekanikSetAdet, setVfElektromekanikSetAdet], vfCamFiyatlari: [vfCamFiyatlari, setVfCamFiyatlari],
+    kbGenislik: [kbGenislik, setKbGenislik], kbDerinlik: [kbDerinlik, setKbDerinlik], kbTavanBolumSayisi: [kbTavanBolumSayisi, setKbTavanBolumSayisi],
+    kbArkaDuvarAltYukseklik: [kbArkaDuvarAltYukseklik, setKbArkaDuvarAltYukseklik], kbAraDikmeSayisi: [kbAraDikmeSayisi, setKbAraDikmeSayisi],
+    kbAyarliDuvarBaglantisi: [kbAyarliDuvarBaglantisi, setKbAyarliDuvarBaglantisi], kbKirisUstuVidaKapama: [kbKirisUstuVidaKapama, setKbKirisUstuVidaKapama],
+    kbOrtaKayit: [kbOrtaKayit, setKbOrtaKayit], kbUcgenMikroPencere: [kbUcgenMikroPencere, setKbUcgenMikroPencere], kbCamFiyatlari: [kbCamFiyatlari, setKbCamFiyatlari],
+    bcCepheler: [bcCepheler, setBcCepheler], bcKanatMiktarlari: [bcKanatMiktarlari, setBcKanatMiktarlari],
+    bcBayrakDegerleri: [bcBayrakDegerleri, setBcBayrakDegerleri], bcRayTipi: [bcRayTipi, setBcRayTipi], bcCamFiyatlari: [bcCamFiyatlari, setBcCamFiyatlari],
+    ypQuantities: [ypQuantities, setYpQuantities],
+    afAdet: [afAdet, setAfAdet], afTekerlekli: [afTekerlekli, setAfTekerlekli], afKapiVar: [afKapiVar, setAfKapiVar], afKilitVar: [afKilitVar, setAfKilitVar],
+    afCamSabitGenislik: [afCamSabitGenislik, setAfCamSabitGenislik], afCamSabitFiyat: [afCamSabitFiyat, setAfCamSabitFiyat],
+    afCamHareketliGenislik: [afCamHareketliGenislik, setAfCamHareketliGenislik], afCamHareketliFiyat: [afCamHareketliFiyat, setAfCamHareketliFiyat],
+  };
+  const girdiAl = (): Record<string, unknown> => {
+    const o: Record<string, unknown> = { v: 1 };
+    for (const [k, [v]] of Object.entries({ ...GIRDI_TIP, ...GIRDI_ALAN })) o[k] = v;
+    return o;
+  };
+
+  // Düzenlenen teklif kalemi (doluysa "Teklife Ekle" -> "Teklifte Güncelle").
+  const [duzenlenenItemId, setDuzenlenenItemId] = useState<string | null>(null);
+  const [eskiKalem, setEskiKalem] = useState(false);
+  const [geriYukle, setGeriYukle] = useState<{ n: number; alan: Record<string, unknown>; otoHesap: boolean } | null>(null);
+  const [otoHesapSayac, setOtoHesapSayac] = useState(0);
+  const bcOneriBekleRef = React.useRef(false);
+
+  // Seçimleri saklanmamış (bu özellikten önce eklenmiş) kalem: ad, açıklama
+  // ve çizimden en yakın tahmin. Kalan alanları bayi kontrol edip hesaplar.
+  const eskiKalemdenGirdi = (d: NonNullable<typeof albertDuzenle>) => {
+    const ad = (d.urunAdi || '').trim().toLocaleUpperCase('tr');
+    const esit = (l: string) => l.trim().toLocaleUpperCase('tr') === ad;
+    const tipAlan: Record<string, unknown> = {};
+    const alan: Record<string, unknown> = {};
+    const bc = bcTypes.find((t) => esit(t.label));
+    const vf = (vfMeta.types || []).find((t) => esit(t.label));
+    const kb = (kbMeta.types || []).find((t) => esit(t.label));
+    const geo = (meta.types || []).find((t) => esit(t.label));
+    if (bc) { tipAlan.family = 'bc'; tipAlan.bcTip = bc.id; }
+    else if (vf) { tipAlan.family = 'vertiflex'; tipAlan.vfTip = vf.id; }
+    else if (kb) { tipAlan.family = 'kis_bahcesi'; tipAlan.kbTip = kb.id; }
+    else if (geo) { tipAlan.family = 'geometric'; tipAlan.tip = geo.id; }
+    else if (/AIRFLEX/i.test(ad)) tipAlan.family = 'airflex_modul';
+    const fin = Object.entries(FINISH_LABELS).find(([, l]) => (d.aciklama || '').includes(l));
+    if (fin) alan.finish = fin[0];
+    const olcu = (d.aciklama || '').match(/(\d+)×(\d+)mm/);
+    const y = (d.aciklama || '').match(/Y:(\d+)mm/);
+    if (olcu) {
+      if (tipAlan.family === 'geometric') { alan.genislik = olcu[1]; alan.derinlik = olcu[2]; if (y) alan.yukseklik = y[1]; }
+      else if (tipAlan.family === 'vertiflex') { alan.vfGenislik = olcu[1]; alan.vfYukseklik = olcu[2]; }
+      else if (tipAlan.family === 'kis_bahcesi') { alan.kbGenislik = olcu[1]; alan.kbDerinlik = olcu[2]; }
+    }
+    const cz = d.agCizim as { kind?: string; cepheler?: { genislikMm: number; yukseklikMm: number; kanatSayisi: number; sagAci: 'duvar' | number; toplanmaYonu: string }[] } | null | undefined;
+    if (tipAlan.family === 'bc' && cz?.kind === 'cephe' && cz.cepheler?.length) {
+      alan.bcCepheler = cz.cepheler.map((c) => ({
+        ...yeniCephe(),
+        genislik: String(c.genislikMm),
+        yukseklik: String(c.yukseklikMm),
+        kanatSayisi: c.kanatSayisi ? String(c.kanatSayisi) : '',
+        sagAci: c.sagAci,
+        toplanmaYonu: c.toplanmaYonu as CepheGirdi['toplanmaYonu'],
+      }));
+      bcOneriBekleRef.current = true;
+    }
+    const mal = d.agMaliyet || 0;
+    const montaj = d.agMontajBedeli || 0;
+    const imalat = d.agImalatBedeli || 0;
+    alan.montajBedeli = String(montaj);
+    alan.imalatBedeli = String(imalat);
+    if (mal > 0) alan.karMarjiPct = String(Math.round(((d.birimFiyat - mal - montaj - imalat) / mal) * 10000) / 100);
+    if (d.agOdemeTipi) alan.odemeTipi = d.agOdemeTipi;
+    return { tipAlan, alan };
+  };
+
+  // 1. adım: aile ve tip yazılır (sıfırlama efektleri bu commit'te çalışır).
+  useEffect(() => {
+    if (!albertDuzenle || !turlerHazir) return;
+    const d = albertDuzenle;
+    setAlbertDuzenle(null);
+    setResult(null);
+    setError('');
+    setDuzenlenenItemId(d.itemId);
+    let tipAlan: Record<string, unknown> = {};
+    let alan: Record<string, unknown> = {};
+    if (d.girdi && typeof d.girdi === 'object') {
+      for (const [k, v] of Object.entries(d.girdi)) {
+        if (k in GIRDI_TIP) tipAlan[k] = v;
+        else if (k in GIRDI_ALAN) alan[k] = v;
+      }
+      setEskiKalem(false);
+    } else {
+      ({ tipAlan, alan } = eskiKalemdenGirdi(d));
+      setEskiKalem(true);
+    }
+    for (const [k, v] of Object.entries(tipAlan)) GIRDI_TIP[k][1](v);
+    setGeriYukle({ n: Date.now(), alan, otoHesap: !!d.girdi });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [albertDuzenle, turlerHazir]);
+
+  // 2. adım: kalan alanlar -- tip sıfırlamalarından SONRA (bu efekt onlardan
+  // sonra tanımlı, aynı commit'te sonra çalışır).
+  useEffect(() => {
+    if (!geriYukle) return;
+    for (const [k, v] of Object.entries(geriYukle.alan)) GIRDI_ALAN[k]?.[1](v);
+    if (geriYukle.otoHesap) setOtoHesapSayac((x) => x + 1);
+    setGeriYukle(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geriYukle?.n]);
+
+  // 3. adım: seçimleri saklı kalemde fiyat hemen yeniden hesaplanır.
+  useEffect(() => {
+    if (otoHesapSayac > 0) onCalculate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otoHesapSayac]);
+
+  // Eski BC kaleminde kanat/köşe adetleri çizim önerisi gelince doldurulur.
+  useEffect(() => {
+    if (!bcOneri || !bcOneriBekleRef.current) return;
+    bcOneriBekleRef.current = false;
+    bcCizimdenDoldur();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bcOneri]);
+
+  const duzenlemedenCik = () => { setDuzenlenenItemId(null); setEskiKalem(false); };
+
   const onAddToQuote = () => {
     if (!result) return;
     if (adding) return;
@@ -1208,8 +1354,12 @@ export default function AlbertGenauScreen() {
         // teklif PDF'indeki teknik çizim sayfası bundan üretilir. Ailesinde
         // çizim yoksa (yedek parça, AIRFLEX modül) null kalır.
         agCizim: aktifCizimModeli,
+        // Seçimler kalemle saklanır: teklifte "Albert'te Düzenle" bunlarla açar.
+        agGirdi: girdiAl(),
+        yerineItemId: duzenlenenItemId || undefined,
       });
-      showToast('Albert Genau kalemi teklife eklendi');
+      showToast(duzenlenenItemId ? 'Teklifteki kalem güncellendi' : 'Albert Genau kalemi teklife eklendi');
+      duzenlemedenCik();
       // router.back() DEĞİL: sekmeli yapıda geri, ilk sekmeye (Panel) döner.
       // navigate açık duran Teklif sekmesine gider; kalem orada görünür.
       router.navigate('/(tabs)/teklif' as any);
@@ -1258,6 +1408,19 @@ export default function AlbertGenauScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={s.contentWrap}>
+            {duzenlenenItemId ? (
+              <View style={s.duzenBant} testID="ag-duzenleme-bandi">
+                <Ionicons name="create-outline" size={16} color="#fff" />
+                <Text style={s.duzenBantYazi}>
+                  {eskiKalem
+                    ? 'Teklifteki kalemi düzenliyorsunuz. Bu kalem eski; seçimler tahminen dolduruldu -- kontrol edip Hesapla\'ya, sonra Teklifte Güncelle\'ye basın.'
+                    : 'Teklifteki kalemi düzenliyorsunuz. Değiştirip Teklifte Güncelle\'ye basın.'}
+                </Text>
+                <TouchableOpacity onPress={duzenlemedenCik} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} testID="ag-duzenleme-vazgec">
+                  <Text style={s.duzenBantVazgec}>Yeni kalem</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
             {/* Albert Genau kimliği: bayi bu ekrana girince "kendi markasının
                 aracı" hissini alsın diye markanın kendi dilini kullanıyoruz --
                 albertgenau.com'dan alınan siyah + bordo (#B61231) palet,
@@ -2340,8 +2503,8 @@ export default function AlbertGenauScreen() {
 
                 <View style={s.row}>
                   <TouchableOpacity style={[s.addBtn, { flex: 1 }, adding && s.ctaDisabled]} onPress={onAddToQuote} disabled={adding} testID="ag-add-to-quote">
-                    <Ionicons name="add-circle" size={18} color="#fff" />
-                    <Text style={s.calcBtnText}>Teklife Ekle</Text>
+                    <Ionicons name={duzenlenenItemId ? 'checkmark-circle' : 'add-circle'} size={18} color="#fff" />
+                    <Text style={s.calcBtnText}>{duzenlenenItemId ? 'Teklifte Güncelle' : 'Teklife Ekle'}</Text>
                   </TouchableOpacity>
                   {result.kind !== 'airflex_modul' && result.kind !== 'vertiflex' && result.kind !== 'kis_bahcesi' && result.kind !== 'bc' && result.kind !== 'yedek_parca' && (
                     <TouchableOpacity style={[s.excelBtn, exporting && s.ctaDisabled]} onPress={onExportExcel} disabled={exporting} testID="ag-export-excel">
@@ -2492,6 +2655,9 @@ function ToggleRow({ label, value, onChange, testID }: { label: string; value: b
 
 const s = themedStyles(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: AG.ink },
+  duzenBant: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, marginBottom: 14, borderRadius: 12, borderWidth: 1, borderColor: AG_RED_LIGHT, backgroundColor: alpha(AG_RED, 0.18) },
+  duzenBantYazi: { flex: 1, color: '#fff', fontSize: 12.5, lineHeight: 17, fontWeight: '600' },
+  duzenBantVazgec: { color: AG_RED_LIGHT, fontSize: 12, fontWeight: '800' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: AG.ink },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerLeftGroup: { flexDirection: 'row', alignItems: 'center' },

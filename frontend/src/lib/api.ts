@@ -1165,6 +1165,8 @@ export type QuoteItemT = {
   /** Yalnız BIOFLEX (Bioklimatik Pergola): nakit ya da kredi_karti. Diğer
    *  Albert ailelerinde boş -- fiyat zaten liste (kredi kartı) fiyatıdır. */
   agOdemeTipi?: 'nakit' | 'kredi_karti' | null;
+  /** Albert ekranındaki seçimlerin kopyası ("Albert'te Düzenle" için). */
+  agGirdi?: Record<string, unknown> | null;
   // Albert Genau kaleminin çizim modeli (bkz. backend/ag_geometry.py). Teklif
   // PDF'indeki teknik çizim sayfası bundan üretilir; ekrandaki çizimle aynı
   // model olduğu için ikisi birbirinden kayamaz. Çizimi olmayan kalemlerde

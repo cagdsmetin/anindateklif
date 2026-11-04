@@ -1701,6 +1701,9 @@ class QuoteItem(BaseModel):
     # ekraninda odeme tipi degistirilince maliyet 0.89 carpaniyla cevrilir.
     # Diger ailelerde bos (fiyat zaten liste = kredi karti fiyati).
     agOdemeTipi: Optional[str] = None
+    # Albert ekranindaki secimlerin kopyasi -- teklifte "Albert'te Duzenle"
+    # ile hesap ekrani bu secimlerle yeniden acilir. Serbest sekilli.
+    agGirdi: Optional[Dict[str, Any]] = None
     # Kalemin cizim modeli (bkz. ag_geometry.py). Teklif PDF'indeki teknik
     # cizim sayfasi bundan uretilir. Serbest sekilli tutulur: modelin alanlari
     # (cephe/modul/giyotin) aile bazinda degisiyor ve burada dogrulanmasi

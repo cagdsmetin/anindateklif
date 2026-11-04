@@ -21,6 +21,10 @@ export type PendingAlbertGenauItemT = {
   agMontajBedeli?: number;
   agImalatBedeli?: number;
   agOdemeTipi?: 'nakit' | 'kredi_karti' | null;
+  /** Albert ekranındaki tüm seçimler -- "Albert'te Düzenle" ile geri yüklenir. */
+  agGirdi?: Record<string, unknown> | null;
+  /** Doluysa yeni kalem eklenmez, teklifteki bu kalem yerinde güncellenir. */
+  yerineItemId?: string;
   /** Kalemin çizim modeli -- teklif PDF'indeki teknik çizim sayfası bundan
    *  üretilir (bkz. src/lib/cizim-html.ts). Çizimi olmayan ailelerde yok. */
   agCizim?: CizimModeli | null;
@@ -33,6 +37,20 @@ export type PendingAlbertGenauItemT = {
   zipEkler?: Record<string, string>;
   zipMontajTl?: number;
   montajlar?: Record<string, number>;
+};
+
+export type AlbertDuzenleT = {
+  itemId: string;
+  girdi: Record<string, unknown> | null;
+  /** Seçimleri saklanmamış eski kalemler için tahmin kaynağı. */
+  urunAdi: string;
+  aciklama: string;
+  agCizim?: CizimModeli | null;
+  birimFiyat: number;
+  agMaliyet?: number | null;
+  agMontajBedeli?: number | null;
+  agImalatBedeli?: number | null;
+  agOdemeTipi?: 'nakit' | 'kredi_karti' | null;
 };
 
 type Ctx = {
@@ -116,6 +134,10 @@ type Ctx = {
   pendingAlbertGenauItems: PendingAlbertGenauItemT[];
   addPendingAlbertGenauItem: (item: PendingAlbertGenauItemT) => void;
   clearPendingAlbertGenauItems: () => void;
+  // Teklifteki bir Albert kalemini "Albert'te Düzenle" ile açma isteği:
+  // Albert ekranı seçimleri buradan yükler, Teklife Ekle o kalemi günceller.
+  albertDuzenle: AlbertDuzenleT | null;
+  setAlbertDuzenle: (v: AlbertDuzenleT | null) => void;
   // Ekip Sohbeti: kaç okunmamış mesaj olduğu (WhatsApp Web tarzı yanıp sönen
   // menü göstergesi + tarayıcı bildirimi için) — bkz. aşağıdaki polling useEffect.
   teamUnreadTotal: number;
@@ -168,6 +190,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [attachmentsByQuoteId, setAttachmentsByQuoteId] = useState<Record<string, AttachmentT[]>>({});
   const [pendingNewQuoteAttachments, setPendingNewQuoteAttachments] = useState<AttachmentT[]>([]);
   const [pendingAlbertGenauItems, setPendingAlbertGenauItems] = useState<PendingAlbertGenauItemT[]>([]);
+  const [albertDuzenle, setAlbertDuzenle] = useState<AlbertDuzenleT | null>(null);
   const [teamUnreadTotal, setTeamUnreadTotal] = useState(0);
   const pathname = usePathname();
   const notifiedKeysRef = useRef<Set<string>>(new Set());
@@ -609,6 +632,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         agMontajBedeli: it.agMontajBedeli ?? null,
         agImalatBedeli: it.agImalatBedeli ?? null,
         agOdemeTipi: it.agOdemeTipi ?? null,
+        agGirdi: it.agGirdi ?? null,
         // Teknik çizim modeli ve Zip Perde seçimi -- gönderilmezse sunucu
         // kalemi çizimsiz kaydeder ve PDF'e çizim sayfası hiç eklenmez
         // (PDF sunucudan dönen kayıttan üretiliyor, bkz. teklif.tsx).
@@ -667,6 +691,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             agMontajBedeli: it.agMontajBedeli ?? null,
             agImalatBedeli: it.agImalatBedeli ?? null,
             agOdemeTipi: it.agOdemeTipi ?? null,
+            agGirdi: it.agGirdi ?? null,
             agCizim: it.agCizim ?? null,
             zipEkler: it.zipEkler ?? null,
           })),
@@ -925,6 +950,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pendingAlbertGenauItems,
         addPendingAlbertGenauItem,
         clearPendingAlbertGenauItems,
+        albertDuzenle,
+        setAlbertDuzenle,
         teamUnreadTotal,
       }}
     >

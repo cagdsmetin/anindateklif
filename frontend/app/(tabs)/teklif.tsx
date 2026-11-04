@@ -300,6 +300,7 @@ export default function EditorScreen() {
         agMontajBedeli: (data.montajlar ? data.montajlar[cur] : data.agMontajBedeli) ?? null,
         zipMontajTl: data.zipMontajTl ?? null,
         agImalatBedeli: data.agImalatBedeli ?? null,
+        agOdemeTipi: data.agOdemeTipi ?? null,
         // Teknik çizim sayfası teklif PDF'inde bundan üretilir.
         agCizim: data.agCizim ?? null,
         zipEkler: data.zipEkler ?? null,
@@ -1638,6 +1639,48 @@ function ItemCard({
     const num = Number(cleaned.replace(',', '.'));
     onChange({ birimFiyat: Number.isFinite(num) ? num : 0 });
   };
+
+  // Albert Genau kalemi: hesap ekranındaki kâr / montaj / imalat ve diğer
+  // giderler / ödeme tipi teklife geldikten sonra da buradan değiştirilebilir.
+  // Birim fiyat aynı formülle yeniden kurulur:
+  //   maliyet (iskontolu) × (1 + kâr %) + montaj + imalat ve diğer giderler
+  // Kâr % kalemde saklanmaz; mevcut fiyattan geri hesaplanır (fiyat elle
+  // değiştirilirse kâr % da ona göre görünür).
+  const agKalemi = !isZipItem(item) && (item.agMaliyet ?? 0) > 0;
+  const agMal = item.agMaliyet || 0;
+  const agMontaj = item.agMontajBedeli || 0;
+  const agImalat = item.agImalatBedeli || 0;
+  const agKarPct = agMal > 0 ? ((item.birimFiyat || 0) - agMal - agMontaj - agImalat) / agMal * 100 : 0;
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const [agKarText, setAgKarText] = useState(String(r2(agKarPct)));
+  const [agMontajText, setAgMontajText] = useState(String(agMontaj));
+  const [agImalatText, setAgImalatText] = useState(String(agImalat));
+  useEffect(() => {
+    if (!agKalemi) return;
+    if (Math.abs((Number(agKarText.replace(',', '.')) || 0) - agKarPct) > 0.01) setAgKarText(String(r2(agKarPct)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.birimFiyat, item.agMaliyet]);
+  const agYenidenFiyatla = (p: { mal?: number; kar?: number; montaj?: number; imalat?: number; odeme?: 'nakit' | 'kredi_karti' }) => {
+    const mal = p.mal ?? agMal;
+    const kar = p.kar ?? agKarPct;
+    const montaj = p.montaj ?? agMontaj;
+    const imalat = p.imalat ?? agImalat;
+    onChange({
+      agMaliyet: mal,
+      agMontajBedeli: montaj,
+      agImalatBedeli: imalat,
+      ...(p.odeme ? { agOdemeTipi: p.odeme } : {}),
+      birimFiyat: r2(mal * (1 + kar / 100) + montaj + imalat),
+    });
+  };
+  const numOf = (v: string) => Number(v.replace(',', '.')) || 0;
+  // Nakit = liste fiyatının %89'u (bkz. backend albert_genau_calc.py NAKIT_FACTOR).
+  const AG_NAKIT_CARPAN = 0.89;
+  const agOdemeSec = (odeme: 'nakit' | 'kredi_karti') => {
+    if (!item.agOdemeTipi || item.agOdemeTipi === odeme) return;
+    const mal = odeme === 'nakit' ? agMal * AG_NAKIT_CARPAN : agMal / AG_NAKIT_CARPAN;
+    agYenidenFiyatla({ mal: r2(mal), odeme });
+  };
   // Kalem eklenirken hafifçe belirip yukarı kayarak görünür, silinirken
   // (leaving=true) aynı animasyonun tersiyle solup küçülerek kaybolur.
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -1911,6 +1954,78 @@ function ItemCard({
               )}
             </>
           )}
+        </View>
+      )}
+
+      {agKalemi && (
+        <View style={itemStyles.priceBlock} testID={`item-${idx}-ag`}>
+          <View style={itemStyles.blockHeadRow}>
+            <Ionicons name="calculator" size={12} color={theme.colors.primary} />
+            <Text style={itemStyles.blockHead}>ALBERT GENAU FİYAT AYARLARI</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <FieldGroup label="Kâr Marjı (%)" flex={1}>
+              <MotionInput
+                style={itemStyles.input}
+                keyboardType="decimal-pad"
+                value={agKarText}
+                onChangeText={(v) => { const c = v.replace(/[^0-9.,-]/g, ''); setAgKarText(c); agYenidenFiyatla({ kar: numOf(c) }); }}
+                testID={`item-${idx}-ag-kar`}
+              />
+            </FieldGroup>
+            <FieldGroup label={`Montaj Bedeli (${currency})`} flex={1}>
+              <MotionInput
+                style={itemStyles.input}
+                keyboardType="decimal-pad"
+                value={agMontajText}
+                onChangeText={(v) => { const c = v.replace(/[^0-9.,]/g, ''); setAgMontajText(c); agYenidenFiyatla({ montaj: numOf(c) }); }}
+                testID={`item-${idx}-ag-montaj`}
+              />
+            </FieldGroup>
+          </View>
+          <FieldGroup label={`İmalat ve Diğer Giderler (${currency})`}>
+            <MotionInput
+              style={itemStyles.input}
+              keyboardType="decimal-pad"
+              value={agImalatText}
+              onChangeText={(v) => { const c = v.replace(/[^0-9.,]/g, ''); setAgImalatText(c); agYenidenFiyatla({ imalat: numOf(c) }); }}
+              testID={`item-${idx}-ag-imalat`}
+            />
+          </FieldGroup>
+          <Text style={itemStyles.agEtiket}>Ödeme Tipi</Text>
+          {item.agOdemeTipi ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['nakit', 'kredi_karti'] as const).map((o) => {
+                const aktif = item.agOdemeTipi === o;
+                return (
+                  <TouchableOpacity
+                    key={o}
+                    style={[itemStyles.agOdemePill, aktif && itemStyles.agOdemePillAktif]}
+                    onPress={() => agOdemeSec(o)}
+                    testID={`item-${idx}-ag-odeme-${o}`}
+                  >
+                    <Ionicons name={o === 'nakit' ? 'cash-outline' : 'card-outline'} size={15} color={aktif ? '#fff' : theme.colors.textMuted} />
+                    <Text style={[itemStyles.agOdemeYazi, aktif && { color: '#fff' }]}>{o === 'nakit' ? 'Nakit' : 'Kredi Kartı'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : /BIOFLEX/i.test(item.urunAdi || '') ? (
+            <Text style={itemStyles.agNot}>Bu kalem ödeme tipi bilgisi olmadan eklenmiş. Değiştirmek için Albert Genau ekranından yeniden ekleyin.</Text>
+          ) : (
+            <View style={{ flexDirection: 'row' }}>
+              <View style={[itemStyles.agOdemePill, itemStyles.agOdemePillAktif]}>
+                <Ionicons name="card-outline" size={15} color="#fff" />
+                <Text style={[itemStyles.agOdemeYazi, { color: '#fff' }]}>Kredi Kartı</Text>
+              </View>
+            </View>
+          )}
+          <Text style={itemStyles.agNot}>
+            {item.agOdemeTipi
+              ? 'Nakit: liste fiyatının %89\'u; kredi kartı: tam liste fiyatı. '
+              : 'Bu ürün ailesi zaten kredi kartı (tam liste) fiyatıyla hesaplanır. '}
+            Birim fiyat = maliyet {fmt(agMal, currency)} × (1 + kâr) + montaj + imalat ve diğer giderler.
+          </Text>
         </View>
       )}
 
@@ -2298,6 +2413,11 @@ const itemStyles = themedStyles(() => StyleSheet.create({
   blockHeadRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   blockHead: { fontSize: 10, fontWeight: '900', color: theme.colors.textMuted, letterSpacing: 1 },
   blockTotal: { fontSize: 13.5, fontWeight: '900', color: theme.colors.primary },
+  agEtiket: { fontSize: 11, fontWeight: '800', color: theme.colors.text, marginTop: 4, marginBottom: 6 },
+  agOdemePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.surface },
+  agOdemePillAktif: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  agOdemeYazi: { fontSize: 12.5, fontWeight: '800', color: theme.colors.textMuted },
+  agNot: { fontSize: 11, color: theme.colors.textMuted, marginTop: 8, lineHeight: 15 },
   zipKarLabel: { fontSize: 10.5, fontWeight: '800', color: theme.colors.textMuted },
   zipKarInput: { width: 54, paddingVertical: 3, paddingHorizontal: 6, borderWidth: 1, borderColor: theme.colors.line, borderRadius: 8, fontSize: 12.5, fontWeight: '700', color: theme.colors.text, backgroundColor: theme.colors.surface, textAlign: 'center' },
   zipLine: { fontSize: 12.5, fontWeight: '700', color: theme.colors.text, lineHeight: 18 },

@@ -1697,6 +1697,10 @@ class QuoteItem(BaseModel):
     maliyetOto: bool = False
     agMontajBedeli: Optional[float] = None
     agImalatBedeli: Optional[float] = None
+    # Albert Genau BIOFLEX kaleminin odeme tipi (nakit / kredi_karti). Teklif
+    # ekraninda odeme tipi degistirilince maliyet 0.89 carpaniyla cevrilir.
+    # Diger ailelerde bos (fiyat zaten liste = kredi karti fiyati).
+    agOdemeTipi: Optional[str] = None
     # Kalemin cizim modeli (bkz. ag_geometry.py). Teklif PDF'indeki teknik
     # cizim sayfasi bundan uretilir. Serbest sekilli tutulur: modelin alanlari
     # (cephe/modul/giyotin) aile bazinda degisiyor ve burada dogrulanmasi

@@ -1201,6 +1201,9 @@ export default function AlbertGenauScreen() {
         agMaliyet: Math.round((result.maliyetIndirimli || 0) * 100) / 100,
         agMontajBedeli: Math.round((result.montajBedeli || 0) * 100) / 100,
         agImalatBedeli: Math.round((result.imalatBedeli || 0) * 100) / 100,
+        // Ödeme tipi yalnız BIOFLEX ailesinde seçilebilir; teklif ekranında
+        // değiştirilince maliyet nakit/kart çarpanıyla çevrilir.
+        agOdemeTipi: family === 'geometric' ? (result.odemeTipi === 'kredi_karti' ? 'kredi_karti' : 'nakit') : null,
         // Ekranda görünen çizim modelinin AYNISI kalemle birlikte taşınır;
         // teklif PDF'indeki teknik çizim sayfası bundan üretilir. Ailesinde
         // çizim yoksa (yedek parça, AIRFLEX modül) null kalır.

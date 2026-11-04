@@ -20,6 +20,7 @@ export type PendingAlbertGenauItemT = {
   agMaliyet?: number;
   agMontajBedeli?: number;
   agImalatBedeli?: number;
+  agOdemeTipi?: 'nakit' | 'kredi_karti' | null;
   /** Kalemin çizim modeli -- teklif PDF'indeki teknik çizim sayfası bundan
    *  üretilir (bkz. src/lib/cizim-html.ts). Çizimi olmayan ailelerde yok. */
   agCizim?: CizimModeli | null;
@@ -607,6 +608,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         agMaliyet: it.agMaliyet ?? null,
         agMontajBedeli: it.agMontajBedeli ?? null,
         agImalatBedeli: it.agImalatBedeli ?? null,
+        agOdemeTipi: it.agOdemeTipi ?? null,
         // Teknik çizim modeli ve Zip Perde seçimi -- gönderilmezse sunucu
         // kalemi çizimsiz kaydeder ve PDF'e çizim sayfası hiç eklenmez
         // (PDF sunucudan dönen kayıttan üretiliyor, bkz. teklif.tsx).
@@ -664,6 +666,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             agMaliyet: it.agMaliyet ?? null,
             agMontajBedeli: it.agMontajBedeli ?? null,
             agImalatBedeli: it.agImalatBedeli ?? null,
+            agOdemeTipi: it.agOdemeTipi ?? null,
             agCizim: it.agCizim ?? null,
             zipEkler: it.zipEkler ?? null,
           })),

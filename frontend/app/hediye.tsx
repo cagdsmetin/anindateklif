@@ -120,7 +120,7 @@ const s = StyleSheet.create({
   perks: { marginVertical: authSpacing.xl, gap: authSpacing.md },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: authSpacing.md },
   perkText: { color: authTheme.textSoft, fontSize: 14, flex: 1, lineHeight: 20 },
-  primary: { backgroundColor: authTheme.primary, borderRadius: authRadius.md, paddingVertical: 15, alignItems: 'center' },
+  primary: { backgroundColor: authTheme.primaryBg, borderRadius: authRadius.md, paddingVertical: 15, alignItems: 'center' },
   primaryText: { color: authTheme.primaryText, fontWeight: '700', fontSize: 16 },
   secondary: { paddingVertical: 14, alignItems: 'center' },
   secondaryText: { color: authTheme.link, fontWeight: '600', fontSize: 15 },

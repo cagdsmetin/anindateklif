@@ -448,7 +448,7 @@ const s = themedStyles(() => StyleSheet.create({
   stepLabel: { color: authTheme.textMuted, fontSize: 14, fontWeight: '600' },
   progressWrap: { flexDirection: 'row', paddingHorizontal: 24, gap: 6, marginBottom: 22 },
   progressSeg: { flex: 1, height: 4, borderRadius: 2 },
-  progressSegActive: { backgroundColor: authTheme.primary },
+  progressSegActive: { backgroundColor: authTheme.primaryBg },
   progressSegInactive: { backgroundColor: authTheme.dotInactive },
   scroll: { paddingHorizontal: 24, paddingBottom: 120 },
   stepIcon: {
@@ -478,7 +478,7 @@ const s = themedStyles(() => StyleSheet.create({
     borderWidth: 1.5, borderColor: authTheme.cardBorder,
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxOn: { backgroundColor: authTheme.primary, borderColor: authTheme.primary },
+  checkboxOn: { backgroundColor: authTheme.primaryBg, borderColor: authTheme.primary },
   checkTitle: { color: authTheme.text, fontSize: 14, fontWeight: '800' },
   checkHint: { color: authTheme.textMuted, fontSize: 11.5, marginTop: 3, lineHeight: 16 },
   row: {
@@ -495,7 +495,7 @@ const s = themedStyles(() => StyleSheet.create({
     borderWidth: 1.5, borderColor: authTheme.cardBorder,
     alignItems: 'center', justifyContent: 'center',
   },
-  radioOn: { backgroundColor: authTheme.primary, borderColor: authTheme.primary },
+  radioOn: { backgroundColor: authTheme.primaryBg, borderColor: authTheme.primary },
   logoBox: {
     minHeight: 180, alignItems: 'center', justifyContent: 'center',
     backgroundColor: authTheme.card,
@@ -533,7 +533,7 @@ const s = themedStyles(() => StyleSheet.create({
     borderTopColor: authTheme.line, borderTopWidth: 1,
   },
   cta: {
-    backgroundColor: authTheme.primary, borderRadius: authRadius.xl, paddingVertical: 16,
+    backgroundColor: authTheme.primaryBg, borderRadius: authRadius.xl, paddingVertical: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
   },
   ctaDisabled: { opacity: 0.55 },

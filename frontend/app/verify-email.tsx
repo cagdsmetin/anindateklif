@@ -118,7 +118,7 @@ const s = themedStyles(() => StyleSheet.create({
   },
   errorText: { color: authTheme.danger, fontSize: 13, fontWeight: '600', flex: 1 },
   cta: {
-    backgroundColor: authTheme.primary, borderRadius: authRadius.xl, paddingVertical: 16,
+    backgroundColor: authTheme.primaryBg, borderRadius: authRadius.xl, paddingVertical: 16,
     alignItems: 'center', justifyContent: 'center',
   },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '800' },

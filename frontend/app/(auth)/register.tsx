@@ -330,11 +330,11 @@ const s = themedStyles(() => StyleSheet.create({
     borderColor: authTheme.cardBorder, backgroundColor: 'transparent',
     alignItems: 'center', justifyContent: 'center', marginTop: 2,
   },
-  checkboxOn: { backgroundColor: authTheme.primary, borderColor: authTheme.primary },
+  checkboxOn: { backgroundColor: authTheme.primaryBg, borderColor: authTheme.primary },
   termsText: { color: authTheme.textMuted, fontSize: 12.5, flex: 1, lineHeight: 18 },
   termsLink: { color: authTheme.link, fontWeight: '700' },
   cta: {
-    backgroundColor: authTheme.primary, borderRadius: authRadius.xl, paddingVertical: 16,
+    backgroundColor: authTheme.primaryBg, borderRadius: authRadius.xl, paddingVertical: 16,
     alignItems: 'center', justifyContent: 'center',
     ...Platform.select({
       ios: { shadowColor: authTheme.primary, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },

@@ -315,7 +315,7 @@ const m = themedStyles(() => StyleSheet.create({
   badgeTop: {
     position: 'absolute', top: -14, right: 6, zIndex: 2,
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: authTheme.primary, borderRadius: authRadius.pill,
+    backgroundColor: authTheme.primaryBg, borderRadius: authRadius.pill,
     paddingVertical: 6, paddingHorizontal: 12,
     ...Platform.select({ web: { boxShadow: '0 10px 24px rgba(59,130,246,0.45)' } as any }),
   },
@@ -338,7 +338,7 @@ const m = themedStyles(() => StyleSheet.create({
   cardDivider: { height: 2, backgroundColor: authTheme.line, marginVertical: 14, borderRadius: 1 },
   line: { backgroundColor: authTheme.line, borderRadius: 3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  rowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: authTheme.primary },
+  rowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: authTheme.primaryBg },
   totalRow: {
     marginTop: 6, backgroundColor: authTheme.bg, borderRadius: authRadius.md,
     paddingVertical: 10, paddingHorizontal: 12,
@@ -377,7 +377,7 @@ const s = themedStyles(() => StyleSheet.create({
   navActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   navLogin: { color: authTheme.textSoft, fontSize: 14, fontWeight: '700' },
   navCta: {
-    backgroundColor: authTheme.primary,
+    backgroundColor: authTheme.primaryBg,
     borderRadius: authRadius.pill,
     paddingVertical: 9,
     paddingHorizontal: 16,
@@ -457,7 +457,7 @@ const s = themedStyles(() => StyleSheet.create({
     marginTop: 28,
   },
   primaryCta: {
-    backgroundColor: authTheme.primary,
+    backgroundColor: authTheme.primaryBg,
     borderRadius: authRadius.xl,
     paddingVertical: 15,
     paddingHorizontal: 26,

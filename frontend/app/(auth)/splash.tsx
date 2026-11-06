@@ -231,7 +231,7 @@ const s = themedStyles(() => StyleSheet.create({
   dotInactive: { backgroundColor: authTheme.dotInactive, width: 6 },
   bottom: { paddingHorizontal: authSpacing.xl, paddingBottom: authSpacing.md },
   cta: {
-    backgroundColor: authTheme.primary,
+    backgroundColor: authTheme.primaryBg,
     borderRadius: authRadius.xl,
     paddingVertical: 16,
     flexDirection: 'row',

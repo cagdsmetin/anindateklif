@@ -216,7 +216,7 @@ const s = themedStyles(() => StyleSheet.create({
   input: { flex: 1, color: authTheme.text, fontSize: 15, paddingVertical: 0, ...Platform.select({ web: { outlineWidth: 0 } as any }) },
   helperText: { fontSize: 11.5, color: authTheme.textMuted, marginBottom: 18, lineHeight: 16 },
   cta: {
-    backgroundColor: authTheme.primary, borderRadius: authRadius.xl, paddingVertical: 16,
+    backgroundColor: authTheme.primaryBg, borderRadius: authRadius.xl, paddingVertical: 16,
     alignItems: 'center', justifyContent: 'center',
   },
   ctaDisabled: { opacity: 0.7 },

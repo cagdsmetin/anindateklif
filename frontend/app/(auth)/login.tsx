@@ -258,7 +258,7 @@ const s = themedStyles(() => StyleSheet.create({
   forgotWrap: { alignSelf: 'flex-end', marginTop: 4, marginBottom: 20 },
   forgotText: { color: authTheme.link, fontSize: 13, fontWeight: '700' },
   cta: {
-    backgroundColor: authTheme.primary,
+    backgroundColor: authTheme.primaryBg,
     borderRadius: authRadius.xl,
     paddingVertical: 16,
     alignItems: 'center',

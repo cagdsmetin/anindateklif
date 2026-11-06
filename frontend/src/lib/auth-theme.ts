@@ -8,7 +8,8 @@ export const authTheme = {
   card: '#1A2338',          // input/card background
   cardBorder: '#243049',    // input border
   cardBorderFocus: '#3B82F6',
-  primary: '#2563EB',       // primary blue button (beyaz yazıyla 5.2:1 kontrast, WCAG AA)
+  primary: '#3B82F6',       // koyu zeminde mavi metin/ikon (5:1)
+  primaryBg: '#2563EB',     // beyaz yazılı mavi buton zemini (5.2:1, WCAG AA)
   primaryText: '#FFFFFF',
   text: '#FFFFFF',
   textMuted: '#94A3B8',

@@ -25,7 +25,8 @@
 - [Özellikler](https://www.anindateklif.co/ozellikler.html): Tüm özellikler ve teklif akışı
 - [Fiyatlar](https://www.anindateklif.co/fiyatlar.html): Planlar ve abonelik fiyatları
 - [Sık sorulan sorular](https://www.anindateklif.co/sss.html)
-- [Gizlilik politikası](https://www.anindateklif.co/privacy)
+- [Gizlilik politikası](https://www.anindateklif.co/gizlilik.html)
+- [Kullanım şartları](https://www.anindateklif.co/kullanim-sartlari.html)
 
 ## Rehber
 - [Fiyat Teklifi Nasıl Hazırlanır? 9 Adımda Profesyonel Teklif](https://www.anindateklif.co/rehber/fiyat-teklifi-nasil-hazirlanir.html): Fiyat teklifinde hangi bilgiler olmalı? Firma bilgisi, kalemler, KDV, geçerlilik süresi, ödeme ve teslim koşullarıyla 9 adımda profesyonel teklif hazırlama rehberi.

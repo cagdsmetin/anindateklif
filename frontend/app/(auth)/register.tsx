@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -204,8 +205,8 @@ export default function RegisterScreen() {
                 {acceptedTerms ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
               </View>
               <Text style={s.termsText}>
-                {t('register.s016')}<Text style={s.termsLink}>{t('register.s017')}</Text> ve{' '}
-                <Text style={s.termsLink}>{t('register.s018')}</Text> {t('register.s019')}</Text>
+                {t('register.s016')}<Text style={s.termsLink} accessibilityRole="link" onPress={() => Linking.openURL('https://www.anindateklif.co/gizlilik.html')}>{t('register.s017')}</Text> ve{' '}
+                <Text style={s.termsLink} accessibilityRole="link" onPress={() => Linking.openURL('https://www.anindateklif.co/kullanim-sartlari.html')}>{t('register.s018')}</Text> {t('register.s019')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

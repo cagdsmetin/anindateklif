@@ -15,6 +15,7 @@ from ortak import (AD, ALT, APP_ID, DESTEK_EPOSTA, GUNCELLEME, ORG_ID, PLANLAR, 
 from yazilar import YAZILAR
 from sektorler import SEKTORLER
 from ag import AG_ACIKLAMA, AG_BASLIK, AG_SLUG, AG_SSS, ag_govde
+from hukuk import GIZLILIK_ACIKLAMA, GIZLILIK_BASLIK, KULLANIM_ACIKLAMA, KULLANIM_BASLIK, gizlilik_govde, kullanim_govde
 from araclar import ARAC_CSS, KDV_GOVDE, TEKLIF_OLUSTUR_GOVDE
 
 KOK = os.path.join(os.path.dirname(__file__), "..", "..", "public")
@@ -56,7 +57,7 @@ GENEL_SSS = [
     ("Ekibimle birlikte kullanabilir miyim?", "Evet. Personelinizi davet edip yetkilerini belirleyebilirsiniz. Abonelik fiyatı ekipteki kişi sayısına göre belirlenir ve tek abonelik tüm ekibi kapsar."),
     ("Ölçüye göre fiyat hesaplıyor mu?", "Evet. Katalogdaki ürünler için en-boy, metraj veya adede göre fiyatı otomatik hesaplayan yapılandırıcı vardır; perde, cam, doğrama, pergola gibi ölçülü işlerde zaman kazandırır."),
     ("Teklifleri İngilizce hazırlayabilir miyim?", "Evet. Teklifler Türkçe, İngilizce veya İtalyanca hazırlanabilir."),
-    ("Verilerim güvende mi?", "Verileriniz bulutta saklanır ve her gece yedeklenir. Kişisel verilerin işlenmesi hakkında ayrıntılar <a href=\"/privacy\">gizlilik politikasında</a>."),
+    ("Verilerim güvende mi?", "Verileriniz bulutta saklanır ve her gece yedeklenir. Kişisel verilerin işlenmesi hakkında ayrıntılar <a href=\"/gizlilik.html\">gizlilik politikasında</a>."),
 ]
 
 
@@ -338,7 +339,7 @@ KDV_SSS = [
 
 
 # ------------------------------------------------------ makine okur dosyalar
-STATIK = (["/", "/albert-genau-bayileri.html", "/ozellikler.html", "/fiyatlar.html", "/teklif-olustur.html", "/kdv-hesaplama.html", "/sektorler.html", "/sss.html", "/rehber.html"]
+STATIK = (["/", "/albert-genau-bayileri.html", "/ozellikler.html", "/fiyatlar.html", "/teklif-olustur.html", "/kdv-hesaplama.html", "/sektorler.html", "/sss.html", "/rehber.html", "/gizlilik.html", "/kullanim-sartlari.html"]
           + [f"/sektor/{x['slug']}.html" for x in SEKTORLER] + [f"/rehber/{y['slug']}.html" for y in YAZILAR])
 
 
@@ -437,7 +438,8 @@ def llms():
 - [Özellikler]({SITE}/ozellikler.html): Tüm özellikler ve teklif akışı
 - [Fiyatlar]({SITE}/fiyatlar.html): Planlar ve abonelik fiyatları
 - [Sık sorulan sorular]({SITE}/sss.html)
-- [Gizlilik politikası]({SITE}/privacy)
+- [Gizlilik politikası]({SITE}/gizlilik.html)
+- [Kullanım şartları]({SITE}/kullanim-sartlari.html)
 
 ## Rehber
 {satir}
@@ -645,6 +647,8 @@ def main():
     yaz("kdv-hesaplama.html", arac_sayfasi("/kdv-hesaplama.html", "KDV Hesaplama: KDV Dahil ve Hariç Tutar (%20, %10, %1) | Anında Teklif",
         "KDV dahil fiyattan KDV hariç tutarı, KDV hariç fiyattan KDV dahil tutarı hesaplayın. %20, %10, %1 ve özel oran; formüller ve örnekler.",
         KDV_GOVDE, "KDV hesaplama", KDV_SSS))
+    yaz("gizlilik.html", sayfa("/gizlilik.html", GIZLILIK_BASLIK, GIZLILIK_ACIKLAMA, gizlilik_govde(), []))
+    yaz("kullanim-sartlari.html", sayfa("/kullanim-sartlari.html", KULLANIM_BASLIK, KULLANIM_ACIKLAMA, kullanim_govde(), []))
     yaz("seo.css", CSS + ARAC_CSS)
     # `serve -s` her uzantısız yolu SPA'ya yönlendirdiği için statik sayfalar .html
     # adresle sunulur; cleanUrls açıkken /x.html → /x 301'i SPA'ya düşürürdü.

@@ -9,7 +9,7 @@
 .marka{display:flex;align-items:center;gap:10px;color:var(--beyaz)!important;text-decoration:none;font-weight:800;font-size:18px}.marka img{border-radius:8px}.marka b{color:var(--turuncu)}
 .ust nav{display:flex;gap:18px;flex:1}.ust nav a{white-space:nowrap}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
 .ust-eylem{display:flex;gap:14px;align-items:center}
-.dugme{display:inline-block;background:var(--mavi);color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
+.dugme{display:inline-block;background:#2563EB;color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
 .dugme.buyuk{padding:14px 24px;font-size:17px;border-radius:12px;margin:4px 6px 4px 0}.dugme.ikincil{background:transparent;border:1px solid var(--cizgi)}
 h1,h2,h3{color:var(--beyaz);line-height:1.25}h1{font-size:clamp(30px,5vw,48px);margin:28px 0 14px}h2{font-size:clamp(22px,3vw,28px);margin:44px 0 12px}h3{font-size:18px;margin:0 0 6px}
 .kahraman{padding:56px 0 24px;background:radial-gradient(60% 80% at 50% 0,rgba(59,130,246,.22),transparent)}

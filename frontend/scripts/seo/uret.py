@@ -6,6 +6,7 @@
 #   ozellikler.html, fiyatlar.html, sss.html, rehber/*.html, seo.css,
 #   robots.txt, sitemap.xml, llms.txt, llms-full.txt, sablon/fiyat-teklifi-sablonu.xlsx
 # og.png ayrıca scripts/seo/og.html'den Chrome ile çekilir (bkz. README notu uret.py sonunda).
+import json
 import os
 import sys
 
@@ -168,6 +169,7 @@ def ozellikler_sayfasi():
 <nav class="kirinti" aria-label="Konum"><a href="/">Ana sayfa</a> › Özellikler</nav>
 <h1>Anında Teklif özellikleri</h1>
 <p class="giris-metni">Anında Teklif bir teklif hazırlama programıdır: teklifi hazırlar, PDF'e çevirir, WhatsApp'tan gönderir; onaylanan teklifi müşterinin cari hesabına, tahsilatı kasaya bağlar.</p>
+<h2>Neler yapabilirsiniz?</h2>
 <ul class="izgara">{oz}</ul>
 <h2>Teklif akışı</h2>
 <ol><li>Müşteriyi seçin veya yeni müşteri ekleyin.</li><li>Kalemleri katalogdan seçin; ölçülü ürünlerde en-boy girin, fiyat otomatik hesaplansın.</li><li>İskonto, KDV, ödeme ve teslim koşullarını ekleyin.</li><li>Şablon seçin; logolu PDF oluşsun.</li><li>WhatsApp, e-posta veya indirme ile gönderin.</li><li>Müşteri onaylayınca durumu "onaylandı" yapın; tutar cari hesaba geçsin.</li><li>Tahsilatları kaydedin; kasa ve müşteri bakiyesi güncellensin.</li></ol>
@@ -591,7 +593,7 @@ CSS = """:root{--bg:#0B1220;--yumusak:#111A2E;--kart:#1A2338;--cizgi:#243049;--m
 .marka{display:flex;align-items:center;gap:10px;color:var(--beyaz)!important;text-decoration:none;font-weight:800;font-size:18px}.marka img{border-radius:8px}.marka b{color:var(--turuncu)}
 .ust nav{display:flex;gap:18px;flex:1}.ust nav a{white-space:nowrap}.ust nav a,.giris{color:var(--metin)!important;text-decoration:none;font-weight:600;font-size:15px}
 .ust-eylem{display:flex;gap:14px;align-items:center}
-.dugme{display:inline-block;background:var(--mavi);color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
+.dugme{display:inline-block;background:#2563EB;color:#fff!important;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:10px}
 .dugme.buyuk{padding:14px 24px;font-size:17px;border-radius:12px;margin:4px 6px 4px 0}.dugme.ikincil{background:transparent;border:1px solid var(--cizgi)}
 h1,h2,h3{color:var(--beyaz);line-height:1.25}h1{font-size:clamp(30px,5vw,48px);margin:28px 0 14px}h2{font-size:clamp(22px,3vw,28px);margin:44px 0 12px}h3{font-size:18px;margin:0 0 6px}
 .kahraman{padding:56px 0 24px;background:radial-gradient(60% 80% at 50% 0,rgba(59,130,246,.22),transparent)}
@@ -652,7 +654,10 @@ def main():
     yaz("seo.css", CSS + ARAC_CSS)
     # `serve -s` her uzantısız yolu SPA'ya yönlendirdiği için statik sayfalar .html
     # adresle sunulur; cleanUrls açıkken /x.html → /x 301'i SPA'ya düşürürdü.
-    yaz("serve.json", '{\n  "cleanUrls": false\n}\n')
+    yaz("serve.json", json.dumps({"cleanUrls": False, "headers": [
+        {"source": "_expo/static/**", "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]},
+        {"source": "**/*.@(png|ico|css|xlsx)", "headers": [{"key": "Cache-Control", "value": "public, max-age=86400"}]},
+    ]}, indent=2) + "\n")
     yaz("robots.txt", robots())
     yaz("sitemap.xml", sitemap())
     yaz("llms.txt", llms())

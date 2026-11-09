@@ -77,7 +77,17 @@ export default function EditorScreen() {
   const [alisRates, setAlisRates] = useState<RatesT | null>(null);
   const [otoMaliyet, setOtoMaliyet] = useState(activeCompany?.alisOtoMaliyet !== false);
   useEffect(() => { setOtoMaliyet(activeCompany?.alisOtoMaliyet !== false); }, [activeCompany?.alisOtoMaliyet]);
-  useEffect(() => { api.rates().then(setAlisRates).catch(() => {}); }, []);
+  // kurDenendi: ilk kur isteği bitti (başarılı ya da değil). Albert kalemi
+  // eklenirken kur gelene kadar beklenir; istek düşerse beklemeden eklenir.
+  const [kurDenendi, setKurDenendi] = useState(false);
+  useEffect(() => { api.rates().then(setAlisRates).catch(() => {}).finally(() => setKurDenendi(true)); }, []);
+  // Albert Genau kalemleri TL hesaplanır; teklifin para birimine (ve birim
+  // değişince yeni birime) bu yardımcıyla çevrilir. Kur yoksa null.
+  const agCevir = (v: number | null | undefined, from: string, to: string, rates: RatesT | null = alisRates): number | null => {
+    if (v == null) return null;
+    const r = convertBetween(v, from === 'TL' ? 'TRY' : from, to === 'TL' ? 'TRY' : to, rates);
+    return r == null ? null : Math.round(r * 100) / 100;
+  };
   // Katalog ürününün alış fiyatı, teklifin para birimine çevrilmiş halde (kur yoksa null).
   const catalogAlis = (catalogItemId: string | undefined, toCur: string, rates: RatesT | null = alisRates): number | null => {
     const c = catalogItemId ? catalog.find((x) => x.id === catalogItemId) : undefined;
@@ -278,6 +288,9 @@ export default function EditorScreen() {
   // açıp geri tuşunu bozmuyor (bkz. o dosyadaki onAddToQuote yorum notu).
   useEffect(() => {
     if (pendingAlbertGenauItems.length === 0) return;
+    // Albert kalemleri TL gelir: teklif TL değilse çevirmek için kur beklenir.
+    const tlDisi = paraBirimi !== 'TL' && paraBirimi !== 'TRY';
+    if (tlDisi && !alisRates && !kurDenendi && pendingAlbertGenauItems.some((d) => !d.fiyatlar)) return;
     // Zip Perde kalemleri fiyatı her para biriminde taşır; kur alınamadığı
     // için teklifin biriminde karşılığı yoksa fiyat boş bırakılır (EUR
     // rakamını TL teklife yazmak sessizce yanlış fiyat verirdi).
@@ -285,8 +298,12 @@ export default function EditorScreen() {
     const names = pendingAlbertGenauItems.map((d) => d.urunAdi);
     const cur = paraBirimi === 'TL' ? 'TRY' : paraBirimi;
     const added = pendingAlbertGenauItems.map((data) => {
-      const fiyat = data.fiyatlar ? data.fiyatlar[cur] : Number(data.birimFiyat) || 0;
-      if (data.fiyatlar && fiyat == null) kurEksik = true;
+      // Albert Genau (fiyatlar yok): TL hesap teklifin birimine çevrilir.
+      // Kur alınamazsa rakamlar sıfırlanmaz: Albert'in TL değerleri korunur.
+      const tl = (v: number | null | undefined) => (v == null ? null : agCevir(v, 'TRY', cur) ?? v);
+      const agHam = Number(data.birimFiyat) || 0;
+      const fiyat = data.fiyatlar ? data.fiyatlar[cur] : tl(agHam);
+      if (fiyat == null || (!data.fiyatlar && agHam > 0 && agCevir(agHam, 'TRY', cur) == null)) kurEksik = true;
       return {
         ...makeItem('general'),
         urunAdi: data.urunAdi || 'Albert Genau',
@@ -296,10 +313,10 @@ export default function EditorScreen() {
         aciklama: data.aciklama || '',
         // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
         // otomatik doldurmak için (bkz. history.tsx), kalemle birlikte saklanır.
-        agMaliyet: (data.maliyetler ? data.maliyetler[cur] : data.agMaliyet) ?? null,
-        agMontajBedeli: (data.montajlar ? data.montajlar[cur] : data.agMontajBedeli) ?? null,
+        agMaliyet: (data.maliyetler ? data.maliyetler[cur] : tl(data.agMaliyet)) ?? null,
+        agMontajBedeli: (data.montajlar ? data.montajlar[cur] : tl(data.agMontajBedeli)) ?? null,
         zipMontajTl: data.zipMontajTl ?? null,
-        agImalatBedeli: data.agImalatBedeli ?? null,
+        agImalatBedeli: (data.fiyatlar ? data.agImalatBedeli : tl(data.agImalatBedeli)) ?? null,
         agOdemeTipi: data.agOdemeTipi ?? null,
         agGirdi: data.agGirdi ?? null,
         yerineItemId: data.yerineItemId,
@@ -339,12 +356,12 @@ export default function EditorScreen() {
     const sonId = added[added.length - 1].yerineItemId || added[added.length - 1].id;
     setExpandedItemId(sonId);
     clearPendingAlbertGenauItems();
-    if (added.some((a) => a.yerineItemId)) { showToast('Albert Genau kalemi güncellendi'); return; }
+    if (added.some((a) => a.yerineItemId)) { showToast(kurEksik ? 'Kur alınamadı, fiyat TL bırakıldı -- elle düzeltin' : 'Albert Genau kalemi güncellendi'); return; }
     showToast(kurEksik
-      ? 'Kur alınamadı, birim fiyatı elle girin'
+      ? 'Kur alınamadı, fiyat TL bırakıldı -- elle düzeltin'
       : `${names.every((n) => n === 'Zip Perde') ? 'Zip Perde' : 'Albert Genau'} kalemi eklendi`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAlbertGenauItems]);
+  }, [pendingAlbertGenauItems, alisRates, kurDenendi]);
 
   // Albert Genau ekranında "Teknik Çizim Ekle" ile hazırlanan otomatik çizim
   // (henüz kaydedilmemiş bu teklife eklenmek üzere AppContext'te bekliyor) --
@@ -1033,6 +1050,21 @@ export default function EditorScreen() {
                   setParaBirimi(c); rememberDefault('paraBirimi', c);
                   // Para birimi değişince katalog kalemlerinin alış fiyatı yeni birime çevrilir.
                   if (isManager && c !== paraBirimi) setItems((prev) => prev.map((x) => (x.catalogItemId ? { ...x, alisBirimFiyat: catalogAlis(x.catalogItemId, c) } : x)));
+                  // Albert Genau kalemleri (TL hesaplanır) yeni birime çevrilir:
+                  // TL→USD/EUR, geri TL seçilince TL'ye döner.
+                  if (c !== paraBirimi) {
+                    const agMi = (x: QuoteItemT) => !isZipItem(x) && ((x.agMaliyet ?? 0) > 0 || !!x.agGirdi);
+                    if (items.some(agMi)) {
+                      if (!alisRates) { showToast('Kur alınamadı, Albert kalemleri çevrilemedi'); return; }
+                      setItems((prev) => prev.map((x) => (agMi(x) ? {
+                        ...x,
+                        birimFiyat: agCevir(x.birimFiyat || 0, paraBirimi, c) ?? x.birimFiyat,
+                        agMaliyet: agCevir(x.agMaliyet, paraBirimi, c),
+                        agMontajBedeli: agCevir(x.agMontajBedeli, paraBirimi, c),
+                        agImalatBedeli: agCevir(x.agImalatBedeli, paraBirimi, c),
+                      } : x)));
+                    }
+                  }
                 }} style={{ flex: 1 }} />
               ))}</View>
             </FGroup>

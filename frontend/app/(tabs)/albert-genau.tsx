@@ -655,14 +655,25 @@ export default function AlbertGenauScreen() {
     return () => { cancelled = true; clearInterval(id); };
   }, []);
 
+  // Bayinin en sonda elle yazdığı satış fiyatı (₺). Boşsa hesaplanan geçer.
+  // Yalnız son rakamı değiştirir; maliyet/kâr/montaj kırılımı aynen kalır.
+  const [fiyatElle, setFiyatElle] = useState('');
+  useEffect(() => { setFiyatElle(''); }, [result]);
+  const fiyatElleSayi = (() => {
+    // 1.500,50 / 1500,50 / 1500.50 / 1.500 hepsi kabul edilir.
+    const t = fiyatElle.trim();
+    const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t);
+    return fiyatElle.trim() && Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const sonSatisFiyati = result ? (fiyatElleSayi ?? result.satisFiyati) : 0;
   const satisFiyatiEquiv = useMemo(() => {
     if (!result || !rates) return null;
-    const try_ = result.satisFiyati;
+    const try_ = sonSatisFiyati;
     const usd = rates.usd_try ? try_ / rates.usd_try : null;
     const eur = rates.eur_try ? try_ / rates.eur_try : null;
     if (usd == null && eur == null) return null;
     return { usd, eur };
-  }, [result, rates]);
+  }, [result, rates, sonSatisFiyati]);
 
   // Firma-bazlı fiyat listesi: her Albert Genau bayisi (firma) kendi Excel
   // fiyat listesini kendi hesabından yükleyebilir -- yeni bir bayiye verilen
@@ -1341,7 +1352,7 @@ export default function AlbertGenauScreen() {
       addPendingAlbertGenauItem({
         urunAdi: result.tipAdi,
         aciklama: buildAciklama(result),
-        birimFiyat: Math.round(result.satisFiyati * 100) / 100,
+        birimFiyat: Math.round(sonSatisFiyati * 100) / 100,
         // Kar HARİÇ maliyet kırılımı -- Geçmiş'teki "Maliyet Ekle" alanını
         // otomatik doldurmak için taşınıyor (bkz. history.tsx).
         agMaliyet: Math.round((result.maliyetIndirimli || 0) * 100) / 100,
@@ -2484,7 +2495,10 @@ export default function AlbertGenauScreen() {
                 <View style={s.totalBox}>
                   <Text style={s.totalLabel}>SATIŞ FİYATI ({result.odemeTipi === 'nakit' ? 'NAKİT' : 'KREDİ KARTI'})</Text>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.totalValue}>₺{money(result.satisFiyati)}</Text>
+                    <Text style={s.totalValue}>₺{money(sonSatisFiyati)}</Text>
+                    {fiyatElleSayi != null ? (
+                      <Text style={s.totalValueEquiv}>Hesaplanan: ₺{money(result.satisFiyati)}</Text>
+                    ) : null}
                     {satisFiyatiEquiv ? (
                       <Text style={s.totalValueEquiv}>
                         {[
@@ -2494,6 +2508,24 @@ export default function AlbertGenauScreen() {
                       </Text>
                     ) : null}
                   </View>
+                </View>
+
+                <Text style={[s.fieldLabel, { marginTop: 12 }]}>Satış fiyatını elle değiştir (₺, isteğe bağlı)</Text>
+                <View style={s.inputWrap}>
+                  <TextInput
+                    style={s.input}
+                    value={fiyatElle}
+                    onChangeText={(v) => setFiyatElle(v.replace(/[^0-9.,]/g, ''))}
+                    placeholder={`Boş bırakılırsa ₺${money(result.satisFiyati)}`}
+                    placeholderTextColor={theme.colors.textMuted}
+                    keyboardType="decimal-pad"
+                    testID="ag-fiyat-elle"
+                  />
+                  {fiyatElle ? (
+                    <TouchableOpacity onPress={() => setFiyatElle('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
 
                 <TouchableOpacity style={s.kalemlerToggle} onPress={onShowKalemler} testID="ag-show-kalemler">
